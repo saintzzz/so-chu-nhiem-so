@@ -139,6 +139,7 @@ body {
 /* Applied to the content region only — chrome stays on base tokens.   */
 /* ------------------------------------------------------------------ */
 
+@layer theme-overrides {
 /* Fluent 2 (Microsoft) — dense enterprise console: Segoe UI, tight
    radius, small depth shadows, neutral gray surface. */
 .theme-fluent {
@@ -214,4 +215,5 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
 }

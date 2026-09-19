@@ -1,5 +1,7 @@
 # IX. Sổ chủ nhiệm (`/register/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (lớp mình), BGH (toàn trường).
 **Routes**: `/register/roster` `/seating` `/seating-history` `/year-events` `/suggestions` `/plans` `/kpi` `/signoff` `/lock-records` `/export` `/audit`
 

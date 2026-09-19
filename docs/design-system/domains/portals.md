@@ -1,5 +1,7 @@
 # Cổng Phụ huynh / Học sinh
 
+**Design language**: `Apple HIG` — theme `.theme-apple` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: `phu_huynh`, `hoc_sinh` — layout riêng, **mobile-first** (khác staff desktop-first).
 
 ## Nguyên tắc chung

@@ -1,5 +1,7 @@
 # XIII. Thời khóa biểu & Sổ đầu bài (`/schedule/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: mọi giáo viên + BGH (xem); **BGH/admin** (ghi).
 **Routes**: `/schedule/timetable` `/period-log`
 

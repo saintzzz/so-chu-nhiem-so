@@ -1,5 +1,7 @@
 # III. Học tập (`/academics/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN, GVBM (môn mình dạy), Tổ trưởng, BGH.
 **Routes**: `/academics/grades` `/analysis` `/support` `/teacher-chat` `/parent-chat` `/plans` `/exams`
 

@@ -1,5 +1,7 @@
 # IV. Rèn luyện (`/conduct/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN, BGH.
 **Routes**: `/conduct/records` `/evaluation` `/student-chat`
 

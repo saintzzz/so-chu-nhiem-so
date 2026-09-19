@@ -176,7 +176,7 @@ export default async function StudentPortalPage() {
   }[]).filter((s) => s.exams.status === "published");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="theme-apple min-h-screen bg-background">
       <PortalHeader title="Cổng học sinh" userName={profile.full_name} />
 
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">

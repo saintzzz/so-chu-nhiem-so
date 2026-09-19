@@ -1,5 +1,7 @@
 # VI. Phụ huynh (`/parents/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (soạn/gửi), BGH (CMHS), PH (cổng — xem `portals.md`).
 **Routes**: `/parents/compose` `/inbox` `/appointments` `/portal` `/cmhs`
 

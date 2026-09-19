@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { GraduationCap, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import type { Profile } from "@/types";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Topbar } from "@/components/topbar";
+import { domainThemeFor } from "@/lib/domain-theme";
 import { cn } from "@/lib/utils";
 
 export function AppShell({
@@ -16,6 +18,7 @@ export function AppShell({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const theme = domainThemeFor(usePathname());
 
   return (
     <div className="flex min-h-screen">
@@ -90,7 +93,11 @@ export function AppShell({
           profile={profile}
           onOpenMobileNav={() => setMobileOpen(true)}
         />
-        <main className="flex-1 overflow-x-hidden p-4 md:p-6">{children}</main>
+        <main
+          className={cn("flex-1 overflow-x-hidden p-4 md:p-6", `theme-${theme}`)}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

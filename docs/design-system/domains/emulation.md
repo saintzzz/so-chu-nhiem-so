@@ -1,5 +1,7 @@
 # X. Thi đua (`/emulation/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (chấm), BGH (xem xếp hạng).
 **Routes**: `/emulation/scoring` `/ranking`
 

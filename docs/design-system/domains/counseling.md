@@ -1,5 +1,7 @@
 # V. Tư vấn học sinh (`/counseling/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN.
 **Routes**: `/counseling/intake` `/assessment` `/referral`
 

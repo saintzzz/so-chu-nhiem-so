@@ -1,5 +1,7 @@
 # II. Chuyên cần (`/attendance/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (lớp mình), BGH (giám sát).
 **Routes**: `/attendance/daily` `/leaves` `/notify` `/tracking` `/history`
 

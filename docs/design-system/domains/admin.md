@@ -1,5 +1,7 @@
 # Quản trị — BGH / Sở GD / admin (`/school/*`, `/dept/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: BGH, Sở GD&ĐT, admin.
 **Routes**: `/school/dashboard` `/radar` `/assignments` · `/dept/users` `/dashboard` `/data` · `/parents/cmhs` · `/academics/exams`
 

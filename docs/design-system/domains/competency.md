@@ -1,5 +1,7 @@
 # XII. Năng lực GVCN (`/competency/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (tự đánh giá), Tổ trưởng (duyệt).
 **Routes**: `/competency/self-assessment` `/evidence`
 

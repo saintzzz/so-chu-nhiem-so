@@ -1,5 +1,7 @@
 # I. Hồ sơ lớp học (`/records/*`)
 
+**Design language**: `Fluent` — theme `.theme-fluent` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (lớp mình), BGH (toàn trường).
 **Routes**: `/records/intake` `/records/upload` `/records/students` `/records/history` `/records/report`
 

@@ -1,5 +1,7 @@
 # VII. Hoạt động giáo dục (`/activities/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (lập kế hoạch), BGH (phê duyệt), HS/PH (đăng ký).
 **Routes**: `/activities/plan` `/announce` `/attendance`
 

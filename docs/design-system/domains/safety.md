@@ -1,5 +1,7 @@
 # VIII. An toàn học sinh (`/safety/*`)
 
+**Design language**: `Material 3` — theme `.theme-material` scoped trên vùng nội dung (xem `../README.md` → "Design language theo domain").
+
 **Vai trò**: GVCN (ghi nhận/theo dõi), BGH (toàn trường).
 **Routes**: `/safety/report` `/bgh` `/followup` `/archive`
 

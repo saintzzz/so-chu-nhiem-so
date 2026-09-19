@@ -133,3 +133,85 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans);
 }
+
+/* ------------------------------------------------------------------ */
+/* Domain-scoped design languages (see src/lib/domain-theme.ts).       */
+/* Applied to the content region only — chrome stays on base tokens.   */
+/* ------------------------------------------------------------------ */
+
+/* Fluent 2 (Microsoft) — dense enterprise console: Segoe UI, tight
+   radius, small depth shadows, neutral gray surface. */
+.theme-fluent {
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-sans);
+  --background: #faf9f8;
+  --primary: #0f6cbd;
+  --primary-foreground: #ffffff;
+  --primary-bg: #ebf3fc;
+  --secondary: #f5f3f1;
+  --secondary-foreground: #0f6cbd;
+  --accent: #ebf3fc;
+  --accent-foreground: #0f6cbd;
+  --muted: #f5f3f1;
+  --border: #e1dfdd;
+  --input: #d1d1d1;
+  --ring: #0f6cbd;
+  --radius: 0.25rem;
+  --shadow-sm-token: 0 0.3px 0.9px rgba(0, 0, 0, 0.11), 0 1.6px 3.6px rgba(0, 0, 0, 0.13);
+  --shadow-md-token: 0 0.6px 1.8px rgba(0, 0, 0, 0.11), 0 3.2px 7.2px rgba(0, 0, 0, 0.13);
+  --shadow-lg-token: 0 1.2px 3.6px rgba(0, 0, 0, 0.11), 0 6.4px 14.4px rgba(0, 0, 0, 0.13);
+}
+
+/* Material 3 (Google) — people-centric workflows: Roboto, large
+   shapes, tonal containers, purple baseline accent. */
+.theme-material {
+  --font-sans: "Roboto", system-ui, -apple-system, sans-serif;
+  --font-heading: var(--font-sans);
+  --background: #fdf8fd;
+  --primary: #6750a4;
+  --primary-foreground: #ffffff;
+  --primary-bg: #eaddff;
+  --secondary: #e8def8;
+  --secondary-foreground: #4a4458;
+  --accent: #eaddff;
+  --accent-foreground: #21005d;
+  --muted: #f3edf7;
+  --border: #e7e0ec;
+  --input: #cac4d0;
+  --ring: #6750a4;
+  --radius: 1rem;
+  --shadow-sm-token: 0 1px 2px rgba(0, 0, 0, 0.12), 0 1px 3px 1px rgba(0, 0, 0, 0.08);
+  --shadow-md-token: 0 2px 6px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-lg-token: 0 4px 12px 4px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+/* Apple HIG — calm content-first reading: SF/system font, generous
+   radius, grouped-list gray, minimal shadows, system blue. */
+.theme-apple {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --background: #f5f5f7;
+  --primary: #007aff;
+  --primary-foreground: #ffffff;
+  --primary-bg: #e5f1ff;
+  --secondary: #e8e8ed;
+  --secondary-foreground: #1d1d1f;
+  --accent: #e5f1ff;
+  --accent-foreground: #0071e3;
+  --muted: #f5f5f7;
+  --border: #d2d2d7;
+  --input: #d2d2d7;
+  --ring: #007aff;
+  --radius: 0.875rem;
+  --shadow-sm-token: 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md-token: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg-token: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.theme-fluent,
+.theme-material,
+.theme-apple {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}

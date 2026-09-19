@@ -5,22 +5,39 @@ File này chứa foundations dùng chung; mỗi domain có file riêng trong th�
 
 ## Domains
 
-| File | Domain (nav section) | Vai trò chính |
-|---|---|---|
-| `domains/records.md` | I. Hồ sơ lớp học | GVCN, BGH |
-| `domains/attendance.md` | II. Chuyên cần | GVCN |
-| `domains/academics.md` | III. Học tập | GVCN, GVBM, BGH |
-| `domains/conduct.md` | IV. Rèn luyện | GVCN, BGH |
-| `domains/counseling.md` | V. Tư vấn học sinh | GVCN |
-| `domains/parents.md` | VI. Phụ huynh | GVCN, PH |
-| `domains/activities.md` | VII. Hoạt động GD | GVCN, BGH |
-| `domains/safety.md` | VIII. An toàn HS | GVCN, BGH |
-| `domains/register.md` | IX. Sổ chủ nhiệm | GVCN, BGH |
-| `domains/schedule.md` | XIII. TKB & Sổ đầu bài | Mọi giáo viên, BGH |
-| `domains/emulation.md` | X. Thi đua | GVCN, BGH |
-| `domains/competency.md` | XII. Năng lực GVCN | GVCN, Tổ trưởng |
-| `domains/admin.md` | Quản trị (BGH / Sở GD) | BGH, Sở GD, admin |
-| `domains/portals.md` | Cổng PH / HS | Phụ huynh, học sinh |
+| File | Domain (nav section) | Vai trò chính | Design language |
+|---|---|---|---|
+| `domains/records.md` | I. Hồ sơ lớp học | GVCN, BGH | Fluent |
+| `domains/attendance.md` | II. Chuyên cần | GVCN | Fluent |
+| `domains/academics.md` | III. Học tập | GVCN, GVBM, BGH | Fluent |
+| `domains/conduct.md` | IV. Rèn luyện | GVCN, BGH | Material 3 |
+| `domains/counseling.md` | V. Tư vấn học sinh | GVCN | Material 3 |
+| `domains/parents.md` | VI. Phụ huynh | GVCN, PH | Material 3 |
+| `domains/activities.md` | VII. Hoạt động GD | GVCN, BGH | Material 3 |
+| `domains/safety.md` | VIII. An toàn HS | GVCN, BGH | Material 3 |
+| `domains/register.md` | IX. Sổ chủ nhiệm | GVCN, BGH | Fluent |
+| `domains/schedule.md` | XIII. TKB & Sổ đầu bài | Mọi giáo viên, BGH | Fluent |
+| `domains/emulation.md` | X. Thi đua | GVCN, BGH | Material 3 |
+| `domains/competency.md` | XII. Năng lực GVCN | GVCN, Tổ trưởng | Material 3 |
+| `domains/admin.md` | Quản trị (BGH / Sở GD) | BGH, Sở GD, admin | Fluent (dashboard/radar: Apple) |
+| `domains/portals.md` | Cổng PH / HS + Dashboard | Phụ huynh, học sinh | Apple HIG |
+
+## Design language theo domain
+
+Mỗi domain dùng design system phù hợp bản chất workflow, implement qua theme
+scope `.theme-fluent` / `.theme-material` / `.theme-apple` trong `globals.css`.
+Mapping route → theme nằm ở `src/lib/domain-theme.ts`; `AppShell` gắn class
+theme lên vùng nội dung `<main>` (chrome sidebar/topbar giữ base tokens trung
+lập để điều hướng không "đổi da" mỗi khi chuyển domain).
+
+| Language | Nguồn | Đặc trưng token | Domains |
+|---|---|---|---|
+| **Fluent 2** (Microsoft) | fluentui.microsoft.com | Segoe UI · `#0F6CBD` · radius 4px · nền `#FAF9F8` · depth-shadow nhỏ | Bảng/form dày: records, attendance, academics, register, schedule, admin |
+| **Material 3** (Google) | m3.material.io | Roboto · `#6750A4` + tonal container `#EADDFF` · radius 16px · nền `#FDF8FD` | Workflow con người: conduct, counseling, parents, activities, safety, emulation, competency |
+| **Apple HIG** | developer.apple.com/design | SF/system font · `#007AFF` · radius 14px · nền grouped-list `#F5F5F7` · shadow tối thiểu | Màn hình "đọc": dashboard, portal PH/HS, school dashboard/radar |
+
+Quy tắc khi thêm trang mới: thêm prefix vào `DOMAIN_THEME_MAP` theo domain —
+không tự ý trộn language trong cùng một domain.
 
 ## Foundations
 

@@ -159,6 +159,7 @@ export default async function RecordsStudentsPage({
     return {
       id: s.id,
       code: s.code,
+      nationalId: s.national_id,
       fullName: s.full_name,
       gender: s.gender,
       dob: s.dob,

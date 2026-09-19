@@ -12,7 +12,9 @@ import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 export interface EvalStudent {
   id: string;
   code: string;
+  national_id: string | null;
   full_name: string;
+  dob: string | null;
 }
 
 export interface ExistingEval {
@@ -99,6 +101,16 @@ export function ConductEvaluationEditor({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const RATING_LABEL = Object.fromEntries(RATINGS.map((r) => [r.value, r.label]));
+
+  function normName(s: string): string {
+    return s
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ");
+  }
   const LABEL_TO_RATING: Record<string, string> = {
     tốt: "tot",
     tot: "tot",
@@ -111,12 +123,22 @@ export function ConductEvaluationEditor({
   };
 
   function downloadTemplate() {
+    // Mẫu rèn luyện CSDL ngành: STT | Mã định danh | Họ tên | Ngày sinh | Kết quả rèn luyện | Nhận xét
     void downloadXlsxTemplate(
-      "mau-danh-gia-hanh-kiem.xlsx",
-      ["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"],
-      students.map((s) => [
-        s.code,
+      `mau-ren-luyen-${term}.xlsx`,
+      [
+        "STT",
+        "Mã định danh Bộ GD&ĐT",
+        "Họ và tên",
+        "Ngày sinh",
+        "Kết quả rèn luyện",
+        "Nhận xét",
+      ],
+      students.map((s, i) => [
+        String(i + 1),
+        s.national_id ?? s.code,
         s.full_name,
+        s.dob ?? "",
         RATING_LABEL[draft[s.id]?.rating ?? "tot"],
         draft[s.id]?.comment ?? "",
       ]),
@@ -135,30 +157,82 @@ export function ConductEvaluationEditor({
       return;
     }
     const byCode = new Map(students.map((s) => [s.code.toLowerCase(), s.id]));
+    const byNid = new Map(
+      students
+        .filter((s) => s.national_id)
+        .map((s) => [s.national_id!.toLowerCase(), s.id]),
+    );
+    const byNameDob = new Map(
+      students.map((s) => [
+        `${normName(s.full_name)}|${s.dob ?? ""}`,
+        s.id,
+      ]),
+    );
+    // Dò cột theo header: mã định danh / mã hs / họ tên / ngày sinh / kết quả / nhận xét
+    const headerIdx = table.findIndex((r) =>
+      r.some((c) => {
+        const k = normName(c);
+        return (
+          k.includes("ma dinh danh") ||
+          k === "ma hs" ||
+          k.includes("ket qua") ||
+          k === "xep loai"
+        );
+      }),
+    );
+    const header = headerIdx >= 0 ? table[headerIdx] : null;
+    let keyCol = 0;
+    let nameCol = -1;
+    let dobCol = -1;
+    let ratingCol = 2;
+    let commentCol = 3;
+    if (header) {
+      ratingCol = -1;
+      commentCol = -1;
+      header.forEach((h, i) => {
+        const k = normName(h);
+        if (k.includes("ma dinh danh") || k === "ma hs" || k === "mahs") keyCol = i;
+        else if (k.includes("ho va ten") || k === "ho ten") nameCol = i;
+        else if (k === "ngay sinh") dobCol = i;
+        else if (k.includes("ket qua") || k === "xep loai") ratingCol = i;
+        else if (k.includes("nhan xet")) commentCol = i;
+      });
+      if (ratingCol === -1) ratingCol = 4;
+    }
+    const dataRows = table.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
     let matched = 0;
     const missed: string[] = [];
     setDraft((prev) => {
       const next = { ...prev };
-      for (const r of table) {
-        const code = (r[0] ?? "").trim().toLowerCase();
-        if (!code || code.includes("mã")) continue;
-        const id = byCode.get(code);
+      for (const r of dataRows) {
+        if (r.every((c) => !c.trim())) continue;
+        const key = (r[keyCol] ?? "").trim().toLowerCase();
+        let id: string | undefined =
+          byNid.get(key) ?? (key && !key.includes("mã") ? byCode.get(key) : undefined);
+        if (!id && nameCol >= 0) {
+          id = byNameDob.get(
+            `${normName(r[nameCol] ?? "")}|${(dobCol >= 0 ? r[dobCol] : "") ?? ""}`,
+          );
+        }
         if (!id) {
-          missed.push(r[0]);
+          missed.push(r[keyCol] ?? r[nameCol] ?? "");
           continue;
         }
         matched += 1;
-        const rating = LABEL_TO_RATING[(r[2] ?? "").trim().toLowerCase()];
+        const rating = LABEL_TO_RATING[(r[ratingCol] ?? "").trim().toLowerCase()];
         next[id] = {
           rating: rating ?? next[id]?.rating ?? "tot",
-          comment: (r[3] ?? "").trim(),
+          comment:
+            commentCol >= 0
+              ? (r[commentCol] ?? "").trim()
+              : (next[id]?.comment ?? ""),
         };
       }
       return next;
     });
     setSaved(false);
     setImportMsg(
-      `Đã điền ${matched} học sinh từ file${missed.length ? ` - không khớp mã: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}` : ""}. Kiểm tra rồi bấm Lưu đánh giá.`,
+      `Đã điền ${matched} học sinh từ file${missed.length ? ` - không khớp: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}` : ""}. Kiểm tra rồi bấm Lưu đánh giá.`,
     );
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -309,14 +383,16 @@ export function ConductEvaluationEditor({
         </span>
       </div>
       <DataTable
-        columns={["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"]}
+        columns={["Mã định danh", "Họ và tên", "Xếp loại", "Nhận xét"]}
         footer={<span>{students.length} học sinh</span>}
       >
       {students.map((s) => {
         const d = draft[s.id] ?? { rating: "tot", comment: "" };
         return (
           <tr key={s.id}>
-            <td className="font-mono text-xs text-muted-foreground">{s.code}</td>
+            <td className="font-mono text-xs text-muted-foreground">
+              {s.national_id ?? s.code}
+            </td>
             <td className="font-medium">{s.full_name}</td>
             <td>
               <select

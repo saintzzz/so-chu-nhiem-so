@@ -24,6 +24,7 @@ export interface School {
   name: string;
   code: string | null;
   address: string | null;
+  level: "th" | "thcs" | "thpt" | "lien_cap";
 }
 
 export interface AcademicYear {
@@ -51,6 +52,7 @@ export interface Student {
   group_id: string | null;
   profile_id: string | null;
   code: string;
+  national_id: string | null;
   full_name: string;
   dob: string | null;
   gender: "nam" | "nu" | "khac" | null;
@@ -103,6 +105,34 @@ export interface Grade {
   assessment_type: "ddg_tx" | "ddg_gk" | "ddg_ck";
   score: number | null;
   result: "dat" | "chua_dat" | null;
+  comment: string | null;
+  level: "T" | "H" | "C" | null;
+}
+
+/** Đánh giá NLPC tiểu học - 15 thuộc tính theo mẫu CSDL ngành. */
+export type NlpcAttribute =
+  | "nlc_tuchu"
+  | "nlc_giaotiep"
+  | "nlc_gqvd"
+  | "nldt_ngonngu"
+  | "nldt_tinhtoan"
+  | "nldt_khoahoc"
+  | "nldt_congnghe"
+  | "nldt_tinhoc"
+  | "nldt_thammi"
+  | "nldt_thechat"
+  | "pc_yenuoc"
+  | "pc_nhanai"
+  | "pc_chamchi"
+  | "pc_trungthuc"
+  | "pc_trachnhiem";
+
+export interface CompetencyEvaluation {
+  id: string;
+  student_id: string;
+  term: string;
+  attribute_code: NlpcAttribute;
+  level: "T" | "H" | "C" | null;
 }
 
 export interface ConductRecord {

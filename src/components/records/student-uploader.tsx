@@ -10,6 +10,7 @@ import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 interface ParsedRow {
   line: number;
   code: string;
+  nationalId: string;
   fullName: string;
   dob: string;
   gender: string;
@@ -26,6 +27,9 @@ const HEADER_ALIASES: Record<string, keyof ParsedRow | null> = {
   ma_hs: "code",
   mahs: "code",
   mssv: "code",
+  national_id: "nationalId",
+  ma_dinh_danh: "nationalId",
+  ma_dinh_danh_bo_gddt: "nationalId",
   full_name: "fullName",
   ho_ten: "fullName",
   hoten: "fullName",
@@ -75,6 +79,7 @@ function parseRows(table: string[][]): ParsedRow[] {
     const row: ParsedRow = {
       line: i + (hasHeader ? 2 : 1),
       code: "",
+      nationalId: "",
       fullName: "",
       dob: "",
       gender: "",
@@ -93,6 +98,8 @@ function parseRows(table: string[][]): ParsedRow[] {
       row.gender = cells[3] ?? "";
     }
     if (!row.fullName) row.errors.push("Thiếu họ tên");
+    if (row.nationalId && !/^\d{10}$/.test(row.nationalId.trim()))
+      row.errors.push("Mã định danh phải gồm 10 chữ số");
     if (row.gender && !normalizeGender(row.gender))
       row.errors.push("Giới tính không hợp lệ");
     if (row.dob && !normalizeDob(row.dob))
@@ -150,6 +157,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
     const insert = valid.map((r, i) => ({
       class_id: classId,
       code: r.code || `HS${String(seq + i).padStart(6, "0")}`,
+      national_id: r.nationalId.trim() || null,
       full_name: r.fullName,
       dob: normalizeDob(r.dob),
       gender: normalizeGender(r.gender),
@@ -193,10 +201,10 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
             onClick={() =>
               downloadXlsxTemplate(
                 "template_danh_sach_hoc_sinh.xlsx",
-                ["ma_hs", "ho_ten", "ngay_sinh", "gioi_tinh"],
+                ["ma_hs", "ma_dinh_danh", "ho_ten", "ngay_sinh", "gioi_tinh"],
                 [
-                  ["HS000101", "Nguyễn Văn An", "2013-05-12", "nam"],
-                  ["HS000102", "Trần Thị Bình", "15/08/2013", "nu"],
+                  ["HS000101", "1000000001", "Nguyễn Văn An", "2013-05-12", "nam"],
+                  ["HS000102", "1000000002", "Trần Thị Bình", "15/08/2013", "nu"],
                 ],
               )
             }
@@ -236,7 +244,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
             <table className="w-full min-w-max text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  {["Dòng", "Mã HS", "Họ tên", "Ngày sinh", "Giới tính", "Kiểm tra"].map(
+                  {["Dòng", "Mã HS", "Mã định danh", "Họ tên", "Ngày sinh", "Giới tính", "Kiểm tra"].map(
                     (c) => (
                       <th
                         key={c}
@@ -253,6 +261,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
                   <tr key={r.line}>
                     <td className="text-muted-foreground">{r.line}</td>
                     <td className="font-mono text-xs">{r.code || "-"}</td>
+                    <td className="font-mono text-xs">{r.nationalId || "-"}</td>
                     <td className="font-medium">{r.fullName || "-"}</td>
                     <td>{r.dob || "-"}</td>
                     <td>{r.gender || "-"}</td>

@@ -3,6 +3,7 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
+import { ClassReportExport } from "@/components/academics/class-report-export";
 
 interface ClassRow {
   id: string;
@@ -11,7 +12,9 @@ interface ClassRow {
 interface StudentRow {
   id: string;
   code: string;
+  national_id: string | null;
   full_name: string;
+  dob: string | null;
 }
 interface SubjectRow {
   id: string;
@@ -24,6 +27,8 @@ interface GradeRow {
   assessment_type: "ddg_tx" | "ddg_gk" | "ddg_ck";
   score: number | null;
   result: "dat" | "chua_dat" | null;
+  comment: string | null;
+  level: "T" | "H" | "C" | null;
 }
 
 const TERMS = [
@@ -56,13 +61,24 @@ export default async function GradesPage({
   if (profile.role === "gvcn") {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const [{ data: classData }, { data: subjectData }] = await Promise.all([
-    classQuery.order("name"),
-    supabase
-      .from("subjects")
-      .select("id,name,assessment_method")
-      .order("name"),
-  ]);
+  const [{ data: classData }, { data: subjectData }, { data: schoolData }] =
+    await Promise.all([
+      classQuery.order("name"),
+      supabase
+        .from("subjects")
+        .select("id,name,assessment_method")
+        .order("name"),
+      profile.school_id
+        ? supabase
+            .from("schools")
+            .select("level")
+            .eq("id", profile.school_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+  const schoolLevel =
+    (schoolData?.level as "th" | "thcs" | "thpt" | "lien_cap" | undefined) ??
+    "thcs";
   const classes = (classData ?? []) as ClassRow[];
   const subjects = (subjectData ?? []) as SubjectRow[];
 
@@ -88,7 +104,7 @@ export default async function GradesPage({
   const { data: studentData } = classId
     ? await supabase
         .from("students")
-        .select("id,code,full_name")
+        .select("id,code,national_id,full_name,dob")
         .eq("class_id", classId)
         .eq("status", "active")
         .order("full_name")
@@ -100,7 +116,7 @@ export default async function GradesPage({
     studentIds.length && subjectId
       ? await supabase
           .from("grades")
-          .select("id,student_id,assessment_type,score,result")
+          .select("id,student_id,assessment_type,score,result,comment,level")
           .in("student_id", studentIds)
           .eq("subject_id", subjectId)
           .eq("term", term)
@@ -140,14 +156,31 @@ export default async function GradesPage({
           options={TERMS}
           params={params}
         />
+        {classId && (
+          <span className="ml-auto self-center">
+            <ClassReportExport
+              classId={classId}
+              className={className}
+              term={term}
+              schoolLevel={schoolLevel}
+            />
+          </span>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-primary-bg p-3 text-sm text-primary">
-        {method === "score" ? (
+        {schoolLevel === "th" ? (
+          <>
+            Tiểu học: đánh giá theo mức T (Hoàn thành tốt) / H (Hoàn thành) /
+            C (Chưa hoàn thành) theo từng đợt, kèm Điểm KTĐK và nhận xét theo
+            mẫu biểu CSDL ngành.
+          </>
+        ) : method === "score" ? (
           <>
             ĐTB môn học kỳ = (Tổng ĐĐGtx + 2 x ĐĐGgk + 3 x ĐĐGck) / (số ĐĐGtx +
             5), làm tròn 1 chữ số thập phân. Nhập nhiều điểm ĐĐGtx cách nhau
-            bởi dấu cách hoặc dấu phẩy.
+            bởi dấu cách hoặc dấu phẩy. Template nhận dạng học sinh theo Mã
+            định danh Bộ GD&ĐT (hoặc Mã HS nội bộ).
           </>
         ) : (
           <>
@@ -166,6 +199,8 @@ export default async function GradesPage({
           term={term}
           method={method}
           meId={profile.id}
+          className={className}
+          schoolLevel={schoolLevel}
         />
       ) : (
         <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

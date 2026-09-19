@@ -4,6 +4,11 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { ConductEvaluationEditor } from "@/components/conduct/evaluation-editor";
+import {
+  NlpcEditor,
+  type NlpcEval,
+  type NlpcCommentRow,
+} from "@/components/conduct/nlpc-editor";
 
 interface ClassRow {
   id: string;
@@ -12,7 +17,9 @@ interface ClassRow {
 interface StudentRow {
   id: string;
   code: string;
+  national_id: string | null;
   full_name: string;
+  dob: string | null;
 }
 interface EvalRow {
   id: string;
@@ -52,8 +59,21 @@ export default async function ConductEvaluationPage({
   if (profile.role === "gvcn") {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const [{ data: classData }, { data: schoolData }] = await Promise.all([
+    classQuery.order("name"),
+    profile.school_id
+      ? supabase
+          .from("schools")
+          .select("level")
+          .eq("id", profile.school_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
   const classes = (classData ?? []) as ClassRow[];
+  const schoolLevel =
+    (schoolData?.level as "th" | "thcs" | "thpt" | "lien_cap" | undefined) ??
+    "thcs";
+  const isPrimary = schoolLevel === "th" || schoolLevel === "lien_cap";
 
   const classId =
     typeof sp.class === "string" && classes.some((c) => c.id === sp.class)
@@ -68,7 +88,7 @@ export default async function ConductEvaluationPage({
   const { data: studentData } = classId
     ? await supabase
         .from("students")
-        .select("id,code,full_name")
+        .select("id,code,national_id,full_name,dob")
         .eq("class_id", classId)
         .eq("status", "active")
         .order("full_name")
@@ -76,13 +96,30 @@ export default async function ConductEvaluationPage({
   const students = (studentData ?? []) as StudentRow[];
   const studentIds = students.map((s) => s.id);
 
-  const { data: evalData } = studentIds.length
-    ? await supabase
-        .from("conduct_evaluations")
-        .select("id,student_id,rating,comment")
-        .in("student_id", studentIds)
-        .eq("term", term)
-    : { data: [] };
+  const [{ data: evalData }, { data: nlpcData }, { data: nlpcCommentData }] =
+    await Promise.all([
+      studentIds.length
+        ? supabase
+            .from("conduct_evaluations")
+            .select("id,student_id,rating,comment")
+            .in("student_id", studentIds)
+            .eq("term", term)
+        : Promise.resolve({ data: [] }),
+      isPrimary && studentIds.length
+        ? supabase
+            .from("competency_evaluations")
+            .select("student_id,attribute_code,level")
+            .in("student_id", studentIds)
+            .eq("term", term)
+        : Promise.resolve({ data: [] }),
+      isPrimary && studentIds.length
+        ? supabase
+            .from("nlpc_comments")
+            .select("student_id,grp,comment")
+            .in("student_id", studentIds)
+            .eq("term", term)
+        : Promise.resolve({ data: [] }),
+    ]);
   const evaluations = (evalData ?? []) as EvalRow[];
 
   const rated = new Set(evaluations.map((e) => e.student_id));
@@ -139,6 +176,17 @@ export default async function ConductEvaluationPage({
           Chưa có lớp để đánh giá.
         </div>
       )}
+
+      {isPrimary && classId ? (
+        <NlpcEditor
+          key={`nlpc-${classId}-${term}`}
+          students={students}
+          evaluations={(nlpcData ?? []) as NlpcEval[]}
+          comments={(nlpcCommentData ?? []) as NlpcCommentRow[]}
+          term={term}
+          meId={profile.id}
+        />
+      ) : null}
     </div>
   );
 }

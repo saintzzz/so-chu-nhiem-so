@@ -1,9 +1,8 @@
-export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">
-        Clone target not yet built. Run <code className="font-mono text-foreground">/clone-website</code> to start.
-      </p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { getProfile, ROLE_HOME } from "@/lib/auth";
+
+export default async function Home() {
+  const profile = await getProfile();
+  if (!profile) redirect("/login");
+  redirect(ROLE_HOME[profile.role]);
 }

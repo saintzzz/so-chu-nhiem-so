@@ -1,0 +1,291 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  DndContext,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { Copy, Printer, Save, Sparkles } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { SeatingLayout, SeatingSeat, Student } from "@/types";
+
+const DEFAULT_COLS = 8;
+const DEFAULT_ROWS = 5;
+
+function buildCells(
+  layout: SeatingLayout | null,
+  students: Student[],
+): { cols: number; rows: number; cells: (string | null)[] } {
+  const cols = layout?.cols ?? DEFAULT_COLS;
+  const rows = layout?.rows ?? DEFAULT_ROWS;
+  const cells: (string | null)[] = Array(cols * rows).fill(null);
+  if (layout) {
+    layout.seats.forEach((s) => {
+      const i = s.y * cols + s.x;
+      if (i >= 0 && i < cells.length) cells[i] = s.student_id;
+    });
+  } else {
+    students.forEach((s, i) => {
+      if (i < cells.length) cells[i] = s.id;
+    });
+  }
+  return { cols, rows, cells };
+}
+
+function StudentChip({
+  seatIndex,
+  student,
+  praised,
+}: {
+  seatIndex: number;
+  student: Student;
+  praised: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id: `seat-${seatIndex}` });
+  const style = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)` }
+    : undefined;
+  return (
+    <button
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={style}
+      className={cn(
+        "flex h-full w-full cursor-grab touch-none items-center justify-center rounded-lg border border-border bg-background px-1 py-2 text-center text-xs font-medium leading-tight",
+        isDragging && "z-20 opacity-80 shadow-lg",
+        praised && "border-warning bg-warning-bg text-warning",
+      )}
+      title={student.full_name}
+    >
+      {student.full_name}
+    </button>
+  );
+}
+
+function SeatCell({
+  index,
+  student,
+  praised,
+  selected,
+  onSelect,
+}: {
+  index: number;
+  student: Student | null;
+  praised: boolean;
+  selected: boolean;
+  onSelect: (i: number) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `seat-${index}` });
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={() => onSelect(index)}
+      className={cn(
+        "h-14 min-w-[86px] rounded-lg",
+        isOver && "ring-2 ring-primary",
+        selected && "ring-2 ring-primary",
+      )}
+    >
+      {student ? (
+        <StudentChip seatIndex={index} student={student} praised={praised} />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+          Trống
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SeatingGrid({
+  classId,
+  className,
+  month,
+  currentVersion,
+  initialLayout,
+  previousLayout,
+  students,
+}: {
+  classId: string;
+  className: string;
+  month: string;
+  currentVersion: number;
+  initialLayout: SeatingLayout | null;
+  previousLayout: SeatingLayout | null;
+  students: Student[];
+}) {
+  const supabase = createClient();
+  const initial = useMemo(
+    () => buildCells(initialLayout, students),
+    [initialLayout, students],
+  );
+  const [cols] = useState(initial.cols);
+  const [rows] = useState(initial.rows);
+  const [cells, setCells] = useState<(string | null)[]>(initial.cells);
+  const [praiseMode, setPraiseMode] = useState(false);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [version, setVersion] = useState(currentVersion);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const studentMap = useMemo(() => {
+    const m = new Map<string, Student>();
+    students.forEach((s) => m.set(s.id, s));
+    return m;
+  }, [students]);
+
+  const praisedIds = useMemo(() => {
+    const top = [...students]
+      .sort((a, b) => b.positive_points - a.positive_points)
+      .filter((s) => s.positive_points > 0)
+      .slice(0, Math.max(3, Math.ceil(students.length / 4)));
+    return new Set(top.map((s) => s.id));
+  }, [students]);
+
+  function swap(a: number, b: number) {
+    if (a === b) return;
+    setCells((cs) => {
+      const next = [...cs];
+      const tmp = next[a];
+      next[a] = next[b];
+      next[b] = tmp;
+      return next;
+    });
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    const from = Number(String(e.active.id).replace("seat-", ""));
+    const to = e.over ? Number(String(e.over.id).replace("seat-", "")) : -1;
+    if (Number.isInteger(from) && to >= 0) swap(from, to);
+  }
+
+  function onSelect(i: number) {
+    if (selected === null) {
+      setSelected(i);
+    } else {
+      swap(selected, i);
+      setSelected(null);
+    }
+  }
+
+  function copyPrevious() {
+    if (!previousLayout) return;
+    const prev = buildCells(previousLayout, students);
+    setCells((cs) =>
+      cs.map((_, i) => (i < prev.cells.length ? prev.cells[i] : null)),
+    );
+    setMessage("Đã sao chép sơ đồ tháng trước. Nhấn Lưu để áp dụng.");
+  }
+
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    const seats: SeatingSeat[] = cells.map((student_id, i) => ({
+      x: i % cols,
+      y: Math.floor(i / cols),
+      student_id,
+    }));
+    const nextVersion = version + 1;
+    await supabase
+      .from("seating_charts")
+      .update({ is_current: false })
+      .eq("class_id", classId)
+      .eq("month", month);
+    const { error } = await supabase.from("seating_charts").insert({
+      class_id: classId,
+      month,
+      version: nextVersion,
+      layout: { cols, rows, seats },
+      is_current: true,
+    });
+    if (error) {
+      setMessage("Không thể lưu sơ đồ. Vui lòng thử lại.");
+    } else {
+      setVersion(nextVersion);
+      setMessage(`Đã lưu sơ đồ phiên bản v${nextVersion}.`);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant={praiseMode ? "default" : "outline"}
+          onClick={() => setPraiseMode((p) => !p)}
+        >
+          <Sparkles /> Chế độ Tuyên dương
+        </Button>
+        <Button
+          variant="outline"
+          onClick={copyPrevious}
+          disabled={!previousLayout}
+        >
+          <Copy /> Sao chép tháng trước
+        </Button>
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer /> Xuất PDF/PNG
+        </Button>
+        <Button onClick={save} disabled={saving}>
+          <Save /> {saving ? "Đang lưu…" : `Lưu (v${version + 1})`}
+        </Button>
+      </div>
+
+      {message && (
+        <p className="rounded-lg bg-primary-bg px-3 py-2 text-sm text-primary">
+          {message}
+        </p>
+      )}
+
+      <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)] print:border-none print:shadow-none">
+        <p className="mb-3 text-sm font-medium">
+          Sơ đồ chỗ ngồi lớp {className} · v{version}
+          {praiseMode && (
+            <span className="ml-2 text-warning">
+              (Tô sáng học sinh tích cực)
+            </span>
+          )}
+        </p>
+        <p className="mb-3 text-xs text-muted-foreground md:hidden">
+          Vuốt ngang để xem toàn bộ sơ đồ.
+        </p>
+        <div className="overflow-x-auto">
+          <DndContext id="seating-dnd" onDragEnd={onDragEnd}>
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(86px, 1fr))`,
+                minWidth: cols * 96,
+              }}
+            >
+              {Array.from({ length: cols * rows }).map((_, i) => {
+                const sid = cells[i];
+                const student = sid ? (studentMap.get(sid) ?? null) : null;
+                return (
+                  <SeatCell
+                    key={i}
+                    index={i}
+                    student={student}
+                    praised={praiseMode && !!sid && praisedIds.has(sid)}
+                    selected={selected === i}
+                    onSelect={onSelect}
+                  />
+                );
+              })}
+            </div>
+          </DndContext>
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Bàn giáo viên · Kéo thả học sinh để đổi chỗ, hoặc chạm chọn 2 ô để hoán
+          đổi.
+        </p>
+      </div>
+    </div>
+  );
+}

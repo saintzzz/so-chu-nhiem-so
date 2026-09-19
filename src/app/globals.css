@@ -4,11 +4,84 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Design tokens extracted from mockup-so-chu-nhiem.vercel.app */
+:root {
+  --color-bg: #fffff5;
+  --color-surface: #ffffff;
+  --color-border-token: #e7e2d6;
+  --color-text: #1a2233;
+  --color-text-muted: #6b7280;
+  --color-primary-token: #1e3a5f;
+  --color-primary-hover: #16283f;
+  --color-accent-token: #b91c1c;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-success-bg: #ecfdf5;
+  --color-warning-bg: #fffbeb;
+  --color-error-bg: #fef2f2;
+  --color-accent-bg: #fef2f2;
+  --color-primary-bg: #eaf0f7;
+
+  --font-display: "Figtree", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+  --font-mono-token: "IBM Plex Mono", ui-monospace, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --shadow-sm-token: 0 1px 2px rgba(26, 34, 51, 0.06);
+  --shadow-md-token: 0 4px 12px rgba(26, 34, 51, 0.08);
+  --shadow-lg-token: 0 12px 32px rgba(26, 34, 51, 0.12);
+
+  /* shadcn semantic mapping */
+  --background: #fffff5;
+  --foreground: #1a2233;
+  --card: #ffffff;
+  --card-foreground: #1a2233;
+  --popover: #ffffff;
+  --popover-foreground: #1a2233;
+  --primary: #1e3a5f;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf0f7;
+  --secondary-foreground: #1e3a5f;
+  --muted: #f6f4ec;
+  --muted-foreground: #6b7280;
+  --accent: #eaf0f7;
+  --accent-foreground: #1a2233;
+  --destructive: #dc2626;
+  --border: #e7e2d6;
+  --input: #e7e2d6;
+  --ring: #1e3a5f;
+  --radius: 0.5rem;
+
+  --chart-1: #1e3a5f;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #b91c1c;
+  --chart-5: #6b7280;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a2233;
+  --sidebar-primary: #1e3a5f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f4ec;
+  --sidebar-accent-foreground: #1a2233;
+  --sidebar-border: #e7e2d6;
+  --sidebar-ring: #1e3a5f;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-sans: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -39,6 +112,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-success-bg: #ecfdf5;
+  --color-warning-bg: #fffbeb;
+  --color-error-bg: #fef2f2;
+  --color-primary-bg: #eaf0f7;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,83 +128,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
 }

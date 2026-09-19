@@ -14,8 +14,6 @@ export type DomainTheme = "fluent" | "material" | "apple";
 const DOMAIN_THEME_MAP: [string, DomainTheme][] = [
   ["/portal", "apple"],
   ["/dashboard", "apple"],
-  ["/school/dashboard", "apple"],
-  ["/school/radar", "apple"],
   ["/records", "fluent"],
   ["/attendance", "fluent"],
   ["/academics", "fluent"],

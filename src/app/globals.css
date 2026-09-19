@@ -161,6 +161,11 @@ body {
   --shadow-sm-token: 0 0.3px 0.9px rgba(0, 0, 0, 0.11), 0 1.6px 3.6px rgba(0, 0, 0, 0.13);
   --shadow-md-token: 0 0.6px 1.8px rgba(0, 0, 0, 0.11), 0 3.2px 7.2px rgba(0, 0, 0, 0.13);
   --shadow-lg-token: 0 1.2px 3.6px rgba(0, 0, 0, 0.11), 0 6.4px 14.4px rgba(0, 0, 0, 0.13);
+  --chart-1: #0f6cbd;
+  --chart-2: #107c10;
+  --chart-3: #ca5010;
+  --chart-4: #d13438;
+  --chart-5: #5b5fc7;
 }
 
 /* Material 3 (Google) — people-centric workflows: Roboto, large
@@ -184,6 +189,11 @@ body {
   --shadow-sm-token: 0 1px 2px rgba(0, 0, 0, 0.12), 0 1px 3px 1px rgba(0, 0, 0, 0.08);
   --shadow-md-token: 0 2px 6px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.12);
   --shadow-lg-token: 0 4px 12px 4px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.12);
+  --chart-1: #6750a4;
+  --chart-2: #006a6a;
+  --chart-3: #984061;
+  --chart-4: #ba1a1a;
+  --chart-5: #625b71;
 }
 
 /* Apple HIG — calm content-first reading: SF/system font, generous
@@ -207,6 +217,61 @@ body {
   --shadow-sm-token: 0 1px 4px rgba(0, 0, 0, 0.04);
   --shadow-md-token: 0 4px 16px rgba(0, 0, 0, 0.06);
   --shadow-lg-token: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --chart-1: #007aff;
+  --chart-2: #34c759;
+  --chart-3: #ff9500;
+  --chart-4: #ff3b30;
+  --chart-5: #af52de;
+}
+
+/* ---- Component-level signatures per design language ---- */
+
+/* Fluent: data-grid density — row hover like Fluent DataGrid, square
+   inputs, uppercase table headers kept tight. */
+.theme-fluent tbody tr {
+  transition: background-color 0.1s ease-out;
+}
+.theme-fluent tbody tr:hover {
+  background-color: #f5f3f1;
+}
+
+/* Material 3: pill-shaped buttons + chips (M3 signature), state-layer
+   hover on rows, generous card radius already via --radius=1rem. */
+.theme-material [data-slot="button"] {
+  border-radius: 999px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.theme-material tbody tr {
+  transition: background-color 0.15s ease-out;
+}
+.theme-material tbody tr:hover {
+  background-color: #f3edf7;
+}
+
+/* Apple HIG: hairline borders, SF-style tight tracking on headings,
+   subtle row hover, translucency-ready cards. */
+.theme-apple {
+  --border: #e3e3e6;
+}
+.theme-apple h1,
+.theme-apple h2,
+.theme-apple h3 {
+  letter-spacing: -0.02em;
+}
+.theme-apple tbody tr {
+  transition: background-color 0.12s ease-out;
+}
+.theme-apple tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.025);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-fluent *,
+  .theme-material *,
+  .theme-apple * {
+    transition: none !important;
+  }
 }
 
 .theme-fluent,

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, LayoutDashboard } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { NAV } from "@/lib/nav";
+import { SECTION_ICONS, ITEM_ICONS, FALLBACK_ICON } from "@/lib/nav-icons";
 import type { Role } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +29,9 @@ export function SidebarNav({
   return (
     <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Điều hướng chính">
       <ul className="space-y-0.5">
-        {sections.map((section) => (
+        {sections.map((section) => {
+          const SectionIcon = SECTION_ICONS[section.label] ?? FALLBACK_ICON;
+          return (
           <li key={section.label}>
             {section.children ? (
               <>
@@ -37,13 +40,15 @@ export function SidebarNav({
                     setOpen((o) => (o === section.label ? null : section.label))
                   }
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
+                    "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent",
                     section.children.some((c) => pathname.startsWith(c.href)) &&
                       "text-sidebar-primary",
                   )}
                   aria-expanded={open === section.label}
+                  title={collapsed ? section.label : undefined}
                 >
-                  <span className={cn(collapsed && "sr-only")}>
+                  <SectionIcon className="size-4 shrink-0" aria-hidden />
+                  <span className={cn("flex-1", collapsed && "sr-only")}>
                     {section.label}
                   </span>
                   {!collapsed && (
@@ -57,22 +62,26 @@ export function SidebarNav({
                 </button>
                 {open === section.label && !collapsed && (
                   <ul className="mt-0.5 space-y-0.5 pl-3">
-                    {section.children.map((item) => (
+                    {section.children.map((item) => {
+                      const ItemIcon = ITEM_ICONS[item.label] ?? FALLBACK_ICON;
+                      return (
                       <li key={item.href}>
                         <Link prefetch={false}
                           href={item.href}
                           onClick={onNavigate}
                           className={cn(
-                            "block rounded-lg px-3 py-1.5 text-sm hover:bg-sidebar-accent",
+                            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-sidebar-accent",
                             pathname === item.href
                               ? "bg-primary-bg font-medium text-primary"
                               : "text-muted-foreground",
                           )}
                         >
-                          {item.label}
+                          <ItemIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+                          <span className="truncate">{item.label}</span>
                         </Link>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
               </>
@@ -86,15 +95,17 @@ export function SidebarNav({
                     ? "bg-primary-bg text-primary"
                     : "text-sidebar-foreground",
                 )}
+                title={collapsed ? section.label : undefined}
               >
-                <LayoutDashboard className="size-4 shrink-0" />
+                <SectionIcon className="size-4 shrink-0" />
                 <span className={cn(collapsed && "sr-only")}>
                   {section.label}
                 </span>
               </Link>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </nav>
   );

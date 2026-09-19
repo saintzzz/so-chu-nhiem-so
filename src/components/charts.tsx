@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { useId, useState } from "react";
 
 export function ChartCard({
   title,
@@ -60,9 +59,17 @@ export function LineChart({
   const path = pts
     .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
     .join(" ");
+  const area = `${path} L${pts[pts.length - 1]?.x ?? pad.left},${pad.top + ih} L${pad.left},${pad.top + ih} Z`;
+  const gid = useId();
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.18} />
+          <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+        </linearGradient>
+      </defs>
       {Array.from({ length: yTicks + 1 }).map((_, i) => {
         const y = pad.top + (i / yTicks) * ih;
         const val = ((max * (yTicks - i)) / yTicks).toFixed(0);
@@ -75,6 +82,7 @@ export function LineChart({
               y2={y}
               className="stroke-border"
               strokeWidth={1}
+              strokeDasharray={i === yTicks ? undefined : "2 4"}
             />
             <text
               x={pad.left - 6}
@@ -87,10 +95,28 @@ export function LineChart({
           </g>
         );
       })}
-      <path d={path} fill="none" className="stroke-primary" strokeWidth={2} />
+      <path d={area} fill={`url(#${gid})`} stroke="none" />
+      <path
+        d={path}
+        fill="none"
+        stroke="var(--chart-1)"
+        strokeWidth={2.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
       {pts.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r={3} className="fill-primary" />
+          <circle
+            cx={p.x}
+            cy={p.y}
+            r={4}
+            fill="var(--chart-1)"
+            stroke="var(--card)"
+            strokeWidth={2}
+            className="cursor-pointer"
+          >
+            <title>{`${p.label}: ${p.value}`}</title>
+          </circle>
           <text
             x={p.x}
             y={height - 8}
@@ -132,9 +158,12 @@ export function BarChart({
               y={pad.top + ih - h}
               width={bw}
               height={h}
-              rx={4}
-              className={cn("fill-primary", i === 0 && "fill-chart-2")}
-            />
+              rx={6}
+              fill={`var(--chart-${(i % 5) + 1})`}
+              className="transition-opacity hover:opacity-75"
+            >
+              <title>{`${d.label}: ${d.value}`}</title>
+            </rect>
             <text
               x={x + bw / 2}
               y={height - 8}

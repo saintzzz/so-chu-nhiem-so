@@ -79,7 +79,57 @@ Quy ước tone badge: `success` = trạng thái tốt/đã duyệt · `warning`
 | `StatusBadge` + `FLOW_STATUS` | `components/status-badge.tsx` | Trạng thái nghiệp vụ |
 | `StatCard` | `components/stat-card.tsx` | KPI tóm tắt trên đầu trang |
 | `FilterSelect` | `components/academics/filter-select.tsx` | Filter lớp/môn/kỳ qua URL params |
-| `Button` | `components/ui/button.tsx` | CTA |
+| `Button` | `components/ui/button.tsx` | CTA — `[data-slot="button"]` |
+| `ChartCard` / `LineChart` / `BarChart` | `components/charts.tsx` | Biểu đồ SVG tự build |
+
+### Component signature theo design language
+
+| Element | Fluent | Material 3 | Apple HIG |
+|---|---|---|---|
+| Button | Vuông 4px | **Pill 999px** | Bo 11px |
+| Table row hover | `#F5F3F1` (DataGrid) | `#F3EDF7` (state layer) | `rgba(0,0,0,.025)` |
+| Heading | — | — | `letter-spacing: -0.02em` |
+| Radius base | 4px | 16px | 14px |
+| Font | Segoe UI | Roboto | SF/system |
+| Accent | `#0F6CBD` | `#6750A4` | `#007AFF` |
+
+Implement: CSS scoped trong `@layer theme-overrides` (`globals.css`) — selector `.theme-<lang> [data-slot="button"]`, `.theme-<lang> tbody tr:hover`… Không sửa component.
+
+### Iconography
+
+- Thư viện: **lucide-react** (outline, stroke 2px) — đủ trung lập cho cả 3 design language.
+- Size: `size-4` (16px) section nav + nút · `size-3.5` (14px) item con · `size-4` trong Button.
+- Map icon: `src/lib/nav-icons.ts` — `SECTION_ICONS` (theo label section) + `ITEM_ICONS` (theo label item) + `FALLBACK_ICON`.
+- Quy ước chọn icon: danh từ vật lý gần nghiệp vụ nhất (điểm danh → `CheckCheck`, sổ chủ nhiệm → `NotebookPen`, radar → `Radar`); **không** dùng emoji trong UI; AI features → `Sparkles`/`Lightbulb`.
+- Trạng thái không dùng icon riêng — dùng `StatusBadge` text+tone.
+
+### Charts
+
+- Tự build SVG (`components/charts.tsx`), không dùng chart lib — nhẹ, kiểm soát token trực tiếp.
+- Palette: `--chart-1..5` **đổi theo theme** (Fluent: xanh enterprise `#0F6CBD`/`#107C10`… · Material: tonal `#6750A4`/`#006A6A`… · Apple: system `#007AFF`/`#34C759`…).
+- `BarChart`: cột `rx=6`, màu xoay vòng chart-1..5, `<title>` tooltip + hover `opacity-75`, label giá trị trên đỉnh cột.
+- `LineChart`: line `var(--chart-1)` 2.5px bo đầu, **area gradient** mờ dần xuống 0, dot viền trắng + `<title>` tooltip, gridline `stroke-dasharray` nhẹ.
+- Accessibility: mọi chart bọc `ChartCard` với `ariaDescription` + `tableContent` fallback (bảng dữ liệu).
+
+### Motion
+
+- Chỉ `transition` màu/shadow 100–150ms `ease-out` (row hover, card hover-lift, button active `translate-y-px`).
+- Không animation nhạy cảm; `prefers-reduced-motion` tắt toàn bộ transition trong vùng theme.
+
+### Naming conventions
+
+| Lớp | Quy ước | Ví dụ |
+|---|---|---|
+| File component | `kebab-case.tsx` | `grades-editor.tsx` |
+| Component | `PascalCase`, named export | `GradesEditor` |
+| Util/lib | `camelCase`, `kebab-case.ts` | `semesterAverage`, `domain-theme.ts` |
+| Route | `kebab-case` tiếng Anh theo domain | `/academics/grades`, `/register/signoff` |
+| DB table/column | `snake_case` tiếng Anh | `competency_evaluations`, `national_id` |
+| CSS token | `--color-*` / `--shadow-*-token` | `--color-primary-bg` |
+| Class theme | `.theme-<language>` | `.theme-material` |
+| Copy UI | tiếng Việt chuẩn ngành GD | "ĐĐGtx", "ĐTBm", "Xếp loại" |
+| Vai trò (code) | snake_case key + label VI | `gvcn` → "GVCN (Giáo viên chủ nhiệm)" |
+| Icon map key | đúng `label` trong `nav.ts` | `ITEM_ICONS["Nhập / đồng bộ điểm"]` |
 
 ### Pattern nhập liệu (data-entry editors)
 

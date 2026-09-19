@@ -65,8 +65,9 @@ export default async function PeriodLogPage({
     .from("classes")
     .select("id,name")
     .eq("gvcn_id", profile.id)
-    .maybeSingle();
-  const cls = (clsRaw ?? null) as ClassRow | null;
+    .order("name");
+  const myClasses = (clsRaw ?? []) as ClassRow[];
+  const myClassIds = myClasses.map((c) => c.id);
 
   let entries: PeriodEntry[] = [];
   const rosters: Record<string, ClassRoster> = {};
@@ -78,8 +79,8 @@ export default async function PeriodLogPage({
       .select("id,class_id,subject_id,teacher_id,period,room")
       .eq("weekday", weekday)
       .order("period", { ascending: true });
-    if (cls) {
-      entryQuery = entryQuery.eq("class_id", cls.id);
+    if (myClassIds.length > 0) {
+      entryQuery = entryQuery.in("class_id", myClassIds);
     } else {
       entryQuery = entryQuery.eq("teacher_id", profile.id);
     }
@@ -149,15 +150,21 @@ export default async function PeriodLogPage({
       rosters[s.class_id] = roster;
     }
 
-    entries = entryRows.map((e) => ({
-      id: e.id,
-      class_id: e.class_id,
-      className: className.get(e.class_id),
-      period: e.period,
-      subject: subjectName.get(e.subject_id) ?? "-",
-      teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
-      room: e.room,
-    }));
+    entries = entryRows
+      .map((e) => ({
+        id: e.id,
+        class_id: e.class_id,
+        className: className.get(e.class_id),
+        period: e.period,
+        subject: subjectName.get(e.subject_id) ?? "-",
+        teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
+        room: e.room,
+      }))
+      .sort(
+        (a, b) =>
+          a.period - b.period ||
+          (a.className ?? "").localeCompare(b.className ?? ""),
+      );
 
     const entryIds = entryRows.map((e) => e.id);
     const { data: logsRaw } =
@@ -206,9 +213,10 @@ export default async function PeriodLogPage({
     weekday !== null
       ? `${WEEKDAY_NAMES[weekday]}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
       : `Chủ nhật, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`;
-  const description = cls
-    ? `Lớp ${cls.name} - ${weekdayLabel}`
-    : `Các tiết dạy của bạn - ${weekdayLabel}`;
+  const description =
+    myClasses.length > 0
+      ? `Lớp ${myClasses.map((c) => c.name).join(", ")} - ${weekdayLabel}`
+      : `Các tiết dạy của bạn - ${weekdayLabel}`;
 
   return (
     <>

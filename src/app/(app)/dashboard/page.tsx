@@ -72,7 +72,8 @@ export default async function DashboardPage() {
       .from("classes")
       .select("id,name")
       .eq("gvcn_id", profile.id)
-      .maybeSingle(),
+      .order("name")
+      .limit(1),
     profile.school_id
       ? supabase
           .from("schools")
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
-  const cls = (clsRaw ?? null) as ClassRow | null;
+  const cls = ((clsRaw ?? []) as ClassRow[])[0] ?? null;
   const school = (schoolRaw ?? null) as { name: string } | null;
   const classId = cls?.id ?? null;
 

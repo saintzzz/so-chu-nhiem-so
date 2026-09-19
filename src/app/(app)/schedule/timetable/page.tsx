@@ -41,10 +41,11 @@ export default async function TimetablePage({
       .from("classes")
       .select("id,name")
       .eq("gvcn_id", profile.id)
-      .maybeSingle(),
+      .order("name")
+      .limit(1),
   ]);
   const classes = (classesRaw ?? []) as ClassRow[];
-  const ownCls = (ownClsRaw ?? null) as ClassRow | null;
+  const ownCls = ((ownClsRaw ?? []) as ClassRow[])[0] ?? null;
 
   const selectedId =
     sp.class && classes.some((c) => c.id === sp.class)

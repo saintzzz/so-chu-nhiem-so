@@ -96,30 +96,100 @@ export default async function DashboardPage() {
   const studentIds = students.map((s) => s.id);
   const hasStudents = studentIds.length > 0;
 
-  // Attendance today + overall rate
-  const [{ data: todayAttRaw }, { count: attTotal }, { count: attPresent }] =
-    await Promise.all([
-      hasStudents
-        ? supabase
-            .from("attendance_records")
-            .select("student_id,status")
-            .eq("date", TODAY)
-            .in("student_id", studentIds)
-        : Promise.resolve({ data: [] }),
-      hasStudents
-        ? supabase
-            .from("attendance_records")
-            .select("id", { count: "exact", head: true })
-            .in("student_id", studentIds)
-        : Promise.resolve({ count: 0 }),
-      hasStudents
-        ? supabase
-            .from("attendance_records")
-            .select("id", { count: "exact", head: true })
-            .eq("status", "present")
-            .in("student_id", studentIds)
-        : Promise.resolve({ count: 0 }),
-    ]);
+  // All remaining queries only depend on studentIds/classId/profile - run in one batch.
+  const since30 = "2026-08-19";
+  const [
+    { data: todayAttRaw },
+    { count: attTotal },
+    { count: attPresent },
+    { data: gradeRaw },
+    { data: conductRaw },
+    { data: casesRaw },
+    { count: unreadCount },
+    { data: tasksRaw },
+    { data: incidentsRaw },
+    { data: emuRaw },
+    { data: notifRaw },
+    { data: annRaw },
+  ] = await Promise.all([
+    hasStudents
+      ? supabase
+          .from("attendance_records")
+          .select("student_id,status")
+          .eq("date", TODAY)
+          .in("student_id", studentIds)
+      : Promise.resolve({ data: [] }),
+    hasStudents
+      ? supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .in("student_id", studentIds)
+      : Promise.resolve({ count: 0 }),
+    hasStudents
+      ? supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "present")
+          .in("student_id", studentIds)
+      : Promise.resolve({ count: 0 }),
+    hasStudents
+      ? supabase
+          .from("grades")
+          .select("student_id,subject_id,term,assessment_type,score")
+          .in("student_id", studentIds)
+      : Promise.resolve({ data: [] }),
+    hasStudents
+      ? supabase
+          .from("conduct_records")
+          .select("student_id")
+          .eq("type", "vi_pham")
+          .gte("date", since30)
+          .in("student_id", studentIds)
+      : Promise.resolve({ data: [] }),
+    hasStudents
+      ? supabase
+          .from("counseling_cases")
+          .select("id")
+          .in("student_id", studentIds)
+          .neq("status", "resolved")
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id)
+      .is("read_at", null),
+    supabase
+      .from("tasks")
+      .select("id,title,due_date,status,class_id")
+      .in("status", ["pending", "approved"])
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .limit(20),
+    classId
+      ? supabase
+          .from("incidents")
+          .select("id,type,severity,status,occurred_at")
+          .eq("class_id", classId)
+          .in("status", ["new", "following"])
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from("emulation_scores")
+      .select("class_id,score")
+      .eq("period", EMULATION_PERIOD),
+    supabase
+      .from("notifications")
+      .select("id,type,title,body,created_at")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    classId
+      ? supabase
+          .from("announcements")
+          .select("id,title,content,created_at")
+          .eq("class_id", classId)
+          .order("created_at", { ascending: false })
+          .limit(4)
+      : Promise.resolve({ data: [] }),
+  ]);
   const todayAtt = (todayAttRaw ?? []) as {
     student_id: string;
     status: string;
@@ -134,12 +204,6 @@ export default async function DashboardPage() {
       : null;
 
   // Grades: ĐTBm theo TT22 cho từng cặp (học sinh, môn, kỳ) rồi tổng hợp
-  const { data: gradeRaw } = hasStudents
-    ? await supabase
-        .from("grades")
-        .select("student_id,subject_id,term,assessment_type,score")
-        .in("student_id", studentIds)
-    : { data: [] };
   const grades = (gradeRaw ?? []) as {
     student_id: string;
     subject_id: string;
@@ -178,54 +242,12 @@ export default async function DashboardPage() {
   });
 
   // Conduct risk: students with a violation in last 30 days
-  const since30 = "2026-08-19";
-  const { data: conductRaw } = hasStudents
-    ? await supabase
-        .from("conduct_records")
-        .select("student_id")
-        .eq("type", "vi_pham")
-        .gte("date", since30)
-        .in("student_id", studentIds)
-    : { data: [] };
   const conductRisk = new Set(
     ((conductRaw ?? []) as { student_id: string }[]).map((r) => r.student_id),
   ).size;
 
-  // Counseling open cases
-  const { data: casesRaw } = hasStudents
-    ? await supabase
-        .from("counseling_cases")
-        .select("id")
-        .in("student_id", studentIds)
-        .neq("status", "resolved")
-    : { data: [] };
   const counselingOpen = (casesRaw ?? []).length;
 
-  // Unread notifications + upcoming tasks + unhandled incidents
-  const [
-    { count: unreadCount },
-    { data: tasksRaw },
-    { data: incidentsRaw },
-  ] = await Promise.all([
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id)
-      .is("read_at", null),
-    supabase
-      .from("tasks")
-      .select("id,title,due_date,status,class_id")
-      .in("status", ["pending", "approved"])
-      .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(20),
-    classId
-      ? supabase
-          .from("incidents")
-          .select("id,type,severity,status,occurred_at")
-          .eq("class_id", classId)
-          .in("status", ["new", "following"])
-      : Promise.resolve({ data: [] }),
-  ]);
   const allTasks = (tasksRaw ?? []) as {
     id: string;
     title: string;
@@ -249,10 +271,6 @@ export default async function DashboardPage() {
   }[];
 
   // Emulation rank of own class
-  const { data: emuRaw } = await supabase
-    .from("emulation_scores")
-    .select("class_id,score")
-    .eq("period", EMULATION_PERIOD);
   const emuTotals = new Map<string, number>();
   for (const r of (emuRaw ?? []) as { class_id: string; score: number }[]) {
     emuTotals.set(r.class_id, (emuTotals.get(r.class_id) ?? 0) + r.score);
@@ -269,22 +287,6 @@ export default async function DashboardPage() {
   ).length;
 
   // Activity feed: notifications + announcements
-  const [{ data: notifRaw }, { data: annRaw }] = await Promise.all([
-    supabase
-      .from("notifications")
-      .select("id,type,title,body,created_at")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false })
-      .limit(6),
-    classId
-      ? supabase
-          .from("announcements")
-          .select("id,title,content,created_at")
-          .eq("class_id", classId)
-          .order("created_at", { ascending: false })
-          .limit(4)
-      : Promise.resolve({ data: [] }),
-  ]);
   const feed: FeedItem[] = [
     ...((notifRaw ?? []) as {
       id: string;

@@ -200,7 +200,7 @@ export function TimetableToolbar({
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3">
+    <div data-slot="toolbar" className="mb-4 flex flex-wrap items-center gap-3">
       <Button variant="outline" size="sm" onClick={downloadGridTemplate}>
         Template lớp này
       </Button>

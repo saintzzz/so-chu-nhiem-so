@@ -204,7 +204,7 @@ export function DailyRoster({
         ))}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div data-slot="toolbar" className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
           variant="outline"

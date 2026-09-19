@@ -305,7 +305,7 @@ export function ExamsBoard({
       </div>
 
       {canEdit && (
-        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+        <div data-slot="toolbar" className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
           <span className="w-full text-sm font-semibold">Tạo kỳ thi mới</span>
           <input
             placeholder="Tên kỳ thi (VD: Kiểm tra giữa kỳ I)"
@@ -346,7 +346,7 @@ export function ExamsBoard({
       {examId ? (
         <>
           {canEdit && (
-            <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+            <div data-slot="toolbar" className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <span className="w-full text-sm font-semibold">Thêm buổi thi</span>
               <select
                 value={newSession.class_id}

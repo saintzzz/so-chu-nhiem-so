@@ -725,7 +725,7 @@ export function GradesEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div data-slot="toolbar" className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
           {students.length} học sinh
         </span>

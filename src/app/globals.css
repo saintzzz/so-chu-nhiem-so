@@ -227,21 +227,66 @@ body {
 
 /* ---- Component-level signatures per design language ---- */
 
-/* Fluent: data-grid density — row hover like Fluent DataGrid, square
-   inputs, uppercase table headers kept tight. */
+/* ============================ FLUENT ============================== */
+/* Microsoft Fluent 2: command-bar density, DataGrid headers in
+   semibold sentence case, underline focus on fields. */
 .theme-fluent tbody tr {
   transition: background-color 0.1s ease-out;
 }
 .theme-fluent tbody tr:hover {
   background-color: #f5f3f1;
 }
+.theme-fluent thead th {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #424242;
+}
+.theme-fluent td {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+.theme-fluent input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.theme-fluent select,
+.theme-fluent textarea {
+  border-radius: 4px;
+  border-color: #d1d1d1;
+  box-shadow: inset 0 -1px 0 #8a8886;
+}
+.theme-fluent input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.theme-fluent select:focus,
+.theme-fluent textarea:focus {
+  box-shadow: inset 0 -2px 0 var(--primary);
+  outline: none;
+}
+.theme-fluent [data-slot="button"] {
+  font-weight: 600;
+}
+/* Fluent CommandBar: toolbars become a surfaced strip with a subtle
+   bottom divider — matches Microsoft 365 admin consoles. */
+.theme-fluent [data-slot="toolbar"] {
+  background-color: #ffffff;
+  border: 1px solid #e1dfdd;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 0.3px 0.9px rgba(0, 0, 0, 0.06);
+}
+/* Fluent nav: left accent bar on active item (Fluent Nav signature). */
+.theme-fluent aside nav a[class*="bg-primary-bg"],
+.theme-fluent aside nav button.text-sidebar-primary {
+  box-shadow: inset 3px 0 0 var(--primary);
+  border-radius: 0 4px 4px 0;
+}
 
-/* Material 3: pill-shaped buttons + chips (M3 signature), state-layer
-   hover on rows, generous card radius already via --radius=1rem. */
+/* =========================== MATERIAL 3 =========================== */
+/* Google Material 3: pill buttons, filled text fields (rounded top,
+   animated bottom indicator), elevated borderless cards. */
 .theme-material [data-slot="button"] {
   border-radius: 999px;
   padding-left: 1rem;
   padding-right: 1rem;
+  font-weight: 500;
 }
 .theme-material tbody tr {
   transition: background-color 0.15s ease-out;
@@ -249,9 +294,46 @@ body {
 .theme-material tbody tr:hover {
   background-color: #f3edf7;
 }
+/* M3 filled text field */
+.theme-material input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.theme-material select,
+.theme-material textarea {
+  background-color: #f3edf7;
+  border: none;
+  border-bottom: 1px solid #79747e;
+  border-radius: 12px 12px 0 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+.theme-material input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.theme-material select:focus,
+.theme-material textarea:focus {
+  border-bottom-color: var(--primary);
+  box-shadow: inset 0 -1px 0 var(--primary);
+  outline: none;
+}
+/* M3 elevated cards: border becomes hairline tonal, shadow carries */
+.theme-material .rounded-xl.border,
+.theme-material .rounded-lg.border {
+  border-color: #efeaf4;
+}
+/* M3 navigation rail: pill-shaped active indicator. */
+.theme-material aside nav a[class*="bg-primary-bg"],
+.theme-material aside nav a.rounded-lg {
+  border-radius: 999px;
+}
+/* M3 filter/toolbar: surface-container chip bar. */
+.theme-material [data-slot="toolbar"] {
+  background-color: #f7f2fa;
+  border: none;
+  border-radius: 16px;
+  padding: 0.625rem 1rem;
+}
 
-/* Apple HIG: hairline borders, SF-style tight tracking on headings,
-   subtle row hover, translucency-ready cards. */
+/* ============================ APPLE =============================== */
+/* Apple HIG: grouped-list aesthetics — SF tight tracking, iOS filled
+   gray fields, hairline separators, minimal elevation. */
 .theme-apple {
   --border: #e3e3e6;
 }
@@ -265,6 +347,34 @@ body {
 }
 .theme-apple tbody tr:hover {
   background-color: rgba(0, 0, 0, 0.025);
+}
+.theme-apple input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.theme-apple select,
+.theme-apple textarea {
+  background-color: rgba(118, 118, 128, 0.12);
+  border-color: transparent;
+  border-radius: 10px;
+}
+.theme-apple input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
+.theme-apple select:focus,
+.theme-apple textarea:focus {
+  background-color: #ffffff;
+  border-color: var(--ring);
+}
+.theme-apple [data-slot="button"] {
+  font-weight: 590;
+}
+/* Apple grouped list: cards lose visible border, hairline + radius. */
+.theme-apple .rounded-xl.border,
+.theme-apple .rounded-lg.border {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+/* Apple toolbars float as soft gray strips. */
+.theme-apple [data-slot="toolbar"] {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 14px;
+  padding: 0.625rem 1rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

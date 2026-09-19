@@ -21,7 +21,7 @@ export function AppShell({
   const theme = domainThemeFor(usePathname());
 
   return (
-    <div className="flex min-h-screen">
+    <div className={cn("flex min-h-screen", `theme-${theme}`)}>
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -93,11 +93,7 @@ export function AppShell({
           profile={profile}
           onOpenMobileNav={() => setMobileOpen(true)}
         />
-        <main
-          className={cn("flex-1 overflow-x-hidden p-4 md:p-6", `theme-${theme}`)}
-        >
-          {children}
-        </main>
+        <main className="flex-1 overflow-x-hidden p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

@@ -284,7 +284,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
               </tbody>
             </table>
           </div>
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+          <div data-slot="toolbar" className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
             <label className="text-sm font-medium" htmlFor="import-class">
               Nhập vào lớp
             </label>

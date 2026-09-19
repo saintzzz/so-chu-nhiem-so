@@ -51,6 +51,13 @@ export function ChatThread({
         setError(err.message);
         return;
       }
+      await supabase.from("notifications").insert({
+        profile_id: peerId,
+        type: "message",
+        title: "Tin nhắn mới",
+        body: text.slice(0, 120),
+        link: window.location.pathname,
+      });
       setContent("");
       setError(null);
       router.refresh();

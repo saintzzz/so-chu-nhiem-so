@@ -73,6 +73,13 @@ export async function replyMessage(input: {
     content: input.content.trim(),
   });
   if (error) return { error: error.message };
+  await supabase.from("notifications").insert({
+    profile_id: input.recipientId,
+    type: "message",
+    title: "Tin nhắn mới",
+    body: input.content.trim().slice(0, 120),
+    link: "/parents/inbox",
+  });
   revalidatePath("/parents/inbox");
   return {};
 }

@@ -34,6 +34,22 @@ export async function createIncident(input: {
     occurred_at: input.occurredAt || new Date().toISOString(),
   });
   if (error) return { error: error.message };
+  const { data: bghProfiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "bgh");
+  const notifRows = ((bghProfiles ?? []) as { id: string }[])
+    .filter((p) => p.id !== user.id)
+    .map((p) => ({
+      profile_id: p.id,
+      type: "incident",
+      title: "Sự cố mới cần xử lý",
+      body: input.description.trim().slice(0, 120),
+      link: "/safety/bgh",
+    }));
+  if (notifRows.length) {
+    await supabase.from("notifications").insert(notifRows);
+  }
   revalidatePath("/safety/report");
   revalidatePath("/safety/bgh");
   revalidatePath("/safety/followup");

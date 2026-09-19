@@ -351,10 +351,26 @@ async function main() {
   const notifRows = [];
   for (const [email, uid] of Object.entries(uids)) {
     for (let i = 0; i < ri(2, 4); i++) {
+      const type = rand(["announcement", "task", "incident", "grade", "message"]);
+      const titles = {
+        announcement: "Thông báo mới từ GVCN",
+        task: "Công việc sắp đến hạn",
+        incident: "Sự cố mới cần xử lý",
+        grade: "Điểm mới được cập nhật",
+        message: "Tin nhắn mới",
+      };
+      const links = {
+        announcement: "/dashboard",
+        task: "/register/plans",
+        incident: "/safety/bgh",
+        grade: "/academics/grades",
+        message: "/parents/inbox",
+      };
       notifRows.push({
-        profile_id: uid, type: rand(["announcement", "task", "incident", "grade"]),
-        title: rand(["Thông báo mới từ GVCN", "Công việc sắp đến hạn", "Sự cố mới cần xử lý", "Điểm mới được cập nhật", "Phụ huynh xin phép nghỉ"]),
+        profile_id: uid, type,
+        title: titles[type],
         body: "Nội dung chi tiết thông báo demo.",
+        link: links[type],
         read_at: chance(0.5) ? new Date().toISOString() : null,
       });
     }

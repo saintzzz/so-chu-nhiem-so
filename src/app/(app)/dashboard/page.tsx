@@ -326,14 +326,14 @@ export default async function DashboardPage() {
         }
         actions={
           <>
-            <Link
+            <Link prefetch={false}
               href="/attendance/daily"
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
             >
               <ClipboardCheck className="size-4" />
               Điểm danh lớp
             </Link>
-            <Link
+            <Link prefetch={false}
               href="/conduct/records"
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted"
             >
@@ -421,7 +421,7 @@ export default async function DashboardPage() {
           <ul className="divide-y divide-border">
             {tasks.slice(0, 5).map((t) => (
               <li key={t.id}>
-                <Link
+                <Link prefetch={false}
                   href="/register/plans"
                   className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
                 >
@@ -453,7 +453,7 @@ export default async function DashboardPage() {
             ))}
             {(unreadCount ?? 0) > 0 && (
               <li>
-                <Link
+                <Link prefetch={false}
                   href="/parents/inbox"
                   className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
                 >
@@ -473,7 +473,7 @@ export default async function DashboardPage() {
             )}
             {openIncidents.length > 0 && (
               <li>
-                <Link
+                <Link prefetch={false}
                   href="/safety/followup"
                   className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
                 >

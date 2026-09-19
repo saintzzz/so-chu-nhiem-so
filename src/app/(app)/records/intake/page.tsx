@@ -113,7 +113,7 @@ export default async function RecordsIntakePage() {
                 <StatusBadge label={st.label} tone={st.tone} />
               </td>
               <td>
-                <Link
+                <Link prefetch={false}
                   href={`/records/students?class=${c.id}`}
                   className="text-sm font-medium text-primary hover:underline"
                 >

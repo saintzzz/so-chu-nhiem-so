@@ -59,7 +59,7 @@ export function SidebarNav({
                   <ul className="mt-0.5 space-y-0.5 pl-3">
                     {section.children.map((item) => (
                       <li key={item.href}>
-                        <Link
+                        <Link prefetch={false}
                           href={item.href}
                           onClick={onNavigate}
                           className={cn(
@@ -77,7 +77,7 @@ export function SidebarNav({
                 )}
               </>
             ) : (
-              <Link
+              <Link prefetch={false}
                 href={section.href ?? "#"}
                 onClick={onNavigate}
                 className={cn(

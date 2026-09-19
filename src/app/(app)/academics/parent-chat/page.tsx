@@ -123,7 +123,7 @@ export default async function ParentChatPage({
           <ul className="max-h-[32rem] overflow-y-auto p-2">
             {contacts.map((c) => (
               <li key={c.peerId}>
-                <Link
+                <Link prefetch={false}
                   href={`/academics/parent-chat?to=${c.peerId}`}
                   className={cn(
                     "block rounded-lg px-3 py-2 text-sm hover:bg-muted",

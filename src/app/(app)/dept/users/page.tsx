@@ -60,7 +60,7 @@ export default async function DeptUsersPage({
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <Link
+        <Link prefetch={false}
           href="/dept/users"
           className={cn(
             "rounded-full border border-border px-3 py-1 text-sm",
@@ -72,7 +72,7 @@ export default async function DeptUsersPage({
           Tất cả
         </Link>
         {ROLES.map((r) => (
-          <Link
+          <Link prefetch={false}
             key={r}
             href={`/dept/users?role=${r}`}
             className={cn(

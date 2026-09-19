@@ -28,7 +28,7 @@ export function StatCard({
   const cls =
     "block rounded-xl border border-border bg-card p-4 text-left shadow-[var(--shadow-sm-token)] transition-shadow hover:shadow-[var(--shadow-md-token)]";
   return href ? (
-    <Link href={href} className={cls}>
+    <Link prefetch={false} href={href} className={cls}>
       {inner}
     </Link>
   ) : (

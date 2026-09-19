@@ -82,7 +82,7 @@ export default async function StudentChatPage({
           <ul className="max-h-[32rem] overflow-y-auto p-2">
             {students.map((s) => (
               <li key={s.id}>
-                <Link
+                <Link prefetch={false}
                   href={`/conduct/student-chat?to=${s.profile_id}`}
                   className={cn(
                     "block rounded-lg px-3 py-2 text-sm hover:bg-muted",

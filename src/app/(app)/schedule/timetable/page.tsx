@@ -152,7 +152,7 @@ export default async function TimetablePage({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Lớp:</span>
         {classes.map((c) => (
-          <Link
+          <Link prefetch={false}
             key={c.id}
             href={`/schedule/timetable?class=${c.id}`}
             className={cn(

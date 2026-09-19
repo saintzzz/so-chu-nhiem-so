@@ -124,7 +124,7 @@ export default async function TeamHomePage() {
             <CalendarDays className="size-4 text-muted-foreground" />
             Sinh hoạt chuyên môn gần đây
           </h3>
-          <Link
+          <Link prefetch={false}
             href="/team/meetings"
             className="text-sm font-medium text-primary hover:underline"
           >
@@ -157,7 +157,7 @@ export default async function TeamHomePage() {
       </div>
 
       {(pendingRes.count ?? 0) > 0 && (
-        <Link
+        <Link prefetch={false}
           href="/team/review"
           className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-warning-bg p-4 text-sm font-medium text-warning"
         >

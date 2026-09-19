@@ -89,7 +89,7 @@ export default async function TeacherChatPage({
           <ul className="max-h-[32rem] overflow-y-auto p-2">
             {teachers.map((t) => (
               <li key={t.id}>
-                <Link
+                <Link prefetch={false}
                   href={`/academics/teacher-chat?to=${t.id}`}
                   className={cn(
                     "block rounded-lg px-3 py-2 text-sm hover:bg-muted",

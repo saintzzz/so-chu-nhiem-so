@@ -84,7 +84,7 @@ export function StudentsExplorer({
         {classes.length > 1 && (
           <div className="flex flex-wrap gap-1.5">
             {classes.map((c) => (
-              <Link
+              <Link prefetch={false}
                 key={c.id}
                 href={`/records/students?class=${c.id}`}
                 className={cn(

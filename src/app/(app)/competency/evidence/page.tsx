@@ -81,7 +81,7 @@ export default async function EvidencePage() {
       {!assessment ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
           Bạn chưa có bản tự đánh giá năng lực cho năm học này.{" "}
-          <Link
+          <Link prefetch={false}
             href="/competency/self-assessment"
             className="font-medium text-primary hover:underline"
           >

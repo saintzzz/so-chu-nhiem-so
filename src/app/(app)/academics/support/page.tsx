@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { SupportPlanButton } from "@/components/academics/support-plan-button";
+import { semesterAverage, yearAverage } from "@/lib/tt22";
 
 interface ClassRow {
   id: string;
@@ -23,7 +24,9 @@ interface SubjectRow {
 interface GradeRow {
   student_id: string;
   subject_id: string;
-  score: number;
+  term: string;
+  assessment_type: string;
+  score: number | null;
 }
 interface PlanRow {
   id: string;
@@ -38,10 +41,6 @@ function toParams(sp: Record<string, string | string[] | undefined>) {
     if (typeof v === "string") out[k] = v;
   }
   return out;
-}
-
-function avg(nums: number[]) {
-  return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0;
 }
 
 export default async function SupportPage({
@@ -90,9 +89,8 @@ export default async function SupportPage({
     ? await Promise.all([
         supabase
           .from("grades")
-          .select("student_id,subject_id,score")
-          .in("student_id", studentIds)
-          .eq("assessment_type", "hoc_ky"),
+          .select("student_id,subject_id,term,assessment_type,score")
+          .in("student_id", studentIds),
         supabase
           .from("support_plans")
           .select("id,student_id,subject_id,status")
@@ -105,25 +103,26 @@ export default async function SupportPage({
 
   const planKey = new Map(plans.map((p) => [`${p.student_id}:${p.subject_id}`, p]));
 
-  // Điểm TB theo cặp (học sinh, môn)
-  const pairScores = new Map<string, number[]>();
+  // ĐTBm cả năm theo TT22 cho từng cặp (học sinh, môn)
+  const pairRows = new Map<string, GradeRow[]>();
   for (const g of grades) {
     const key = `${g.student_id}:${g.subject_id}`;
-    const arr = pairScores.get(key) ?? [];
-    arr.push(g.score);
-    pairScores.set(key, arr);
+    const arr = pairRows.get(key) ?? [];
+    arr.push(g);
+    pairRows.set(key, arr);
   }
 
-  const weak = [...pairScores.entries()]
-    .map(([key, scores]) => {
+  const weak = [...pairRows.entries()]
+    .map(([key, rows]) => {
       const [student_id, subject_id] = key.split(":");
-      return {
-        student_id,
-        subject_id,
-        avg: Math.round(avg(scores) * 100) / 100,
-      };
+      const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
+      const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
+      return { student_id, subject_id, avg: yearAverage(hk1, hk2) };
     })
-    .filter((w) => w.avg < 5 && studentName.has(w.student_id))
+    .filter(
+      (w): w is { student_id: string; subject_id: string; avg: number } =>
+        w.avg != null && w.avg < 5 && studentName.has(w.student_id),
+    )
     .sort((a, b) => a.avg - b.avg);
 
   const withPlan = weak.filter((w) =>
@@ -181,7 +180,7 @@ export default async function SupportPage({
               <td>{subjectName.get(w.subject_id) ?? "-"}</td>
               <td>
                 <span className="font-semibold text-error">
-                  {w.avg.toFixed(2)}
+                  {w.avg.toFixed(1)}
                 </span>
               </td>
               <td>

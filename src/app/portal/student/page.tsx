@@ -5,6 +5,7 @@ import { StatCard } from "@/components/stat-card";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell } from "lucide-react";
+import { semesterAverage, yearAverage } from "@/lib/tt22";
 import type {
   Announcement,
   AttendanceRecord,
@@ -57,7 +58,7 @@ export default async function StudentPortalPage() {
           .limit(30),
         supabase
           .from("grades")
-          .select("id,subject_id,score")
+          .select("id,subject_id,term,assessment_type,score,result")
           .eq("student_id", student.id),
         supabase.from("subjects").select("id,name"),
         supabase
@@ -91,35 +92,60 @@ export default async function StudentPortalPage() {
   );
   const gradeRows = (gradeRes.data ?? []) as Pick<
     Grade,
-    "id" | "subject_id" | "score"
+    "id" | "subject_id" | "term" | "assessment_type" | "score" | "result"
   >[];
-  const bySubject = new Map<string, { sum: number; n: number }>();
+  // ĐTBm cả năm theo TT22 cho từng môn; môn nhận xét hiển thị Đạt/Chưa đạt
+  const bySubject = new Map<string, typeof gradeRows>();
   for (const g of gradeRows) {
-    const b = bySubject.get(g.subject_id) ?? { sum: 0, n: 0 };
-    b.sum += g.score;
-    b.n += 1;
-    bySubject.set(g.subject_id, b);
+    const arr = bySubject.get(g.subject_id) ?? [];
+    arr.push(g);
+    bySubject.set(g.subject_id, arr);
   }
   const subjectAverages = [...bySubject.entries()]
-    .map(([subjectId, b]) => ({
-      name: subjectNameOf.get(subjectId) ?? "Môn học",
-      avg: b.sum / b.n,
-      count: b.n,
-    }))
+    .map(([subjectId, rows]) => {
+      const commentRow = rows.find((r) => r.result != null);
+      const hk1 = semesterAverage(
+        rows.filter((r) => r.term === "hk1"),
+      );
+      const hk2 = semesterAverage(
+        rows.filter((r) => r.term === "hk2"),
+      );
+      return {
+        name: subjectNameOf.get(subjectId) ?? "Môn học",
+        avg: yearAverage(hk1, hk2),
+        result: commentRow?.result ?? null,
+        count: rows.length,
+      };
+    })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
-  const overallAvg = gradeRows.length
-    ? (gradeRows.reduce((s, g) => s + g.score, 0) / gradeRows.length).toFixed(1)
+  const scoredAvgs = subjectAverages
+    .map((s) => s.avg)
+    .filter((a): a is number => a != null);
+  const overallAvg = scoredAvgs.length
+    ? (
+        scoredAvgs.reduce((x, y) => x + y, 0) / scoredAvgs.length
+      ).toFixed(1)
     : "-";
 
   const conductRows = (conductRes.data ?? []) as Record<string, unknown>[];
   const latestConduct = conductRows[0];
-  const conductRating = latestConduct
+  const RATING_LABELS: Record<string, string> = {
+    tot: "Tốt",
+    kha: "Khá",
+    dat: "Đạt",
+    chua_dat: "Chưa đạt",
+  };
+  const rawRating = latestConduct
     ? (pickString(latestConduct, "rating") ??
       pickString(latestConduct, "level") ??
       pickString(latestConduct, "classification") ??
-      pickString(latestConduct, "grade") ??
-      "Đã đánh giá")
+      pickString(latestConduct, "grade"))
     : null;
+  const conductRating = rawRating
+    ? (RATING_LABELS[rawRating] ?? rawRating)
+    : latestConduct
+      ? "Đã đánh giá"
+      : null;
 
   const announcements = (annRes.data ?? []) as Pick<
     Announcement,
@@ -184,12 +210,20 @@ export default async function StudentPortalPage() {
               <h2 className="mb-3 text-base font-semibold">
                 Điểm trung bình theo môn
               </h2>
-              <DataTable columns={["Môn học", "Số điểm", "Điểm TB"]}>
+              <DataTable columns={["Môn học", "Số điểm", "Điểm TB / Kết quả"]}>
                 {subjectAverages.map((s) => (
                   <tr key={s.name}>
                     <td className="font-medium">{s.name}</td>
                     <td>{s.count}</td>
-                    <td className="font-semibold">{s.avg.toFixed(1)}</td>
+                    <td className="font-semibold">
+                      {s.result != null
+                        ? s.result === "dat"
+                          ? "Đạt"
+                          : "Chưa đạt"
+                        : s.avg != null
+                          ? s.avg.toFixed(1)
+                          : "-"}
+                    </td>
                   </tr>
                 ))}
                 {subjectAverages.length === 0 && (

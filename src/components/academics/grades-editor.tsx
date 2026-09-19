@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { semesterAverage } from "@/lib/tt22";
 import { cn } from "@/lib/utils";
 
 export interface GradeStudent {
@@ -16,85 +17,193 @@ export interface GradeStudent {
 export interface ExistingGrade {
   id: string;
   student_id: string;
-  score: number;
+  assessment_type: "ddg_tx" | "ddg_gk" | "ddg_ck";
+  score: number | null;
+  result: "dat" | "chua_dat" | null;
 }
 
-/** Editable score grid - saves via upsert on existing ids + insert for new. */
+interface CellState {
+  tx: string;
+  gk: string;
+  ck: string;
+  result: "" | "dat" | "chua_dat";
+}
+
+function parseScores(raw: string): number[] | null {
+  const parts = raw
+    .split(/[\s,;]+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (!parts.length) return [];
+  const nums: number[] = [];
+  for (const p of parts) {
+    const n = Number(p.replace(",", "."));
+    if (Number.isNaN(n) || n < 0 || n > 10) return null;
+    nums.push(n);
+  }
+  return nums;
+}
+
+function cellAvg(c: CellState): number | null {
+  const tx = parseScores(c.tx);
+  const gk = c.gk.trim() === "" ? null : Number(c.gk.replace(",", "."));
+  const ck = c.ck.trim() === "" ? null : Number(c.ck.replace(",", "."));
+  if (tx === null) return null;
+  if (gk != null && (Number.isNaN(gk) || gk < 0 || gk > 10)) return null;
+  if (ck != null && (Number.isNaN(ck) || ck < 0 || ck > 10)) return null;
+  const rows = [
+    ...tx.map((score) => ({ assessment_type: "ddg_tx", score })),
+    ...(gk != null ? [{ assessment_type: "ddg_gk", score: gk }] : []),
+    ...(ck != null ? [{ assessment_type: "ddg_ck", score: ck }] : []),
+  ];
+  return semesterAverage(rows);
+}
+
+function cellInvalid(c: CellState): boolean {
+  if (parseScores(c.tx) === null) return true;
+  for (const v of [c.gk, c.ck]) {
+    if (v.trim() !== "") {
+      const n = Number(v.replace(",", "."));
+      if (Number.isNaN(n) || n < 0 || n > 10) return true;
+    }
+  }
+  return false;
+}
+
+function isEmpty(c: CellState): boolean {
+  return !c.tx.trim() && !c.gk.trim() && !c.ck.trim() && !c.result;
+}
+
+/** Sổ điểm TT22 - mỗi HS một dòng: ĐĐGtx (nhiều điểm), ĐĐGgk, ĐĐGck, ĐTBm tự tính. */
 export function GradesEditor({
   students,
   grades,
   subjectId,
   term,
+  method,
   meId,
 }: {
   students: GradeStudent[];
   grades: ExistingGrade[];
   subjectId: string;
   term: string;
+  method: "score" | "comment";
   meId: string;
 }) {
   const router = useRouter();
-  const [scores, setScores] = useState<Record<string, string>>(() =>
-    Object.fromEntries(grades.map((g) => [g.student_id, String(g.score)])),
-  );
+  const [cells, setCells] = useState<Record<string, CellState>>(() => {
+    const init: Record<string, CellState> = {};
+    for (const s of students) {
+      const rows = grades.filter((g) => g.student_id === s.id);
+      init[s.id] = {
+        tx: rows
+          .filter((g) => g.assessment_type === "ddg_tx")
+          .map((g) => g.score)
+          .join(" "),
+        gk:
+          rows.find((g) => g.assessment_type === "ddg_gk")?.score?.toString() ??
+          "",
+        ck:
+          rows.find((g) => g.assessment_type === "ddg_ck")?.score?.toString() ??
+          "",
+        result: (rows.find((g) => g.result)?.result as CellState["result"]) ?? "",
+      };
+    }
+    return init;
+  });
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  function setCell(id: string, patch: Partial<CellState>) {
+    setSaved(false);
+    setCells((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  }
+
   function save() {
     setSaved(false);
     setError(null);
-    const rows: {
-      id?: string;
-      student_id: string;
-      subject_id: string;
-      term: string;
-      assessment_type: string;
-      score: number;
-      entered_by: string;
-    }[] = [];
-    const deletions: string[] = [];
-
     for (const s of students) {
-      const raw = (scores[s.id] ?? "").trim();
-      const existing = grades.find((g) => g.student_id === s.id);
-      if (!raw) {
-        if (existing) deletions.push(existing.id);
-        continue;
-      }
-      const score = Number(raw.replace(",", "."));
-      if (Number.isNaN(score) || score < 0 || score > 10) {
+      const c = cells[s.id];
+      if (c && cellInvalid(c)) {
         setError(`Điểm không hợp lệ cho học sinh ${s.full_name} (0-10).`);
         return;
       }
-      if (existing && Number(existing.score) === score) continue;
-      rows.push({
-        ...(existing ? { id: existing.id } : {}),
-        student_id: s.id,
-        subject_id: subjectId,
-        term,
-        assessment_type: "hoc_ky",
-        score,
-        entered_by: meId,
-      });
     }
 
     startTransition(async () => {
       const supabase = createClient();
-      if (deletions.length) {
-        const { error: err } = await supabase
-          .from("grades")
-          .delete()
-          .in("id", deletions);
-        if (err) {
-          setError(err.message);
-          return;
+      const studentIds = students.map((s) => s.id);
+      const { error: delErr } = await supabase
+        .from("grades")
+        .delete()
+        .in("student_id", studentIds)
+        .eq("subject_id", subjectId)
+        .eq("term", term);
+      if (delErr) {
+        setError(delErr.message);
+        return;
+      }
+
+      const rows: Record<string, unknown>[] = [];
+      for (const s of students) {
+        const c = cells[s.id];
+        if (!c || isEmpty(c)) continue;
+        if (method === "comment") {
+          if (c.result) {
+            rows.push({
+              student_id: s.id,
+              subject_id: subjectId,
+              term,
+              assessment_type: "ddg_ck",
+              result: c.result,
+              entered_by: meId,
+            });
+          }
+          continue;
+        }
+        const tx = parseScores(c.tx) ?? [];
+        const gk = c.gk.trim() === "" ? null : Number(c.gk.replace(",", "."));
+        const ck = c.ck.trim() === "" ? null : Number(c.ck.replace(",", "."));
+        tx.forEach((score, i) => {
+          rows.push({
+            student_id: s.id,
+            subject_id: subjectId,
+            term,
+            assessment_type: "ddg_tx",
+            score,
+            seq: i + 1,
+            entered_by: meId,
+          });
+        });
+        if (gk != null) {
+          rows.push({
+            student_id: s.id,
+            subject_id: subjectId,
+            term,
+            assessment_type: "ddg_gk",
+            score: gk,
+            seq: 1,
+            entered_by: meId,
+          });
+        }
+        if (ck != null) {
+          rows.push({
+            student_id: s.id,
+            subject_id: subjectId,
+            term,
+            assessment_type: "ddg_ck",
+            score: ck,
+            seq: 1,
+            entered_by: meId,
+          });
         }
       }
+
       if (rows.length) {
-        const { error: err } = await supabase.from("grades").upsert(rows);
-        if (err) {
-          setError(err.message);
+        const { error: insErr } = await supabase.from("grades").insert(rows);
+        if (insErr) {
+          setError(insErr.message);
           return;
         }
       }
@@ -103,10 +212,15 @@ export function GradesEditor({
     });
   }
 
+  const columns =
+    method === "score"
+      ? ["Mã HS", "Họ và tên", "ĐĐGtx", "ĐĐGgk", "ĐĐGck", "ĐTBm"]
+      : ["Mã HS", "Họ và tên", "Đánh giá"];
+
   return (
     <div className="space-y-3">
       <DataTable
-        columns={["Mã HS", "Họ và tên", "Điểm (0-10)"]}
+        columns={columns}
         footer={
           <>
             <span>{students.length} học sinh</span>
@@ -121,40 +235,75 @@ export function GradesEditor({
         }
       >
         {students.map((s) => {
-          const raw = scores[s.id] ?? "";
-          const invalid =
-            raw.trim() !== "" &&
-            (Number.isNaN(Number(raw.replace(",", "."))) ||
-              Number(raw.replace(",", ".")) < 0 ||
-              Number(raw.replace(",", ".")) > 10);
+          const c = cells[s.id] ?? { tx: "", gk: "", ck: "", result: "" };
+          const invalid = cellInvalid(c);
+          const avg = method === "score" ? cellAvg(c) : null;
+          const inputCls = (bad: boolean) =>
+            cn(
+              "h-8 w-full min-w-16 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring",
+              bad && "border-destructive",
+            );
           return (
             <tr key={s.id}>
               <td className="font-mono text-xs text-muted-foreground">
                 {s.code}
               </td>
               <td className="font-medium">{s.full_name}</td>
-              <td>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  step={0.5}
-                  inputMode="decimal"
-                  value={raw}
-                  onChange={(e) => {
-                    setSaved(false);
-                    setScores((prev) => ({
-                      ...prev,
-                      [s.id]: e.target.value,
-                    }));
-                  }}
-                  className={cn(
-                    "h-8 w-24 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring",
-                    invalid && "border-destructive",
-                  )}
-                  placeholder="-"
-                />
-              </td>
+              {method === "score" ? (
+                <>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="8 9 7.5"
+                      value={c.tx}
+                      onChange={(e) => setCell(s.id, { tx: e.target.value })}
+                      className={cn(inputCls(invalid && parseScores(c.tx) === null), "w-28")}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      value={c.gk}
+                      onChange={(e) => setCell(s.id, { gk: e.target.value })}
+                      className={cn(inputCls(false), "w-20")}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      step={0.5}
+                      value={c.ck}
+                      onChange={(e) => setCell(s.id, { ck: e.target.value })}
+                      className={cn(inputCls(false), "w-20")}
+                    />
+                  </td>
+                  <td className="font-semibold">
+                    {avg != null ? avg.toFixed(1) : "-"}
+                  </td>
+                </>
+              ) : (
+                <td>
+                  <select
+                    value={c.result}
+                    onChange={(e) =>
+                      setCell(s.id, {
+                        result: e.target.value as CellState["result"],
+                      })
+                    }
+                    className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+                  >
+                    <option value="">-</option>
+                    <option value="dat">Đạt</option>
+                    <option value="chua_dat">Chưa đạt</option>
+                  </select>
+                </td>
+              )}
             </tr>
           );
         })}

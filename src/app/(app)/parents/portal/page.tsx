@@ -14,6 +14,7 @@ import type {
   Profile,
   Student,
 } from "@/types";
+import { semesterAverage } from "@/lib/tt22";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -110,13 +111,26 @@ export default async function PortalPage({
 
   const { data: gradeData } = await supabase
     .from("grades")
-    .select("score")
+    .select("subject_id,term,assessment_type,score")
     .eq("student_id", selectedId);
-  const grades = (gradeData ?? []) as Pick<Grade, "score">[];
-  const avgScore = grades.length
-    ? (
-        grades.reduce((sum, g) => sum + g.score, 0) / grades.length
-      ).toFixed(1)
+  const grades = (gradeData ?? []) as Pick<
+    Grade,
+    "subject_id" | "term" | "assessment_type" | "score"
+  >[];
+  const byCell = new Map<string, typeof grades>();
+  for (const g of grades) {
+    const key = `${g.subject_id}|${g.term}`;
+    const arr = byCell.get(key) ?? [];
+    arr.push(g);
+    byCell.set(key, arr);
+  }
+  const cellAvgs: number[] = [];
+  for (const rows of byCell.values()) {
+    const a = semesterAverage(rows);
+    if (a != null) cellAvgs.push(a);
+  }
+  const avgScore = cellAvgs.length
+    ? (cellAvgs.reduce((x, y) => x + y, 0) / cellAvgs.length).toFixed(1)
     : null;
 
   const { data: annData } = await supabase

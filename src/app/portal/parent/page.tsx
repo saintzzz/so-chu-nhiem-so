@@ -14,6 +14,7 @@ import type {
   Profile,
   Student,
 } from "@/types";
+import { semesterAverage } from "@/lib/tt22";
 
 interface ParentStudentLink {
   parent_id: string;
@@ -97,7 +98,7 @@ export default async function ParentPortalPage() {
           .limit(40),
         supabase
           .from("grades")
-          .select("id,score")
+          .select("id,subject_id,term,assessment_type,score")
           .eq("student_id", student.id),
         supabase
           .from("announcements")
@@ -135,10 +136,25 @@ export default async function ParentPortalPage() {
     ? ((attended / monthRows.length) * 100).toFixed(0) + "%"
     : "-";
 
-  const gradeRows = (gradeRes.data ?? []) as Pick<Grade, "id" | "score">[];
-  const avgScore = gradeRows.length
+  const gradeRows = (gradeRes.data ?? []) as Pick<
+    Grade,
+    "id" | "subject_id" | "term" | "assessment_type" | "score"
+  >[];
+  const bySubjectTerm = new Map<string, typeof gradeRows>();
+  for (const g of gradeRows) {
+    const key = `${g.subject_id}|${g.term}`;
+    const arr = bySubjectTerm.get(key) ?? [];
+    arr.push(g);
+    bySubjectTerm.set(key, arr);
+  }
+  const subjectAvgs: number[] = [];
+  for (const rows of bySubjectTerm.values()) {
+    const a = semesterAverage(rows);
+    if (a != null) subjectAvgs.push(a);
+  }
+  const avgScore = subjectAvgs.length
     ? (
-        gradeRows.reduce((s, g) => s + g.score, 0) / gradeRows.length
+        subjectAvgs.reduce((x, y) => x + y, 0) / subjectAvgs.length
       ).toFixed(1)
     : "-";
 

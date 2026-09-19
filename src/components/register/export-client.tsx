@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import type { Grade, Student, StudentGroup } from "@/types";
+import { semesterAverage } from "@/lib/tt22";
 
 interface ExportRow {
   code: string;
@@ -75,9 +76,21 @@ export function ExportClient({
 
     return students.map((s) => {
       const gs = grades.filter((g) => g.student_id === s.id);
+      const byCell = new Map<string, Grade[]>();
+      for (const g of gs) {
+        const key = `${g.subject_id}|${g.term}`;
+        const arr = byCell.get(key) ?? [];
+        arr.push(g);
+        byCell.set(key, arr);
+      }
+      const cellAvgs: number[] = [];
+      for (const rows of byCell.values()) {
+        const a = semesterAverage(rows);
+        if (a != null) cellAvgs.push(a);
+      }
       const avg =
-        gs.length > 0
-          ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1)
+        cellAvgs.length > 0
+          ? (cellAvgs.reduce((x, y) => x + y, 0) / cellAvgs.length).toFixed(1)
           : "-";
       const att = attendance.filter((a) => a.student_id === s.id);
       return {

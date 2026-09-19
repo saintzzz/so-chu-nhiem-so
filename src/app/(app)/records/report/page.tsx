@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
 import { Sparkles } from "lucide-react";
 import { aiProviderLabel, generateText } from "@/lib/ai";
+import { averageByStudent } from "@/lib/tt22";
 
 interface ClassStats {
   id: string;
@@ -76,9 +77,9 @@ export default async function RecordsReportPage() {
           .limit(5000),
         supabase
           .from("grades")
-          .select("score")
+          .select("student_id,subject_id,term,assessment_type,score")
           .in("student_id", ids)
-          .limit(5000),
+          .limit(20000),
         supabase
           .from("conduct_records")
           .select("id", { count: "exact", head: true })
@@ -88,10 +89,19 @@ export default async function RecordsReportPage() {
       const total = totalRes.count ?? 0;
       const absent = ((absentRes.data ?? []) as { status: AttendanceStatus }[])
         .length;
-      const scores = (gradesRes.data ?? []) as { score: number }[];
+      const avgMap = averageByStudent(
+        (gradesRes.data ?? []) as {
+          student_id: string;
+          subject_id: string;
+          term: string;
+          assessment_type: string;
+          score: number | null;
+        }[],
+      );
+      const classAvgs = [...avgMap.values()];
       const avg =
-        scores.length > 0
-          ? scores.reduce((a, g) => a + g.score, 0) / scores.length
+        classAvgs.length > 0
+          ? classAvgs.reduce((a, v) => a + v, 0) / classAvgs.length
           : null;
       return {
         id: c.id,

@@ -16,18 +16,19 @@ interface StudentRow {
 interface SubjectRow {
   id: string;
   name: string;
+  assessment_method: "score" | "comment";
 }
 interface GradeRow {
   id: string;
   student_id: string;
-  score: number;
+  assessment_type: "ddg_tx" | "ddg_gk" | "ddg_ck";
+  score: number | null;
+  result: "dat" | "chua_dat" | null;
 }
 
 const TERMS = [
-  { value: "gk1", label: "Giữa kỳ I" },
-  { value: "ck1", label: "Cuối kỳ I" },
-  { value: "gk2", label: "Giữa kỳ II" },
-  { value: "ck2", label: "Cuối kỳ II" },
+  { value: "hk1", label: "Học kỳ I" },
+  { value: "hk2", label: "Học kỳ II" },
 ];
 
 function toParams(sp: Record<string, string | string[] | undefined>) {
@@ -57,7 +58,10 @@ export default async function GradesPage({
   }
   const [{ data: classData }, { data: subjectData }] = await Promise.all([
     classQuery.order("name"),
-    supabase.from("subjects").select("id,name").order("name"),
+    supabase
+      .from("subjects")
+      .select("id,name,assessment_method")
+      .order("name"),
   ]);
   const classes = (classData ?? []) as ClassRow[];
   const subjects = (subjectData ?? []) as SubjectRow[];
@@ -67,15 +71,19 @@ export default async function GradesPage({
       ? sp.class
       : (classes[0]?.id ?? "");
 
-  const subjectId =
-    typeof sp.subject === "string" && subjects.some((s) => s.id === sp.subject)
-      ? sp.subject
-      : (subjects.find((s) => s.name === "Toán")?.id ?? subjects[0]?.id ?? "");
+  const subject =
+    typeof sp.subject === "string"
+      ? (subjects.find((s) => s.id === sp.subject) ??
+        subjects.find((s) => s.name === "Toán") ??
+        subjects[0])
+      : (subjects.find((s) => s.name === "Toán") ?? subjects[0]);
+  const subjectId = subject?.id ?? "";
+  const method = subject?.assessment_method ?? "score";
 
   const term =
     typeof sp.term === "string" && TERMS.some((t) => t.value === sp.term)
       ? sp.term
-      : "gk1";
+      : "hk1";
 
   const { data: studentData } = classId
     ? await supabase
@@ -92,23 +100,22 @@ export default async function GradesPage({
     studentIds.length && subjectId
       ? await supabase
           .from("grades")
-          .select("id,student_id,score")
+          .select("id,student_id,assessment_type,score,result")
           .in("student_id", studentIds)
           .eq("subject_id", subjectId)
           .eq("term", term)
-          .eq("assessment_type", "hoc_ky")
       : { data: [] };
   const grades = (gradeData ?? []) as GradeRow[];
 
   const className = classes.find((c) => c.id === classId)?.name ?? "";
-  const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? "";
+  const subjectName = subject?.name ?? "";
 
   return (
     <div className="space-y-4">
       <PageHeader
         section="Phân hệ III - Học tập"
         title="Nhập / đồng bộ điểm"
-        description="Nhập và đồng bộ điểm định kỳ của học sinh theo lớp và môn học."
+        description="Sổ điểm theo Thông tư 22/2021: điểm đánh giá thường xuyên (ĐĐGtx), giữa kỳ (ĐĐGgk), cuối kỳ (ĐĐGck)."
       />
 
       <div className="flex flex-wrap gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
@@ -128,7 +135,7 @@ export default async function GradesPage({
         />
         <FilterSelect
           name="term"
-          label="Kỳ đánh giá"
+          label="Học kỳ"
           value={term}
           options={TERMS}
           params={params}
@@ -136,9 +143,18 @@ export default async function GradesPage({
       </div>
 
       <div className="rounded-xl border border-border bg-primary-bg p-3 text-sm text-primary">
-        Điểm học kỳ được <strong>đồng bộ</strong> từ sổ điểm điện tử của giáo
-        viên bộ môn. GVCN có thể chỉnh sửa và bấm “Lưu điểm” để cập nhật lại
-        hệ thống.
+        {method === "score" ? (
+          <>
+            ĐTB môn học kỳ = (Tổng ĐĐGtx + 2 x ĐĐGgk + 3 x ĐĐGck) / (số ĐĐGtx +
+            5), làm tròn 1 chữ số thập phân. Nhập nhiều điểm ĐĐGtx cách nhau
+            bởi dấu cách hoặc dấu phẩy.
+          </>
+        ) : (
+          <>
+            Môn <strong>{subjectName}</strong> đánh giá bằng nhận xét
+            (Đạt/Chưa đạt) theo Thông tư 22/2021 - không nhập điểm số.
+          </>
+        )}
       </div>
 
       {classId && subjectId ? (
@@ -148,6 +164,7 @@ export default async function GradesPage({
           grades={grades}
           subjectId={subjectId}
           term={term}
+          method={method}
           meId={profile.id}
         />
       ) : (

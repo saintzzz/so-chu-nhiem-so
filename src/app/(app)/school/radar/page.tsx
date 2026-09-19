@@ -8,10 +8,10 @@ import type {
   AttendanceRecord,
   ClassRoom,
   CounselingCase,
-  Grade,
   Incident,
   Student,
 } from "@/types";
+import { semesterAverage } from "@/lib/tt22";
 
 type RiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -116,9 +116,8 @@ export default async function SchoolRadarPage() {
     studentIds.length
       ? supabase
           .from("grades")
-          .select("student_id")
+          .select("student_id,subject_id,assessment_type,score")
           .in("student_id", studentIds)
-          .lt("score", 5)
       : Promise.resolve({ data: [] }),
     classIds.length
       ? supabase
@@ -138,7 +137,24 @@ export default async function SchoolRadarPage() {
     AttendanceRecord,
     "student_id"
   >[];
-  const lowGrades = (gradeRes.data ?? []) as Pick<Grade, "student_id">[];
+  const gradeRows = (gradeRes.data ?? []) as {
+    student_id: string;
+    subject_id: string;
+    assessment_type: string;
+    score: number | null;
+  }[];
+  const cellRows = new Map<string, typeof gradeRows>();
+  for (const g of gradeRows) {
+    const key = `${g.student_id}|${g.subject_id}`;
+    const arr = cellRows.get(key) ?? [];
+    arr.push(g);
+    cellRows.set(key, arr);
+  }
+  const lowGradeStudents = new Set<string>();
+  for (const [key, rows] of cellRows) {
+    const a = semesterAverage(rows);
+    if (a != null && a < 5) lowGradeStudents.add(key.split("|")[0]);
+  }
   const incidents = (incidentRes.data ?? []) as Pick<
     Incident,
     "id" | "class_id" | "status"
@@ -165,8 +181,8 @@ export default async function SchoolRadarPage() {
     const cid = classOfStudent.get(r.student_id);
     if (cid) bucket(cid).unexcused += 1;
   }
-  for (const r of lowGrades) {
-    const cid = classOfStudent.get(r.student_id);
+  for (const sid of lowGradeStudents) {
+    const cid = classOfStudent.get(sid);
     if (cid) bucket(cid).lowGrades += 1;
   }
   for (const r of incidents) {

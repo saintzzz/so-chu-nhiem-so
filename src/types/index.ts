@@ -99,9 +99,10 @@ export interface Grade {
   id: string;
   student_id: string;
   subject_id: string;
-  term: "gk1" | "ck1" | "gk2" | "ck2";
-  assessment_type: "mieng" | "phut15" | "tiet45" | "hoc_ky";
-  score: number;
+  term: "hk1" | "hk2";
+  assessment_type: "ddg_tx" | "ddg_gk" | "ddg_ck";
+  score: number | null;
+  result: "dat" | "chua_dat" | null;
 }
 
 export interface ConductRecord {

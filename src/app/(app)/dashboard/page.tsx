@@ -11,6 +11,7 @@ import {
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, LineChart } from "@/components/charts";
 import { cn } from "@/lib/utils";
@@ -39,12 +40,10 @@ interface FeedItem {
 }
 
 const TERM_LABELS: Record<string, string> = {
-  gk1: "Tháng 10",
-  ck1: "Tháng 12",
-  gk2: "Tháng 3",
-  ck2: "Tháng 5",
+  hk1: "Học kỳ I",
+  hk2: "Học kỳ II",
 };
-const TERM_ORDER = ["gk1", "ck1", "gk2", "ck2"];
+const TERM_ORDER = ["hk1", "hk2"];
 
 function relTime(iso: string | null): string {
   if (!iso) return "";
@@ -133,41 +132,49 @@ export default async function DashboardPage() {
       ? Math.round(((attPresent ?? 0) / attTotal) * 1000) / 10
       : null;
 
-  // Grades: per-student average + per-term averages for chart
+  // Grades: ĐTBm theo TT22 cho từng cặp (học sinh, môn, kỳ) rồi tổng hợp
   const { data: gradeRaw } = hasStudents
     ? await supabase
         .from("grades")
-        .select("student_id,term,score")
+        .select("student_id,subject_id,term,assessment_type,score")
         .in("student_id", studentIds)
     : { data: [] };
   const grades = (gradeRaw ?? []) as {
     student_id: string;
+    subject_id: string;
     term: string;
-    score: number;
+    assessment_type: string;
+    score: number | null;
   }[];
-  const sumByStudent = new Map<string, { sum: number; n: number }>();
-  const sumByTerm = new Map<string, { sum: number; n: number }>();
+  const cellRows = new Map<string, typeof grades>();
   for (const g of grades) {
-    const s = sumByStudent.get(g.student_id) ?? { sum: 0, n: 0 };
-    s.sum += g.score;
-    s.n += 1;
-    sumByStudent.set(g.student_id, s);
-    const t = sumByTerm.get(g.term) ?? { sum: 0, n: 0 };
-    t.sum += g.score;
-    t.n += 1;
-    sumByTerm.set(g.term, t);
+    const key = `${g.student_id}|${g.subject_id}|${g.term}`;
+    const arr = cellRows.get(key) ?? [];
+    arr.push(g);
+    cellRows.set(key, arr);
   }
-  const weakStudents = [...sumByStudent.values()].filter(
-    (v) => v.n > 0 && v.sum / v.n < 5,
+  const studentAvgs = new Map<string, number[]>();
+  const termAvgs = new Map<string, number[]>();
+  for (const [key, rows] of cellRows) {
+    const a = semesterAverage(rows);
+    if (a == null) continue;
+    const [sid, , t] = key.split("|");
+    studentAvgs.set(sid, [...(studentAvgs.get(sid) ?? []), a]);
+    termAvgs.set(t, [...(termAvgs.get(t) ?? []), a]);
+  }
+  const weakStudents = [...studentAvgs.values()].filter(
+    (v) => v.length > 0 && v.reduce((x, y) => x + y, 0) / v.length < 5,
   ).length;
-  const chartData = TERM_ORDER.filter((t) => sumByTerm.has(t)).map((t) => ({
-    label: TERM_LABELS[t] ?? t,
-    value:
-      Math.round(
-        ((sumByTerm.get(t)?.sum ?? 0) / Math.max(sumByTerm.get(t)?.n ?? 1, 1)) *
-          10,
-      ) / 10,
-  }));
+  const chartData = TERM_ORDER.filter((t) => termAvgs.has(t)).map((t) => {
+    const vals = termAvgs.get(t) ?? [];
+    return {
+      label: TERM_LABELS[t] ?? t,
+      value:
+        Math.round(
+          (vals.reduce((x, y) => x + y, 0) / Math.max(vals.length, 1)) * 10,
+        ) / 10,
+    };
+  });
 
   // Conduct risk: students with a violation in last 30 days
   const since30 = "2026-08-19";

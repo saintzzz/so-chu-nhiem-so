@@ -23,8 +23,8 @@ export interface ExistingEval {
 export const RATINGS = [
   { value: "tot", label: "Tốt" },
   { value: "kha", label: "Khá" },
-  { value: "trung_binh", label: "Trung bình" },
-  { value: "yeu", label: "Yếu" },
+  { value: "dat", label: "Đạt" },
+  { value: "chua_dat", label: "Chưa đạt" },
 ];
 
 /** Editable hạnh kiểm table - one row per student, upsert on save. */
@@ -77,7 +77,7 @@ export function ConductEvaluationEditor({
         const ev = evaluations.find((e) => e.student_id === s.id);
         const d = draft[s.id] ?? { rating: "tot", comment: "" };
         return {
-          ...(ev ? { id: ev.id } : {}),
+          id: ev?.id ?? crypto.randomUUID(),
           student_id: s.id,
           term,
           rating: d.rating,

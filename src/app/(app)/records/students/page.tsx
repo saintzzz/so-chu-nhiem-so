@@ -11,6 +11,7 @@ import {
   StudentsExplorer,
   type StudentSummaryRow,
 } from "@/components/records/students-explorer";
+import { averageByStudent } from "@/lib/tt22";
 
 const ROLE_LABEL: Record<string, string> = {
   lop_truong: "Lớp trưởng",
@@ -25,8 +26,8 @@ const CONDUCT_RATING: Record<
 > = {
   tot: { label: "Tốt", tone: "success" },
   kha: { label: "Khá", tone: "primary" },
-  trung_binh: { label: "Trung bình", tone: "warning" },
-  yeu: { label: "Yếu", tone: "error" },
+  dat: { label: "Đạt", tone: "warning" },
+  chua_dat: { label: "Chưa đạt", tone: "error" },
 };
 
 interface ConductEvalRow {
@@ -94,9 +95,9 @@ export default async function RecordsStudentsPage({
     ? await Promise.all([
         supabase
           .from("grades")
-          .select("student_id,score")
+          .select("student_id,subject_id,term,assessment_type,score")
           .in("student_id", ids)
-          .limit(5000),
+          .limit(20000),
         supabase
           .from("conduct_evaluations")
           .select("student_id,rating")
@@ -125,16 +126,15 @@ export default async function RecordsStudentsPage({
     }
   }
 
-  const scoreSum = new Map<string, { sum: number; n: number }>();
-  for (const g of (gradesRes.data ?? []) as {
-    student_id: string;
-    score: number;
-  }[]) {
-    const cur = scoreSum.get(g.student_id) ?? { sum: 0, n: 0 };
-    cur.sum += g.score;
-    cur.n += 1;
-    scoreSum.set(g.student_id, cur);
-  }
+  const studentAvgMap = averageByStudent(
+    (gradesRes.data ?? []) as {
+      student_id: string;
+      subject_id: string;
+      term: string;
+      assessment_type: string;
+      score: number | null;
+    }[],
+  );
 
   const attCount = new Map<string, { attended: number; total: number }>();
   for (const a of attRows) {
@@ -152,7 +152,7 @@ export default async function RecordsStudentsPage({
   );
 
   const rows: StudentSummaryRow[] = students.map((s) => {
-    const sc = scoreSum.get(s.id);
+    const sc = studentAvgMap.get(s.id);
     const at = attCount.get(s.id);
     const rating = conductByStudent.get(s.id);
     const c = rating ? CONDUCT_RATING[rating] : undefined;
@@ -168,7 +168,7 @@ export default async function RecordsStudentsPage({
         ? (ROLE_LABEL[roleByStudent.get(s.id)!] ?? roleByStudent.get(s.id)!)
         : null,
       positivePoints: s.positive_points,
-      avgScore: sc ? Math.round((sc.sum / sc.n) * 10) / 10 : null,
+      avgScore: sc ?? null,
       attendancePct:
         at && at.total > 0 ? Math.round((at.attended / at.total) * 100) : null,
       conductLabel: c?.label ?? null,

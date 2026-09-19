@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateText } from "@/lib/ai";
+import { averageByStudent } from "@/lib/tt22";
 
 interface StudentInput {
   code: string;
@@ -12,8 +13,8 @@ interface StudentInput {
 const RATING_LABELS: Record<string, string> = {
   tot: "Tốt",
   kha: "Khá",
-  trung_binh: "Trung bình",
-  yeu: "Yếu",
+  dat: "Đạt",
+  chua_dat: "Chưa đạt",
 };
 
 export async function POST(req: Request) {
@@ -67,9 +68,9 @@ export async function POST(req: Request) {
           .limit(5000),
         supabase
           .from("grades")
-          .select("student_id,score")
+          .select("student_id,subject_id,term,assessment_type,score")
           .in("student_id", ids)
-          .limit(10000),
+          .limit(20000),
         supabase
           .from("attendance_records")
           .select("student_id,status")
@@ -88,16 +89,15 @@ export async function POST(req: Request) {
     else v.khen_thuong += 1;
     violById.set(r.student_id, v);
   }
-  const scoreById = new Map<string, { sum: number; n: number }>();
-  for (const g of (gradeRes.data ?? []) as {
-    student_id: string;
-    score: number;
-  }[]) {
-    const s = scoreById.get(g.student_id) ?? { sum: 0, n: 0 };
-    s.sum += g.score;
-    s.n += 1;
-    scoreById.set(g.student_id, s);
-  }
+  const scoreById = averageByStudent(
+    (gradeRes.data ?? []) as {
+      student_id: string;
+      subject_id: string;
+      term: string;
+      assessment_type: string;
+      score: number | null;
+    }[],
+  );
   const attById = new Map<string, { total: number; absent: number }>();
   for (const a of (attRes.data ?? []) as {
     student_id: string;
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       xep_loai: RATING_LABELS[s.rating] ?? s.rating,
       vi_pham: viol?.vi_pham ?? 0,
       khen_thuong: viol?.khen_thuong ?? 0,
-      diem_tb: score && score.n > 0 ? Math.round((score.sum / score.n) * 10) / 10 : null,
+      diem_tb: score ?? null,
       chuyen_can_pct:
         att && att.total > 0
           ? Math.round(((att.total - att.absent) / att.total) * 100)

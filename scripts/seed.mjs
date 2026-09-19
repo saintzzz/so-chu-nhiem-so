@@ -244,20 +244,39 @@ async function main() {
   await batch("timetable_entries", ttRows);
   const { data: timetable } = await supabase.from("timetable_entries").select();
 
-  // 7. Grades (gk1 + ck1 hoc_ky for all subjects per student - ~2 rows/student/subject)
+  // 7. Grades theo TT22: ddg_tx (2-3), ddg_gk, ddg_ck cho môn chấm điểm;
+  // môn nhận xét (Âm nhạc, Mỹ thuật, Thể dục, Tin học) lưu result dat/chua_dat
+  const scoreSubjects = subjects.filter((s) => s.assessment_method !== "comment");
+  const commentSubjects = subjects.filter((s) => s.assessment_method === "comment");
+  const rndScore = () => Math.round(Math.min(10, Math.max(3, 5.5 + (Math.random() * 4.5) - (chance(0.12) ? 2 : 0))) * 10) / 10;
   const gradeRows = [];
   for (const s of students) {
-    for (const subj of subjects.slice(0, 9)) {
-      for (const term of ["gk1", "ck1"]) {
+    for (const subj of scoreSubjects) {
+      const txCount = ri(2, 3);
+      for (let i = 0; i < txCount; i++) {
         gradeRows.push({
-          student_id: s.id, subject_id: subj.id, term,
-          assessment_type: "hoc_ky",
-          score: Math.min(10, Math.max(3, 5.5 + (Math.random() * 4.5) - (chance(0.12) ? 2 : 0))).toFixed(1) * 1,
+          student_id: s.id, subject_id: subj.id, term: "hk1",
+          assessment_type: "ddg_tx", score: rndScore(), seq: i + 1,
         });
       }
+      gradeRows.push({
+        student_id: s.id, subject_id: subj.id, term: "hk1",
+        assessment_type: "ddg_gk", score: rndScore(), seq: 1,
+      });
+      gradeRows.push({
+        student_id: s.id, subject_id: subj.id, term: "hk1",
+        assessment_type: "ddg_ck", score: rndScore(), seq: 1,
+      });
+    }
+    for (const subj of commentSubjects) {
+      gradeRows.push({
+        student_id: s.id, subject_id: subj.id, term: "hk1",
+        assessment_type: "ddg_ck", score: null, seq: 1,
+        result: chance(0.92) ? "dat" : "chua_dat",
+      });
     }
   }
-  await batch("grades", gradeRows.map((g) => ({ ...g, score: Math.round(g.score * 10) / 10 })));
+  await batch("grades", gradeRows);
 
   // 8. Attendance - last 45 school days
   const attRows = [];
@@ -284,7 +303,7 @@ async function main() {
   await batch("conduct_records", crRows);
   const ceRows = students.map((s) => ({
     student_id: s.id, term: "hk1",
-    rating: rand(["tot", "tot", "tot", "kha", "kha", "trung_binh"]),
+    rating: rand(["tot", "tot", "tot", "kha", "kha", "dat"]),
     comment: null,
   }));
   await batch("conduct_evaluations", ceRows);

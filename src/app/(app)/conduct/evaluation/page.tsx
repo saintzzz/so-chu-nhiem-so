@@ -87,7 +87,7 @@ export default async function ConductEvaluationPage({
 
   const rated = new Set(evaluations.map((e) => e.student_id));
   const tot = evaluations.filter((e) => e.rating === "tot").length;
-  const yeu = evaluations.filter((e) => e.rating === "yeu").length;
+  const chuaDat = evaluations.filter((e) => e.rating === "chua_dat").length;
 
   return (
     <div className="space-y-4">
@@ -122,7 +122,7 @@ export default async function ConductEvaluationPage({
           tone="primary"
         />
         <StatCard label="Xếp loại Tốt" value={tot} tone="success" />
-        <StatCard label="Xếp loại Yếu" value={yeu} tone="error" />
+        <StatCard label="Xếp loại Chưa đạt" value={chuaDat} tone="error" />
       </div>
 
       {classId ? (

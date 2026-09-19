@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { NAV } from "@/lib/nav";
@@ -17,6 +17,8 @@ export function CommandPalette({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const items = useMemo(() => {
     const flat: { label: string; href: string; section: string }[] = [];
@@ -33,6 +35,10 @@ export function CommandPalette({
   );
 
   useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -45,6 +51,23 @@ export function CommandPalette({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const go = (href: string) => {
+    router.push(href);
+    onClose();
+  };
+
+  const onInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && filtered[activeIndex]) {
+      go(filtered[activeIndex].href);
+    }
+  };
 
   return (
     <div
@@ -63,24 +86,37 @@ export function CommandPalette({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onInputKeyDown}
             placeholder="Tìm chức năng..."
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="command-palette-list"
+            aria-activedescendant={
+              filtered[activeIndex] ? `cp-item-${activeIndex}` : undefined
+            }
             className="w-full bg-transparent text-sm outline-none"
           />
         </div>
-        <ul className="max-h-72 overflow-y-auto p-2">
+        <ul
+          id="command-palette-list"
+          role="listbox"
+          ref={listRef}
+          className="max-h-72 overflow-y-auto p-2"
+        >
           {filtered.length === 0 && (
             <li className="px-3 py-6 text-center text-sm text-muted-foreground">
               Không có kết quả
             </li>
           )}
-          {filtered.map((i) => (
-            <li key={i.href}>
+          {filtered.map((i, idx) => (
+            <li key={i.href} role="option" aria-selected={idx === activeIndex}>
               <button
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => {
-                  router.push(i.href);
-                  onClose();
-                }}
+                id={`cp-item-${idx}`}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-muted ${
+                  idx === activeIndex ? "bg-muted" : ""
+                }`}
+                onMouseEnter={() => setActiveIndex(idx)}
+                onClick={() => go(i.href)}
               >
                 <span>{i.label}</span>
                 {i.section && (

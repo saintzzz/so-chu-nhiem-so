@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 export function AutoGrowTextarea({
   className,
   value,
+  bare = false,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & { bare?: boolean }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -29,7 +30,11 @@ export function AutoGrowTextarea({
       rows={1}
       value={value}
       className={cn(
-        "block w-full resize-none overflow-hidden rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30",
+        bare
+          ? // In-table editing: no box of its own — the cell is the container.
+            // Underline appears on hover/focus like Fluent inline fields.
+            "block w-full resize-none overflow-hidden border-0 border-b border-transparent bg-transparent px-0 py-0.5 text-sm outline-none transition-colors hover:border-border focus:border-primary"
+          : "block w-full resize-none overflow-hidden rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30",
         className,
       )}
       {...props}

@@ -416,7 +416,8 @@ export function ConductEvaluationEditor({
                   value={d.comment}
                   onChange={(e) => patch(s.id, { comment: e.target.value })}
                   placeholder="Nhận xét…"
-                  className="min-w-48"
+                  bare
+                  className="min-w-48 flex-1"
                 />
                 <button
                   type="button"

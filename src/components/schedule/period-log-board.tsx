@@ -395,22 +395,27 @@ export function PeriodLogBoard({
                           <span className="mb-1 block text-xs font-medium text-muted-foreground">
                             Sĩ số có mặt
                           </span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={roster.size}
-                            value={draft.present}
-                            onChange={(e) =>
-                              setDrafts((d) => ({
-                                ...d,
-                                [entry.id]: {
-                                  ...draft,
-                                  present: e.target.value,
-                                },
-                              }))
-                            }
-                            className="h-8 w-24 rounded-lg border border-border bg-background px-2.5 text-sm"
-                          />
+                          <span className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              max={roster.size}
+                              value={draft.present}
+                              onChange={(e) =>
+                                setDrafts((d) => ({
+                                  ...d,
+                                  [entry.id]: {
+                                    ...draft,
+                                    present: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="h-8 w-24 rounded-lg border border-border bg-background px-2.5 text-sm"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              / {roster.size} học sinh
+                            </span>
+                          </span>
                         </label>
                         <label className="block min-w-48 flex-1">
                           <span className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -428,9 +433,6 @@ export function PeriodLogBoard({
                             className="w-full"
                           />
                         </label>
-                        <span className="text-xs text-muted-foreground">
-                          / {roster.size} học sinh
-                        </span>
                       </div>
 
                       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

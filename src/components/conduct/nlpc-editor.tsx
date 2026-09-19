@@ -247,6 +247,7 @@ export function NlpcEditor({
                 <AutoGrowTextarea
                   value={groupComments[s.id]?.[g.grp] ?? ""}
                   onChange={(e) => setComment(s.id, g.grp, e.target.value)}
+                  bare
                   className="w-40 text-xs"
                 />
               </td>

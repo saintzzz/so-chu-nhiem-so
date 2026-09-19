@@ -169,6 +169,7 @@ export function AttendanceRoster({
                         }))
                       }
                       placeholder="Nhận xét ý thức tham gia..."
+                      bare
                       className="min-w-56"
                     />
                   </td>

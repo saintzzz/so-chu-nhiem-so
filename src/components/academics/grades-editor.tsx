@@ -802,6 +802,7 @@ export function GradesEditor({
                   </td>
                   <td>
                     <AutoGrowTextarea
+                      bare
                       value={c.commentGk}
                       onChange={(e) => setCell(s.id, { commentGk: e.target.value })}
                       className="w-44"
@@ -823,6 +824,7 @@ export function GradesEditor({
                   </td>
                   <td>
                     <AutoGrowTextarea
+                      bare
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
                       className="w-44"
@@ -868,6 +870,7 @@ export function GradesEditor({
                   </td>
                   <td>
                     <AutoGrowTextarea
+                      bare
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
                       className="w-44"
@@ -893,6 +896,7 @@ export function GradesEditor({
                   </td>
                   <td>
                     <AutoGrowTextarea
+                      bare
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
                       className="w-52"

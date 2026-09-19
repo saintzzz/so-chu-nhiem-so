@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Role, Profile } from "@/types";
@@ -22,7 +23,11 @@ export const STAFF_ROLES: Role[] = [
   "admin",
 ];
 
-export async function getProfile(): Promise<Profile | null> {
+/**
+ * Deduped per-request via React cache() - layout + page + actions share one
+ * auth.getUser() + profiles lookup instead of repeating Supabase roundtrips.
+ */
+export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,7 +39,7 @@ export async function getProfile(): Promise<Profile | null> {
     .eq("id", user.id)
     .single();
   return (data as Profile | null) ?? null;
-}
+});
 
 export async function requireProfile(): Promise<Profile> {
   const profile = await getProfile();

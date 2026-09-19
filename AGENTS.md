@@ -70,3 +70,14 @@ scripts/            # Asset download scripts
 ## Agent Workflow
 - Edit `.agents/skills/clone-website/` for cloning-workflow changes. It is the canonical skill used by Codex, Cursor, and OpenCode.
 - Keep `.claude/commands/clone-website.md` as a thin Claude Code bridge to the canonical skill; do not duplicate the workflow there.
+
+## Project Conventions (Sổ Chủ Nhiệm Số)
+
+- **RBAC is mandatory:** every route must call `requireRoles([...])` per `docs/research/ROLE-MATRIX.md` (default-deny). Server actions/API routes use `checkActionRole` / `getProfile` role checks - never rely on layout guards or `user != null` alone.
+- **Vietnamese copy:** hyphen `-` only, never em-dash/en-dash.
+- **Auth lookups:** `getProfile` is React `cache()`-deduped per request - call it freely in layout + page + actions.
+- **DB types:** verify column types in seed/migrations first (`month` is int, dates are real `date`).
+- **AI:** providers via env (`GEMINI_API_KEY`/`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `AI_PROVIDER`/`AI_MODEL`) in `src/lib/ai.ts` - never hard-code; Gemini needs `thinkingBudget: 0` for JSON output.
+- **Deploy:** push to `master` auto-deploys to Vercel (`saintzzz/so-chu-nhiem-so`). Do NOT re-add `output: "standalone"` - it breaks remote builds.
+- **Secrets:** `.env.local` and `~/.config/devin/secrets/*` stay uncommitted; never print key values.
+- **QA:** verify with Playwright - login per demo role (`*@demo.scn` / `demo1234`), check allowed AND denied routes, verify mutations in DB.

@@ -55,19 +55,17 @@ export default async function GradesPage({
   if (profile.role === "gvcn") {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const [{ data: classData }, { data: subjectData }] = await Promise.all([
+    classQuery.order("name"),
+    supabase.from("subjects").select("id,name").order("name"),
+  ]);
   const classes = (classData ?? []) as ClassRow[];
+  const subjects = (subjectData ?? []) as SubjectRow[];
 
   const classId =
     typeof sp.class === "string" && classes.some((c) => c.id === sp.class)
       ? sp.class
       : (classes[0]?.id ?? "");
-
-  const { data: subjectData } = await supabase
-    .from("subjects")
-    .select("id,name")
-    .order("name");
-  const subjects = (subjectData ?? []) as SubjectRow[];
 
   const subjectId =
     typeof sp.subject === "string" && subjects.some((s) => s.id === sp.subject)

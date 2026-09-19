@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/auth";
 import { generateText } from "@/lib/ai";
 
 interface StudentInput {
@@ -16,6 +17,10 @@ const RATING_LABELS: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
+  const profile = await getProfile();
+  if (!profile || !["gvcn", "bgh"].includes(profile.role)) {
+    return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
+  }
   let classId: string | undefined;
   let term: string | undefined;
   let students: StudentInput[] = [];

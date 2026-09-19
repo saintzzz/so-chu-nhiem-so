@@ -53,7 +53,7 @@ export default async function SelfAssessmentPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ XII - Năng lực GVCN"
+        section="Năng lực giáo viên chủ nhiệm"
         title="Tự đánh giá & kế hoạch"
         description={
           year

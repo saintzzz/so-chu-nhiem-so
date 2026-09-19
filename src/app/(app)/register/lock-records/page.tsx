@@ -28,7 +28,7 @@ export default async function LockRecordsPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Duyệt & khóa sổ học bạ"
         description="Duyệt và khóa sổ học bạ theo kỳ - sau khi khóa, dữ liệu không thể chỉnh sửa."
       />

@@ -69,7 +69,7 @@ export default async function SafetyArchivePage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VIII - An toàn HS"
+        section="An toàn học sinh"
         title="Lưu trữ & tra cứu"
         description="Tra cứu hồ sơ các sự cố đã xử lý hoặc đã lưu trữ."
       />

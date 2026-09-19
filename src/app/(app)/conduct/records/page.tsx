@@ -93,7 +93,7 @@ export default async function ConductRecordsPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ IV - Rèn luyện"
+        section="Rèn luyện"
         title="Nhận xét & vi phạm/khen thưởng"
         description="Ghi nhận nhận xét, vi phạm và khen thưởng của học sinh trong lớp."
       />

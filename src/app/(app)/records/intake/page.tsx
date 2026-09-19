@@ -71,7 +71,7 @@ export default async function RecordsIntakePage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ I - Hồ sơ lớp học"
+        section="Hồ sơ lớp học"
         title="Tiếp nhận lớp / danh sách lớp"
         description={
           profile.role === "gvcn"

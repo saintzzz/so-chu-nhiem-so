@@ -69,7 +69,7 @@ export default async function EvidencePage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ XII - Năng lực GVCN"
+        section="Năng lực giáo viên chủ nhiệm"
         title="Minh chứng & đánh giá cuối năm"
         description={
           year

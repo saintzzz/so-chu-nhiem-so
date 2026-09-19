@@ -25,7 +25,7 @@ export default async function SuggestionsPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
+          section="Sổ chủ nhiệm"
           title="Gợi ý công việc (AI)"
         />
         <EmptyClassNotice />
@@ -45,7 +45,7 @@ export default async function SuggestionsPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Gợi ý công việc (AI)"
         description={`Lớp ${cls.name} · Các công việc được hệ thống đề xuất từ lịch năm học và dữ liệu lớp.`}
       />

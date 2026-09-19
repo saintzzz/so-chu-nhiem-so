@@ -66,7 +66,7 @@ export default async function ComposePage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VI - Phụ huynh"
+        section="Phụ huynh"
         title="Soạn & gửi thông báo"
         description="Gửi thông báo đến phụ huynh cả lớp hoặc từng học sinh."
       />

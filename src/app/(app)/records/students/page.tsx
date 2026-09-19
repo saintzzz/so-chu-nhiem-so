@@ -61,7 +61,7 @@ export default async function RecordsStudentsPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ I - Hồ sơ lớp học"
+          section="Hồ sơ lớp học"
           title="Chi tiết hồ sơ học sinh"
         />
         <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
@@ -180,7 +180,7 @@ export default async function RecordsStudentsPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ I - Hồ sơ lớp học"
+        section="Hồ sơ lớp học"
         title="Chi tiết hồ sơ học sinh"
         description="Tra cứu hồ sơ tổng hợp của từng học sinh: thông tin, điểm trung bình, chuyên cần và hạnh kiểm. Nhấn vào một dòng để xem chi tiết."
       />

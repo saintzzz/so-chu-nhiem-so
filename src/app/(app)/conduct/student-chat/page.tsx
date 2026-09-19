@@ -69,7 +69,7 @@ export default async function StudentChatPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ IV - Rèn luyện"
+        section="Rèn luyện"
         title="Trao đổi học sinh"
         description="Trao đổi trực tiếp với học sinh về rèn luyện và hạnh kiểm."
       />

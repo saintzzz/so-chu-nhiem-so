@@ -25,7 +25,7 @@ export default async function PlansPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
+          section="Sổ chủ nhiệm"
           title="Kế hoạch tháng / Sơ kết tuần"
         />
         <EmptyClassNotice />
@@ -45,7 +45,7 @@ export default async function PlansPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Kế hoạch tháng / Sơ kết tuần"
         description={`Lớp ${cls.name} · Kế hoạch công tác chủ nhiệm theo tháng và tổng kết tuần.`}
       />

@@ -26,7 +26,7 @@ export default async function RosterPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
+          section="Sổ chủ nhiệm"
           title="Danh sách học sinh & Tổ"
         />
         <EmptyClassNotice />
@@ -66,7 +66,7 @@ export default async function RosterPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Danh sách học sinh & Tổ"
         description={`Lớp ${cls.name} · ${students.length} học sinh · ${groups.length} tổ`}
       />

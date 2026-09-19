@@ -76,8 +76,8 @@ export default async function TeacherChatPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
-        title="Trao đổi với GVBM"
+        section="Học tập"
+        title="Trao đổi với giáo viên bộ môn"
         description="Trao đổi trực tiếp với giáo viên bộ môn về tình hình học tập của học sinh."
       />
 

@@ -132,7 +132,7 @@ export default async function SupportPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
+        section="Học tập"
         title="Học sinh cần hỗ trợ"
         description="Danh sách học sinh có điểm trung bình môn dưới 5.0 và kế hoạch hỗ trợ tương ứng."
       />

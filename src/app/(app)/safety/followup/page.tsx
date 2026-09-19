@@ -69,7 +69,7 @@ export default async function SafetyFollowupPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VIII - An toàn HS"
+        section="An toàn học sinh"
         title="Theo dõi & nhắc"
         description={`Cập nhật tình trạng xử lý và ghi chú theo dõi cho ${incidents.length} sự cố đang mở.`}
       />

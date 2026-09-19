@@ -139,7 +139,7 @@ export default async function TimetablePage({
   return (
     <>
       <PageHeader
-        section="Phân hệ XIII - Thời khóa biểu & Sổ đầu bài"
+        section="Thời khóa biểu & Sổ đầu bài"
         title="Thời khóa biểu"
         description={
           selected

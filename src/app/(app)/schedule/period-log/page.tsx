@@ -222,7 +222,7 @@ export default async function PeriodLogPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ XIII - Thời khóa biểu & Sổ đầu bài"
+        section="Thời khóa biểu & Sổ đầu bài"
         title="Sổ đầu bài"
         description={description}
       />

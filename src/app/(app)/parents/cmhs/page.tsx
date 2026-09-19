@@ -73,7 +73,7 @@ export default async function CmhsPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ VI - Phụ huynh"
+        section="Phụ huynh"
         title="Ban đại diện cha mẹ học sinh"
         description="Thành lập và quản lý Ban đại diện CMHS của lớp theo Điều 44, Thông tư 32/2020 - gồm Trưởng ban, Phó ban và các Ủy viên."
       />

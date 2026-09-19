@@ -73,7 +73,7 @@ export default async function CounselingAssessmentPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ V - Tư vấn học sinh"
+        section="Tư vấn học sinh"
         title="Đánh giá mức độ"
         description="Đánh giá mức độ nghiêm trọng và cập nhật trạng thái xử lý của từng ca."
       />

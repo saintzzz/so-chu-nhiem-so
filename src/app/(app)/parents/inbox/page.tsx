@@ -65,7 +65,7 @@ export default async function InboxPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VI - Phụ huynh"
+        section="Phụ huynh"
         title="Hộp thư phản hồi"
         description={`Tin nhắn từ phụ huynh gửi đến giáo viên chủ nhiệm. ${unread} tin chưa đọc.`}
       />

@@ -33,7 +33,7 @@ export default async function AttendanceNotifyPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ II - Chuyên cần"
+          section="Chuyên cần"
           title="Thông báo phụ huynh"
         />
         <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
@@ -66,7 +66,7 @@ export default async function AttendanceNotifyPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ II - Chuyên cần"
+        section="Chuyên cần"
         title="Thông báo phụ huynh"
         description={`Soạn và gửi thông báo đến phụ huynh lớp ${selected.name} - toàn lớp hoặc từng học sinh.`}
       />

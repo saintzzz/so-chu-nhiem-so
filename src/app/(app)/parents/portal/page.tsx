@@ -77,7 +77,7 @@ export default async function PortalPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ VI - Phụ huynh"
+          section="Phụ huynh"
           title="Cổng thông tin phụ huynh"
           description="Xem trước thông tin mà phụ huynh nhìn thấy về con em mình."
         />
@@ -168,7 +168,7 @@ export default async function PortalPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ VI - Phụ huynh"
+        section="Phụ huynh"
         title="Cổng thông tin phụ huynh"
         description="Xem trước giao diện thông tin mà phụ huynh nhìn thấy về con em mình."
         actions={

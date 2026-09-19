@@ -129,7 +129,7 @@ export default async function ConductEvaluationPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ IV - Rèn luyện"
+        section="Rèn luyện"
         title="Đánh giá & xếp loại hạnh kiểm"
         description="Xếp loại hạnh kiểm và nhận xét của học sinh theo học kỳ."
       />

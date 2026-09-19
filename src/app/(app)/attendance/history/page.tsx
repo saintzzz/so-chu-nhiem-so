@@ -72,7 +72,7 @@ export default async function AttendanceHistoryPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ II - Chuyên cần"
+          section="Chuyên cần"
           title="Lịch sử chuyên cần"
         />
         <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
@@ -161,7 +161,7 @@ export default async function AttendanceHistoryPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ II - Chuyên cần"
+        section="Chuyên cần"
         title="Lịch sử chuyên cần"
         description={`Tổng hợp chuyên cần của lớp ${selected.name} theo tháng và theo ngày.`}
       />

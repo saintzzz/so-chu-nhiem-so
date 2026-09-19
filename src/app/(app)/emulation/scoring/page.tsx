@@ -59,7 +59,7 @@ export default async function EmulationScoringPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ X - Thi đua"
+        section="Thi đua"
         title="Thu thập & tính điểm thi đua"
         description={`Kỳ thi đua ${PERIOD} - nhập điểm theo tiêu chí cho từng lớp`}
       />

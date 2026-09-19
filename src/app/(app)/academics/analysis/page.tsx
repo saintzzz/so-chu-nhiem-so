@@ -206,7 +206,7 @@ export default async function AnalysisPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
+        section="Học tập"
         title="Phân tích kết quả học tập"
         description="ĐTB môn học kỳ theo TT22, phân bố kết quả và học sinh đầu/cuối lớp."
       />

@@ -86,7 +86,7 @@ export default async function EmulationRankingPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ X - Thi đua"
+        section="Thi đua"
         title="Xếp hạng & khen thưởng"
         description={`Kết quả thi đua kỳ ${PERIOD} giữa các lớp`}
       />

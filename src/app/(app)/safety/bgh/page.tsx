@@ -66,8 +66,8 @@ export default async function SafetyBghPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VIII - An toàn HS"
-        title="Báo cáo BGH"
+        section="An toàn học sinh"
+        title="Báo cáo Ban Giám Hiệu"
         description="Tổng hợp sự cố an toàn học sinh toàn trường và trạng thái báo cáo lên Ban Giám Hiệu."
       />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -82,7 +82,7 @@ export default async function SafetyBghPage() {
           value={open}
           tone={open > 0 ? "warning" : "default"}
         />
-        <StatCard label="Đã báo cáo BGH" value={reported} tone="success" />
+        <StatCard label="Đã báo cáo Ban Giám Hiệu" value={reported} tone="success" />
       </div>
       <BghTable
         rows={incidents.map((i) => ({

@@ -81,7 +81,7 @@ export default async function ActivitiesAnnouncePage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VII - Hoạt động GD"
+        section="Hoạt động giáo dục"
         title="Thông báo & đăng ký"
         description="Gửi thông báo đến phụ huynh và đăng ký danh sách học sinh tham gia hoạt động đã được duyệt."
       />

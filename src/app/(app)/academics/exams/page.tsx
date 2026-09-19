@@ -78,7 +78,7 @@ export default async function ExamsPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
+        section="Học tập"
         title="Quản lý kỳ thi"
         description="Tạo kỳ thi, xếp lịch thi theo lớp và môn, phân công phòng thi và giám thị."
       />

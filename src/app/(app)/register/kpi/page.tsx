@@ -25,8 +25,8 @@ export default async function KpiPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
-          title="Đăng ký KPI"
+          section="Sổ chủ nhiệm"
+          title="Đăng ký chỉ tiêu hiệu suất"
         />
         <EmptyClassNotice />
       </>
@@ -44,8 +44,8 @@ export default async function KpiPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
-        title="Đăng ký KPI"
+        section="Sổ chủ nhiệm"
+        title="Đăng ký chỉ tiêu hiệu suất"
         description={`Lớp ${cls.name} · Chỉ tiêu chất lượng theo kỳ (chuyên cần, tỉ lệ khá, vi phạm).`}
       />
       <KpiClient classId={cls.id} kpis={kpis} />

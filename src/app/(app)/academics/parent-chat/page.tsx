@@ -110,7 +110,7 @@ export default async function ParentChatPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
+        section="Học tập"
         title="Trao đổi phụ huynh"
         description="Trao đổi trực tiếp với phụ huynh học sinh trong lớp."
       />

@@ -111,7 +111,7 @@ export default async function ActivitiesAttendancePage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ VII - Hoạt động GD"
+        section="Hoạt động giáo dục"
         title="Điểm danh & đánh giá"
         description="Điểm danh học sinh tham gia hoạt động và ghi nhận đánh giá ý thức."
       />

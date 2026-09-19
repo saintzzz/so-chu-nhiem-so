@@ -101,7 +101,7 @@ export default async function DeptDashboardPage() {
     <>
       <PageHeader
         section="Quản trị"
-        title="Dashboard cấp Sở GD&ĐT"
+        title="Dashboard cấp Sở Giáo dục và Đào tạo"
         description="Số liệu tổng hợp toàn hệ thống - trường, lớp, giáo viên, học sinh"
       />
 

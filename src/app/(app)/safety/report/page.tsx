@@ -67,7 +67,7 @@ export default async function SafetyReportPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VIII - An toàn HS"
+        section="An toàn học sinh"
         title="Ghi nhận sự cố"
         description="Ghi nhận nhanh các sự cố liên quan đến an toàn, sức khỏe và kỷ luật của học sinh."
       />

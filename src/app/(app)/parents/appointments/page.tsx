@@ -59,7 +59,7 @@ export default async function AppointmentsPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VI - Phụ huynh"
+        section="Phụ huynh"
         title="Lịch hẹn trao đổi"
         description="Quản lý lịch hẹn trao đổi trực tiếp giữa giáo viên chủ nhiệm và phụ huynh."
       />

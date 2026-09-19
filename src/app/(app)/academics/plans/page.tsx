@@ -119,7 +119,7 @@ export default async function PlansPage({
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ III - Học tập"
+        section="Học tập"
         title="Kế hoạch hỗ trợ & tiến bộ"
         description="Theo dõi và phê duyệt các kế hoạch hỗ trợ học sinh yếu."
       />

@@ -23,7 +23,7 @@ export default async function RecordsUploadPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ I - Hồ sơ lớp học"
+        section="Hồ sơ lớp học"
         title="Upload danh sách học sinh"
         description="Tải lên file Excel hoặc CSV để xem trước, kiểm tra và nhập học sinh vào lớp."
       />

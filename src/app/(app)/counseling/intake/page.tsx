@@ -74,7 +74,7 @@ export default async function CounselingIntakePage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ V - Tư vấn học sinh"
+        section="Tư vấn học sinh"
         title="Tiếp nhận & phát hiện"
         description="Ghi nhận các dấu hiệu học sinh cần tư vấn tâm lý / hỗ trợ."
       />

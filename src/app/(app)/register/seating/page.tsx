@@ -26,7 +26,7 @@ export default async function SeatingPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
+          section="Sổ chủ nhiệm"
           title="Sơ đồ lớp"
         />
         <EmptyClassNotice />
@@ -67,7 +67,7 @@ export default async function SeatingPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Sơ đồ lớp"
         description={`Lớp ${cls.name} · Tháng ${CURRENT_MONTH.slice(5)}/${CURRENT_MONTH.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
       />

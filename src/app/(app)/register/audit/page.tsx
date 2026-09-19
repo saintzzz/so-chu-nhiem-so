@@ -47,7 +47,7 @@ export default async function AuditPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Nhật ký thao tác"
         description="Mọi thao tác trên sổ chủ nhiệm đều được ghi lại (chỉ xem)."
       />

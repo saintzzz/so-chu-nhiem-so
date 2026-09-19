@@ -65,90 +65,90 @@ import {
 /** Section-level icons — keyed by nav section label (src/lib/nav.ts). */
 export const SECTION_ICONS: Record<string, LucideIcon> = {
   Dashboard: LayoutDashboard,
-  "I. Hồ sơ lớp học": FolderOpen,
-  "II. Chuyên cần": CalendarCheck,
-  "III. Học tập": BookOpen,
-  "IV. Rèn luyện": Medal,
-  "V. Tư vấn học sinh": HeartHandshake,
-  "VI. Phụ huynh": Users,
-  "VII. Hoạt động GD": CalendarPlus,
-  "VIII. An toàn HS": ShieldCheck,
-  "IX. Sổ chủ nhiệm": NotebookPen,
-  "X. Thi đua": Trophy,
-  "XII. Năng lực GVCN": Target,
-  "XIII. Thời khóa biểu & Sổ đầu bài": CalendarRange,
+  "Hồ sơ lớp học": FolderOpen,
+  "Chuyên cần": CalendarCheck,
+  "Học tập": BookOpen,
+  "Rèn luyện": Medal,
+  "Tư vấn học sinh": HeartHandshake,
+  "Phụ huynh": Users,
+  "Hoạt động giáo dục": CalendarPlus,
+  "An toàn học sinh": ShieldCheck,
+  "Sổ chủ nhiệm": NotebookPen,
+  "Thi đua": Trophy,
+  "Năng lực giáo viên chủ nhiệm": Target,
+  "Thời khóa biểu & Sổ đầu bài": CalendarRange,
   "Tổ chuyên môn": UsersRound,
   "Quản trị": Building2,
 };
 
 /** Item-level icons — keyed by nav item label. Fallback: SquarePen. */
 export const ITEM_ICONS: Record<string, LucideIcon> = {
-  // I. Hồ sơ lớp học
+  // Hồ sơ lớp học
   "Tiếp nhận lớp": Inbox,
   "Upload danh sách học sinh": Upload,
   "Chi tiết hồ sơ học sinh": Contact,
   "Lịch sử cập nhật hồ sơ": History,
   "Báo cáo tổng hợp (AI)": Sparkles,
-  // II. Chuyên cần
+  // Chuyên cần
   "Điểm danh hàng ngày": CheckCheck,
   "Nghỉ học / đi muộn": CalendarClock,
   "Thông báo phụ huynh": Bell,
   "Theo dõi tình trạng": Activity,
   "Lịch sử chuyên cần": History,
-  // III. Học tập
+  // Học tập
   "Nhập / đồng bộ điểm": PenSquare,
   "Phân tích kết quả": BarChart3,
   "Học sinh cần hỗ trợ": LifeBuoy,
-  "Trao đổi với GVBM": MessageSquare,
+  "Trao đổi với giáo viên bộ môn": MessageSquare,
   "Trao đổi phụ huynh": MessagesSquare,
-  "Trao đổi với GVCN": MessageSquare,
+  "Trao đổi với giáo viên chủ nhiệm": MessageSquare,
   "Kế hoạch hỗ trợ & tiến bộ": ClipboardList,
   "Quản lý kỳ thi": FileText,
   "Lịch thi": CalendarDays,
-  // IV. Rèn luyện
+  // Rèn luyện
   "Nhận xét & vi phạm/khen thưởng": MessageSquareText,
   "Đánh giá & xếp loại": Star,
   "Trao đổi học sinh": MessageCircle,
-  // V. Tư vấn học sinh
+  // Tư vấn học sinh
   "Tiếp nhận & phát hiện": Ear,
   "Đánh giá mức độ": Gauge,
   "Chuyển tuyến chuyên gia": Forward,
-  // VI. Phụ huynh
+  // Phụ huynh
   "Soạn & gửi thông báo": Send,
   "Hộp thư phản hồi": Inbox,
   "Lịch hẹn trao đổi": CalendarClock,
   "Cổng thông tin phụ huynh": Globe,
-  "Ban đại diện CMHS": UsersRound,
-  // VII. Hoạt động GD
+  "Ban đại diện cha mẹ học sinh": UsersRound,
+  // Hoạt động giáo dục
   "Lập kế hoạch & phê duyệt": CalendarPlus,
   "Thông báo & đăng ký": Megaphone,
   "Điểm danh & đánh giá": CheckCheck,
   "Duyệt kế hoạch": ClipboardCheck,
-  // VIII. An toàn HS
+  // An toàn học sinh
   "Ghi nhận sự cố": AlertTriangle,
-  "Báo cáo BGH": FileWarning,
+  "Báo cáo Ban Giám Hiệu": FileWarning,
   "Sự cố toàn trường": FileWarning,
   "Theo dõi & nhắc": BellRing,
   "Lưu trữ & tra cứu": Archive,
-  // IX. Sổ chủ nhiệm
+  // Sổ chủ nhiệm
   "Danh sách học sinh & Tổ": Users,
   "Sơ đồ lớp": LayoutGrid,
   "Lịch sử phiên bản sơ đồ": History,
   "Upload lịch năm học": Upload,
   "Gợi ý công việc (AI)": Lightbulb,
   "Kế hoạch tháng / sơ kết tuần": ClipboardList,
-  "Đăng ký KPI": Target,
+  "Đăng ký chỉ tiêu hiệu suất": Target,
   "Ký duyệt sổ chủ nhiệm": PenLine,
   "Duyệt & khóa sổ học bạ": Lock,
   "Xuất sổ": Download,
   "Nhật ký thao tác": ScrollText,
-  // XIII. TKB & Sổ đầu bài
+  // Thời khóa biểu & Sổ đầu bài
   "Thời khóa biểu": Table,
   "Sổ đầu bài": NotebookPen,
-  // X. Thi đua
+  // Thi đua
   "Thu thập & tính điểm": Calculator,
   "Xếp hạng & khen thưởng": Trophy,
-  // XII. Năng lực GVCN
+  // Năng lực giáo viên chủ nhiệm
   "Tự đánh giá & kế hoạch": ClipboardCheck,
   "Minh chứng & đánh giá cuối năm": FolderCheck,
   // Tổ chuyên môn
@@ -161,8 +161,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "Radar cảnh báo sớm": Radar,
   "Phân công năm học": UserCog,
   "Quản trị người dùng": UserCog,
-  "Dashboard cấp Sở GD&ĐT": BarChart3,
-  "XI. Quản trị dữ liệu": Database,
+  "Dashboard cấp Sở Giáo dục và Đào tạo": BarChart3,
+  "Quản trị dữ liệu": Database,
 };
 
 export const FALLBACK_ICON: LucideIcon = SquarePen;

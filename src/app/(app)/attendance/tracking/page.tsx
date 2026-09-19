@@ -46,7 +46,7 @@ export default async function AttendanceTrackingPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ II - Chuyên cần"
+          section="Chuyên cần"
           title="Theo dõi tình trạng"
         />
         <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
@@ -129,7 +129,7 @@ export default async function AttendanceTrackingPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ II - Chuyên cần"
+        section="Chuyên cần"
         title="Theo dõi tình trạng"
         description={`Học sinh lớp ${selected.name} có từ 3 lượt vắng không phép / đi muộn trong 30 ngày gần nhất (đến ${formatDateOnly(anchor)}).`}
       />

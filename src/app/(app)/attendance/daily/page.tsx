@@ -38,7 +38,7 @@ export default async function AttendanceDailyPage({
     return (
       <div>
         <PageHeader
-          section="Phân hệ II - Chuyên cần"
+          section="Chuyên cần"
           title="Điểm danh hàng ngày"
         />
         <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
@@ -98,7 +98,7 @@ export default async function AttendanceDailyPage({
   return (
     <div>
       <PageHeader
-        section="Phân hệ II - Chuyên cần"
+        section="Chuyên cần"
         title="Điểm danh hàng ngày"
         description={`Lớp ${selected.name} · ${dateLabel}. Chọn trạng thái cho từng học sinh rồi xác nhận.`}
       />

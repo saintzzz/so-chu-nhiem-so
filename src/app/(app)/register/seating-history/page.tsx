@@ -25,7 +25,7 @@ export default async function SeatingHistoryPage({
     return (
       <>
         <PageHeader
-          section="Phân hệ IX - Sổ chủ nhiệm"
+          section="Sổ chủ nhiệm"
           title="Lịch sử phiên bản sơ đồ"
         />
         <EmptyClassNotice />
@@ -45,7 +45,7 @@ export default async function SeatingHistoryPage({
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Lịch sử phiên bản sơ đồ"
         description={`Lớp ${cls.name} · ${charts.length} phiên bản đã lưu`}
       />

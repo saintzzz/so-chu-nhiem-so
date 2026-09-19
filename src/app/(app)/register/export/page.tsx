@@ -14,7 +14,7 @@ export default async function ExportPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Xuất sổ chủ nhiệm"
         description="Xuất dữ liệu sổ chủ nhiệm (học sinh, điểm, chuyên cần) ra CSV hoặc bản in."
       />

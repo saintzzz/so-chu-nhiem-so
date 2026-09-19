@@ -18,7 +18,7 @@ export default async function YearEventsPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Lịch năm học"
         description="Quản lý sự kiện năm học - nguồn dữ liệu cho gợi ý công việc AI."
       />

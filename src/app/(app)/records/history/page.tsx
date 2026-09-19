@@ -83,7 +83,7 @@ export default async function RecordsHistoryPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ I - Hồ sơ lớp học"
+        section="Hồ sơ lớp học"
         title="Lịch sử cập nhật hồ sơ"
         description="Mọi thay đổi trên hồ sơ học sinh đều được ghi lại: trường dữ liệu, giá trị cũ/mới và người thực hiện."
       />

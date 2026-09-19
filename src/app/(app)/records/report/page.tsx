@@ -173,7 +173,7 @@ export default async function RecordsReportPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ I - Hồ sơ lớp học"
+        section="Hồ sơ lớp học"
         title="Báo cáo tổng hợp (AI)"
         description="Số liệu tổng hợp theo lớp: sĩ số, chuyên cần, điểm trung bình và vi phạm, kèm gợi ý phân tích."
       />

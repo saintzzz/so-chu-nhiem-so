@@ -16,7 +16,7 @@ export const NAV: Record<Role, NavSection[]> = {
   gvcn: [
     { label: "Dashboard", href: "/dashboard" },
     {
-      label: "I. Hồ sơ lớp học",
+      label: "Hồ sơ lớp học",
       children: [
         { label: "Tiếp nhận lớp", href: "/records/intake" },
         { label: "Upload danh sách học sinh", href: "/records/upload" },
@@ -26,7 +26,7 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "II. Chuyên cần",
+      label: "Chuyên cần",
       children: [
         { label: "Điểm danh hàng ngày", href: "/attendance/daily" },
         { label: "Nghỉ học / đi muộn", href: "/attendance/leaves" },
@@ -36,19 +36,19 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "III. Học tập",
+      label: "Học tập",
       children: [
         { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
         { label: "Phân tích kết quả", href: "/academics/analysis" },
         { label: "Học sinh cần hỗ trợ", href: "/academics/support" },
-        { label: "Trao đổi với GVBM", href: "/academics/teacher-chat" },
+        { label: "Trao đổi với giáo viên bộ môn", href: "/academics/teacher-chat" },
         { label: "Trao đổi phụ huynh", href: "/academics/parent-chat" },
         { label: "Kế hoạch hỗ trợ & tiến bộ", href: "/academics/plans" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
       ],
     },
     {
-      label: "IV. Rèn luyện",
+      label: "Rèn luyện",
       children: [
         { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
         { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
@@ -56,7 +56,7 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "V. Tư vấn học sinh",
+      label: "Tư vấn học sinh",
       children: [
         { label: "Tiếp nhận & phát hiện", href: "/counseling/intake" },
         { label: "Đánh giá mức độ", href: "/counseling/assessment" },
@@ -64,17 +64,17 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "VI. Phụ huynh",
+      label: "Phụ huynh",
       children: [
         { label: "Soạn & gửi thông báo", href: "/parents/compose" },
         { label: "Hộp thư phản hồi", href: "/parents/inbox" },
         { label: "Lịch hẹn trao đổi", href: "/parents/appointments" },
         { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
-        { label: "Ban đại diện CMHS", href: "/parents/cmhs" },
+        { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
       ],
     },
     {
-      label: "VII. Hoạt động GD",
+      label: "Hoạt động giáo dục",
       children: [
         { label: "Lập kế hoạch & phê duyệt", href: "/activities/plan" },
         { label: "Thông báo & đăng ký", href: "/activities/announce" },
@@ -82,16 +82,16 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "VIII. An toàn HS",
+      label: "An toàn học sinh",
       children: [
         { label: "Ghi nhận sự cố", href: "/safety/report" },
-        { label: "Báo cáo BGH", href: "/safety/bgh" },
+        { label: "Báo cáo Ban Giám Hiệu", href: "/safety/bgh" },
         { label: "Theo dõi & nhắc", href: "/safety/followup" },
         { label: "Lưu trữ & tra cứu", href: "/safety/archive" },
       ],
     },
     {
-      label: "IX. Sổ chủ nhiệm",
+      label: "Sổ chủ nhiệm",
       children: [
         { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
         { label: "Sơ đồ lớp", href: "/register/seating" },
@@ -99,7 +99,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Upload lịch năm học", href: "/register/year-events" },
         { label: "Gợi ý công việc (AI)", href: "/register/suggestions" },
         { label: "Kế hoạch tháng / sơ kết tuần", href: "/register/plans" },
-        { label: "Đăng ký KPI", href: "/register/kpi" },
+        { label: "Đăng ký chỉ tiêu hiệu suất", href: "/register/kpi" },
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
         { label: "Xuất sổ", href: "/register/export" },
@@ -107,21 +107,21 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "XIII. Thời khóa biểu & Sổ đầu bài",
+      label: "Thời khóa biểu & Sổ đầu bài",
       children: [
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
       ],
     },
     {
-      label: "X. Thi đua",
+      label: "Thi đua",
       children: [
         { label: "Thu thập & tính điểm", href: "/emulation/scoring" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
       ],
     },
     {
-      label: "XII. Năng lực GVCN",
+      label: "Năng lực giáo viên chủ nhiệm",
       children: [
         { label: "Tự đánh giá & kế hoạch", href: "/competency/self-assessment" },
         { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
@@ -130,15 +130,15 @@ export const NAV: Record<Role, NavSection[]> = {
   ],
   gvbm: [
     {
-      label: "III. Học tập",
+      label: "Học tập",
       children: [
         { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
-        { label: "Trao đổi với GVCN", href: "/academics/teacher-chat" },
+        { label: "Trao đổi với giáo viên chủ nhiệm", href: "/academics/teacher-chat" },
         { label: "Lịch thi", href: "/academics/exams" },
       ],
     },
     {
-      label: "XIII. Thời khóa biểu & Sổ đầu bài",
+      label: "Thời khóa biểu & Sổ đầu bài",
       children: [
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
@@ -156,7 +156,7 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "XIII. Thời khóa biểu & Sổ đầu bài",
+      label: "Thời khóa biểu & Sổ đầu bài",
       children: [
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
@@ -172,30 +172,30 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
         { label: "Phân công năm học", href: "/school/assignments" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
-        { label: "Ban đại diện CMHS", href: "/parents/cmhs" },
+        { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
       ],
     },
     {
-      label: "VII. Hoạt động GD",
+      label: "Hoạt động giáo dục",
       children: [{ label: "Duyệt kế hoạch", href: "/activities/plan" }],
     },
     {
-      label: "VIII. An toàn HS",
+      label: "An toàn học sinh",
       children: [{ label: "Sự cố toàn trường", href: "/safety/bgh" }],
     },
     {
-      label: "IX. Sổ chủ nhiệm",
+      label: "Sổ chủ nhiệm",
       children: [
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
       ],
     },
     {
-      label: "XIII. Thời khóa biểu & Sổ đầu bài",
+      label: "Thời khóa biểu & Sổ đầu bài",
       children: [{ label: "Thời khóa biểu", href: "/schedule/timetable" }],
     },
     {
-      label: "X. Thi đua",
+      label: "Thi đua",
       children: [{ label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" }],
     },
   ],
@@ -204,8 +204,8 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Quản trị",
       children: [
         { label: "Quản trị người dùng", href: "/dept/users" },
-        { label: "Dashboard cấp Sở GD&ĐT", href: "/dept/dashboard" },
-        { label: "XI. Quản trị dữ liệu", href: "/dept/data" },
+        { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
+        { label: "Quản trị dữ liệu", href: "/dept/data" },
       ],
     },
   ],
@@ -214,7 +214,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Quản trị",
       children: [
         { label: "Quản trị người dùng", href: "/dept/users" },
-        { label: "Dashboard cấp Sở GD&ĐT", href: "/dept/dashboard" },
+        { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
       ],
     },
   ],
@@ -223,11 +223,11 @@ export const NAV: Record<Role, NavSection[]> = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  gvcn: "GVCN (Giáo viên chủ nhiệm)",
-  gvbm: "GVBM (Giáo viên bộ môn)",
+  gvcn: "Giáo viên chủ nhiệm",
+  gvbm: "Giáo viên bộ môn",
   to_truong: "Tổ trưởng chuyên môn",
-  bgh: "BGH (Ban Giám Hiệu)",
-  so_gd: "Quản trị viên Sở GD&ĐT",
+  bgh: "Ban Giám Hiệu",
+  so_gd: "Quản trị viên Sở Giáo dục và Đào tạo",
   phu_huynh: "Phụ huynh",
   hoc_sinh: "Học sinh",
   admin: "Quản trị hệ thống",

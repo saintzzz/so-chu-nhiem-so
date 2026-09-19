@@ -71,7 +71,7 @@ export default async function CounselingReferralPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        section="Phân hệ V - Tư vấn học sinh"
+        section="Tư vấn học sinh"
         title="Chuyển tuyến chuyên gia"
         description="Các ca nghiêm trọng cần chuyển đến chuyên gia tâm lý / cơ sở chuyên môn."
       />

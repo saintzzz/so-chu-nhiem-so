@@ -52,7 +52,7 @@ export default async function ActivitiesPlanPage() {
   return (
     <div>
       <PageHeader
-        section="Phân hệ VII - Hoạt động GD"
+        section="Hoạt động giáo dục"
         title="Lập kế hoạch & phê duyệt"
         description={
           isBgh

@@ -42,7 +42,7 @@ export default async function SignoffPage() {
   return (
     <>
       <PageHeader
-        section="Phân hệ IX - Sổ chủ nhiệm"
+        section="Sổ chủ nhiệm"
         title="Ký duyệt sổ chủ nhiệm"
         description="Ký xác nhận sổ chủ nhiệm theo kỳ. GVCN ký cho lớp chủ nhiệm của mình; BGH xem và ký toàn bộ lớp."
       />

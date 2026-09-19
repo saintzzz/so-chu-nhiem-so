@@ -79,21 +79,27 @@ export function ComposeForm({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium">Lớp</label>
-          <select
-            value={classId}
-            onChange={(e) => {
-              setClassId(e.target.value);
-              setStudentId("");
-            }}
-            className={INPUT_CLS}
-          >
+          <p className="mb-1.5 text-sm font-medium">Lớp</p>
+          <div className="flex gap-2">
             {classes.map((c) => (
-              <option key={c.id} value={c.id}>
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setClassId(c.id);
+                  setStudentId("");
+                }}
+                className={cn(
+                  "rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition-colors",
+                  classId === c.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background text-muted-foreground hover:bg-muted",
+                )}
+              >
                 {c.name}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {scope === "student" && (

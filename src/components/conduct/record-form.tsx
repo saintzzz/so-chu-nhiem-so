@@ -17,6 +17,12 @@ const TYPES = [
   { value: "vi_pham", label: "Vi phạm" },
 ];
 
+const TYPE_ACTIVE_CLS: Record<string, string> = {
+  nhan_xet: "border-primary bg-primary-bg text-primary",
+  khen_thuong: "border-success bg-success-bg text-success",
+  vi_pham: "border-destructive bg-error-bg text-error",
+};
+
 const inputCls =
   "h-9 w-full rounded-lg border border-border bg-background px-2 text-sm text-foreground outline-none focus:border-ring";
 
@@ -93,20 +99,32 @@ export function ConductRecordForm({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-          Loại
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className={inputCls}
-          >
+        <fieldset className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+          <legend className="sr-only">Loại</legend>
+          <span aria-hidden>Loại</span>
+          <div className="flex h-9 items-center gap-1.5">
             {TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
+              <label
+                key={t.value}
+                className={`flex h-full cursor-pointer items-center rounded-lg border px-2.5 text-sm font-medium transition-colors ${
+                  type === t.value
+                    ? TYPE_ACTIVE_CLS[t.value]
+                    : "border-border bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="record-type"
+                  value={t.value}
+                  checked={type === t.value}
+                  onChange={() => setType(t.value)}
+                  className="sr-only"
+                />
                 {t.label}
-              </option>
+              </label>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
           Ngày
           <input

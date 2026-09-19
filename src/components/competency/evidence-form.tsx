@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export function EvidenceForm({ assessmentId }: { assessmentId: string }) {
   const router = useRouter();
@@ -73,10 +74,9 @@ export function EvidenceForm({ assessmentId }: { assessmentId: string }) {
         <span className="mb-1 block text-xs font-medium text-muted-foreground">
           Ghi chú
         </span>
-        <textarea
+        <AutoGrowTextarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          rows={3}
           placeholder="Mô tả ngắn về minh chứng..."
           className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm"
         />

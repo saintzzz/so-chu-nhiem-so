@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { sendAnnouncement } from "@/app/(app)/parents/actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -133,10 +134,9 @@ export function ComposeForm({
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">Nội dung</label>
-          <textarea
+          <AutoGrowTextarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            rows={5}
             placeholder="Nhập nội dung thông báo gửi phụ huynh..."
             className={INPUT_CLS}
           />

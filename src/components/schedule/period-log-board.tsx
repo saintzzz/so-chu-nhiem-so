@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface PeriodEntry {
   id: string;
@@ -281,8 +282,7 @@ export function PeriodLogBoard({
                           <span className="mb-1 block text-xs font-medium text-muted-foreground">
                             Ghi chú tiết học
                           </span>
-                          <input
-                            type="text"
+                          <AutoGrowTextarea
                             value={draft.note}
                             onChange={(e) =>
                               setDrafts((d) => ({
@@ -291,7 +291,7 @@ export function PeriodLogBoard({
                               }))
                             }
                             placeholder="Nội dung bài dạy, tình hình lớp..."
-                            className="h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm"
+                            className="w-full"
                           />
                         </label>
                         <span className="text-xs text-muted-foreground">

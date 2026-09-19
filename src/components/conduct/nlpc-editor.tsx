@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 /** 15 thuộc tính NLPC tiểu học theo mẫu CSDL ngành. */
 export const NLPC_ATTRIBUTES = [
@@ -243,11 +244,10 @@ export function NlpcEditor({
             ))}
             {COMMENT_GROUPS.map((g) => (
               <td key={g.grp}>
-                <input
-                  type="text"
+                <AutoGrowTextarea
                   value={groupComments[s.id]?.[g.grp] ?? ""}
                   onChange={(e) => setComment(s.id, g.grp, e.target.value)}
-                  className="h-7 w-40 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-ring"
+                  className="w-40 text-xs"
                 />
               </td>
             ))}

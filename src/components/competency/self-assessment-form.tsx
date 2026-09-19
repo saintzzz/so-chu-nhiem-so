@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Save, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export function SelfAssessmentForm({
   teacherId,
@@ -84,11 +85,10 @@ export function SelfAssessmentForm({
         <span className="mb-1.5 block text-xs text-muted-foreground">
           Nhận định về công tác chủ nhiệm, điểm mạnh và hạn chế trong năm học
         </span>
-        <textarea
+        <AutoGrowTextarea
           value={review}
           onChange={(e) => setReview(e.target.value)}
           disabled={locked}
-          rows={6}
           placeholder="Ví dụ: Hoàn thành tốt nhiệm vụ chủ nhiệm, duy trì tỷ lệ chuyên cần cao..."
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
         />
@@ -101,11 +101,10 @@ export function SelfAssessmentForm({
         <span className="mb-1.5 block text-xs text-muted-foreground">
           Mục tiêu và việc cần làm để nâng cao năng lực trong năm học tới
         </span>
-        <textarea
+        <AutoGrowTextarea
           value={plan}
           onChange={(e) => setPlan(e.target.value)}
           disabled={locked}
-          rows={5}
           placeholder="Ví dụ: Nâng cao kỹ năng tư vấn học sinh, tham gia tập huấn chuyên môn..."
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
         />

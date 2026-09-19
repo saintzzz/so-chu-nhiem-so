@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { createIncident } from "@/app/(app)/safety/actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -164,10 +165,9 @@ export function IncidentForm({
           <label className="mb-1.5 block text-sm font-medium">
             Mô tả sự cố
           </label>
-          <textarea
+          <AutoGrowTextarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={4}
             placeholder="Mô tả chi tiết diễn biến, người liên quan, xử lý ban đầu..."
             className={INPUT_CLS}
           />

@@ -91,6 +91,7 @@ scripts/            # Asset download scripts
 - **Console clean.** Zero hydration errors, zero failed network calls on every page tested. Timestamps use `formatDate`/`formatDateTime`/`formatDateOnly` from `src/lib/utils.ts` (fixed `Asia/Ho_Chi_Minh`) - never raw `toLocaleString`.
 - **Design language invariant.** The whole app uses ONE design language - Fluent 2 - set once in `src/lib/domain-theme.ts`. Do not reintroduce per-domain themes or mix theme scopes.
 - **Vietnamese name sorting.** All student/teacher/profile lists must sort by given name (last token), not by the DB `order("full_name")` which sorts by family name first. Use `sortByVietnameseName` / `compareVietnameseName` from `src/lib/utils.ts` at render or right after fetch.
+- **Free-text fields auto-grow.** Any field holding notes/remarks/comments/nội dung must use `AutoGrowTextarea` (`src/components/ui/auto-grow-textarea.tsx`) — never a single-line `<input>` (truncates text) and never a fixed-height `<textarea>` (clips). The field grows vertically with content.
 
 ## Project Conventions (Sổ Chủ Nhiệm Số)
 

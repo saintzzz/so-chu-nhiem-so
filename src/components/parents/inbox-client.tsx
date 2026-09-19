@@ -7,6 +7,7 @@ import {
   markMessageRead,
   replyMessage,
 } from "@/app/(app)/parents/actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface InboxMessageItem {
   id: string;
@@ -133,10 +134,9 @@ export function InboxClient({ messages }: { messages: InboxMessageItem[] }) {
               <label className="mb-1.5 block text-sm font-medium">
                 Trả lời phụ huynh
               </label>
-              <textarea
+              <AutoGrowTextarea
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
-                rows={4}
                 placeholder="Nhập nội dung trả lời..."
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />

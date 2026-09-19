@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge, SEVERITY, FLOW_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 type Severity = keyof typeof SEVERITY;
 type FlowStatus = keyof typeof FLOW_STATUS;
@@ -71,10 +72,9 @@ export function ReferralCard({
       )}
       <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
         Chuyển tuyến đến (chuyên gia / cơ sở y tế / phòng tham vấn)
-        <textarea
+        <AutoGrowTextarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={2}
           placeholder="VD: Chuyển đến chuyên viên tâm lý Phòng Tư vấn Sở GD&ĐT…"
           className="resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
         />

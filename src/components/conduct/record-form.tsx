@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface RecordStudent {
   id: string;
@@ -147,11 +148,10 @@ export function ConductRecordForm({
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:col-span-2 lg:col-span-3">
           Nội dung
-          <input
+          <AutoGrowTextarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="VD: Tích cực phát biểu, đi học muộn…"
-            className={inputCls}
           />
         </label>
       </div>

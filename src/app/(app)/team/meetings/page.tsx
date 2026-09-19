@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { createMeeting } from "./actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 interface DeptMeeting {
   id: string;
@@ -77,10 +78,9 @@ export default async function TeamMeetingsPage() {
               >
                 Nội dung / biên bản
               </label>
-              <textarea
+              <AutoGrowTextarea
                 id="content"
                 name="content"
-                rows={4}
                 placeholder="Nội dung trao đổi, kết luận, phân công..."
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
               />

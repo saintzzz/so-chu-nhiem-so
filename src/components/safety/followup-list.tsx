@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, SEVERITY, FLOW_STATUS } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 import { followupIncident } from "@/app/(app)/safety/actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -102,11 +103,10 @@ function FollowupCard({ incident }: { incident: FollowupIncident }) {
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Ghi chú theo dõi mới
           </label>
-          <input
+          <AutoGrowTextarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="VD: Đã trao đổi với phụ huynh, hẹn gặp lại tuần sau..."
-            className={INPUT_CLS}
           />
         </div>
         <Button

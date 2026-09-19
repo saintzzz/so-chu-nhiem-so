@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { sortByVietnameseName } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface EvalStudent {
   id: string;
@@ -411,11 +412,11 @@ export function ConductEvaluationEditor({
             </td>
             <td>
               <span className="flex items-center gap-1.5">
-                <input
+                <AutoGrowTextarea
                   value={d.comment}
                   onChange={(e) => patch(s.id, { comment: e.target.value })}
                   placeholder="Nhận xét…"
-                  className="h-8 w-full min-w-48 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+                  className="min-w-48"
                 />
                 <button
                   type="button"

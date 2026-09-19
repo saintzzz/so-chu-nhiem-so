@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import { saveActivityAttendance } from "@/app/(app)/activities/actions";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 type RowStatus = "registered" | "present" | "absent" | "excused";
 
@@ -15,9 +16,6 @@ const STATUS_OPTIONS: { value: RowStatus; label: string }[] = [
   { value: "absent", label: "Vắng" },
   { value: "excused", label: "Vắng có phép" },
 ];
-
-const INPUT_CLS =
-  "w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export interface RosterRow {
   studentId: string;
@@ -159,7 +157,7 @@ export function AttendanceRoster({
                     </div>
                   </td>
                   <td>
-                    <input
+                    <AutoGrowTextarea
                       value={cur.evaluation}
                       onChange={(e) =>
                         setState((prev) => ({
@@ -171,7 +169,7 @@ export function AttendanceRoster({
                         }))
                       }
                       placeholder="Nhận xét ý thức tham gia..."
-                      className={cn(INPUT_CLS, "min-w-56")}
+                      className="min-w-56"
                     />
                   </td>
                 </tr>

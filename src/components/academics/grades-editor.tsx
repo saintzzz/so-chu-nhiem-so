@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface GradeStudent {
   id: string;
@@ -800,11 +801,10 @@ export function GradesEditor({
                     {levelSelect(c.levelGk, (v) => setCell(s.id, { levelGk: v }))}
                   </td>
                   <td>
-                    <input
-                      type="text"
+                    <AutoGrowTextarea
                       value={c.commentGk}
                       onChange={(e) => setCell(s.id, { commentGk: e.target.value })}
-                      className={cn(inputCls(false), "w-44")}
+                      className="w-44"
                     />
                   </td>
                   <td>
@@ -822,11 +822,10 @@ export function GradesEditor({
                     />
                   </td>
                   <td>
-                    <input
-                      type="text"
+                    <AutoGrowTextarea
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
-                      className={cn(inputCls(false), "w-44")}
+                      className="w-44"
                     />
                   </td>
                 </>
@@ -868,11 +867,10 @@ export function GradesEditor({
                     {avg != null ? avg.toFixed(1) : "-"}
                   </td>
                   <td>
-                    <input
-                      type="text"
+                    <AutoGrowTextarea
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
-                      className={cn(inputCls(false), "w-44")}
+                      className="w-44"
                     />
                   </td>
                 </>
@@ -894,11 +892,10 @@ export function GradesEditor({
                     </select>
                   </td>
                   <td>
-                    <input
-                      type="text"
+                    <AutoGrowTextarea
                       value={c.commentCk}
                       onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
-                      className={cn(inputCls(false), "w-52")}
+                      className="w-52"
                     />
                   </td>
                 </>

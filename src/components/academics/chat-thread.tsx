@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface ChatMessage {
   id: string;
@@ -93,10 +94,9 @@ export function ChatThread({
         })}
       </div>
       <div className="flex items-end gap-2 border-t border-border p-3">
-        <textarea
+        <AutoGrowTextarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          rows={2}
           placeholder="Nhập nội dung trao đổi…"
           className="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
         />

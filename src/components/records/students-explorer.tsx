@@ -160,7 +160,7 @@ export function StudentsExplorer({
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">
+      <div className="relative overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">
         <table className="w-full min-w-max text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">

@@ -14,7 +14,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]",
+        "relative overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]",
         className,
       )}
     >

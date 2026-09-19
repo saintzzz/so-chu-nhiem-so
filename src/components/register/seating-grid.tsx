@@ -255,7 +255,7 @@ export function SeatingGrid({
         <p className="mb-3 text-xs text-muted-foreground md:hidden">
           Vuốt ngang để xem toàn bộ sơ đồ.
         </p>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <DndContext id="seating-dnd" onDragEnd={onDragEnd}>
             <div
               className="grid gap-2"

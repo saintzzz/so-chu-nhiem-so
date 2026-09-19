@@ -44,6 +44,13 @@ export interface ClassRoster {
 
 type Mark = "" | "excused" | "unexcused" | "late";
 
+const MARK_TONE: Record<Mark, string> = {
+  "": "border-success/50 bg-success-bg text-success",
+  excused: "border-warning/50 bg-warning-bg text-warning",
+  unexcused: "border-error/50 bg-error-bg text-error",
+  late: "border-warning/50 bg-warning-bg text-warning",
+};
+
 interface DraftState {
   present: string;
   note: string;
@@ -173,6 +180,100 @@ export function PeriodLogBoard({
         if (insErr) throw insErr;
       }
 
+      // Đồng bộ sổ đầu bài -> điểm danh ngày: HS vắng bất kỳ tiết nào phải
+      // phản ánh vào attendance_records (source=period_log). Không ghi đè
+      // record "manual" - xác nhận của GVCN luôn giữ nguyên.
+      const affectedIds = [
+        ...new Set([
+          ...rows.map((r) => r.student_id),
+          ...(logs[entryId]?.absences ?? []).map((a) => a.student_id),
+        ]),
+      ];
+      if (affectedIds.length > 0) {
+        // Mọi tiết cùng lớp trong ngày -> log ids -> absences
+        const classId = entries.find((e) => e.id === entryId)?.class_id;
+        const entryIds = entries
+          .filter((e) => e.class_id === classId)
+          .map((e) => e.id);
+        const { data: dayLogs } = await supabase
+          .from("period_logs")
+          .select("id")
+          .eq("date", date)
+          .in("timetable_entry_id", entryIds);
+        const logIds = ((dayLogs ?? []) as { id: string }[]).map((l) => l.id);
+        const { data: dayAbs } = logIds.length
+          ? await supabase
+              .from("period_absences")
+              .select("student_id,status")
+              .in("period_log_id", logIds)
+              .in("student_id", affectedIds)
+          : { data: [] };
+
+        const SEVERITY_ORDER: Record<string, number> = {
+          unexcused: 3,
+          excused: 2,
+          late: 1,
+        };
+        const worst = new Map<string, string>();
+        for (const a of (dayAbs ?? []) as {
+          student_id: string;
+          status: string;
+        }[]) {
+          const cur = worst.get(a.student_id);
+          if (!cur || SEVERITY_ORDER[a.status] > SEVERITY_ORDER[cur])
+            worst.set(a.student_id, a.status);
+        }
+
+        // Xóa record do sổ đầu bài tạo trước đó rồi tính lại từ đầu.
+        await supabase
+          .from("attendance_records")
+          .delete()
+          .in("student_id", affectedIds)
+          .eq("date", date)
+          .eq("source", "period_log");
+        // Record hiện có (manual/parent): vắng theo tiết là bằng chứng thực tế
+        // -> nâng status nếu period log nghiêm trọng hơn; không hạ severity.
+        const { data: existing } = await supabase
+          .from("attendance_records")
+          .select("student_id,status")
+          .in("student_id", affectedIds)
+          .eq("date", date);
+        const existingStatus = new Map(
+          ((existing ?? []) as { student_id: string; status: string }[]).map(
+            (r) => [r.student_id, r.status],
+          ),
+        );
+        const inserts: {
+          student_id: string;
+          date: string;
+          status: string;
+          source: string;
+        }[] = [];
+        const updates: { student_id: string; status: string }[] = [];
+        for (const [sid, st] of worst) {
+          const cur = existingStatus.get(sid);
+          if (!cur) {
+            inserts.push({ student_id: sid, date, status: st, source: "period_log" });
+          } else if (SEVERITY_ORDER[st] > (SEVERITY_ORDER[cur] ?? 0)) {
+            updates.push({ student_id: sid, status: st });
+          }
+        }
+        if (inserts.length > 0) {
+          const { error: syncErr } = await supabase
+            .from("attendance_records")
+            .insert(inserts);
+          if (syncErr) throw syncErr;
+        }
+        for (const u of updates) {
+          const { error: upErr } = await supabase
+            .from("attendance_records")
+            .update({ status: u.status })
+            .eq("student_id", u.student_id)
+            .eq("date", date);
+          if (upErr) throw upErr;
+        }
+      }
+
       setOpenId(null);
       router.refresh();
     } catch (e) {
@@ -237,7 +338,40 @@ export function PeriodLogBoard({
                       <span className="block truncate text-xs text-muted-foreground">
                         {entry.teacher ?? "Chưa phân công GV"}
                         {entry.room ? ` · Phòng ${entry.room}` : ""}
+                        {` · Sĩ số ${roster.size}`}
                       </span>
+                      {log && log.absences.length > 0 && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {sortByVietnameseName(
+                            log.absences
+                              .map((a) => ({
+                                ...a,
+                                name:
+                                  roster.students.find(
+                                    (st) => st.id === a.student_id,
+                                  )?.full_name ?? "?",
+                              })),
+                            (a) => a.name,
+                          ).map((a) => (
+                            <span
+                              key={a.student_id}
+                              className={cn(
+                                "rounded-full border px-2 py-0.5 text-[11px]",
+                                a.status === "unexcused"
+                                  ? "border-error/40 bg-error-bg text-error"
+                                  : "border-warning/40 bg-warning-bg text-warning",
+                              )}
+                            >
+                              {a.name} · {ATT_STATUS[a.status].label}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                      {log?.note && (
+                        <span className="mt-1 block truncate text-xs italic text-muted-foreground">
+                          “{log.note}”
+                        </span>
+                      )}
                     </span>
                     {log ? (
                       <StatusBadge
@@ -321,40 +455,37 @@ export function PeriodLogBoard({
                                 {s.full_name}
                               </span>
                               <span
-                                role="group"
+                                role="radiogroup"
                                 aria-label={`Trạng thái của ${s.full_name}`}
-                                className="flex shrink-0 gap-0.5"
+                                className="flex shrink-0 flex-wrap gap-1"
                               >
                                 {(
-                                  ["excused", "unexcused", "late"] as const
+                                  [
+                                    "",
+                                    "excused",
+                                    "unexcused",
+                                    "late",
+                                  ] as const
                                 ).map((m) => (
-                                  <button
-                                    key={m}
-                                    type="button"
-                                    title={
-                                      mark === m
-                                        ? `${ATT_STATUS[m].label} - bấm để bỏ`
-                                        : ATT_STATUS[m].label
-                                    }
-                                    aria-pressed={mark === m}
-                                    onClick={() =>
-                                      setMark(entry, s.id, mark === m ? "" : m)
-                                    }
+                                  <label
+                                    key={m || "present"}
                                     className={cn(
-                                      "rounded-md border px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
+                                      "cursor-pointer rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
                                       mark === m
-                                        ? m === "late"
-                                          ? "border-warning bg-warning-bg text-warning"
-                                          : "border-error bg-error-bg text-error"
-                                        : "border-border bg-background text-muted-foreground hover:border-muted-foreground/50",
+                                        ? MARK_TONE[m]
+                                        : "border-border text-muted-foreground hover:bg-muted",
                                     )}
                                   >
-                                    {m === "excused"
-                                      ? "CP"
-                                      : m === "unexcused"
-                                        ? "KP"
-                                        : "Muộn"}
-                                  </button>
+                                    <input
+                                      type="radio"
+                                      name={`pl-${entry.id}-${s.id}`}
+                                      value={m}
+                                      checked={mark === m}
+                                      onChange={() => setMark(entry, s.id, m)}
+                                      className="sr-only"
+                                    />
+                                    {m === "" ? "Có mặt" : ATT_STATUS[m].label}
+                                  </label>
                                 ))}
                               </span>
                             </div>

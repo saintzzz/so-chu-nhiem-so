@@ -6,7 +6,7 @@ import { getAccessibleClasses } from "@/components/register/server-utils";
 import type { Signoff } from "@/components/register/types";
 
 export default async function LockRecordsPage() {
-  const profile = await requireRoles(["bgh"]);
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await getAccessibleClasses(profile);

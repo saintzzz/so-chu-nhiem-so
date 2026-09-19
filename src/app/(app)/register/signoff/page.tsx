@@ -7,7 +7,7 @@ import type { Signoff } from "@/components/register/types";
 import type { Profile } from "@/types";
 
 export default async function SignoffPage() {
-  const profile = await requireRoles(["bgh"]);
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await getAccessibleClasses(profile);
@@ -44,10 +44,11 @@ export default async function SignoffPage() {
       <PageHeader
         section="Phân hệ IX - Sổ chủ nhiệm"
         title="Ký duyệt sổ chủ nhiệm"
-        description="Ký xác nhận sổ chủ nhiệm theo kỳ. BGH xem và ký cho toàn bộ lớp."
+        description="Ký xác nhận sổ chủ nhiệm theo kỳ. GVCN ký cho lớp chủ nhiệm của mình; BGH xem và ký toàn bộ lớp."
       />
       <SignoffClient
         signoffs={signoffs}
+        classes={classes.map((c) => ({ id: c.id, name: c.name }))}
         classNames={Object.fromEntries(classNames)}
         signerNames={Object.fromEntries(signers)}
         profileId={profile.id}

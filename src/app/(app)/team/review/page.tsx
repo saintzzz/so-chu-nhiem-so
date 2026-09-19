@@ -98,7 +98,7 @@ export default async function TeamReviewPage() {
                       Tự đánh giá
                     </p>
                     <p className="whitespace-pre-line text-sm">
-                      {a.self_review || "—"}
+                      {a.self_review || "-"}
                     </p>
                   </div>
                   <div className="rounded-lg bg-muted/60 p-3">
@@ -106,7 +106,7 @@ export default async function TeamReviewPage() {
                       Kế hoạch phát triển
                     </p>
                     <p className="whitespace-pre-line text-sm">
-                      {a.plan || "—"}
+                      {a.plan || "-"}
                     </p>
                   </div>
                 </div>

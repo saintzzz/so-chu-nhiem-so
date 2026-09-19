@@ -123,7 +123,7 @@ export function LockRecordsClient({
               <td className="text-muted-foreground">
                 {s.signed_at
                   ? new Date(s.signed_at).toLocaleString("vi-VN")
-                  : "—"}
+                  : "-"}
               </td>
               <td>
                 {s.status !== "locked" && (
@@ -142,7 +142,7 @@ export function LockRecordsClient({
         {signoffs.length === 0 && (
           <tr>
             <td colSpan={5} className="text-center text-muted-foreground">
-              Chưa có đợt duyệt nào — nhấn &quot;Tạo đợt duyệt&quot; để bắt đầu.
+              Chưa có đợt duyệt nào - nhấn &quot;Tạo đợt duyệt&quot; để bắt đầu.
             </td>
           </tr>
         )}

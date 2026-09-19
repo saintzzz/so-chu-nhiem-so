@@ -101,7 +101,7 @@ export default async function EmulationRankingPage() {
               Khen thưởng: Lớp {top.cls.name}
             </p>
             <p className="mt-0.5 text-sm text-success">
-              Dẫn đầu thi đua kỳ {PERIOD} với {top.total}/{maxTotal} điểm — đề
+              Dẫn đầu thi đua kỳ {PERIOD} với {top.total}/{maxTotal} điểm - đề
               xuất cờ thi đua và ghi nhận trước toàn trường.
             </p>
           </div>
@@ -180,7 +180,7 @@ export default async function EmulationRankingPage() {
               )}
             </td>
             {r.perCriterion.map((v, j) => (
-              <td key={criteria[j].id}>{v ?? "—"}</td>
+              <td key={criteria[j].id}>{v ?? "-"}</td>
             ))}
             <td className="font-semibold">{r.total}</td>
           </tr>

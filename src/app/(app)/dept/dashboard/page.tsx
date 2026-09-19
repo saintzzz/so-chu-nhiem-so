@@ -78,7 +78,7 @@ export default async function DeptDashboardPage() {
       ? (((attPresentRes.count ?? 0) / (attTotalRes.count ?? 1)) * 100).toFixed(
           1,
         ) + "%"
-      : "—";
+      : "-";
 
   const classes = (classRowsRes.data ?? []) as Pick<
     ClassRoom,
@@ -102,7 +102,7 @@ export default async function DeptDashboardPage() {
       <PageHeader
         section="Quản trị"
         title="Dashboard cấp Sở GD&ĐT"
-        description="Số liệu tổng hợp toàn hệ thống — trường, lớp, giáo viên, học sinh"
+        description="Số liệu tổng hợp toàn hệ thống - trường, lớp, giáo viên, học sinh"
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -130,7 +130,7 @@ export default async function DeptDashboardPage() {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title={`Điểm thi đua theo lớp — ${EMULATION_PERIOD}`}
+          title={`Điểm thi đua theo lớp - ${EMULATION_PERIOD}`}
           ariaDescription="Biểu đồ cột điểm thi đua các lớp"
         >
           {chartData.length ? (

@@ -125,7 +125,7 @@ export function RosterClient({
       <tr key={s.id}>
         <td className="font-medium">{s.full_name}</td>
         <td className="text-muted-foreground">{s.code}</td>
-        <td>{s.group_id ? (groupMap.get(s.group_id) ?? "—") : "—"}</td>
+        <td>{s.group_id ? (groupMap.get(s.group_id) ?? "-") : "-"}</td>
         <td>
           <select
             value={role}
@@ -136,7 +136,7 @@ export function RosterClient({
           >
             {BCS_OPTIONS.map((r) => (
               <option key={r} value={r}>
-                {r === "" ? "—" : ROLE_LABELS_BCS[r]}
+                {r === "" ? "-" : ROLE_LABELS_BCS[r]}
               </option>
             ))}
           </select>

@@ -60,7 +60,7 @@ function relTime(iso: string | null): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso + "T00:00:00").toLocaleDateString("vi-VN");
 }
 
@@ -352,7 +352,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Tỷ lệ chuyên cần"
-          value={attRate !== null ? `${attRate}%` : "—"}
+          value={attRate !== null ? `${attRate}%` : "-"}
           href="/attendance/tracking"
           tone="primary"
         />
@@ -388,7 +388,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           label="Thi đua lớp"
-          value={emuRank !== null ? `Hạng ${emuRank}` : "—"}
+          value={emuRank !== null ? `Hạng ${emuRank}` : "-"}
           href="/emulation/ranking"
           tone={emuRank === 1 ? "success" : "primary"}
         />

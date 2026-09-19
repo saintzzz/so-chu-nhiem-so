@@ -61,7 +61,7 @@ export default async function EmulationScoringPage() {
       <PageHeader
         section="Phân hệ X - Thi đua"
         title="Thu thập & tính điểm thi đua"
-        description={`Kỳ thi đua ${PERIOD} — nhập điểm theo tiêu chí cho từng lớp`}
+        description={`Kỳ thi đua ${PERIOD} - nhập điểm theo tiêu chí cho từng lớp`}
       />
 
       <ScoringGrid

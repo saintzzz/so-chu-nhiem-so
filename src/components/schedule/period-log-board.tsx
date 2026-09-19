@@ -206,7 +206,7 @@ export function PeriodLogBoard({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
-                        Tiết {entry.period} — {entry.subject}
+                        Tiết {entry.period} - {entry.subject}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {entry.teacher ?? "Chưa phân công GV"}
@@ -215,7 +215,7 @@ export function PeriodLogBoard({
                     </span>
                     {log ? (
                       <StatusBadge
-                        label={`Đã ghi · Có mặt ${log.present_count ?? "—"}/${rosterSize}`}
+                        label={`Đã ghi · Có mặt ${log.present_count ?? "-"}/${rosterSize}`}
                         tone="success"
                       />
                     ) : (

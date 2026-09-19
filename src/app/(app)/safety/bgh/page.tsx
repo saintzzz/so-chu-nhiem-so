@@ -18,7 +18,7 @@ export default async function SafetyBghPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
-  // Trang tổng hợp toàn trường — dùng cho BGH và GVCN tra cứu liên lớp.
+  // Trang tổng hợp toàn trường - dùng cho BGH và GVCN tra cứu liên lớp.
   let classQuery = supabase.from("classes").select("*").order("name");
   if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
@@ -88,9 +88,9 @@ export default async function SafetyBghPage() {
         rows={incidents.map((i) => ({
           id: i.id,
           occurredAt: fmtDateTime(i.occurred_at),
-          className: i.class_id ? (className.get(i.class_id) ?? "—") : "—",
+          className: i.class_id ? (className.get(i.class_id) ?? "-") : "-",
           studentName: i.student_id
-            ? (studentName.get(i.student_id) ?? "—")
+            ? (studentName.get(i.student_id) ?? "-")
             : "Sự cố chung",
           type: i.type,
           severity: i.severity,

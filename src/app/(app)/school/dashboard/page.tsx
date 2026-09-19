@@ -136,7 +136,7 @@ export default async function SchoolDashboardPage() {
   ).length;
   const attRate = attRows.length
     ? ((attended / attRows.length) * 100).toFixed(1) + "%"
-    : "—";
+    : "-";
 
   const recentIncidents = incidents.slice(0, 6);
 
@@ -157,7 +157,7 @@ export default async function SchoolDashboardPage() {
         />
         <StatCard
           label="Lớp dẫn đầu thi đua"
-          value={topClass && topClass.value > 0 ? topClass.label : "—"}
+          value={topClass && topClass.value > 0 ? topClass.label : "-"}
           tone="primary"
           href="/emulation/ranking"
         />
@@ -176,7 +176,7 @@ export default async function SchoolDashboardPage() {
       <div className="mt-6 grid gap-4 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <ChartCard
-            title={`Điểm thi đua theo lớp — ${EMULATION_PERIOD}`}
+            title={`Điểm thi đua theo lớp - ${EMULATION_PERIOD}`}
             ariaDescription="Biểu đồ cột tổng điểm thi đua của từng lớp"
           >
             {chartData.length ? (

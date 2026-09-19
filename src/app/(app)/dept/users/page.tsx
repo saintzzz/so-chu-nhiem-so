@@ -56,7 +56,7 @@ export default async function DeptUsersPage({
       <PageHeader
         section="Quản trị"
         title="Quản trị người dùng"
-        description="Danh sách tài khoản trong hệ thống — lọc theo vai trò"
+        description="Danh sách tài khoản trong hệ thống - lọc theo vai trò"
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -94,14 +94,14 @@ export default async function DeptUsersPage({
         {profiles.map((p) => (
           <tr key={p.id}>
             <td className="font-medium">{p.full_name}</td>
-            <td className="text-muted-foreground">{p.email ?? "—"}</td>
+            <td className="text-muted-foreground">{p.email ?? "-"}</td>
             <td>
               <StatusBadge
                 label={ROLE_LABELS[p.role]}
                 tone={ROLE_TONES[p.role]}
               />
             </td>
-            <td>{p.school_id ? (schoolNameOf.get(p.school_id) ?? "—") : "—"}</td>
+            <td>{p.school_id ? (schoolNameOf.get(p.school_id) ?? "-") : "-"}</td>
           </tr>
         ))}
         {profiles.length === 0 && (
@@ -114,7 +114,7 @@ export default async function DeptUsersPage({
       </DataTable>
 
       <p className="mt-4 rounded-xl border border-border bg-primary-bg p-4 text-sm text-primary">
-        Việc tạo tài khoản mới hiện được thực hiện qua seed dữ liệu — liên hệ
+        Việc tạo tài khoản mới hiện được thực hiện qua seed dữ liệu - liên hệ
         quản trị hệ thống để thêm người dùng.
       </p>
     </>

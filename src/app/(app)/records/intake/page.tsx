@@ -105,10 +105,10 @@ export default async function RecordsIntakePage() {
                 </span>
               </td>
               <td>
-                {c.gvcn_id ? (teacherById.get(c.gvcn_id) ?? "—") : "Chưa phân công"}
+                {c.gvcn_id ? (teacherById.get(c.gvcn_id) ?? "-") : "Chưa phân công"}
               </td>
               <td>{sizeByClass.get(c.id) ?? 0}</td>
-              <td>{yearById.get(c.academic_year_id) ?? "—"}</td>
+              <td>{yearById.get(c.academic_year_id) ?? "-"}</td>
               <td>
                 <StatusBadge label={st.label} tone={st.tone} />
               </td>

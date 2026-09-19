@@ -119,7 +119,7 @@ export default async function ActivitiesAttendancePage({
         key={selectedId ?? "none"}
         activities={activities.map((a) => ({
           id: a.id,
-          label: `${a.title} — ${className.get(a.class_id) ?? ""}${
+          label: `${a.title} - ${className.get(a.class_id) ?? ""}${
             a.activity_date ? ` (${fmtDate(a.activity_date)})` : ""
           }`,
         }))}

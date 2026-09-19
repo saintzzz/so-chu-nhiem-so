@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Optimistic auth check (Next.js 16 Proxy — replaces middleware).
+ * Optimistic auth check (Next.js 16 Proxy - replaces middleware).
  * Real authorization is enforced by Server Components + RLS.
  */
 export async function proxy(request: NextRequest) {

@@ -106,12 +106,12 @@ export default async function CounselingAssessmentPage() {
                 {new Date(c.created_at).toLocaleDateString("vi-VN")}
               </td>
               <td>
-                <div className="font-medium">{student?.full_name ?? "—"}</div>
+                <div className="font-medium">{student?.full_name ?? "-"}</div>
                 <div className="font-mono text-xs text-muted-foreground">
                   {student?.code}
                 </div>
               </td>
-              <td>{student ? (className.get(student.class_id) ?? "—") : "—"}</td>
+              <td>{student ? (className.get(student.class_id) ?? "-") : "-"}</td>
               <td className="max-w-72">{c.issue}</td>
               <td>
                 <StatusBadge label={sev.label} tone={sev.tone} />

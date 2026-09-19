@@ -103,7 +103,7 @@ export function LeavesTable({ rows }: { rows: LeaveRow[] }) {
                   {SOURCE_LABEL[r.source] ?? r.source}
                 </td>
                 <td className="max-w-48 truncate text-muted-foreground">
-                  {r.note ?? "—"}
+                  {r.note ?? "-"}
                 </td>
               </tr>
             ))}

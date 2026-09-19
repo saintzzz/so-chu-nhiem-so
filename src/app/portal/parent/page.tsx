@@ -133,14 +133,14 @@ export default async function ParentPortalPage() {
   ).length;
   const monthRate = monthRows.length
     ? ((attended / monthRows.length) * 100).toFixed(0) + "%"
-    : "—";
+    : "-";
 
   const gradeRows = (gradeRes.data ?? []) as Pick<Grade, "id" | "score">[];
   const avgScore = gradeRows.length
     ? (
         gradeRows.reduce((s, g) => s + g.score, 0) / gradeRows.length
       ).toFixed(1)
-    : "—";
+    : "-";
 
   const announcements = (annRes.data ?? []) as Pick<
     Announcement,
@@ -180,7 +180,7 @@ export default async function ParentPortalPage() {
                 Con em: {student.full_name}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Lớp {classroom?.name ?? "—"} - Năm học 2026-2027 · Mã HS:{" "}
+                Lớp {classroom?.name ?? "-"} - Năm học 2026-2027 · Mã HS:{" "}
                 {student.code}
               </p>
             </>
@@ -203,7 +203,7 @@ export default async function ParentPortalPage() {
                       tone={ATT_STATUS[shownRec.status].tone}
                     />
                   ) : (
-                    "—"
+                    "-"
                   )
                 }
               />
@@ -274,7 +274,7 @@ export default async function ParentPortalPage() {
                           </p>
                           <StatusBadge label={st.label} tone={st.tone} />
                           <span className="ml-auto text-xs text-muted-foreground">
-                            GV: {teacherNameOf.get(a.teacher_id) ?? "—"}
+                            GV: {teacherNameOf.get(a.teacher_id) ?? "-"}
                           </span>
                         </div>
                         {a.purpose && (

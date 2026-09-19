@@ -19,7 +19,7 @@ export interface ExistingGrade {
   score: number;
 }
 
-/** Editable score grid — saves via upsert on existing ids + insert for new. */
+/** Editable score grid - saves via upsert on existing ids + insert for new. */
 export function GradesEditor({
   students,
   grades,
@@ -64,7 +64,7 @@ export function GradesEditor({
       }
       const score = Number(raw.replace(",", "."));
       if (Number.isNaN(score) || score < 0 || score > 10) {
-        setError(`Điểm không hợp lệ cho học sinh ${s.full_name} (0–10).`);
+        setError(`Điểm không hợp lệ cho học sinh ${s.full_name} (0-10).`);
         return;
       }
       if (existing && Number(existing.score) === score) continue;
@@ -106,7 +106,7 @@ export function GradesEditor({
   return (
     <div className="space-y-3">
       <DataTable
-        columns={["Mã HS", "Họ và tên", "Điểm (0–10)"]}
+        columns={["Mã HS", "Họ và tên", "Điểm (0-10)"]}
         footer={
           <>
             <span>{students.length} học sinh</span>
@@ -152,7 +152,7 @@ export function GradesEditor({
                     "h-8 w-24 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring",
                     invalid && "border-destructive",
                   )}
-                  placeholder="—"
+                  placeholder="-"
                 />
               </td>
             </tr>

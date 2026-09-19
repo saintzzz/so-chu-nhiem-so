@@ -53,7 +53,7 @@ export default async function CounselingReferralPage() {
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
-  // Ca nghiêm trọng / mức độ cao hoặc đã chuyển tuyến — chưa kết thúc
+  // Ca nghiêm trọng / mức độ cao hoặc đã chuyển tuyến - chưa kết thúc
   const { data: caseData } = studentIds.length
     ? await supabase
         .from("counseling_cases")
@@ -92,8 +92,8 @@ export default async function CounselingReferralPage() {
         {cases.map((c) => {
           const student = studentMap.get(c.student_id);
           const name = student
-            ? `${student.full_name} (${student.code} — ${className.get(student.class_id) ?? ""})`
-            : "—";
+            ? `${student.full_name} (${student.code} - ${className.get(student.class_id) ?? ""})`
+            : "-";
           return (
             <ReferralCard
               key={c.id}

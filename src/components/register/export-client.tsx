@@ -78,12 +78,12 @@ export function ExportClient({
       const avg =
         gs.length > 0
           ? (gs.reduce((a, g) => a + g.score, 0) / gs.length).toFixed(1)
-          : "—";
+          : "-";
       const att = attendance.filter((a) => a.student_id === s.id);
       return {
         code: s.code,
         name: s.full_name,
-        group: s.group_id ? (groupMap.get(s.group_id) ?? "—") : "—",
+        group: s.group_id ? (groupMap.get(s.group_id) ?? "-") : "-",
         avgScore: avg,
         unexcused: att.filter((a) => a.status === "unexcused").length,
         excused: att.filter((a) => a.status === "excused").length,
@@ -195,7 +195,7 @@ export function ExportClient({
       {rows && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">
-            Sổ chủ nhiệm lớp {clsName} — {period}
+            Sổ chủ nhiệm lớp {clsName} - {period}
           </h2>
           <DataTable
             columns={[

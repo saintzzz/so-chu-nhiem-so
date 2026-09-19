@@ -78,12 +78,12 @@ export function SignoffClient({
                 <StatusBadge label={meta.label} tone={meta.tone} />
               </td>
               <td className="text-muted-foreground">
-                {s.signed_by ? (signerNames[s.signed_by] ?? "—") : "—"}
+                {s.signed_by ? (signerNames[s.signed_by] ?? "-") : "-"}
               </td>
               <td className="text-muted-foreground">
                 {s.signed_at
                   ? new Date(s.signed_at).toLocaleString("vi-VN")
-                  : "—"}
+                  : "-"}
               </td>
               <td>
                 {s.status === "pending" && (

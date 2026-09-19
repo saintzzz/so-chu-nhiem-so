@@ -67,7 +67,7 @@ export default async function AttendanceNotifyPage({
       <PageHeader
         section="Phân hệ II - Chuyên cần"
         title="Thông báo phụ huynh"
-        description={`Soạn và gửi thông báo đến phụ huynh lớp ${selected.name} — toàn lớp hoặc từng học sinh.`}
+        description={`Soạn và gửi thông báo đến phụ huynh lớp ${selected.name} - toàn lớp hoặc từng học sinh.`}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">

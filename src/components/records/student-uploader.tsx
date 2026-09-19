@@ -1,8 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Download, FileSpreadsheet, Upload } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 
 interface ParsedRow {
   line: number;
@@ -11,6 +14,11 @@ interface ParsedRow {
   dob: string;
   gender: string;
   errors: string[];
+}
+
+interface ClassOption {
+  id: string;
+  name: string;
 }
 
 const HEADER_ALIASES: Record<string, keyof ParsedRow | null> = {
@@ -40,40 +48,30 @@ function normalizeKey(k: string): string {
     .replace(/\s+/g, "_");
 }
 
-function splitCsvLine(line: string, delimiter: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (const ch of line) {
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-    } else if (ch === delimiter && !inQuotes) {
-      out.push(cur);
-      cur = "";
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur);
-  return out.map((s) => s.trim());
+function normalizeGender(g: string): "nam" | "nu" | "khac" | null {
+  const n = normalizeKey(g);
+  if (n === "nam") return "nam";
+  if (n === "nu") return "nu";
+  if (!g) return null;
+  return "khac";
 }
 
-function parseCsv(text: string): ParsedRow[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-  if (lines.length === 0) return [];
+function normalizeDob(d: string): string | null {
+  if (!d) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  return null;
+}
 
-  const delimiter = lines[0].includes(";") ? ";" : ",";
-  const firstCells = splitCsvLine(lines[0], delimiter).map(normalizeKey);
-  const headerMap = firstCells.map((c) => HEADER_ALIASES[c] ?? null);
+function parseRows(table: string[][]): ParsedRow[] {
+  if (table.length === 0) return [];
+  const headerMap = table[0].map((c) => HEADER_ALIASES[normalizeKey(c)] ?? null);
   const hasHeader = headerMap.some((m) => m !== null);
-
-  const rows: ParsedRow[] = [];
-  const dataLines = hasHeader ? lines.slice(1) : lines;
-  dataLines.forEach((line, i) => {
-    const cells = splitCsvLine(line, delimiter);
+  const dataLines = hasHeader ? table.slice(1) : table;
+  return dataLines.map((cells, i) => {
     const row: ParsedRow = {
       line: i + (hasHeader ? 2 : 1),
       code: "",
@@ -95,37 +93,76 @@ function parseCsv(text: string): ParsedRow[] {
       row.gender = cells[3] ?? "";
     }
     if (!row.fullName) row.errors.push("Thiếu họ tên");
-    if (row.gender && !["nam", "nu", "khac", "nữ"].includes(row.gender.toLowerCase()))
+    if (row.gender && !normalizeGender(row.gender))
       row.errors.push("Giới tính không hợp lệ");
-    if (row.dob && !/^\d{4}-\d{2}-\d{2}$/.test(row.dob) && !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(row.dob))
+    if (row.dob && !normalizeDob(row.dob))
       row.errors.push("Ngày sinh sai định dạng");
-    rows.push(row);
+    return row;
   });
-  return rows;
 }
 
-export function CsvUploader() {
+export function StudentUploader({ classes }: { classes: ClassOption[] }) {
+  const supabase = createClient();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function onFile(file: File | undefined) {
     setParseError(null);
+    setMessage(null);
     setRows([]);
     if (!file) return;
     setFileName(file.name);
     try {
-      const text = await file.text();
-      const parsed = parseCsv(text);
+      const table = await parseSpreadsheet(file);
+      const parsed = parseRows(table);
       if (parsed.length === 0) {
-        setParseError("File rỗng hoặc không đọc được nội dung CSV.");
+        setParseError("File rỗng hoặc không đọc được nội dung.");
       } else {
         setRows(parsed);
       }
     } catch {
-      setParseError("Không đọc được file. Vui lòng thử file CSV khác.");
+      setParseError("Không đọc được file. Vui lòng thử file Excel (.xlsx) hoặc CSV khác.");
     }
+  }
+
+  async function importRows() {
+    const valid = rows.filter((r) => r.errors.length === 0);
+    if (valid.length === 0 || !classId) return;
+    setBusy(true);
+    setMessage(null);
+
+    const { data: existing } = await supabase
+      .from("students")
+      .select("code")
+      .like("code", "HS%")
+      .order("code", { ascending: false })
+      .limit(1);
+    let seq = 1;
+    const top = (existing?.[0] as { code: string } | undefined)?.code;
+    const m = top?.match(/^HS(\d+)$/);
+    if (m) seq = parseInt(m[1], 10) + 1;
+
+    const insert = valid.map((r, i) => ({
+      class_id: classId,
+      code: r.code || `HS${String(seq + i).padStart(6, "0")}`,
+      full_name: r.fullName,
+      dob: normalizeDob(r.dob),
+      gender: normalizeGender(r.gender),
+      status: "active" as const,
+    }));
+    const { error } = await supabase.from("students").insert(insert);
+    setMessage(
+      error
+        ? "Không thể nhập danh sách - kiểm tra quyền ghi hoặc mã HS trùng."
+        : `Đã nhập ${insert.length} học sinh vào lớp.`,
+    );
+    if (!error) setRows([]);
+    setBusy(false);
   }
 
   const valid = rows.filter((r) => r.errors.length === 0);
@@ -138,20 +175,35 @@ export function CsvUploader() {
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".xlsx,.xls,.csv"
           className="hidden"
           onChange={(e) => onFile(e.target.files?.[0])}
         />
         <p className="text-sm text-muted-foreground">
-          Chọn file CSV danh sách học sinh để xem trước dữ liệu.
+          Chọn file Excel (.xlsx) hoặc CSV danh sách học sinh để xem trước dữ
+          liệu.
         </p>
-        <Button
-          type="button"
-          className="mt-3"
-          onClick={() => inputRef.current?.click()}
-        >
-          Chọn file CSV
-        </Button>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <Button type="button" onClick={() => inputRef.current?.click()}>
+            <FileSpreadsheet /> Chọn file
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              downloadXlsxTemplate(
+                "template_danh_sach_hoc_sinh.xlsx",
+                ["ma_hs", "ho_ten", "ngay_sinh", "gioi_tinh"],
+                [
+                  ["HS000101", "Nguyễn Văn An", "2013-05-12", "nam"],
+                  ["HS000102", "Trần Thị Bình", "15/08/2013", "nu"],
+                ],
+              )
+            }
+          >
+            <Download /> Tải template
+          </Button>
+        </div>
         {fileName && (
           <p className="mt-2 text-xs text-muted-foreground">
             Đã chọn: {fileName}
@@ -167,7 +219,7 @@ export function CsvUploader() {
 
       {rows.length > 0 && (
         <>
-          <div className="flex flex-wrap gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-success-bg px-2.5 py-1 font-medium text-success">
               {valid.length} dòng hợp lệ
             </span>
@@ -200,10 +252,10 @@ export function CsvUploader() {
                 {preview.map((r) => (
                   <tr key={r.line}>
                     <td className="text-muted-foreground">{r.line}</td>
-                    <td className="font-mono text-xs">{r.code || "—"}</td>
-                    <td className="font-medium">{r.fullName || "—"}</td>
-                    <td>{r.dob || "—"}</td>
-                    <td>{r.gender || "—"}</td>
+                    <td className="font-mono text-xs">{r.code || "-"}</td>
+                    <td className="font-medium">{r.fullName || "-"}</td>
+                    <td>{r.dob || "-"}</td>
+                    <td>{r.gender || "-"}</td>
                     <td>
                       {r.errors.length === 0 ? (
                         <span className="text-xs font-medium text-success">
@@ -223,12 +275,36 @@ export function CsvUploader() {
               </tbody>
             </table>
           </div>
-          <p className="rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
-            Đây là bản xem trước phía client. Trong bản demo, việc import thật
-            được thực hiện qua script seed (scripts/seed.mjs) — dữ liệu chưa được
-            ghi vào hệ thống.
-          </p>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+            <label className="text-sm font-medium" htmlFor="import-class">
+              Nhập vào lớp
+            </label>
+            <select
+              id="import-class"
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              onClick={importRows}
+              disabled={busy || valid.length === 0 || !classId}
+            >
+              <Upload /> {busy ? "Đang nhập..." : `Nhập ${valid.length} học sinh`}
+            </Button>
+          </div>
         </>
+      )}
+
+      {message && (
+        <p className="rounded-lg bg-primary-bg px-3 py-2 text-sm text-primary">
+          {message}
+        </p>
       )}
     </div>
   );

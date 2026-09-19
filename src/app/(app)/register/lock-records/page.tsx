@@ -30,7 +30,7 @@ export default async function LockRecordsPage() {
       <PageHeader
         section="Phân hệ IX - Sổ chủ nhiệm"
         title="Duyệt & khóa sổ học bạ"
-        description="Duyệt và khóa sổ học bạ theo kỳ — sau khi khóa, dữ liệu không thể chỉnh sửa."
+        description="Duyệt và khóa sổ học bạ theo kỳ - sau khi khóa, dữ liệu không thể chỉnh sửa."
       />
       <LockRecordsClient
         signoffs={signoffs}

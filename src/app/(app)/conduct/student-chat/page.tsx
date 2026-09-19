@@ -91,7 +91,7 @@ export default async function StudentChatPage({
                 >
                   <span className="block font-medium">{s.full_name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {s.code} — {className.get(s.class_id) ?? ""}
+                    {s.code} - {className.get(s.class_id) ?? ""}
                   </span>
                 </Link>
               </li>

@@ -166,13 +166,13 @@ export default async function PlansPage({
           return (
             <tr key={p.id}>
               <td>
-                <div className="font-medium">{student?.full_name ?? "—"}</div>
+                <div className="font-medium">{student?.full_name ?? "-"}</div>
                 <div className="font-mono text-xs text-muted-foreground">
                   {student?.code}
                 </div>
               </td>
-              <td>{student ? (className.get(student.class_id) ?? "—") : "—"}</td>
-              <td>{subjectName.get(p.subject_id) ?? "—"}</td>
+              <td>{student ? (className.get(student.class_id) ?? "-") : "-"}</td>
+              <td>{subjectName.get(p.subject_id) ?? "-"}</td>
               <td className="max-w-48">{p.reason}</td>
               <td className="max-w-56">{p.plan}</td>
               <td>

@@ -101,7 +101,7 @@ export function IncidentForm({
             onChange={(e) => setStudentId(e.target.value)}
             className={INPUT_CLS}
           >
-            <option value="">— Sự cố chung của lớp —</option>
+            <option value="">- Sự cố chung của lớp -</option>
             {classStudents.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.full_name} ({s.code})

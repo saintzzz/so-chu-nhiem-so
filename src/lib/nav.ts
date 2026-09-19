@@ -11,7 +11,7 @@ export interface NavSection {
   children?: NavItem[];
 }
 
-/** Sidebar structure per role — mirrors target sitemap. */
+/** Sidebar structure per role - mirrors target sitemap. */
 export const NAV: Record<Role, NavSection[]> = {
   gvcn: [
     { label: "Dashboard", href: "/dashboard" },

@@ -97,7 +97,7 @@ export default async function TimetablePage({
         title="Thời khóa biểu"
         description={
           selected
-            ? `Lớp ${selected.name} — Tuần học (Thứ 2 đến Thứ 7)`
+            ? `Lớp ${selected.name} - Tuần học (Thứ 2 đến Thứ 7)`
             : "Chưa có lớp nào"
         }
       />
@@ -155,11 +155,11 @@ export default async function TimetablePage({
                       {e ? (
                         <div className="rounded-lg bg-primary-bg/60 px-2.5 py-2">
                           <p className="text-sm font-medium text-primary">
-                            {subjectName.get(e.subject_id) ?? "—"}
+                            {subjectName.get(e.subject_id) ?? "-"}
                           </p>
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             {e.teacher_id
-                              ? (teacherName.get(e.teacher_id) ?? "—")
+                              ? (teacherName.get(e.teacher_id) ?? "-")
                               : "Chưa phân công"}
                           </p>
                           {e.room && (
@@ -169,7 +169,7 @@ export default async function TimetablePage({
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </td>
                   );

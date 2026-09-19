@@ -112,12 +112,12 @@ export default async function CounselingIntakePage() {
                   {new Date(c.created_at).toLocaleDateString("vi-VN")}
                 </td>
                 <td>
-                  <div className="font-medium">{student?.full_name ?? "—"}</div>
+                  <div className="font-medium">{student?.full_name ?? "-"}</div>
                   <div className="font-mono text-xs text-muted-foreground">
                     {student?.code}
                   </div>
                 </td>
-                <td>{student ? (className.get(student.class_id) ?? "—") : "—"}</td>
+                <td>{student ? (className.get(student.class_id) ?? "-") : "-"}</td>
                 <td className="max-w-80">{c.issue}</td>
                 <td>
                   <StatusBadge label={sev.label} tone={sev.tone} />

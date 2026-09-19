@@ -66,7 +66,7 @@ export default async function AuditPage({
               {new Date(l.created_at).toLocaleString("vi-VN")}
             </td>
             <td className="font-medium">
-              {l.actor_id ? (actorNames.get(l.actor_id) ?? "—") : "Hệ thống"}
+              {l.actor_id ? (actorNames.get(l.actor_id) ?? "-") : "Hệ thống"}
             </td>
             <td>
               <StatusBadge label={l.action} tone="primary" />
@@ -76,7 +76,7 @@ export default async function AuditPage({
               {l.entity_id ? ` · ${l.entity_id.slice(0, 8)}…` : ""}
             </td>
             <td className="max-w-xs truncate text-xs text-muted-foreground">
-              {l.payload ? JSON.stringify(l.payload) : "—"}
+              {l.payload ? JSON.stringify(l.payload) : "-"}
             </td>
           </tr>
         ))}

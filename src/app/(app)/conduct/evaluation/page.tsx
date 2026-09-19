@@ -132,6 +132,7 @@ export default async function ConductEvaluationPage({
           evaluations={evaluations}
           term={term}
           meId={profile.id}
+          classId={classId}
         />
       ) : (
         <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

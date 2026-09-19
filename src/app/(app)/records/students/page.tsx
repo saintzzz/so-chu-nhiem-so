@@ -105,7 +105,7 @@ export default async function RecordsStudentsPage({
       ])
     : [{ data: [] }, { data: [] }];
 
-  // attendance_records có thể vượt giới hạn 1000 dòng/request — phân trang
+  // attendance_records có thể vượt giới hạn 1000 dòng/request - phân trang
   const attRows: { student_id: string; status: AttendanceStatus }[] = [];
   if (ids.length > 0) {
     const pageSize = 1000;

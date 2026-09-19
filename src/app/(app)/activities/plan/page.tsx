@@ -22,7 +22,7 @@ async function scopedClasses(
 }
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -64,7 +64,7 @@ export default async function ActivitiesPlanPage() {
         activities={activities.map((a) => ({
           id: a.id,
           title: a.title,
-          className: className.get(a.class_id) ?? "—",
+          className: className.get(a.class_id) ?? "-",
           activityDate: fmtDate(a.activity_date),
           description: a.description,
           status: a.status,

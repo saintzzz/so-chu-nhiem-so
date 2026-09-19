@@ -164,7 +164,7 @@ export default async function SupportPage({
 
       <DataTable
         columns={["Học sinh", "Môn yếu", "Điểm TB", "Trạng thái kế hoạch", "Thao tác"]}
-        footer={<span>{weak.length} cặp học sinh – môn cần hỗ trợ</span>}
+        footer={<span>{weak.length} cặp học sinh - môn cần hỗ trợ</span>}
       >
         {weak.map((w) => {
           const plan = planKey.get(`${w.student_id}:${w.subject_id}`);
@@ -178,7 +178,7 @@ export default async function SupportPage({
                   {student?.code}
                 </div>
               </td>
-              <td>{subjectName.get(w.subject_id) ?? "—"}</td>
+              <td>{subjectName.get(w.subject_id) ?? "-"}</td>
               <td>
                 <span className="font-semibold text-error">
                   {w.avg.toFixed(2)}

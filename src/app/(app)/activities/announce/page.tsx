@@ -89,7 +89,7 @@ export default async function ActivitiesAnnouncePage() {
         activities={activities.map((a) => ({
           id: a.id,
           title: a.title,
-          className: className.get(a.class_id) ?? "—",
+          className: className.get(a.class_id) ?? "-",
           activityDate: fmtDate(a.activity_date),
           description: a.description,
           registered: regCount.get(a.id) ?? 0,

@@ -161,7 +161,7 @@ export default async function PortalPage({
           <PortalPicker
             students={students.map((s) => ({
               id: s.id,
-              label: `${s.full_name} — ${className.get(s.class_id) ?? ""}`,
+              label: `${s.full_name} - ${className.get(s.class_id) ?? ""}`,
             }))}
             selectedId={selectedId}
           />
@@ -171,7 +171,7 @@ export default async function PortalPage({
       <div className="overflow-hidden rounded-xl border-2 border-primary/30 bg-card shadow-[var(--shadow-sm-token)]">
         <div className="border-b border-border bg-primary-bg px-5 py-3">
           <p className="text-sm font-semibold text-primary">
-            Cổng thông tin Phụ huynh — Bản xem trước
+            Cổng thông tin Phụ huynh - Bản xem trước
           </p>
           <p className="text-xs text-muted-foreground">
             {student.full_name} · Lớp {className.get(student.class_id)} · Mã HS:{" "}
@@ -199,14 +199,14 @@ export default async function PortalPage({
             </div>
             <StatCard
               label="Chuyên cần tháng 9"
-              value={monthPct !== null ? `${monthPct}%` : "—"}
+              value={monthPct !== null ? `${monthPct}%` : "-"}
               tone={
                 monthPct !== null && monthPct < 80 ? "warning" : "success"
               }
             />
             <StatCard
               label="Điểm trung bình"
-              value={avgScore ?? "—"}
+              value={avgScore ?? "-"}
               tone="primary"
             />
           </div>
@@ -262,7 +262,7 @@ export default async function PortalPage({
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {a.purpose ?? "Trao đổi"} · PH:{" "}
-                            {parentName.get(a.parent_id) ?? "—"}
+                            {parentName.get(a.parent_id) ?? "-"}
                           </p>
                         </div>
                         <StatusBadge label={st.label} tone={st.tone} />

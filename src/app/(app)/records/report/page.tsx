@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
 import { Sparkles } from "lucide-react";
+import { aiProviderLabel, generateText } from "@/lib/ai";
 
 interface ClassStats {
   id: string;
@@ -125,7 +126,7 @@ export default async function RecordsReportPage() {
       : null;
   const totalViolations = stats.reduce((a, s) => a + s.violations, 0);
 
-  // Narrative "AI" (mô phỏng, rule-based)
+  const ruleNarrative: string[] = [];
   const bestAtt = [...stats].sort(
     (a, b) => (b.attendancePct ?? 0) - (a.attendancePct ?? 0),
   )[0];
@@ -133,29 +134,56 @@ export default async function RecordsReportPage() {
     (a, b) => (a.attendancePct ?? 99) - (b.attendancePct ?? 99),
   )[0];
   const mostViol = [...stats].sort((a, b) => b.violations - a.violations)[0];
-  const narrative: string[] = [];
   if (stats.length > 0 && bestAtt) {
-    narrative.push(
+    ruleNarrative.push(
       `Lớp ${bestAtt.name} có tỷ lệ chuyên cần cao nhất (${bestAtt.attendancePct}%), trong khi lớp ${worstAtt?.name} thấp nhất (${worstAtt?.attendancePct}%).`,
     );
   }
   if (mostViol && mostViol.violations > 0) {
-    narrative.push(
-      `Lớp ${mostViol.name} ghi nhận nhiều vi phạm nhất (${mostViol.violations} lượt) — GVCN nên rà soát các em vi phạm lặp lại và phối hợp phụ huynh.`,
+    ruleNarrative.push(
+      `Lớp ${mostViol.name} ghi nhận nhiều vi phạm nhất (${mostViol.violations} lượt) - GVCN nên rà soát các em vi phạm lặp lại và phối hợp phụ huynh.`,
     );
   } else if (stats.length > 0) {
-    narrative.push("Chưa ghi nhận vi phạm nào trong giai đoạn này.");
+    ruleNarrative.push("Chưa ghi nhận vi phạm nào trong giai đoạn này.");
   }
   if (avgScore !== null) {
-    narrative.push(
+    ruleNarrative.push(
       `Điểm trung bình chung đạt ${avgScore}. ${avgScore >= 7 ? "Kết quả học tập khá tốt, tiếp tục duy trì." : "Cần rà soát các em có điểm dưới trung bình để lập kế hoạch hỗ trợ kịp thời."}`,
     );
   }
   if (avgPct !== null && avgPct < 95) {
-    narrative.push(
-      `Chuyên cần trung bình ${avgPct}% — dưới mục tiêu 95%. Đề xuất nhắc phụ huynh các em vắng không phép trong tuần tới.`,
+    ruleNarrative.push(
+      `Chuyên cần trung bình ${avgPct}% - dưới mục tiêu 95%. Đề xuất nhắc phụ huynh các em vắng không phép trong tuần tới.`,
     );
   }
+
+  const aiText =
+    stats.length > 0
+      ? await generateText(
+          `Dữ liệu tổng hợp các lớp (JSON): ${JSON.stringify(
+            stats.map((s) => ({
+              lop: s.name,
+              si_so: s.size,
+              chuyen_can_pct: s.attendancePct,
+              diem_tb: s.avgScore,
+              vi_pham: s.violations,
+            })),
+          )}. Hãy viết 3-5 nhận xét phân tích ngắn gọn bằng tiếng Việt cho giáo viên chủ nhiệm/ban giám hiệu: lớp nổi bật, lớp cần chú ý, xu hướng và 1-2 đề xuất hành động cụ thể. Mỗi nhận xét một dòng, không đánh số, không ký tự đầu dòng.`,
+          {
+            system:
+              "Bạn là trợ lý phân tích dữ liệu giáo dục cho trường THCS Việt Nam. Trả lời ngắn gọn, thực tế, không emoji.",
+            maxTokens: 1024,
+          },
+        )
+      : null;
+  const aiNarrative = aiText
+    ? aiText
+        .split(/\n+/)
+        .map((l) => l.replace(/^[\s\-*•\d.)\]]+/, "").trim())
+        .filter(Boolean)
+    : null;
+  const narrative = aiNarrative && aiNarrative.length > 0 ? aiNarrative : ruleNarrative;
+  const aiLabel = aiNarrative ? aiProviderLabel() : null;
 
   return (
     <div>
@@ -169,10 +197,10 @@ export default async function RecordsReportPage() {
         <StatCard label="Tổng sĩ số" value={totalStudents} />
         <StatCard
           label="Chuyên cần TB"
-          value={avgPct !== null ? `${avgPct}%` : "—"}
+          value={avgPct !== null ? `${avgPct}%` : "-"}
           tone={avgPct !== null && avgPct >= 95 ? "success" : "warning"}
         />
-        <StatCard label="Điểm TB chung" value={avgScore ?? "—"} />
+        <StatCard label="Điểm TB chung" value={avgScore ?? "-"} />
         <StatCard
           label="Tổng vi phạm"
           value={totalViolations}
@@ -204,9 +232,9 @@ export default async function RecordsReportPage() {
                 <td className="font-medium">{s.name}</td>
                 <td>{s.size}</td>
                 <td>
-                  {s.attendancePct !== null ? `${s.attendancePct}%` : "—"}
+                  {s.attendancePct !== null ? `${s.attendancePct}%` : "-"}
                 </td>
-                <td>{s.avgScore ?? "—"}</td>
+                <td>{s.avgScore ?? "-"}</td>
                 <td>{s.violations}</td>
                 <td>
                   <StatusBadge
@@ -247,7 +275,7 @@ export default async function RecordsReportPage() {
         <div className="mb-2 flex items-center gap-2">
           <Sparkles className="size-4 text-primary" />
           <h2 className="text-sm font-semibold text-primary">
-            Gợi ý (mô phỏng AI)
+            {aiLabel ? `Phân tích AI (${aiLabel})` : "Gợi ý (phân tích tự động)"}
           </h2>
         </div>
         {narrative.length > 0 ? (
@@ -262,8 +290,9 @@ export default async function RecordsReportPage() {
           </p>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          Gợi ý được sinh tự động từ số liệu thống kê của lớp — chỉ mang tính
-          tham khảo.
+          {aiLabel
+            ? "Nội dung do AI tạo từ số liệu thống kê của lớp - chỉ mang tính tham khảo, giáo viên cần rà soát trước khi dùng."
+            : "Gợi ý được sinh tự động từ số liệu thống kê của lớp - chỉ mang tính tham khảo."}
         </p>
       </div>
     </div>

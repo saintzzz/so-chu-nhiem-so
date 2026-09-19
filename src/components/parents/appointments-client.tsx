@@ -49,9 +49,9 @@ export function AppointmentsClient({ rows }: { rows: AppointmentRow[] }) {
         return (
           <tr key={r.id}>
             <td className="font-medium">{r.parentName}</td>
-            <td>{r.studentName ?? "—"}</td>
+            <td>{r.studentName ?? "-"}</td>
             <td>{r.scheduledAt}</td>
-            <td className="max-w-64 truncate">{r.purpose ?? "—"}</td>
+            <td className="max-w-64 truncate">{r.purpose ?? "-"}</td>
             <td>
               <StatusBadge label={st.label} tone={st.tone} />
             </td>

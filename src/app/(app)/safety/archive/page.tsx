@@ -77,9 +77,9 @@ export default async function SafetyArchivePage() {
         rows={incidents.map((i) => ({
           id: i.id,
           occurredAt: fmtDateTime(i.occurred_at),
-          className: i.class_id ? (className.get(i.class_id) ?? "—") : "—",
+          className: i.class_id ? (className.get(i.class_id) ?? "-") : "-",
           studentName: i.student_id
-            ? (studentName.get(i.student_id) ?? "—")
+            ? (studentName.get(i.student_id) ?? "-")
             : "Sự cố chung",
           type: i.type,
           severity: i.severity,

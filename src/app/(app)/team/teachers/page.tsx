@@ -70,7 +70,7 @@ export default async function TeamTeachersPage() {
       <PageHeader
         section="Tổ chuyên môn"
         title="Danh sách giáo viên"
-        description="Giáo viên thuộc tổ — môn giảng dạy và lớp chủ nhiệm"
+        description="Giáo viên thuộc tổ - môn giảng dạy và lớp chủ nhiệm"
       />
 
       <DataTable
@@ -86,9 +86,9 @@ export default async function TeamTeachersPage() {
                 tone={t.role === "gvcn" ? "success" : "muted"}
               />
             </td>
-            <td>{subjectsOf.get(t.id)?.join(", ") || "—"}</td>
-            <td>{classesOf.get(t.id)?.join(", ") || "—"}</td>
-            <td className="text-muted-foreground">{t.email ?? "—"}</td>
+            <td>{subjectsOf.get(t.id)?.join(", ") || "-"}</td>
+            <td>{classesOf.get(t.id)?.join(", ") || "-"}</td>
+            <td className="text-muted-foreground">{t.email ?? "-"}</td>
           </tr>
         ))}
         {teachers.length === 0 && (

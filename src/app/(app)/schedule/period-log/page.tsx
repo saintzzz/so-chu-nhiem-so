@@ -122,7 +122,7 @@ export default async function PeriodLogPage({
     entries = entryRows.map((e) => ({
       id: e.id,
       period: e.period,
-      subject: subjectName.get(e.subject_id) ?? "—",
+      subject: subjectName.get(e.subject_id) ?? "-",
       teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
       room: e.room,
     }));
@@ -177,7 +177,7 @@ export default async function PeriodLogPage({
         title="Sổ đầu bài"
         description={
           cls
-            ? `Lớp ${cls.name} — ${WEEKDAY_NAMES[weekday ?? 0] ?? "Chủ nhật"}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
+            ? `Lớp ${cls.name} - ${WEEKDAY_NAMES[weekday ?? 0] ?? "Chủ nhật"}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
             : "Chưa được phân công lớp chủ nhiệm"
         }
       />

@@ -111,11 +111,11 @@ export default async function EvidencePage() {
                         <ExternalLink className="size-3.5" />
                       </a>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </td>
                   <td className="max-w-64 truncate text-muted-foreground">
-                    {e.note ?? "—"}
+                    {e.note ?? "-"}
                   </td>
                   <td>
                     <StatusBadge label={status.label} tone={status.tone} />

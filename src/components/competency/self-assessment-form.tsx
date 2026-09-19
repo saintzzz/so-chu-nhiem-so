@@ -73,7 +73,7 @@ export function SelfAssessmentForm({
     <div>
       {locked && (
         <p className="mb-4 rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
-          Đánh giá đã được tổ trưởng xem xét/phê duyệt — nội dung chỉ để xem.
+          Đánh giá đã được tổ trưởng xem xét/phê duyệt - nội dung chỉ để xem.
         </p>
       )}
 

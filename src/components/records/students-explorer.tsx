@@ -142,7 +142,7 @@ export function StudentsExplorer({
                   >
                     <td className="font-mono text-xs">{s.code}</td>
                     <td className="font-medium">{s.fullName}</td>
-                    <td>{s.groupName ?? "—"}</td>
+                    <td>{s.groupName ?? "-"}</td>
                     <td>
                       {s.avgScore !== null ? (
                         <span
@@ -160,11 +160,11 @@ export function StudentsExplorer({
                           {s.avgScore.toFixed(1)}
                         </span>
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                     <td>
-                      {s.attendancePct !== null ? `${s.attendancePct}%` : "—"}
+                      {s.attendancePct !== null ? `${s.attendancePct}%` : "-"}
                     </td>
                     <td>
                       {s.conductLabel ? (
@@ -173,7 +173,7 @@ export function StudentsExplorer({
                           tone={s.conductTone}
                         />
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                     <td>
@@ -199,7 +199,7 @@ export function StudentsExplorer({
                             <ul className="mt-1.5 space-y-1 text-sm">
                               <li>
                                 Giới tính:{" "}
-                                {s.gender ? (GENDER_LABEL[s.gender] ?? s.gender) : "—"}
+                                {s.gender ? (GENDER_LABEL[s.gender] ?? s.gender) : "-"}
                               </li>
                               <li>
                                 Ngày sinh:{" "}
@@ -207,7 +207,7 @@ export function StudentsExplorer({
                                   ? new Date(`${s.dob}T00:00:00`).toLocaleDateString(
                                       "vi-VN",
                                     )
-                                  : "—"}
+                                  : "-"}
                               </li>
                               <li>Tổ: {s.groupName ?? "Chưa xếp tổ"}</li>
                               <li>
@@ -220,7 +220,7 @@ export function StudentsExplorer({
                               Học tập
                             </p>
                             <p className="mt-1.5 text-2xl font-semibold">
-                              {s.avgScore !== null ? s.avgScore.toFixed(1) : "—"}
+                              {s.avgScore !== null ? s.avgScore.toFixed(1) : "-"}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Điểm trung bình các môn
@@ -233,7 +233,7 @@ export function StudentsExplorer({
                             <p className="mt-1.5 text-2xl font-semibold">
                               {s.attendancePct !== null
                                 ? `${s.attendancePct}%`
-                                : "—"}
+                                : "-"}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Tỷ lệ đi học (có mặt + đi muộn)

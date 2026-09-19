@@ -131,7 +131,7 @@ export default async function ConductRecordsPage({
                 {new Date(r.date).toLocaleDateString("vi-VN")}
               </td>
               <td>
-                <div className="font-medium">{student?.full_name ?? "—"}</div>
+                <div className="font-medium">{student?.full_name ?? "-"}</div>
                 <div className="font-mono text-xs text-muted-foreground">
                   {student?.code}
                 </div>

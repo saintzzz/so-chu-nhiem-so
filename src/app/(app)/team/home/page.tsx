@@ -57,8 +57,8 @@ export default async function TeamHomePage() {
             .single()
         ).data ?? null) as Pick<Profile, "full_name"> | null
       )?.full_name ??
-      "—")
-    : "—";
+      "-")
+    : "-";
 
   const [meetingsRes, pendingRes] = await Promise.all([
     supabase
@@ -162,7 +162,7 @@ export default async function TeamHomePage() {
           className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-warning-bg p-4 text-sm font-medium text-warning"
         >
           <ClipboardCheck className="size-4" />
-          Có {pendingRes.count} đánh giá năng lực đang chờ duyệt — bấm để xem
+          Có {pendingRes.count} đánh giá năng lực đang chờ duyệt - bấm để xem
           xét.
         </Link>
       )}

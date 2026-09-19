@@ -206,7 +206,7 @@ export default async function SchoolRadarPage() {
       <PageHeader
         section="Quản trị"
         title="Radar cảnh báo sớm"
-        description={`Tổng hợp tín hiệu rủi ro theo lớp — 30 ngày tính đến ${anchor
+        description={`Tổng hợp tín hiệu rủi ro theo lớp - 30 ngày tính đến ${anchor
           .split("-")
           .reverse()
           .join("/")}`}

@@ -96,7 +96,7 @@ export function LoginForm() {
           ))}
         </select>
         <p className="mt-1.5 text-xs text-muted-foreground">
-          Tài khoản demo — mật khẩu mặc định: demo1234
+          Tài khoản demo - mật khẩu mặc định: demo1234
         </p>
       </div>
       {error && (

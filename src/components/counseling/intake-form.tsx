@@ -82,7 +82,7 @@ export function CounselingIntakeForm({
           >
             {students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.full_name} — {s.class_name}
+                {s.full_name} - {s.class_name}
               </option>
             ))}
           </select>

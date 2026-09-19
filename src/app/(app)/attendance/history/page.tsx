@@ -168,7 +168,7 @@ export default async function AttendanceHistoryPage({
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="% chuyên cần (30 ngày)"
-          value={pct30 !== null ? `${pct30}%` : "—"}
+          value={pct30 !== null ? `${pct30}%` : "-"}
           tone={pct30 !== null && pct30 >= 95 ? "success" : "warning"}
         />
         <StatCard label="Vắng có phép" value={sum30.excused} tone="warning" />
@@ -224,7 +224,7 @@ export default async function AttendanceHistoryPage({
                 <td className="text-error">{m.unexcused}</td>
                 <td className="text-warning">{m.late}</td>
                 <td className="font-medium">
-                  {pct !== null ? `${pct}%` : "—"}
+                  {pct !== null ? `${pct}%` : "-"}
                 </td>
               </tr>
             );
@@ -271,7 +271,7 @@ export default async function AttendanceHistoryPage({
               <td className="text-warning">{c.excused}</td>
               <td className="text-error">{c.unexcused}</td>
               <td className="text-warning">{c.late}</td>
-              <td>{pct !== null ? `${pct}%` : "—"}</td>
+              <td>{pct !== null ? `${pct}%` : "-"}</td>
             </tr>
           );
         })}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -26,17 +27,19 @@ export const RATINGS = [
   { value: "yeu", label: "Yếu" },
 ];
 
-/** Editable hạnh kiểm table — one row per student, upsert on save. */
+/** Editable hạnh kiểm table - one row per student, upsert on save. */
 export function ConductEvaluationEditor({
   students,
   evaluations,
   term,
   meId,
+  classId,
 }: {
   students: EvalStudent[];
   evaluations: ExistingEval[];
   term: string;
   meId: string;
+  classId: string;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<
@@ -53,6 +56,7 @@ export function ConductEvaluationEditor({
     ),
   );
   const [pending, startTransition] = useTransition();
+  const [aiBusy, setAiBusy] = useState<string | "all" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -93,6 +97,59 @@ export function ConductEvaluationEditor({
     });
   }
 
+  async function aiSuggest(target: EvalStudent | "all") {
+    const list =
+      target === "all"
+        ? students.filter((s) => !(draft[s.id]?.comment ?? "").trim())
+        : [target];
+    if (list.length === 0) {
+      setError("Tất cả ô nhận xét đã có nội dung.");
+      return;
+    }
+    setAiBusy(target === "all" ? "all" : target.id);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classId,
+          term,
+          students: list.map((s) => ({
+            code: s.code,
+            name: s.full_name,
+            rating: draft[s.id]?.rating ?? "tot",
+          })),
+        }),
+      });
+      const json = (await res.json()) as {
+        comments: Record<string, string> | null;
+      };
+      if (!json.comments) {
+        setError("AI chưa sẵn sàng (chưa cấu hình API key).");
+        return;
+      }
+      setDraft((prev) => {
+        const next = { ...prev };
+        for (const s of list) {
+          const c = json.comments?.[s.code];
+          if (c) {
+            next[s.id] = {
+              ...(next[s.id] ?? { rating: "tot", comment: "" }),
+              comment: c,
+            };
+          }
+        }
+        return next;
+      });
+      setSaved(false);
+    } catch {
+      setError("Không gọi được dịch vụ AI.");
+    } finally {
+      setAiBusy(null);
+    }
+  }
+
   return (
     <DataTable
       columns={["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"]}
@@ -102,6 +159,15 @@ export function ConductEvaluationEditor({
           <span className="flex items-center gap-3">
             {saved && <span className="text-success">Đã lưu đánh giá.</span>}
             {error && <span className="text-error">{error}</span>}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={aiBusy !== null}
+              onClick={() => aiSuggest("all")}
+            >
+              <Sparkles />
+              {aiBusy === "all" ? "AI đang viết..." : "AI gợi ý nhận xét"}
+            </Button>
             <Button onClick={save} disabled={pending} size="sm">
               {pending ? "Đang lưu…" : "Lưu đánh giá"}
             </Button>
@@ -129,12 +195,23 @@ export function ConductEvaluationEditor({
               </select>
             </td>
             <td>
-              <input
-                value={d.comment}
-                onChange={(e) => patch(s.id, { comment: e.target.value })}
-                placeholder="Nhận xét…"
-                className="h-8 w-full min-w-48 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
-              />
+              <span className="flex items-center gap-1.5">
+                <input
+                  value={d.comment}
+                  onChange={(e) => patch(s.id, { comment: e.target.value })}
+                  placeholder="Nhận xét…"
+                  className="h-8 w-full min-w-48 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+                />
+                <button
+                  type="button"
+                  title="AI gợi ý nhận xét cho em này"
+                  disabled={aiBusy !== null}
+                  onClick={() => aiSuggest(s)}
+                  className="shrink-0 rounded-md p-1.5 text-primary hover:bg-primary-bg disabled:opacity-40"
+                >
+                  <Sparkles className="size-4" />
+                </button>
+              </span>
             </td>
           </tr>
         );

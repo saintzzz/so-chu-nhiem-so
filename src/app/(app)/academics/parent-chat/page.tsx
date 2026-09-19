@@ -84,7 +84,7 @@ export default async function ParentChatPage({
         name: p.full_name,
         studentId: link?.student_id ?? null,
         subtitle: student
-          ? `PH của ${student.full_name} — ${className.get(student.class_id) ?? ""}`
+          ? `PH của ${student.full_name} - ${className.get(student.class_id) ?? ""}`
           : "Phụ huynh",
       };
     })

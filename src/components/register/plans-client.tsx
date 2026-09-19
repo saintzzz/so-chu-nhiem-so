@@ -38,14 +38,14 @@ export function PlansClient({
   const [message, setMessage] = useState<string | null>(null);
 
   const byMonth = useMemo(() => {
-    const m = new Map<string, TaskRow[]>();
+    const m = new Map<number, TaskRow[]>();
     tasks.forEach((t) => {
-      const key = t.month ?? t.due_date?.slice(0, 7) ?? "Chưa xếp tháng";
+      const key = t.month ?? (t.due_date ? parseInt(t.due_date.slice(5, 7), 10) : null) ?? 0;
       const arr = m.get(key) ?? [];
       arr.push(t);
       m.set(key, arr);
     });
-    return [...m.entries()].sort(([a], [b]) => a.localeCompare(b));
+    return [...m.entries()].sort(([a], [b]) => a - b);
   }, [tasks]);
 
   const week = useMemo(() => weekRange(), []);
@@ -63,7 +63,7 @@ export function PlansClient({
         class_id: classId,
         title: title.trim(),
         due_date: dueDate || null,
-        month: dueDate ? dueDate.slice(0, 7) : null,
+        month: dueDate ? parseInt(dueDate.slice(5, 7), 10) : null,
         source: "manual",
         status: "approved",
       })
@@ -103,7 +103,7 @@ export function PlansClient({
             className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]"
           >
             <h3 className="mb-3 font-semibold">
-              Kế hoạch tháng {month}
+              {month === 0 ? "Chưa xếp tháng" : `Kế hoạch tháng ${month}`}
               <span className="ml-2 text-xs font-normal text-muted-foreground">
                 {items.filter((i) => i.status === "done").length}/{items.length}{" "}
                 hoàn thành

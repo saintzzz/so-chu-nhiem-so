@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarPlus, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { CalendarPlus, Download, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -23,7 +24,8 @@ export function YearEventsClient({
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [category, setCategory] = useState("hoat_dong");
-  const [csv, setCsv] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ export function YearEventsClient({
     const row = {
       title: title.trim(),
       event_date: date,
-      month: date.slice(0, 7),
+      month: parseInt(date.slice(5, 7), 10),
       category,
       school_id: schoolId,
     };
@@ -58,27 +60,43 @@ export function YearEventsClient({
     setBusy(false);
   }
 
-  async function bulkUpload() {
-    const lines = csv
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (lines.length === 0) return;
-    const rows = lines
-      .map((l) => {
-        const [t, d, c] = l.split(/[;,\t]/).map((p) => p.trim());
-        if (!t || !d || Number.isNaN(Date.parse(d))) return null;
+  function normalizeEventDate(d: string): string | null {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    return null;
+  }
+
+  async function onUploadFile(file: File | undefined) {
+    if (!file) return;
+    setFileName(file.name);
+    setMessage(null);
+    let table: string[][];
+    try {
+      table = await parseSpreadsheet(file);
+    } catch {
+      setMessage("Không đọc được file. Vui lòng thử file Excel (.xlsx) hoặc CSV khác.");
+      return;
+    }
+    const rows = table
+      .map((cells) => {
+        const [t, d, c] = cells.map((p) => (p ?? "").trim());
+        const date = normalizeEventDate(d);
+        if (!t || !date) return null;
         return {
           title: t,
-          event_date: d,
-          month: d.slice(0, 7),
+          event_date: date,
+          month: parseInt(date.slice(5, 7), 10),
           category: c && EVENT_CATEGORIES[c] ? c : "khac",
           school_id: schoolId,
         };
       })
-      .filter((r): r is NonNullable<typeof r> => r !== null);
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .filter((r) => !Number.isNaN(Date.parse(r.event_date)) && r.title.length > 0);
     if (rows.length === 0) {
-      setMessage("Không có dòng hợp lệ. Định dạng: Tiêu đề;YYYY-MM-DD;danh_mục");
+      setMessage(
+        "Không có dòng hợp lệ. Cột: tieu_de, ngay (YYYY-MM-DD), danh_muc - tải template để xem mẫu.",
+      );
       return;
     }
     setBusy(true);
@@ -93,7 +111,8 @@ export function YearEventsClient({
           a.event_date.localeCompare(b.event_date),
         ),
       );
-      setCsv("");
+      if (fileRef.current) fileRef.current.value = "";
+      setFileName(null);
       setMessage(`Đã nhập ${inserted.length} sự kiện.`);
     } else {
       setMessage("Không thể nhập danh sách sự kiện.");
@@ -108,7 +127,7 @@ export function YearEventsClient({
           <tr key={e.id}>
             <td className="font-medium">{e.title}</td>
             <td>{new Date(e.event_date).toLocaleDateString("vi-VN")}</td>
-            <td className="text-muted-foreground">{e.month ?? "—"}</td>
+            <td className="text-muted-foreground">{e.month ?? "-"}</td>
             <td>
               <StatusBadge
                 label={EVENT_CATEGORIES[e.category ?? "khac"] ?? e.category ?? "Khác"}
@@ -162,24 +181,46 @@ export function YearEventsClient({
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
           <h3 className="mb-1 font-semibold">Upload lịch năm học</h3>
           <p className="mb-2 text-xs text-muted-foreground">
-            Mỗi dòng: Tiêu đề;YYYY-MM-DD;danh_mục (le_hoi, kiem_tra, hoat_dong,
-            hanh_chinh, khac)
+            File Excel (.xlsx) hoặc CSV với các cột: tieu_de, ngay
+            (YYYY-MM-DD), danh_muc (le_hoi, kiem_tra, hoat_dong, hanh_chinh,
+            khac).
           </p>
-          <textarea
-            className={inputCls}
-            rows={6}
-            placeholder={"Khai giảng;2026-09-05;le_hoi\nThi GK1;2026-10-20;kiem_tra"}
-            value={csv}
-            onChange={(e) => setCsv(e.target.value)}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => onUploadFile(e.target.files?.[0])}
           />
-          <Button
-            className="mt-2"
-            variant="outline"
-            onClick={bulkUpload}
-            disabled={busy || !csv.trim()}
-          >
-            <Upload /> Nhập danh sách
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+            >
+              <FileSpreadsheet /> {busy ? "Đang xử lý..." : "Chọn file"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                downloadXlsxTemplate(
+                  "template_lich_nam_hoc.xlsx",
+                  ["tieu_de", "ngay", "danh_muc"],
+                  [
+                    ["Khai giảng", "2026-09-05", "le_hoi"],
+                    ["Thi giữa kỳ I", "2026-10-20", "kiem_tra"],
+                  ],
+                )
+              }
+            >
+              <Download /> Tải template
+            </Button>
+          </div>
+          {fileName && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Đã chọn: {fileName}
+            </p>
+          )}
         </div>
 
         {message && (

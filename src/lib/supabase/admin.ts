@@ -1,7 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Service-role client — bypasses RLS. Server-only (seed scripts, admin tasks).
+ * Service-role client - bypasses RLS. Server-only (seed scripts, admin tasks).
  * Never import from client components or expose to the browser.
  */
 export function createAdminClient() {

@@ -1,5 +1,5 @@
 /**
- * Seed script — Sổ Chủ Nhiệm Số
+ * Seed script - Sổ Chủ Nhiệm Số
  * Generates realistic Vietnamese demo data via service-role client.
  * Usage: node scripts/seed.mjs
  * Requires .env.local (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
@@ -120,7 +120,7 @@ async function main() {
     if (i === 0) await supabase.from("profiles").update({ id: uids["gvcn@demo.scn"] }).eq("id", uids["gvcn@demo.scn"]); // noop
     teacherProfiles.push({ id, role: "gvcn", name: gvcnNames[i] });
   }
-  // gvcn@demo.scn is class 8A2 teacher — reuse as one of the 8
+  // gvcn@demo.scn is class 8A2 teacher - reuse as one of the 8
   teacherProfiles[1] = { id: uids["gvcn@demo.scn"], role: "gvcn", name: "Phạm Thị Lan Anh" };
   // delete the extra auth user we made for slot 1 to avoid orphan? keep it, harmless.
 
@@ -244,7 +244,7 @@ async function main() {
   await batch("timetable_entries", ttRows);
   const { data: timetable } = await supabase.from("timetable_entries").select();
 
-  // 7. Grades (gk1 + ck1 hoc_ky for all subjects per student — ~2 rows/student/subject)
+  // 7. Grades (gk1 + ck1 hoc_ky for all subjects per student - ~2 rows/student/subject)
   const gradeRows = [];
   for (const s of students) {
     for (const subj of subjects.slice(0, 9)) {
@@ -259,7 +259,7 @@ async function main() {
   }
   await batch("grades", gradeRows.map((g) => ({ ...g, score: Math.round(g.score * 10) / 10 })));
 
-  // 8. Attendance — last 45 school days
+  // 8. Attendance - last 45 school days
   const attRows = [];
   const today = new Date("2026-09-18");
   for (let d = 40; d >= 0; d--) {
@@ -372,7 +372,7 @@ async function main() {
   await batch("school_year_events", syeRows);
   const taskRows = syeRows.slice(0, 5).flatMap((e) => [
     { class_id: null, title: `Chuẩn bị: ${e.title}`, due_date: e.event_date, month: e.month, source: "suggested", status: "pending" },
-    { class_id: classes[5].id, title: `${e.title} — kế hoạch lớp 8A2`, due_date: e.event_date, month: e.month, source: "suggested", status: rand(["pending", "approved"]) },
+    { class_id: classes[5].id, title: `${e.title} - kế hoạch lớp 8A2`, due_date: e.event_date, month: e.month, source: "suggested", status: rand(["pending", "approved"]) },
   ]);
   await batch("tasks", taskRows);
 

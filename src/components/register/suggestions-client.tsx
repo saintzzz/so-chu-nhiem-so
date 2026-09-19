@@ -42,26 +42,66 @@ export function SuggestionsClient({
   async function generateFromEvents() {
     setBusy(true);
     setMessage(null);
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: eventsData } = await supabase
-      .from("school_year_events")
-      .select("*")
-      .gte("event_date", today)
-      .order("event_date");
-    const events = (eventsData ?? []) as SchoolYearEvent[];
     const existing = new Set(tasks.map((t) => t.title));
-    const rows = events
-      .map((e) => ({
-        class_id: classId,
-        title: `Chuẩn bị: ${e.title}`,
-        due_date: e.event_date,
-        month: e.month ?? e.event_date.slice(0, 7),
-        source: "suggested" as const,
-        status: "pending" as const,
-      }))
-      .filter((r) => !existing.has(r.title));
+    let usedAi = false;
+
+    let rows: {
+      class_id: string;
+      title: string;
+      due_date: string;
+      month: number;
+      source: "suggested";
+      status: "pending";
+    }[] = [];
+
+    try {
+      const res = await fetch("/api/ai/suggest-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId }),
+      });
+      const json = (await res.json()) as {
+        suggestions: { title: string; due_date: string }[] | null;
+      };
+      if (json.suggestions && json.suggestions.length > 0) {
+        usedAi = true;
+        rows = json.suggestions
+          .filter((s) => !existing.has(s.title))
+          .map((s) => ({
+            class_id: classId,
+            title: s.title,
+            due_date: s.due_date,
+            month: parseInt(s.due_date.slice(5, 7), 10),
+            source: "suggested" as const,
+            status: "pending" as const,
+          }));
+      }
+    } catch {
+      // AI route lỗi - fallback rule-based bên dưới
+    }
+
+    if (rows.length === 0 && !usedAi) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: eventsData } = await supabase
+        .from("school_year_events")
+        .select("*")
+        .gte("event_date", today)
+        .order("event_date");
+      const events = (eventsData ?? []) as SchoolYearEvent[];
+      rows = events
+        .map((e) => ({
+          class_id: classId,
+          title: `Chuẩn bị: ${e.title}`,
+          due_date: e.event_date,
+          month: e.month ?? parseInt(e.event_date.slice(5, 7), 10),
+          source: "suggested" as const,
+          status: "pending" as const,
+        }))
+        .filter((r) => !existing.has(r.title));
+    }
+
     if (rows.length === 0) {
-      setMessage("Không có sự kiện mới nào để tạo gợi ý.");
+      setMessage("Không có gợi ý mới nào để tạo.");
       setBusy(false);
       return;
     }
@@ -69,7 +109,11 @@ export function SuggestionsClient({
     if (!error && data) {
       const inserted = data as TaskRow[];
       setTasks((ts) => [...ts, ...inserted]);
-      setMessage(`Đã tạo ${inserted.length} gợi ý từ lịch năm học.`);
+      setMessage(
+        usedAi
+          ? `AI đã tạo ${inserted.length} gợi ý công việc.`
+          : `Đã tạo ${inserted.length} gợi ý từ lịch năm học.`,
+      );
     } else {
       setMessage("Không thể tạo gợi ý.");
     }
@@ -106,9 +150,9 @@ export function SuggestionsClient({
               <td>
                 {t.due_date
                   ? new Date(t.due_date).toLocaleDateString("vi-VN")
-                  : "—"}
+                  : "-"}
               </td>
-              <td className="text-muted-foreground">{t.month ?? "—"}</td>
+              <td className="text-muted-foreground">{t.month ?? "-"}</td>
               <td>
                 <StatusBadge label={meta.label} tone={meta.tone} />
               </td>

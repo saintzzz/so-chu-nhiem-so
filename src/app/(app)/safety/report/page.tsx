@@ -104,7 +104,7 @@ export default async function SafetyReportPage() {
                     </td>
                     <td className="font-medium">
                       {i.student_id
-                        ? (studentName.get(i.student_id) ?? "—")
+                        ? (studentName.get(i.student_id) ?? "-")
                         : `Lớp ${i.class_id ? (className.get(i.class_id) ?? "") : ""}`}
                     </td>
                     <td className="max-w-48 truncate">{i.type}</td>

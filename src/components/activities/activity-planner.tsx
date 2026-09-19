@@ -178,7 +178,7 @@ export function ActivityPlanner({
                 <td>{a.className}</td>
                 <td className="text-muted-foreground">{a.activityDate}</td>
                 <td className="max-w-64 truncate text-muted-foreground">
-                  {a.description ?? "—"}
+                  {a.description ?? "-"}
                 </td>
                 <td>
                   <StatusBadge label={st.label} tone={st.tone} />

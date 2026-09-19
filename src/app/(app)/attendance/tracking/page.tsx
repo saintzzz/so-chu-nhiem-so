@@ -165,7 +165,7 @@ export default async function AttendanceTrackingPage({
           return (
             <tr key={t.sid}>
               <td>
-                <span className="font-medium">{st?.full_name ?? "—"}</span>
+                <span className="font-medium">{st?.full_name ?? "-"}</span>
                 <span className="ml-2 font-mono text-xs text-muted-foreground">
                   {st?.code}
                 </span>

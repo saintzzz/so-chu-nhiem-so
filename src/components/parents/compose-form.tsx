@@ -104,7 +104,7 @@ export function ComposeForm({
               onChange={(e) => setStudentId(e.target.value)}
               className={INPUT_CLS}
             >
-              <option value="">— Chọn học sinh —</option>
+              <option value="">- Chọn học sinh -</option>
               {classStudents.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.full_name} ({s.code})

@@ -113,24 +113,24 @@ export default async function RecordsHistoryPage() {
                 })}
               </td>
               <td>
-                <span className="font-medium">{st?.full_name ?? "—"}</span>
+                <span className="font-medium">{st?.full_name ?? "-"}</span>
                 <span className="ml-2 font-mono text-xs text-muted-foreground">
                   {st?.code}
                 </span>
               </td>
               <td>
-                {st ? (classNameById.get(st.class_id) ?? "—") : "—"}
+                {st ? (classNameById.get(st.class_id) ?? "-") : "-"}
               </td>
               <td>{FIELD_LABEL[h.field] ?? h.field}</td>
               <td className="max-w-40 truncate text-muted-foreground">
-                {h.old_value ?? "—"}
+                {h.old_value ?? "-"}
               </td>
               <td className="max-w-40 truncate font-medium">
-                {h.new_value ?? "—"}
+                {h.new_value ?? "-"}
               </td>
               <td>
                 {h.changed_by
-                  ? (changerById.get(h.changed_by) ?? "—")
+                  ? (changerById.get(h.changed_by) ?? "-")
                   : "Hệ thống"}
               </td>
             </tr>

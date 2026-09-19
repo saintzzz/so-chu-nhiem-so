@@ -11,12 +11,12 @@ export interface SchoolYearEvent {
   id: string;
   title: string;
   event_date: string;
-  month: string | null;
+  month: number | null;
   category: string | null;
 }
 
 export interface TaskRow extends Task {
-  month: string | null;
+  month: number | null;
 }
 
 export interface Kpi {

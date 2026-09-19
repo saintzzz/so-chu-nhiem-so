@@ -137,7 +137,7 @@ export default async function AnalysisPage({
   }
   const subjectChart = [...bySubject.entries()]
     .map(([sid, scores]) => ({
-      label: subjectName.get(sid) ?? "—",
+      label: subjectName.get(sid) ?? "-",
       value: Math.round(avg(scores) * 10) / 10,
     }))
     .sort((a, b) => b.value - a.value);
@@ -160,8 +160,8 @@ export default async function AnalysisPage({
 
   const buckets = [
     { label: "< 5.0", value: 0 },
-    { label: "5.0 – 6.4", value: 0 },
-    { label: "6.5 – 7.9", value: 0 },
+    { label: "5.0 - 6.4", value: 0 },
+    { label: "6.5 - 7.9", value: 0 },
     { label: "≥ 8.0", value: 0 },
   ];
   for (const s of ranked) {

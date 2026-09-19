@@ -13,7 +13,7 @@ const ENTITIES: { table: string; label: string }[] = [
   { table: "classes", label: "Lớp học" },
   { table: "students", label: "Học sinh" },
   { table: "parents", label: "Phụ huynh" },
-  { table: "parent_students", label: "Liên kết PH–HS" },
+  { table: "parent_students", label: "Liên kết PH-HS" },
   { table: "subjects", label: "Môn học" },
   { table: "grades", label: "Điểm số" },
   { table: "attendance_records", label: "Bản ghi chuyên cần" },
@@ -24,7 +24,7 @@ const ENTITIES: { table: string; label: string }[] = [
   { table: "kpis", label: "KPI lớp" },
   { table: "announcements", label: "Thông báo" },
   { table: "appointments", label: "Lịch hẹn" },
-  { table: "teacher_subjects", label: "Phân công GV–môn" },
+  { table: "teacher_subjects", label: "Phân công GV-môn" },
   { table: "teacher_assessments", label: "Đánh giá năng lực GV" },
   { table: "dept_meetings", label: "Sinh hoạt chuyên môn" },
 ];

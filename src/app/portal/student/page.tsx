@@ -109,7 +109,7 @@ export default async function StudentPortalPage() {
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
   const overallAvg = gradeRows.length
     ? (gradeRows.reduce((s, g) => s + g.score, 0) / gradeRows.length).toFixed(1)
-    : "—";
+    : "-";
 
   const conductRows = (conductRes.data ?? []) as Record<string, unknown>[];
   const latestConduct = conductRows[0];
@@ -141,7 +141,7 @@ export default async function StudentPortalPage() {
                 {student.full_name}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Lớp {classroom?.name ?? "—"} - Năm học 2026-2027 · Mã HS:{" "}
+                Lớp {classroom?.name ?? "-"} - Năm học 2026-2027 · Mã HS:{" "}
                 {student.code}
               </p>
             </>
@@ -164,7 +164,7 @@ export default async function StudentPortalPage() {
                       tone={ATT_STATUS[shownRec.status].tone}
                     />
                   ) : (
-                    "—"
+                    "-"
                   )
                 }
               />
@@ -175,7 +175,7 @@ export default async function StudentPortalPage() {
               />
               <StatCard
                 label="Hạnh kiểm"
-                value={conductRating ?? "—"}
+                value={conductRating ?? "-"}
                 tone={conductRating ? "success" : "default"}
               />
             </div>

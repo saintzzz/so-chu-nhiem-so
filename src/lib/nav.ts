@@ -44,6 +44,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Trao đổi với GVBM", href: "/academics/teacher-chat" },
         { label: "Trao đổi phụ huynh", href: "/academics/parent-chat" },
         { label: "Kế hoạch hỗ trợ & tiến bộ", href: "/academics/plans" },
+        { label: "Quản lý kỳ thi", href: "/academics/exams" },
       ],
     },
     {
@@ -69,6 +70,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Hộp thư phản hồi", href: "/parents/inbox" },
         { label: "Lịch hẹn trao đổi", href: "/parents/appointments" },
         { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
+        { label: "Ban đại diện CMHS", href: "/parents/cmhs" },
       ],
     },
     {
@@ -132,6 +134,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
         { label: "Trao đổi với GVCN", href: "/academics/teacher-chat" },
+        { label: "Lịch thi", href: "/academics/exams" },
       ],
     },
     {
@@ -157,6 +160,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
+        { label: "Lịch thi", href: "/academics/exams" },
       ],
     },
   ],
@@ -166,6 +170,9 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Dashboard cấp trường", href: "/school/dashboard" },
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
+        { label: "Phân công năm học", href: "/school/assignments" },
+        { label: "Quản lý kỳ thi", href: "/academics/exams" },
+        { label: "Ban đại diện CMHS", href: "/parents/cmhs" },
       ],
     },
     {

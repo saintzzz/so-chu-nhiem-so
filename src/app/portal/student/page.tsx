@@ -48,7 +48,7 @@ export default async function StudentPortalPage() {
     : { data: null };
   const classroom = classRow as Pick<ClassRoom, "id" | "name"> | null;
 
-  const [attRes, gradeRes, subjectRes, conductRes, annRes] = student
+  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes] = student
     ? await Promise.all([
         supabase
           .from("attendance_records")
@@ -72,8 +72,22 @@ export default async function StudentPortalPage() {
           .or(`class_id.eq.${student.class_id},student_id.eq.${student.id}`)
           .order("created_at", { ascending: false })
           .limit(8),
+        supabase
+          .from("exam_sessions")
+          .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
+          .eq("class_id", student.class_id)
+          .gte("date", new Date().toISOString().slice(0, 10))
+          .order("date")
+          .limit(10),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    : [
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+      ];
 
   const attRows = (attRes.data ?? []) as Pick<
     AttendanceRecord,
@@ -151,6 +165,15 @@ export default async function StudentPortalPage() {
     Announcement,
     "id" | "title" | "content" | "created_at"
   >[];
+
+  const examSessions = ((examRes.data ?? []) as unknown as {
+    id: string;
+    date: string;
+    start_time: string;
+    room: string | null;
+    subject_id: string;
+    exams: { name: string; status: string };
+  }[]).filter((s) => s.exams.status === "published");
 
   return (
     <div className="min-h-screen bg-background">
@@ -238,6 +261,25 @@ export default async function StudentPortalPage() {
                 )}
               </DataTable>
             </div>
+
+            {examSessions.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 text-base font-semibold">Lịch thi sắp tới</h2>
+                <DataTable columns={["Kỳ thi", "Môn", "Ngày", "Giờ", "Phòng"]}>
+                  {examSessions.map((s) => (
+                    <tr key={s.id}>
+                      <td className="text-muted-foreground">{s.exams.name}</td>
+                      <td className="font-medium">
+                        {subjectNameOf.get(s.subject_id) ?? "-"}
+                      </td>
+                      <td>{formatDate(s.date)}</td>
+                      <td>{s.start_time?.slice(0, 5)}</td>
+                      <td>{s.room ?? "-"}</td>
+                    </tr>
+                  ))}
+                </DataTable>
+              </div>
+            )}
 
             <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">

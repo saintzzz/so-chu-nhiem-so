@@ -2,6 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { StatCard } from "@/components/stat-card";
+import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
 import { Bell, CalendarClock } from "lucide-react";
 import type {
@@ -88,7 +89,7 @@ export default async function ParentPortalPage() {
     : { data: null };
   const classroom = classRow as Pick<ClassRoom, "id" | "name"> | null;
 
-  const [attRes, gradeRes, annRes, apptRes] = student
+  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes] = student
     ? await Promise.all([
         supabase
           .from("attendance_records")
@@ -114,8 +115,29 @@ export default async function ParentPortalPage() {
               .order("scheduled_at", { ascending: false })
               .limit(8)
           : Promise.resolve({ data: [] }),
+        supabase
+          .from("exam_sessions")
+          .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
+          .eq("class_id", student.class_id)
+          .gte("date", new Date().toISOString().slice(0, 10))
+          .order("date")
+          .limit(10),
+        supabase
+          .from("cmhs_members")
+          .select("id,role,parents(id,full_name,phone)")
+          .eq("class_id", student.class_id)
+          .order("role"),
+        supabase.from("subjects").select("id,name"),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+    : [
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+        { data: [] },
+      ];
 
   const attRows = (attRes.data ?? []) as Pick<
     AttendanceRecord,
@@ -166,6 +188,30 @@ export default async function ParentPortalPage() {
     Appointment,
     "id" | "teacher_id" | "scheduled_at" | "purpose" | "status"
   >[];
+
+  const subjectNames = new Map(
+    ((subjectRes.data ?? []) as { id: string; name: string }[]).map(
+      (x) => [x.id, x.name],
+    ),
+  );
+  const examSessions = ((examRes.data ?? []) as unknown as {
+    id: string;
+    date: string;
+    start_time: string;
+    room: string | null;
+    subject_id: string;
+    exams: { name: string; status: string };
+  }[]).filter((x) => x.exams.status === "published");
+  const cmhsMembers = (cmhsRes.data ?? []) as unknown as {
+    id: string;
+    role: string;
+    parents: { id: string; full_name: string; phone: string | null } | null;
+  }[];
+  const CMHS_ROLE: Record<string, string> = {
+    truong_ban: "Trưởng ban",
+    pho_ban: "Phó ban",
+    uy_vien: "Ủy viên",
+  };
 
   const teacherIds = [...new Set(appointments.map((a) => a.teacher_id))];
   const { data: teacherRows } = teacherIds.length
@@ -234,6 +280,49 @@ export default async function ParentPortalPage() {
                 tone="primary"
               />
             </div>
+
+            {examSessions.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 text-base font-semibold">Lịch thi sắp tới</h2>
+                <DataTable columns={["Kỳ thi", "Môn", "Ngày", "Giờ", "Phòng"]}>
+                  {examSessions.map((x) => (
+                    <tr key={x.id}>
+                      <td className="text-muted-foreground">{x.exams.name}</td>
+                      <td className="font-medium">
+                        {subjectNames.get(x.subject_id) ?? "-"}
+                      </td>
+                      <td>{formatDate(x.date)}</td>
+                      <td>{x.start_time?.slice(0, 5)}</td>
+                      <td>{x.room ?? "-"}</td>
+                    </tr>
+                  ))}
+                </DataTable>
+              </div>
+            )}
+
+            {cmhsMembers.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 text-base font-semibold">
+                  Ban đại diện cha mẹ học sinh lớp
+                </h2>
+                <ul className="space-y-2">
+                  {cmhsMembers.map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">
+                        {m.parents?.full_name ?? "-"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {CMHS_ROLE[m.role] ?? m.role}
+                        {m.parents?.phone ? ` - ${m.parents.phone}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">

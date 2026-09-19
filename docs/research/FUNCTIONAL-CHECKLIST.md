@@ -47,8 +47,8 @@ TT 12/2020 Sở/Phòng GD&ĐT). Cập nhật: 2026-09-19.
 | D3 | Điểm danh: có mặt/vắng CP/vắng KP/đi muộn + báo PH | attendance/* | ✅ |
 | D4 | Nhập điểm theo lớp×môn×kỳ | grades | ✅ |
 | D5 | Khen thưởng/vi phạm: GVCN ghi nhận | conduct/records | ✅ |
-| D6 | Phân công chủ nhiệm (BGH gán GVCN→lớp) | chỉ có ở seed | ⚠️ THIẾU UI |
-| D7 | Phân công giảng dạy (BGH gán GVBM→môn/lớp) | chỉ có ở seed | ⚠️ THIẾU UI |
+| D6 | Phân công chủ nhiệm (BGH gán GVCN→lớp) | school/assignments + trigger guard_gvcn | ✅ |
+| D7 | Phân công giảng dạy (BGH gán GVBM→môn/lớp) | school/assignments (môn phụ trách + lớp×môn) | ✅ |
 | D8 | TKB theo lớp + theo GV | timetable | ✅ |
 | D9 | Dashboard cảnh báo sớm (HS rủi ro) | school/radar + academics/support | ✅ |
 | D10 | Báo cáo tổng hợp lớp cho GVCN | records/report (AI) | ✅ |
@@ -57,8 +57,8 @@ TT 12/2020 Sở/Phòng GD&ĐT). Cập nhật: 2026-09-19.
 | D13 | Tư vấn HS: tiếp nhận → đánh giá → chuyển tuyến | counseling/* | ✅ |
 | D14 | Thi đua: chấm điểm → xếp hạng → khen thưởng | emulation/* | ✅ |
 | D15 | Đánh giá năng lực GVCN: tự đánh giá → minh chứng → tổ trưởng duyệt | competency + team/review | ✅ |
-| D16 | Ban đại diện CMHS (Điều 44 TT32) | chỉ PH thường | ⚠️ THIẾU |
-| D17 | Kỳ thi/quản lý thi (SMAS có) | không có | ⚠️ NGOÀI PHẠM VI |
+| D16 | Ban đại diện CMHS (Điều 44 TT32) | parents/cmhs + portal PH | ✅ |
+| D17 | Kỳ thi/quản lý thi (SMAS có) | academics/exams + portal HS/PH | ✅ |
 | D18 | Mobile responsive | đã test 390px | ✅ |
 
 ## E. Kỹ thuật
@@ -76,5 +76,6 @@ TT 12/2020 Sở/Phòng GD&ĐT). Cập nhật: 2026-09-19.
 ## Tổng kết gaps
 
 - **Đã fix (compliance TT22):** A1 thang HK (DB constraint + data migrated), A2 nhãn HL, A3 công thức ĐTBmhk đầy đủ ĐĐGtx/gk/ck, A4 môn nhận xét Đ/CĐ, A5 làm tròn 1 chữ số
-- **Gap đã ghi nhận (cần quyết định sản phẩm):** D6/D7 UI phân công GVCN/GVBM (hiện chỉ seed), D16 Ban đại diện CMHS
-- **Ngoài phạm vi mockup gốc:** D17 quản lý thi
+- **Đã fix (vòng 2):** D6/D7 trang `/school/assignments` (BGH: phân công GVCN→lớp, môn phụ trách GV, GV→lớp×môn qua TKB), D16 `/parents/cmhs` (Trưởng/Phó ban/Ủy viên, portal PH hiển thị), D17 `/academics/exams` (kỳ thi + buổi thi theo lớp/môn/phòng/giám thị, portal HS/PH chỉ thấy kỳ đã công bố)
+- **RLS siết theo matrix:** write `cmhs_members`/`exams`/`exam_sessions` → gvcn+bgh; write `timetable_entries`/`teacher_subjects` → bgh; `classes.gvcn_id` → trigger chặn non-BGH. Verified: GVBM insert/update bị RLS chặn, GVCN đổi gvcn_id bị trigger chặn.
+- **Không còn gap mở** trong checklist này.

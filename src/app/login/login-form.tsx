@@ -6,13 +6,21 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 const DEMO_ACCOUNTS = [
-  { role: "GVCN (Giáo viên chủ nhiệm)", email: "gvcn@demo.scn" },
+  { role: "GVCN - lớp 6A1, 6A2", email: "gvcn@demo.scn" },
+  { role: "GVCN - lớp 7A1", email: "gvcn3@school.scn" },
+  { role: "GVCN - lớp 7A2", email: "gvcn4@school.scn" },
+  { role: "GVCN - lớp 8A1", email: "gvcn5@school.scn" },
+  { role: "GVCN - lớp 8A2", email: "gvcn6@school.scn" },
+  { role: "GVCN - lớp 9A1", email: "gvcn7@school.scn" },
+  { role: "GVCN - lớp 9A2", email: "gvcn8@school.scn" },
   { role: "GVBM (Giáo viên bộ môn)", email: "gvbm@demo.scn" },
   { role: "Tổ trưởng chuyên môn", email: "totruong@demo.scn" },
   { role: "BGH (Ban Giám Hiệu)", email: "bgh@demo.scn" },
   { role: "Quản trị viên Sở GD&ĐT", email: "sogd@demo.scn" },
   { role: "Phụ huynh", email: "phuhuynh@demo.scn" },
   { role: "Học sinh", email: "hocsinh@demo.scn" },
+  { role: "[TH] GVCN - lớp 3A (Tiểu học Chu Văn An)", email: "gvcn-th@demo.scn" },
+  { role: "[TH] BGH - Tiểu học Chu Văn An", email: "bgh-th@demo.scn" },
 ];
 
 export function LoginForm() {

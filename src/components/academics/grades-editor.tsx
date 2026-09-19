@@ -134,8 +134,8 @@ function normalizeKey(k: string): string {
     .replace(/[\s.]+/g, "_");
 }
 
-/** Map cột theo tên header — hỗ trợ mẫu CSDL ngành (STT/Lớp/Mã định danh/ĐĐGtx1-5/ĐĐGgk/ĐĐGck/Nhận xét)
- *  lẫn template nội bộ cũ (Mã HS/Họ tên/ĐĐGtx/ĐĐGgk/ĐĐGck). */
+/** Map cột theo tên header — hỗ trợ mẫu CSDL ngành (STT/Lớp/Mã định danh/ĐĐGtx1-5/ĐĐGgk/ĐĐGck/
+ *  ĐTBmhk/Mã nhận xét/Nội dung nhận xét) lẫn template nội bộ cũ (Mã HS/Họ tên/ĐĐGtx/ĐĐGgk/ĐĐGck). */
 function mapHeaderCells(header: string[]) {
   const cols: {
     key: number | null;
@@ -146,6 +146,7 @@ function mapHeaderCells(header: string[]) {
     ck: number | null;
     result: number | null;
     comment: number | null;
+    commentCode: number | null;
     ktdk: number | null;
     levelGk: number | null;
     levelCk: number | null;
@@ -158,6 +159,7 @@ function mapHeaderCells(header: string[]) {
     ck: null,
     result: null,
     comment: null,
+    commentCode: null,
     ktdk: null,
     levelGk: null,
     levelCk: null,
@@ -203,15 +205,12 @@ function mapHeaderCells(header: string[]) {
       cols.levelCk = i;
     } else if (
       cols.comment === null &&
-      (k === "nhan_xet" || k === "noi_dung_nhan_xet" || k === "comment" || k === "nhan_xet_ck")
+      (k === "nhan_xet" || k === "noi_dung_nhan_xet" || k === "noi_dung" ||
+        k === "comment" || k === "nhan_xet_ck")
     ) {
       cols.comment = i;
-    } else if (
-      cols.comment === null &&
-      k === "ma_nhan_xet"
-    ) {
-      // mã nhận xét - ưu tiên cột nội dung, dùng mã làm fallback
-      cols.comment = i;
+    } else if (cols.commentCode === null && k === "ma_nhan_xet") {
+      cols.commentCode = i;
     } else if (
       cols.result === null &&
       (k === "danh_gia" || k === "ket_qua" || k === "xep_loai" ||
@@ -312,7 +311,81 @@ export function GradesEditor({
     return null;
   }
 
+  type TemplateId = "mau1" | "mau2" | "nx" | "th1";
+  const templateOptions: { id: TemplateId; label: string }[] = isTh
+    ? [{ id: "th1", label: "Mẫu TH - Đánh giá môn/HĐGD (T/H/C + KTĐK)" }]
+    : method === "score"
+      ? [
+          { id: "mau1", label: "Mẫu 1 - Bảng điểm (ĐĐGtx1-5, GK, CK)" },
+          { id: "mau2", label: "Mẫu 2 - Điểm + ĐTBm + nhận xét" },
+          { id: "nx", label: "Mẫu nhận xét môn học" },
+        ]
+      : [{ id: "nx", label: "Mẫu nhận xét môn học (Đánh giá + nhận xét)" }];
+  const [templateId, setTemplateId] = useState<TemplateId>(templateOptions[0].id);
+
   function downloadTemplate() {
+    if (templateId === "mau2") {
+      // Mẫu 2: STT | Mã định danh | Họ tên | Ngày sinh | ĐĐGtx | ĐĐGgk | ĐĐGck | ĐTBmhk | Mã nhận xét | Nội dung nhận xét
+      void downloadXlsxTemplate(
+        `mau-2-bang-diem-${className}.xlsx`,
+        [
+          "STT",
+          "Mã định danh Bộ GD&ĐT",
+          "Họ và tên",
+          "Ngày sinh",
+          "ĐĐGtx",
+          "ĐĐGgk",
+          "ĐĐGck",
+          "ĐTBmhk",
+          "Mã nhận xét",
+          "Nội dung nhận xét",
+        ],
+        students.map((s, i) => {
+          const avg = cellAvg(cells[s.id] ?? EMPTY_CELL);
+          return [
+            String(i + 1),
+            s.national_id ?? s.code,
+            s.full_name,
+            s.dob ?? "",
+            cells[s.id]?.tx ?? "",
+            cells[s.id]?.gk ?? "",
+            cells[s.id]?.ck ?? "",
+            avg != null ? avg.toFixed(1) : "",
+            "",
+            cells[s.id]?.commentCk ?? "",
+          ];
+        }),
+      );
+      return;
+    }
+    if (templateId === "nx" && method === "score") {
+      // Mẫu nhận xét môn học (môn tính điểm): ĐTBmhk + mã/nội dung nhận xét
+      void downloadXlsxTemplate(
+        `mau-nhan-xet-mon-${className}.xlsx`,
+        [
+          "STT",
+          "Mã định danh Bộ GD&ĐT",
+          "Họ và tên",
+          "Ngày sinh",
+          "ĐTBmhk",
+          "Mã nhận xét",
+          "Nội dung nhận xét",
+        ],
+        students.map((s, i) => {
+          const avg = cellAvg(cells[s.id] ?? EMPTY_CELL);
+          return [
+            String(i + 1),
+            s.national_id ?? s.code,
+            s.full_name,
+            s.dob ?? "",
+            avg != null ? avg.toFixed(1) : "",
+            "",
+            cells[s.id]?.commentCk ?? "",
+          ];
+        }),
+      );
+      return;
+    }
     if (isTh) {
       // Mẫu TH: STT | Lớp | Mã định danh | Họ tên | Ngày sinh | Mức GK | NX GK | Mức CK | Điểm KTĐK | NX CK
       void downloadXlsxTemplate(
@@ -433,7 +506,9 @@ export function GradesEditor({
     const header = headerIdx >= 0 ? table[headerIdx] : null;
     const cols = header
       ? mapHeaderCells(header)
-      : { ...mapHeaderCells([]), key: 0, name: 1, tx: [2], gk: 3, ck: 4, comment: null, result: 2, dob: null, ktdk: null, levelGk: null, levelCk: null };
+      : { ...mapHeaderCells([]), key: 0, name: 1, tx: [2], gk: 3, ck: 4, comment: null, commentCode: null, result: 2, dob: null, ktdk: null, levelGk: null, levelCk: null };
+    // Nhận xét: ưu tiên "Nội dung nhận xét", fallback "Mã nhận xét"
+    const cmtCol = cols.comment ?? cols.commentCode;
     const dataRows = table.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
     let matched = 0;
     const missed: string[] = [];
@@ -456,7 +531,7 @@ export function GradesEditor({
             levelGk: lg === "invalid" ? cur.levelGk : lg || cur.levelGk,
             levelCk: lc === "invalid" ? cur.levelCk : lc || cur.levelCk,
             ktdk: cols.ktdk !== null ? (r[cols.ktdk] ?? "").trim() : cur.ktdk,
-            commentCk: cols.comment !== null ? (r[cols.comment] ?? "").trim() : cur.commentCk,
+            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
           };
         } else if (method === "comment") {
           const v = (cols.result !== null ? (r[cols.result] ?? "") : "").trim().toLowerCase();
@@ -468,7 +543,7 @@ export function GradesEditor({
           next[id] = {
             ...cur,
             result: result as CellState["result"],
-            commentCk: cols.comment !== null ? (r[cols.comment] ?? "").trim() : cur.commentCk,
+            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
           };
         } else {
           // gộp các cột ĐĐGtx1..n thành chuỗi; nếu 1 cột đơn thì giữ nguyên nội dung
@@ -481,7 +556,7 @@ export function GradesEditor({
             tx: txVal,
             gk: cols.gk !== null ? (r[cols.gk] ?? "").trim() : cur.gk,
             ck: cols.ck !== null ? (r[cols.ck] ?? "").trim() : cur.ck,
-            commentCk: cols.comment !== null ? (r[cols.comment] ?? "").trim() : cur.commentCk,
+            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
           };
         }
       }
@@ -659,6 +734,20 @@ export function GradesEditor({
           {error && <span className="text-sm text-error">{error}</span>}
           {importMsg && (
             <span className="text-sm text-primary">{importMsg}</span>
+          )}
+          {templateOptions.length > 1 && (
+            <select
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value as TemplateId)}
+              className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+              aria-label="Chọn mẫu biểu"
+            >
+              {templateOptions.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           )}
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             Tải template

@@ -41,6 +41,7 @@ export default async function EvidencePage() {
   const { data: yearRaw } = await supabase
     .from("academic_years")
     .select("id,name")
+    .eq("school_id", profile.school_id)
     .eq("is_current", true)
     .maybeSingle();
   const year = (yearRaw ?? null) as YearRow | null;

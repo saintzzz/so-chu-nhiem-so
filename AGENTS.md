@@ -71,6 +71,14 @@ scripts/            # Asset download scripts
 - Edit `.agents/skills/clone-website/` for cloning-workflow changes. It is the canonical skill used by Codex, Cursor, and OpenCode.
 - Keep `.claude/commands/clone-website.md` as a thin Claude Code bridge to the canonical skill; do not duplicate the workflow there.
 
+## Mandatory Testing Rules (no bypass without explicit user confirmation)
+
+- **Business-flow E2E, not page-load checks.** For every feature change, drive the real workflow per role: login → navigate → create/edit/import → save → verify DB persistence → verify downstream role sees it. Include denial paths and state transitions (draft → submitted → approved/locked).
+- **Performance measurement per screen and per action.** Record server response, time-to-first-content, and action latency for every meaningful control. Thresholds: server <1s, action <3s. Never block page render on AI calls - stream/defer them.
+- **Data coverage precondition.** Before E2E, audit the business tables the flow touches; seed coherent linked records where sparse. Testing empty screens is a failed precondition.
+- **Console clean.** Zero hydration errors, zero failed network calls on every page tested. Timestamps use `formatDate`/`formatDateTime`/`formatDateOnly` from `src/lib/utils.ts` (fixed `Asia/Ho_Chi_Minh`) - never raw `toLocaleString`.
+- **Design language invariant.** One domain = one language per `src/lib/domain-theme.ts`; never mix theme scopes inside a domain.
+
 ## Project Conventions (Sổ Chủ Nhiệm Số)
 
 - **RBAC is mandatory:** every route must call `requireRoles([...])` per `docs/research/ROLE-MATRIX.md` (default-deny). Server actions/API routes use `checkActionRole` / `getProfile` role checks - never rely on layout guards or `user != null` alone.

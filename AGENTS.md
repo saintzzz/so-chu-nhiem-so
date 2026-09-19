@@ -71,6 +71,18 @@ scripts/            # Asset download scripts
 - Edit `.agents/skills/clone-website/` for cloning-workflow changes. It is the canonical skill used by Codex, Cursor, and OpenCode.
 - Keep `.claude/commands/clone-website.md` as a thin Claude Code bridge to the canonical skill; do not duplicate the workflow there.
 
+## Mandatory UI/UX Rules (apply by default, no prompt needed)
+
+- **Naming:** menu/nav labels use full Vietnamese names - no Roman numerals (`I.`, `II.`...), no abbreviations (GD → giáo dục, HS → học sinh, GVCN → giáo viên chủ nhiệm, GVBM → giáo viên bộ môn, BGH → Ban Giám Hiệu, CMHS → cha mẹ học sinh, KPI → chỉ tiêu hiệu suất, Sở GD&ĐT → Sở Giáo dục và Đào tạo). Page `section=` headers and titles must match the nav label. Icon maps keyed by label must be updated in the same change.
+- **Control selection:** ≤4 options AND semantically meaningful → inline chips/radio (1 click, all options visible). >4 options OR a dense per-row/per-cell grid control → dropdown. Never chips inside dense tables.
+- **No dead controls:** every button/icon must do something or be removed/hidden per role (e.g., notification bell links to the role's inbox only when one exists).
+- **Keyboard + ARIA in overlays:** command palettes/dialogs need ArrowUp/Down + Enter navigation, highlighted active item, `role=combobox/listbox` + `aria-activedescendant`.
+- **Horizontal scroll containment:** any `overflow-x-auto` container must also be `relative` - absolutely-positioned children (e.g. `sr-only` inputs) otherwise escape the clip and make the whole document scroll sideways on mobile.
+- **Form validation:** submit disabled while required fields are empty; invalid values show inline messages naming the field and constraint (e.g. "Điểm không hợp lệ ... (0-10)").
+- **Empty states:** every list/table must render a clear empty state (count + message), never a blank grid.
+- **Instant paint:** every route group needs `loading.tsx` skeleton matching the typical page layout so navigation paints before server data arrives.
+- **Role boundaries:** visiting another role's route must redirect to that role's home - never leak data.
+
 ## Mandatory Testing Rules (no bypass without explicit user confirmation)
 
 - **Business-flow E2E, not page-load checks.** For every feature change, drive the real workflow per role: login → navigate → create/edit/import → save → verify DB persistence → verify downstream role sees it. Include denial paths and state transitions (draft → submitted → approved/locked).

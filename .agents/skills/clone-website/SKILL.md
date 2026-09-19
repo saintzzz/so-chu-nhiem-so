@@ -458,6 +458,25 @@ After assembly, do NOT declare the clone complete. Take side-by-side comparison 
 
 Only after this visual QA pass is the clone complete.
 
+## Phase 5.5: UX Hardening Pass (post-clone)
+
+Pixel-perfect fidelity comes first (Phases 1–5). But once the clone is meant to
+function as a real app — not just a visual replica — apply the project
+`AGENTS.md` "Mandatory UI/UX Rules" as a hardening pass, and flag each change
+to the user since it deviates from 1:1 emulation:
+
+- Nav/menu labels → full words, no numerals or abbreviations; icon maps keyed
+  by label updated in the same change
+- ≤4-option semantic choices → inline chips/radio; >4 options or dense grid
+  cells → keep dropdowns; never chips inside dense tables
+- No dead buttons — wire or hide per role
+- Overlays get ArrowUp/Down+Enter, active highlight, combobox/listbox ARIA
+- `overflow-x-auto` containers get `relative` so absolute children can't
+  escape the clip and scroll the document sideways on mobile
+- Submit disabled until valid; inline field+constraint error messages
+- Empty states on every list; `loading.tsx` skeleton per route group
+- Timestamps via fixed-timezone formatters, never raw `toLocaleString`
+
 ## Pre-Dispatch Checklist
 
 Before dispatching ANY builder agent, verify you can check every box. If you can't, go back and extract more.

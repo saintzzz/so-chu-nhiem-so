@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
 import { Sparkles } from "lucide-react";
-import { aiProviderLabel, generateText } from "@/lib/ai";
+import { generateText } from "@/lib/ai";
 import { averageByStudent } from "@/lib/tt22";
 
 interface ClassStats {
@@ -193,7 +193,7 @@ export default async function RecordsReportPage() {
         .filter(Boolean)
     : null;
   const narrative = aiNarrative && aiNarrative.length > 0 ? aiNarrative : ruleNarrative;
-  const aiLabel = aiNarrative ? aiProviderLabel() : null;
+  const aiUsed = Boolean(aiNarrative && aiNarrative.length > 0);
 
   return (
     <div>
@@ -285,7 +285,7 @@ export default async function RecordsReportPage() {
         <div className="mb-2 flex items-center gap-2">
           <Sparkles className="size-4 text-primary" />
           <h2 className="text-sm font-semibold text-primary">
-            {aiLabel ? `Phân tích AI (${aiLabel})` : "Gợi ý (phân tích tự động)"}
+            {aiUsed ? "Phân tích AI" : "Gợi ý (phân tích tự động)"}
           </h2>
         </div>
         {narrative.length > 0 ? (
@@ -300,7 +300,7 @@ export default async function RecordsReportPage() {
           </p>
         )}
         <p className="mt-3 text-xs text-muted-foreground">
-          {aiLabel
+          {aiUsed
             ? "Nội dung do AI tạo từ số liệu thống kê của lớp - chỉ mang tính tham khảo, giáo viên cần rà soát trước khi dùng."
             : "Gợi ý được sinh tự động từ số liệu thống kê của lớp - chỉ mang tính tham khảo."}
         </p>

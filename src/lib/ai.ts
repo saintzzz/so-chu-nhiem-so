@@ -203,7 +203,6 @@ export async function generateText(
   return (await generateTextDetailed(prompt, opts)).text;
 }
 
-export function aiProviderLabel(): string | null {
-  const cfg = getAiConfig();
-  return cfg ? `${cfg.provider}/${cfg.model}` : null;
+export function aiProvider(): AiProvider | null {
+  return getAiConfig()?.provider ?? null;
 }

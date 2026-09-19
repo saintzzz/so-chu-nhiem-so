@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable, Pagination } from "@/components/data-table";
@@ -13,7 +13,7 @@ export default async function AuditPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requireProfile();
+  await requireRoles(["gvcn"]);
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const supabase = await createClient();

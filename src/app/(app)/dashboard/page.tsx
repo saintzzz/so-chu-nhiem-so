@@ -8,7 +8,7 @@ import {
   Megaphone,
   Star,
 } from "lucide-react";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -65,7 +65,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default async function DashboardPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
 
   const [{ data: clsRaw }, { data: schoolRaw }] = await Promise.all([

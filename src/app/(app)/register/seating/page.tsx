@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { SeatingGrid } from "@/components/register/seating-grid";
@@ -15,7 +15,7 @@ export default async function SeatingPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 

@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { BghTable } from "@/components/safety/bgh-table";
 import type { ClassRoom, Incident, Student } from "@/types";
@@ -15,7 +15,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyBghPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["bgh"]);
   const supabase = await createClient();
 
   // Trang tổng hợp toàn trường - dùng cho BGH và GVCN tra cứu liên lớp.

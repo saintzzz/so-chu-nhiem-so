@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { KpiClient } from "@/components/register/kpi-client";
@@ -14,7 +14,7 @@ export default async function KpiPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 

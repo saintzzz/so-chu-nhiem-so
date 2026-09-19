@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ArchiveTable } from "@/components/safety/archive-table";
 import type { ClassRoom, Incident, Profile, Student } from "@/types";
@@ -31,7 +31,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyArchivePage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await scopedClasses(supabase, profile);

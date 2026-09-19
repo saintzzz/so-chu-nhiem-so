@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, SEVERITY, FLOW_STATUS } from "@/components/status-badge";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { IncidentForm } from "@/components/safety/incident-form";
 import type { ClassRoom, Incident, Profile, Student } from "@/types";
@@ -33,7 +33,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyReportPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh"]);
   const supabase = await createClient();
 
   const classes = await scopedClasses(supabase, profile);

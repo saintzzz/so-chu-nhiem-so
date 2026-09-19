@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkActionRole } from "@/lib/auth";
 import type { Incident } from "@/types";
 
 export async function createIncident(input: {
@@ -11,7 +12,9 @@ export async function createIncident(input: {
   severity: "low" | "medium" | "high" | "critical";
   description: string;
   occurredAt: string;
-}): Promise<{ error?: string }> {
+}): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "gvbm", "to_truong", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,6 +44,8 @@ export async function toggleReportedToBgh(
   incidentId: string,
   reported: boolean,
 ): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },
@@ -62,6 +67,8 @@ export async function followupIncident(
     note: string;
   },
 ): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },

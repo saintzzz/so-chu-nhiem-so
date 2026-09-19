@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { SignoffClient } from "@/components/register/signoff-client";
@@ -7,7 +7,7 @@ import type { Signoff } from "@/components/register/types";
 import type { Profile } from "@/types";
 
 export default async function SignoffPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["bgh"]);
   const supabase = await createClient();
 
   const classes = await getAccessibleClasses(profile);

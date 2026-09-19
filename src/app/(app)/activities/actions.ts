@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkActionRole } from "@/lib/auth";
 import type { Activity, Profile } from "@/types";
 
 async function getContext() {
@@ -23,7 +24,9 @@ export async function createActivity(input: {
   title: string;
   description: string;
   activityDate: string | null;
-}): Promise<{ error?: string }> {
+}): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.title.trim()) return { error: "Vui lòng nhập tên hoạt động." };
@@ -41,7 +44,9 @@ export async function createActivity(input: {
 
 export async function submitActivity(
   activityId: string,
-): Promise<{ error?: string }> {
+): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   const { error } = await supabase
@@ -75,7 +80,9 @@ export async function reviewActivity(
 
 export async function announceActivity(
   activityId: string,
-): Promise<{ error?: string; registered?: number }> {
+): Promise<{error?: string; registered?: number }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
@@ -141,7 +148,9 @@ export async function saveActivityAttendance(
     status: "registered" | "present" | "absent" | "excused";
     evaluation: string;
   }[],
-): Promise<{ error?: string }> {
+): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 

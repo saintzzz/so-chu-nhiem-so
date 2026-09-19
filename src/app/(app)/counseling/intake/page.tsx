@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
@@ -26,7 +26,7 @@ interface CaseRow {
 }
 
 export default async function CounselingIntakePage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   let classQuery = supabase

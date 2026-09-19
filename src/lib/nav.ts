@@ -152,6 +152,13 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Sinh hoạt chuyên môn", href: "/team/meetings" },
       ],
     },
+    {
+      label: "XIII. Thời khóa biểu & Sổ đầu bài",
+      children: [
+        { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Sổ đầu bài", href: "/schedule/period-log" },
+      ],
+    },
   ],
   bgh: [
     {

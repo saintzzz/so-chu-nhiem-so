@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalPicker } from "@/components/parents/portal-picker";
 import type {
@@ -52,7 +52,7 @@ export default async function PortalPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const sp = await searchParams;
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await scopedClasses(supabase, profile);

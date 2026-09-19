@@ -47,3 +47,12 @@ export async function requireRoles(roles: Role[]): Promise<Profile> {
   if (!roles.includes(profile.role)) redirect(ROLE_HOME[profile.role]);
   return profile;
 }
+
+/** Role check for server actions - returns an error message instead of redirecting. */
+export async function checkActionRole(roles: Role[]): Promise<string | null> {
+  const profile = await getProfile();
+  if (!profile) return "Phiên đăng nhập đã hết hạn.";
+  if (!roles.includes(profile.role))
+    return "Bạn không có quyền thực hiện thao tác này.";
+  return null;
+}

@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ActivityPlanner } from "@/components/activities/activity-planner";
 import type { Activity, ClassRoom, Profile } from "@/types";
@@ -30,7 +30,7 @@ function fmtDate(iso: string | null): string {
 }
 
 export default async function ActivitiesPlanPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await scopedClasses(supabase, profile);

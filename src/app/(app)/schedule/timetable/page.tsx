@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ export default async function TimetablePage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh"]);
   const supabase = await createClient();
   const sp = await searchParams;
 

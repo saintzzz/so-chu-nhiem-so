@@ -1,11 +1,11 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { YearEventsClient } from "@/components/register/year-events-client";
 import type { SchoolYearEvent } from "@/components/register/types";
 
 export default async function YearEventsPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
 
   const { data } = await supabase

@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InboxClient } from "@/components/parents/inbox-client";
 import type { Profile, Student } from "@/types";
@@ -24,7 +24,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function InboxPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const { data: msgData } = await supabase

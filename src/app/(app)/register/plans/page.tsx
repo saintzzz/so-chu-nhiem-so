@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { PlansClient } from "@/components/register/plans-client";
@@ -14,7 +14,7 @@ export default async function PlansPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 

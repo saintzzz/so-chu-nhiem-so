@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
@@ -51,7 +51,7 @@ export default async function PeriodLogPage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong"]);
   const supabase = await createClient();
   const sp = await searchParams;
 

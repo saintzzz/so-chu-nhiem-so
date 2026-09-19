@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export default async function ParentChatPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const sp = await searchParams;
   const supabase = await createClient();
 

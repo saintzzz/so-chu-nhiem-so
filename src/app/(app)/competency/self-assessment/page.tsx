@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
@@ -27,7 +27,7 @@ const ASSESSMENT_STATUS: Record<
 };
 
 export default async function SelfAssessmentPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
 
   const { data: yearRaw } = await supabase

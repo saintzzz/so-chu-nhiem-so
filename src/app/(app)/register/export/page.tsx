@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ExportClient } from "@/components/register/export-client";
 import {
@@ -8,7 +8,7 @@ import {
 import { CURRENT_MONTH } from "@/components/register/types";
 
 export default async function ExportPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn"]);
   const classes = await getAccessibleClasses(profile);
 
   return (

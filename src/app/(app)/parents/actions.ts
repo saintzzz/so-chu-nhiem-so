@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { checkActionRole } from "@/lib/auth";
 
 export async function sendAnnouncement(input: {
   classId: string;
   studentId: string | null;
   title: string;
   content: string;
-}): Promise<{ error?: string }> {
+}): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,7 +34,9 @@ export async function sendAnnouncement(input: {
 
 export async function markMessageRead(
   messageId: string,
-): Promise<{ error?: string }> {
+): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,7 +57,9 @@ export async function replyMessage(input: {
   recipientId: string;
   studentId: string | null;
   content: string;
-}): Promise<{ error?: string }> {
+}): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },
@@ -73,7 +80,9 @@ export async function replyMessage(input: {
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: "confirmed" | "done" | "cancelled",
-): Promise<{ error?: string }> {
+): Promise<{error?: string }> {
+  const deny = await checkActionRole(["gvcn", "bgh"]);
+  if (deny) return { error: deny };
   const supabase = await createClient();
   const {
     data: { user },

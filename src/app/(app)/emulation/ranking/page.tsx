@@ -1,5 +1,5 @@
 import { Trophy } from "lucide-react";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { ChartCard, BarChart } from "@/components/charts";
@@ -33,7 +33,7 @@ const RANK_TONES = [
 ];
 
 export default async function EmulationRankingPage() {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =

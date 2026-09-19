@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/page-header";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AttendanceRoster } from "@/components/activities/attendance-roster";
 import type { Activity, ClassRoom, Profile, Student } from "@/types";
@@ -42,7 +42,7 @@ export default async function ActivitiesAttendancePage({
   searchParams: Promise<{ activity?: string }>;
 }) {
   const sp = await searchParams;
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const classes = await scopedClasses(supabase, profile);

@@ -1,4 +1,4 @@
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { ScoringGrid } from "@/components/emulation/scoring-grid";
@@ -26,7 +26,7 @@ interface ScoreRow {
 }
 
 export default async function EmulationScoringPage() {
-  await requireProfile();
+  await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =

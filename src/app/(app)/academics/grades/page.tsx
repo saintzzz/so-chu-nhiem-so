@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
@@ -43,7 +43,7 @@ export default async function GradesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const profile = await requireProfile();
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh"]);
   const sp = await searchParams;
   const params = toParams(sp);
   const supabase = await createClient();

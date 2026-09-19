@@ -89,7 +89,8 @@ scripts/            # Asset download scripts
 - **Performance measurement per screen and per action.** Record server response, time-to-first-content, and action latency for every meaningful control. Thresholds: server <1s, action <3s. Never block page render on AI calls - stream/defer them.
 - **Data coverage precondition.** Before E2E, audit the business tables the flow touches; seed coherent linked records where sparse. Testing empty screens is a failed precondition.
 - **Console clean.** Zero hydration errors, zero failed network calls on every page tested. Timestamps use `formatDate`/`formatDateTime`/`formatDateOnly` from `src/lib/utils.ts` (fixed `Asia/Ho_Chi_Minh`) - never raw `toLocaleString`.
-- **Design language invariant.** One domain = one language per `src/lib/domain-theme.ts`; never mix theme scopes inside a domain.
+- **Design language invariant.** The whole app uses ONE design language - Fluent 2 - set once in `src/lib/domain-theme.ts`. Do not reintroduce per-domain themes or mix theme scopes.
+- **Vietnamese name sorting.** All student/teacher/profile lists must sort by given name (last token), not by the DB `order("full_name")` which sorts by family name first. Use `sortByVietnameseName` / `compareVietnameseName` from `src/lib/utils.ts` at render or right after fetch.
 
 ## Project Conventions (Sổ Chủ Nhiệm Số)
 

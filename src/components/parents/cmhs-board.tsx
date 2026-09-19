@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { FilterSelect } from "@/components/academics/filter-select";
+import { sortByVietnameseName } from "@/lib/utils";
 
 const ROLE_OPTIONS = [
   { value: "truong_ban", label: "Trưởng ban" },
@@ -44,7 +45,10 @@ export function CmhsBoard({
   const [addRole, setAddRole] = useState("uy_vien");
 
   const memberIds = new Set(members.map((m) => m.parent_id));
-  const candidates = parents.filter((p) => !memberIds.has(p.id));
+  const candidates = sortByVietnameseName(
+    parents.filter((p) => !memberIds.has(p.id)),
+    (p) => p.full_name,
+  );
   const parentName = new Map(parents.map((p) => [p.id, p]));
   const truongBan = members.find((m) => m.role === "truong_ban");
 
@@ -130,7 +134,7 @@ export function CmhsBoard({
         columns={["Phụ huynh", "Điện thoại", "Vai trò", "Thao tác"]}
         footer={<span>{members.length} thành viên</span>}
       >
-        {members.map((m) => {
+        {sortByVietnameseName(members, (m) => parentName.get(m.parent_id)?.full_name ?? "").map((m) => {
           const p = parentName.get(m.parent_id);
           return (
             <tr key={m.id}>

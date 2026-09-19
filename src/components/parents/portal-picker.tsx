@@ -1,14 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { sortByVietnameseName } from "@/lib/utils";
 
 export function PortalPicker({
-  students,
+  students: rawStudents,
   selectedId,
 }: {
   students: { id: string; label: string }[];
   selectedId: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.label);
   const router = useRouter();
   return (
     <div className="flex items-center gap-3">

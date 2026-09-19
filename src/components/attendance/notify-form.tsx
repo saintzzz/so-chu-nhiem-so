@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { sortByVietnameseName } from "@/lib/utils";
 
 const inputCls =
   "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -12,13 +13,14 @@ export function NotifyForm({
   classId,
   className,
   senderId,
-  students,
+  students: rawStudents,
 }: {
   classId: string;
   className: string;
   senderId: string;
   students: { id: string; fullName: string; code: string }[];
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.fullName);
   const router = useRouter();
   const [target, setTarget] = useState<string>("all");
   const [title, setTitle] = useState("");

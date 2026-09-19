@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { sortByVietnameseName } from "@/lib/utils";
 
 /** 15 thuộc tính NLPC tiểu học theo mẫu CSDL ngành. */
 export const NLPC_ATTRIBUTES = [
@@ -55,7 +56,7 @@ type Level = "" | "T" | "H" | "C";
 
 /** Bảng đánh giá NLPC tiểu học - mỗi HS một dòng: 15 mức T/H/C + 3 nhận xét nhóm. */
 export function NlpcEditor({
-  students,
+  students: rawStudents,
   evaluations,
   comments,
   term,
@@ -67,6 +68,7 @@ export function NlpcEditor({
   term: string;
   meId: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const [levels, setLevels] = useState<Record<string, Record<string, Level>>>(
     () => {

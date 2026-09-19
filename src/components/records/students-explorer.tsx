@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
-import { cn, formatDateOnly } from "@/lib/utils";
+import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
 
 export interface StudentSummaryRow {
   id: string;
@@ -103,7 +103,7 @@ function normalize(s: string): string {
 }
 
 export function StudentsExplorer({
-  students,
+  students: rawStudents,
   classes,
   selectedClassId,
   className,
@@ -113,6 +113,7 @@ export function StudentsExplorer({
   selectedClassId: string;
   className: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.fullName);
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 

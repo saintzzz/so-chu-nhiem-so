@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
-import { cn, formatDateOnly } from "@/lib/utils";
+import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types";
 
 export interface RosterRow {
@@ -32,11 +32,15 @@ const CHIP_TONE: Record<AttendanceStatus, string> = {
 
 export function DailyRoster({
   date,
-  rows,
+  rows: unsortedRows,
 }: {
   date: string;
   rows: RosterRow[];
 }) {
+  const rows = useMemo(
+    () => sortByVietnameseName(unsortedRows, (r) => r.fullName),
+    [unsortedRows],
+  );
   const router = useRouter();
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>(
     () => Object.fromEntries(rows.map((r) => [r.studentId, r.status])),

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
-import { cn } from "@/lib/utils";
+import { cn, sortByVietnameseName } from "@/lib/utils";
 import { ROLE_LABELS_BCS, type ClassRoleRow } from "./types";
 import type { Student, StudentGroup } from "@/types";
 
@@ -23,7 +23,7 @@ export function RosterClient({
   roles: ClassRoleRow[];
 }) {
   const supabase = createClient();
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<Student[]>(() => sortByVietnameseName(initialStudents, (s) => s.full_name));
   const [roles, setRoles] = useState<ClassRoleRow[]>(initialRoles);
   const [tab, setTab] = useState<"list" | "groups">("list");
   const [busy, setBusy] = useState(false);

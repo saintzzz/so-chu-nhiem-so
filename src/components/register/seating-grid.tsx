@@ -10,7 +10,7 @@ import {
 import { Copy, Printer, Save, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, sortByVietnameseName } from "@/lib/utils";
 import type { SeatingLayout, SeatingSeat, Student } from "@/types";
 
 const DEFAULT_COLS = 8;
@@ -122,7 +122,7 @@ export function SeatingGrid({
 }) {
   const supabase = createClient();
   const initial = useMemo(
-    () => buildCells(initialLayout, students),
+    () => buildCells(initialLayout, sortByVietnameseName(students, (s) => s.full_name)),
     [initialLayout, students],
   );
   const [cols] = useState(initial.cols);

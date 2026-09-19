@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { sortByVietnameseName } from "@/lib/utils";
 
 interface ClassRow {
   id: string;
@@ -35,7 +36,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function AssignmentsBoard({
   classes,
-  teachers,
+  teachers: rawTeachers,
   subjects,
   teacherSubjects,
   pairs,
@@ -46,6 +47,7 @@ export function AssignmentsBoard({
   teacherSubjects: { teacher_id: string; subject_id: string }[];
   pairs: Pair[];
 }) {
+  const teachers = sortByVietnameseName(rawTeachers, (s) => s.full_name);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);

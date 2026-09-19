@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, sortByVietnameseName } from "@/lib/utils";
 import { createIncident } from "@/app/(app)/safety/actions";
 
 const INPUT_CLS =
@@ -26,11 +26,12 @@ const SEVERITIES: { value: "low" | "medium" | "high" | "critical"; label: string
 
 export function IncidentForm({
   classes,
-  students,
+  students: rawStudents,
 }: {
   classes: { id: string; name: string }[];
   students: { id: string; full_name: string; class_id: string; code: string }[];
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [studentId, setStudentId] = useState("");
   const [type, setType] = useState(INCIDENT_TYPES[0]);

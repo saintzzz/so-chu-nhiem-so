@@ -1,39 +1,14 @@
 /**
- * Domain-scoped design languages. Each business domain adopts the design
- * system whose strengths match its workflow:
- * - fluent   (Microsoft Fluent 2): dense data grids & forms — admin console
- * - material (Google Material 3):  people-centric workflows — chips, tonal color
- * - apple    (Apple HIG):          calm content-first reading — portals, overviews
- *
- * Tokens are scoped via `.theme-*` classes in globals.css and applied to the
- * content region in AppShell — chrome (sidebar/topbar) stays neutral.
+ * Single design language for the whole app: Fluent 2 (Microsoft).
+ * Chosen because the product is a dense data-entry/admin tool — grids,
+ * forms, and workflows are Fluent's home turf. The theme layer
+ * (`.theme-*` classes in globals.css) is kept so another language can be
+ * reintroduced later, but every domain currently maps to Fluent.
  */
 export type DomainTheme = "fluent" | "material" | "apple";
 
-// Ordered: first matching prefix wins — keep specific prefixes above generic.
-const DOMAIN_THEME_MAP: [string, DomainTheme][] = [
-  ["/portal", "apple"],
-  ["/dashboard", "apple"],
-  ["/records", "fluent"],
-  ["/attendance", "fluent"],
-  ["/academics", "fluent"],
-  ["/register", "fluent"],
-  ["/schedule", "fluent"],
-  ["/dept", "fluent"],
-  ["/team", "fluent"],
-  ["/school", "fluent"],
-  ["/conduct", "material"],
-  ["/counseling", "material"],
-  ["/parents", "material"],
-  ["/activities", "material"],
-  ["/safety", "material"],
-  ["/emulation", "material"],
-  ["/competency", "material"],
-];
+const APP_THEME: DomainTheme = "fluent";
 
-export function domainThemeFor(pathname: string): DomainTheme {
-  for (const [prefix, theme] of DOMAIN_THEME_MAP) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return theme;
-  }
-  return "fluent";
+export function domainThemeFor(): DomainTheme {
+  return APP_THEME;
 }

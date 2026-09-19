@@ -12,6 +12,7 @@ import {
   normalizeDate,
   parseSpreadsheet,
 } from "@/lib/excel";
+import { sortByVietnameseName } from "@/lib/utils";
 
 interface ExamRow {
   id: string;
@@ -47,7 +48,7 @@ export function ExamsBoard({
   sessions,
   classes,
   subjects,
-  teachers,
+  teachers: rawTeachers,
   schoolId,
   canEdit,
 }: {
@@ -60,6 +61,7 @@ export function ExamsBoard({
   schoolId: string;
   canEdit: boolean;
 }) {
+  const teachers = sortByVietnameseName(rawTeachers, (s) => s.full_name);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

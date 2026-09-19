@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, sortByVietnameseName } from "@/lib/utils";
 
 export interface PeriodEntry {
   id: string;
@@ -303,7 +303,7 @@ export function PeriodLogBoard({
                         Đánh dấu học sinh vắng / đi muộn
                       </p>
                       <div className="mb-4 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {roster.students.map((s) => {
+                        {sortByVietnameseName(roster.students, (s) => s.full_name).map((s) => {
                           const mark = draft.marks[s.id] ?? "";
                           return (
                             <div
@@ -320,29 +320,43 @@ export function PeriodLogBoard({
                               <span className="min-w-0 truncate text-sm">
                                 {s.full_name}
                               </span>
-                              <select
-                                value={mark}
-                                onChange={(e) =>
-                                  setMark(
-                                    entry,
-                                    s.id,
-                                    e.target.value as Mark,
-                                  )
-                                }
-                                className="h-7 shrink-0 rounded-md border border-border bg-background px-1.5 text-xs"
+                              <span
+                                role="group"
                                 aria-label={`Trạng thái của ${s.full_name}`}
+                                className="flex shrink-0 gap-0.5"
                               >
-                                <option value="">Có mặt</option>
-                                <option value="excused">
-                                  {ATT_STATUS.excused.label}
-                                </option>
-                                <option value="unexcused">
-                                  {ATT_STATUS.unexcused.label}
-                                </option>
-                                <option value="late">
-                                  {ATT_STATUS.late.label}
-                                </option>
-                              </select>
+                                {(
+                                  ["excused", "unexcused", "late"] as const
+                                ).map((m) => (
+                                  <button
+                                    key={m}
+                                    type="button"
+                                    title={
+                                      mark === m
+                                        ? `${ATT_STATUS[m].label} - bấm để bỏ`
+                                        : ATT_STATUS[m].label
+                                    }
+                                    aria-pressed={mark === m}
+                                    onClick={() =>
+                                      setMark(entry, s.id, mark === m ? "" : m)
+                                    }
+                                    className={cn(
+                                      "rounded-md border px-1.5 py-0.5 text-[11px] leading-tight transition-colors",
+                                      mark === m
+                                        ? m === "late"
+                                          ? "border-warning bg-warning-bg text-warning"
+                                          : "border-error bg-error-bg text-error"
+                                        : "border-border bg-background text-muted-foreground hover:border-muted-foreground/50",
+                                    )}
+                                  >
+                                    {m === "excused"
+                                      ? "CP"
+                                      : m === "unexcused"
+                                        ? "KP"
+                                        : "Muộn"}
+                                  </button>
+                                ))}
+                              </span>
                             </div>
                           );
                         })}

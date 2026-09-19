@@ -116,31 +116,47 @@ export function AttendanceRoster({
                   <td className="font-medium">{r.studentName}</td>
                   <td className="text-muted-foreground">{r.code}</td>
                   <td>
-                    <select
-                      value={cur.status}
-                      onChange={(e) =>
-                        setState((prev) => ({
-                          ...prev,
-                          [r.studentId]: {
-                            ...cur,
-                            status: e.target.value as RowStatus,
-                          },
-                        }))
-                      }
-                      className={cn(
-                        INPUT_CLS,
-                        "w-40",
-                        cur.status === "present" && "text-success",
-                        cur.status === "absent" && "text-error",
-                        cur.status === "excused" && "text-warning",
-                      )}
+                    <div
+                      role="radiogroup"
+                      aria-label={`Trạng thái của ${r.studentName}`}
+                      className="flex flex-wrap gap-1"
                     >
-                      {STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                      {STATUS_OPTIONS.map((o) => {
+                        const active = cur.status === o.value;
+                        return (
+                          <label
+                            key={o.value}
+                            className={cn(
+                              "cursor-pointer rounded-full border px-2 py-1 text-xs transition-colors",
+                              active
+                                ? o.value === "present"
+                                  ? "border-success/50 bg-success-bg text-success"
+                                  : o.value === "absent"
+                                    ? "border-error/50 bg-error-bg text-error"
+                                    : o.value === "excused"
+                                      ? "border-warning/50 bg-warning-bg text-warning"
+                                      : "border-primary/50 bg-primary-bg text-primary"
+                                : "border-border text-muted-foreground hover:border-muted-foreground/50",
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name={`att-${r.studentId}`}
+                              value={o.value}
+                              checked={active}
+                              onChange={() =>
+                                setState((prev) => ({
+                                  ...prev,
+                                  [r.studentId]: { ...cur, status: o.value },
+                                }))
+                              }
+                              className="sr-only"
+                            />
+                            {o.label}
+                          </label>
+                        );
+                      })}
+                    </div>
                   </td>
                   <td>
                     <input

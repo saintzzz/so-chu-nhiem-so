@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { sortByVietnameseName } from "@/lib/utils";
 
 export interface IntakeStudent {
   id: string;
@@ -24,12 +25,13 @@ const inputCls =
 
 /** Tiếp nhận ca tư vấn mới → insert counseling_cases (status = new). */
 export function CounselingIntakeForm({
-  students,
+  students: rawStudents,
   meId,
 }: {
   students: IntakeStudent[];
   meId: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [issue, setIssue] = useState("");

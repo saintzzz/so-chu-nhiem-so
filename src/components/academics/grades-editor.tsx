@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
-import { cn, formatDateOnly } from "@/lib/utils";
+import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
 
 export interface GradeStudent {
   id: string;
@@ -234,7 +234,7 @@ function parseLevel(raw: string): Level | "invalid" {
 /** Sổ điểm - THCS/THPT theo TT22 (ĐĐGtx/gk/ck + ĐTBm), Tiểu học theo mức T/H/C + Điểm KTĐK.
  *  Template & import theo mẫu biểu CSDL ngành: Mã định danh Bộ GD&ĐT, ngày sinh, ĐĐGtx1-5, nhận xét. */
 export function GradesEditor({
-  students,
+  students: rawStudents,
   grades,
   subjectId,
   term,
@@ -252,6 +252,7 @@ export function GradesEditor({
   className: string;
   schoolLevel: "th" | "thcs" | "thpt" | "lien_cap";
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const isTh = schoolLevel === "th";
   const [cells, setCells] = useState<Record<string, CellState>>(() => {

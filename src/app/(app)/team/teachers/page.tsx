@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import type { ClassRoom, Profile, Subject } from "@/types";
+import { compareVietnameseName } from "@/lib/utils";
 
 interface TeacherSubject {
   teacher_id: string;
@@ -25,6 +26,7 @@ export default async function TeamTeachersPage() {
     Profile,
     "id" | "full_name" | "email" | "role"
   >[];
+  teachers.sort((a, b) => compareVietnameseName(a.full_name, b.full_name));
   const teacherIds = teachers.map((t) => t.id);
 
   const [tsRes, subjectsRes, classesRes] = await Promise.all([

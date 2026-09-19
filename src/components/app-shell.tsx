@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
 import { GraduationCap, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import type { Profile } from "@/types";
 import { SidebarNav } from "@/components/sidebar-nav";
@@ -18,7 +17,7 @@ export function AppShell({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const theme = domainThemeFor(usePathname());
+  const theme = domainThemeFor();
 
   return (
     <div className={cn("flex min-h-screen", `theme-${theme}`)}>

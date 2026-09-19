@@ -15,7 +15,7 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyBghPage() {
-  const profile = await requireRoles(["bgh"]);
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
   // Trang tổng hợp toàn trường - dùng cho BGH và GVCN tra cứu liên lớp.

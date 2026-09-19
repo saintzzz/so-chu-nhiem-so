@@ -5,6 +5,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
+import { compareVietnameseName } from "@/lib/utils";
 
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -57,8 +58,7 @@ export function ClassReportExport({
         .from("students")
         .select("id,code,national_id,full_name,dob")
         .eq("class_id", classId)
-        .eq("status", "active")
-        .order("full_name"),
+        .eq("status", "active"),
       supabase.from("subjects").select("id,name,assessment_method").order("name"),
     ]);
     const students = (studentData ?? []) as {
@@ -68,6 +68,7 @@ export function ClassReportExport({
       full_name: string;
       dob: string | null;
     }[];
+    students.sort((a, b) => compareVietnameseName(a.full_name, b.full_name));
     const subjects = (subjectData ?? []) as {
       id: string;
       name: string;

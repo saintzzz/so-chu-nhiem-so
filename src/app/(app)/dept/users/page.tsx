@@ -5,7 +5,7 @@ import { ROLE_LABELS } from "@/lib/nav";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
-import { cn } from "@/lib/utils";
+import { cn, compareVietnameseName } from "@/lib/utils";
 import type { Profile, Role, School } from "@/types";
 
 const ROLE_TONES: Record<Role, "primary" | "success" | "warning" | "muted"> = {
@@ -48,6 +48,7 @@ export default async function DeptUsersPage({
     Profile,
     "id" | "full_name" | "email" | "role" | "school_id"
   >[];
+  profiles.sort((a, b) => compareVietnameseName(a.full_name, b.full_name));
   const schools = (schoolsRes.data ?? []) as Pick<School, "id" | "name">[];
   const schoolNameOf = new Map(schools.map((s) => [s.id, s.name]));
 

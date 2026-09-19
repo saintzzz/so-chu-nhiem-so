@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import type { Grade, Student, StudentGroup } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
+import { sortByVietnameseName } from "@/lib/utils";
 
 interface ExportRow {
   code: string;
@@ -47,11 +48,10 @@ export function ExportClient({
         .from("students")
         .select("*")
         .eq("class_id", classId)
-        .eq("status", "active")
-        .order("full_name"),
+        .eq("status", "active"),
       supabase.from("student_groups").select("*").eq("class_id", classId),
     ]);
-    const students = (studentsData ?? []) as Student[];
+    const students = sortByVietnameseName((studentsData ?? []) as Student[], (s) => s.full_name);
     const groups = (groupsData ?? []) as StudentGroup[];
     const groupMap = new Map(groups.map((g) => [g.id, g.name]));
     const ids = students.map((s) => s.id);

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { sortByVietnameseName } from "@/lib/utils";
 
 export interface RecordStudent {
   id: string;
@@ -28,12 +29,13 @@ const inputCls =
 
 /** Form to add a conduct_records row (nhận xét / khen thưởng / vi phạm). */
 export function ConductRecordForm({
-  students,
+  students: rawStudents,
   meId,
 }: {
   students: RecordStudent[];
   meId: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [type, setType] = useState("nhan_xet");

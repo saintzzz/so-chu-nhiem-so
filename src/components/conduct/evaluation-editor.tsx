@@ -8,6 +8,7 @@ import { useAiJob } from "@/hooks/use-ai-job";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
+import { sortByVietnameseName } from "@/lib/utils";
 
 export interface EvalStudent {
   id: string;
@@ -33,7 +34,7 @@ export const RATINGS = [
 
 /** Editable hạnh kiểm table - one row per student, upsert on save. */
 export function ConductEvaluationEditor({
-  students,
+  students: rawStudents,
   evaluations,
   term,
   meId,
@@ -45,6 +46,7 @@ export function ConductEvaluationEditor({
   meId: string;
   classId: string;
 }) {
+  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const [draft, setDraft] = useState<
     Record<string, { rating: string; comment: string }>

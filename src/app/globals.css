@@ -21,7 +21,8 @@
   --color-warning-bg: #fffbeb;
   --color-error-bg: #fef2f2;
   --color-accent-bg: #fef2f2;
-  --color-primary-bg: #eaf0f7;
+  --primary-bg: #eaf0f7;
+  --color-primary-bg: var(--primary-bg);
 
   --font-display: "Figtree", system-ui, sans-serif;
   --font-body: "Figtree", system-ui, sans-serif;
@@ -118,7 +119,7 @@
   --color-success-bg: #ecfdf5;
   --color-warning-bg: #fffbeb;
   --color-error-bg: #fef2f2;
-  --color-primary-bg: #eaf0f7;
+  --color-primary-bg: var(--primary-bg);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

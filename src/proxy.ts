@@ -31,11 +31,15 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
+  const isPublicApi = pathname === "/api/ai/devin-callback";
 
-  if (!user && !isLogin) {
+  if (!user && !isLogin && !isPublicApi) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+  if (!user && isPublicApi) {
+    return response;
   }
   if (user && isLogin) {
     const url = request.nextUrl.clone();

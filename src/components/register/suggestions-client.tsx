@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useAiJob } from "@/hooks/use-ai-job";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -26,6 +27,55 @@ export function SuggestionsClient({
   const [tasks, setTasks] = useState<TaskRow[]>(initialTasks);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const aiJob = useAiJob();
+
+  async function insertSuggestions(
+    suggestions: { title: string; due_date: string }[],
+    label: string,
+  ) {
+    const existing = new Set(tasks.map((t) => t.title));
+    const rows = suggestions
+      .filter((s) => !existing.has(s.title))
+      .map((s) => ({
+        class_id: classId,
+        title: s.title,
+        due_date: s.due_date,
+        month: parseInt(s.due_date.slice(5, 7), 10),
+        source: "suggested" as const,
+        status: "pending" as const,
+      }));
+    if (rows.length === 0) {
+      setMessage("Không có gợi ý mới nào để tạo.");
+      return;
+    }
+    const { data, error } = await supabase.from("tasks").insert(rows).select();
+    if (!error && data) {
+      const inserted = data as TaskRow[];
+      setTasks((ts) => [...ts, ...inserted]);
+      setMessage(`${label} đã tạo ${inserted.length} gợi ý công việc.`);
+    } else {
+      setMessage("Không thể tạo gợi ý.");
+    }
+  }
+
+  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs
+  useEffect(() => {
+    if (!aiJob.done || !aiJob.result) return;
+    const arr = aiJob.result as { title?: string; due_date?: string }[];
+    if (Array.isArray(arr)) {
+      void insertSuggestions(
+        arr.filter(
+          (s): s is { title: string; due_date: string } =>
+            typeof s.title === "string" &&
+            typeof s.due_date === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(s.due_date),
+        ),
+        "Devin",
+      );
+    }
+    aiJob.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiJob.done, aiJob.result]);
 
   async function setStatus(id: string, status: "approved" | "dismissed") {
     setBusy(true);
@@ -45,15 +95,6 @@ export function SuggestionsClient({
     const existing = new Set(tasks.map((t) => t.title));
     let usedAi = false;
 
-    let rows: {
-      class_id: string;
-      title: string;
-      due_date: string;
-      month: number;
-      source: "suggested";
-      status: "pending";
-    }[] = [];
-
     try {
       const res = await fetch("/api/ai/suggest-tasks", {
         method: "POST",
@@ -61,26 +102,27 @@ export function SuggestionsClient({
         body: JSON.stringify({ classId }),
       });
       const json = (await res.json()) as {
-        suggestions: { title: string; due_date: string }[] | null;
+        suggestions?: { title: string; due_date: string }[] | null;
+        pending?: boolean;
+        jobId?: string;
+        devinUrl?: string;
       };
+      if (json.pending && json.jobId && json.devinUrl) {
+        aiJob.start(json.jobId, json.devinUrl);
+        setBusy(false);
+        return;
+      }
       if (json.suggestions && json.suggestions.length > 0) {
         usedAi = true;
-        rows = json.suggestions
-          .filter((s) => !existing.has(s.title))
-          .map((s) => ({
-            class_id: classId,
-            title: s.title,
-            due_date: s.due_date,
-            month: parseInt(s.due_date.slice(5, 7), 10),
-            source: "suggested" as const,
-            status: "pending" as const,
-          }));
+        await insertSuggestions(json.suggestions, "AI");
+        setBusy(false);
+        return;
       }
     } catch {
       // AI route lỗi - fallback rule-based bên dưới
     }
 
-    if (rows.length === 0 && !usedAi) {
+    if (!usedAi) {
       const today = new Date().toISOString().slice(0, 10);
       const { data: eventsData } = await supabase
         .from("school_year_events")
@@ -88,34 +130,17 @@ export function SuggestionsClient({
         .gte("event_date", today)
         .order("event_date");
       const events = (eventsData ?? []) as SchoolYearEvent[];
-      rows = events
+      const rows = events
         .map((e) => ({
-          class_id: classId,
           title: `Chuẩn bị: ${e.title}`,
           due_date: e.event_date,
-          month: e.month ?? parseInt(e.event_date.slice(5, 7), 10),
-          source: "suggested" as const,
-          status: "pending" as const,
         }))
         .filter((r) => !existing.has(r.title));
-    }
-
-    if (rows.length === 0) {
-      setMessage("Không có gợi ý mới nào để tạo.");
-      setBusy(false);
-      return;
-    }
-    const { data, error } = await supabase.from("tasks").insert(rows).select();
-    if (!error && data) {
-      const inserted = data as TaskRow[];
-      setTasks((ts) => [...ts, ...inserted]);
-      setMessage(
-        usedAi
-          ? `AI đã tạo ${inserted.length} gợi ý công việc.`
-          : `Đã tạo ${inserted.length} gợi ý từ lịch năm học.`,
-      );
-    } else {
-      setMessage("Không thể tạo gợi ý.");
+      if (rows.length === 0) {
+        setMessage("Không có gợi ý mới nào để tạo.");
+      } else {
+        await insertSuggestions(rows, "Lịch năm học");
+      }
     }
     setBusy(false);
   }
@@ -136,6 +161,26 @@ export function SuggestionsClient({
       {message && (
         <p className="rounded-lg bg-primary-bg px-3 py-2 text-sm text-primary">
           {message}
+        </p>
+      )}
+
+      {aiJob.job && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
+          LLM hết hạn mức - đã giao cho Devin xử lý.{" "}
+          <a
+            href={aiJob.job.devinUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-primary underline"
+          >
+            Mở session Devin
+          </a>{" "}
+          - kết quả sẽ tự cập nhật khi hoàn thành.
+        </p>
+      )}
+      {aiJob.failed && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Tác vụ Devin không hoàn thành. Vui lòng thử lại sau.
         </p>
       )}
 

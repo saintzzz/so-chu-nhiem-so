@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useAiJob } from "@/hooks/use-ai-job";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
@@ -58,6 +59,40 @@ export function ConductEvaluationEditor({
   );
   const [pending, startTransition] = useTransition();
   const [aiBusy, setAiBusy] = useState<string | "all" | null>(null);
+  const aiJob = useAiJob();
+
+  function applyComments(
+    comments: Record<string, string>,
+    list: EvalStudent[],
+  ) {
+    setDraft((prev) => {
+      const next = { ...prev };
+      for (const s of list) {
+        const c = comments[s.code];
+        if (c) {
+          next[s.id] = {
+            ...(next[s.id] ?? { rating: "tot", comment: "" }),
+            comment: c,
+          };
+        }
+      }
+      return next;
+    });
+    setSaved(false);
+  }
+
+  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs
+  useEffect(() => {
+    if (!aiJob.done || !aiJob.result) return;
+    const obj = aiJob.result as Record<string, unknown>;
+    const comments: Record<string, string> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (typeof v === "string" && v.trim()) comments[k] = v.trim();
+    }
+    applyComments(comments, students);
+    aiJob.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiJob.done, aiJob.result]);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
@@ -191,25 +226,20 @@ export function ConductEvaluationEditor({
         }),
       });
       const json = (await res.json()) as {
-        comments: Record<string, string> | null;
+        comments?: Record<string, string> | null;
+        pending?: boolean;
+        jobId?: string;
+        devinUrl?: string;
       };
+      if (json.pending && json.jobId && json.devinUrl) {
+        aiJob.start(json.jobId, json.devinUrl);
+        return;
+      }
       if (!json.comments) {
         setError("AI chưa sẵn sàng (chưa cấu hình API key).");
         return;
       }
-      setDraft((prev) => {
-        const next = { ...prev };
-        for (const s of list) {
-          const c = json.comments?.[s.code];
-          if (c) {
-            next[s.id] = {
-              ...(next[s.id] ?? { rating: "tot", comment: "" }),
-              comment: c,
-            };
-          }
-        }
-        return next;
-      });
+      applyComments(json.comments, list);
       setSaved(false);
     } catch {
       setError("Không gọi được dịch vụ AI.");
@@ -228,6 +258,23 @@ export function ConductEvaluationEditor({
             {saved && <span className="text-success">Đã lưu đánh giá.</span>}
             {error && <span className="text-error">{error}</span>}
             {importMsg && <span className="text-primary">{importMsg}</span>}
+            {aiJob.job && (
+              <span className="text-muted-foreground">
+                LLM hết hạn mức - Devin đang xử lý{" "}
+                <a
+                  href={aiJob.job.devinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline"
+                >
+                  (mở session)
+                </a>
+                , nhận xét sẽ tự điền khi xong.
+              </span>
+            )}
+            {aiJob.failed && (
+              <span className="text-error">Tác vụ Devin thất bại.</span>
+            )}
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               Tải template
             </Button>

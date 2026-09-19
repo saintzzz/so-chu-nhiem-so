@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
-import { generateText } from "@/lib/ai";
+import { generateTextDetailed } from "@/lib/ai";
+import { fallbackToDevin } from "@/lib/devin";
 
 interface SuggestedTask {
   title: string;
@@ -54,14 +55,32 @@ Công việc đã có (không được trùng): ${JSON.stringify([...existing])}
 
 Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
 
-  const text = await generateText(prompt, {
+  const aiRes = await generateTextDetailed(prompt, {
     system:
       "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường THCS Việt Nam. Chỉ trả về JSON hợp lệ.",
     maxTokens: 1500,
     temperature: 0.5,
   });
+  const text = aiRes.text;
 
   if (!text) {
+    if (aiRes.error === "quota") {
+      const job = await fallbackToDevin({
+        supabase,
+        kind: "suggest-tasks",
+        prompt: `Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường THCS Việt Nam.\n\n${prompt}`,
+        expectedShape: '[{"title": "...", "due_date": "YYYY-MM-DD"}]',
+        createdBy: profile.id,
+        req,
+      });
+      if (job) {
+        return NextResponse.json({
+          pending: true,
+          jobId: job.jobId,
+          devinUrl: job.devinUrl,
+        });
+      }
+    }
     return NextResponse.json({ suggestions: null });
   }
 

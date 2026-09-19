@@ -78,6 +78,7 @@ scripts/            # Asset download scripts
 - **Auth lookups:** `getProfile` is React `cache()`-deduped per request - call it freely in layout + page + actions.
 - **DB types:** verify column types in seed/migrations first (`month` is int, dates are real `date`).
 - **AI:** providers via env (`GEMINI_API_KEY`/`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `AI_PROVIDER`/`AI_MODEL`) in `src/lib/ai.ts` - never hard-code; Gemini needs `thinkingBudget: 0` for JSON output.
+- **AI fallback:** on `quota` errors, `src/lib/devin.ts` creates an async Devin session; result returns via `/api/ai/devin-callback` (per-job `callback_token` in `ai_jobs`, proxy-whitelisted path). Env: `DEVIN_API_KEY` (+ optional `DEVIN_CALLBACK_URL`, else derived from request host). `AI_FORCE_ERROR=quota` simulates quota locally.
 - **Deploy:** push to `master` auto-deploys to Vercel (`saintzzz/so-chu-nhiem-so`). Do NOT re-add `output: "standalone"` - it breaks remote builds.
 - **Secrets:** `.env.local` and `~/.config/devin/secrets/*` stay uncommitted; never print key values.
 - **QA:** verify with Playwright - login per demo role (`*@demo.scn` / `demo1234`), check allowed AND denied routes, verify mutations in DB.

@@ -40,11 +40,32 @@ interface GenerateOptions {
   temperature?: number;
 }
 
+export type AiErrorKind = "no_key" | "quota" | "error";
+
+export interface AiResult {
+  text: string | null;
+  error: AiErrorKind | null;
+  provider: AiProvider | null;
+}
+
+function classifyStatus(status: number, body: string): AiErrorKind {
+  if (status === 429) return "quota";
+  const b = body.toLowerCase();
+  if (
+    b.includes("quota") ||
+    b.includes("resource_exhausted") ||
+    b.includes("rate limit")
+  ) {
+    return "quota";
+  }
+  return "error";
+}
+
 async function callGemini(
   cfg: AiConfig,
   prompt: string,
   opts: GenerateOptions,
-): Promise<string | null> {
+): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${cfg.key}`,
     {
@@ -63,7 +84,9 @@ async function callGemini(
       }),
     },
   );
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return { text: null, error: classifyStatus(res.status, await res.text()) };
+  }
   const json = (await res.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
   };
@@ -71,14 +94,14 @@ async function callGemini(
     ?.map((p) => p.text ?? "")
     .join("")
     .trim();
-  return text || null;
+  return { text: text || null, error: null };
 }
 
 async function callOpenAI(
   cfg: AiConfig,
   prompt: string,
   opts: GenerateOptions,
-): Promise<string | null> {
+): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -95,18 +118,23 @@ async function callOpenAI(
       ],
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return { text: null, error: classifyStatus(res.status, await res.text()) };
+  }
   const json = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
   };
-  return json.choices?.[0]?.message?.content?.trim() || null;
+  return {
+    text: json.choices?.[0]?.message?.content?.trim() || null,
+    error: null,
+  };
 }
 
 async function callAnthropic(
   cfg: AiConfig,
   prompt: string,
   opts: GenerateOptions,
-): Promise<string | null> {
+): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -122,17 +150,46 @@ async function callAnthropic(
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    return { text: null, error: classifyStatus(res.status, await res.text()) };
+  }
   const json = (await res.json()) as {
     content?: { type: string; text?: string }[];
   };
-  return (
+  const text =
     json.content
       ?.filter((c) => c.type === "text")
       .map((c) => c.text ?? "")
       .join("")
-      .trim() || null
-  );
+      .trim() || null;
+  return { text, error: null };
+}
+
+/**
+ * Gọi LLM theo provider được detect từ env, trả về kết quả kèm loại lỗi.
+ * error="quota" nghĩa là provider hết hạn mức - caller có thể fallback Devin.
+ */
+export async function generateTextDetailed(
+  prompt: string,
+  opts: GenerateOptions = {},
+): Promise<AiResult> {
+  const cfg = getAiConfig();
+  if (!cfg) return { text: null, error: "no_key", provider: null };
+  // Test hook: AI_FORCE_ERROR=quota để mô phỏng hết hạn mức khi test fallback
+  if (process.env.AI_FORCE_ERROR === "quota") {
+    return { text: null, error: "quota", provider: cfg.provider };
+  }
+  try {
+    const r =
+      cfg.provider === "gemini"
+        ? await callGemini(cfg, prompt, opts)
+        : cfg.provider === "openai"
+          ? await callOpenAI(cfg, prompt, opts)
+          : await callAnthropic(cfg, prompt, opts);
+    return { ...r, provider: cfg.provider };
+  } catch {
+    return { text: null, error: "error", provider: cfg.provider };
+  }
 }
 
 /**
@@ -143,15 +200,7 @@ export async function generateText(
   prompt: string,
   opts: GenerateOptions = {},
 ): Promise<string | null> {
-  const cfg = getAiConfig();
-  if (!cfg) return null;
-  try {
-    if (cfg.provider === "gemini") return await callGemini(cfg, prompt, opts);
-    if (cfg.provider === "openai") return await callOpenAI(cfg, prompt, opts);
-    return await callAnthropic(cfg, prompt, opts);
-  } catch {
-    return null;
-  }
+  return (await generateTextDetailed(prompt, opts)).text;
 }
 
 export function aiProviderLabel(): string | null {

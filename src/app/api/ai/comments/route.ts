@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
-import { generateText } from "@/lib/ai";
+import { generateTextDetailed } from "@/lib/ai";
+import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent } from "@/lib/tt22";
 
 interface StudentInput {
@@ -134,14 +135,32 @@ Yêu cầu: mỗi nhận xét 1-2 câu, văn phong giáo viên chủ nhiệm Vi�
 
 Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
-  const text = await generateText(prompt, {
+  const aiRes = await generateTextDetailed(prompt, {
     system:
       "Bạn là giáo viên chủ nhiệm trường THCS Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
     maxTokens: 8000,
     temperature: 0.7,
   });
+  const text = aiRes.text;
 
   if (!text) {
+    if (aiRes.error === "quota") {
+      const job = await fallbackToDevin({
+        supabase,
+        kind: "comments",
+        prompt: `Bạn là giáo viên chủ nhiệm trường THCS Việt Nam viết nhận xét học sinh.\n\n${prompt}`,
+        expectedShape: '{"MA_HS": "nhận xét 1-2 câu"}',
+        createdBy: profile.id,
+        req,
+      });
+      if (job) {
+        return NextResponse.json({
+          pending: true,
+          jobId: job.jobId,
+          devinUrl: job.devinUrl,
+        });
+      }
+    }
     return NextResponse.json({ comments: null });
   }
 

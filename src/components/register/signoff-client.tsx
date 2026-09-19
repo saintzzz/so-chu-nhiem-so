@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateTime } from "@/lib/utils";
 import { PenLine, PlusCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -127,7 +128,7 @@ export function SignoffClient({
               </td>
               <td className="text-muted-foreground">
                 {s.signed_at
-                  ? new Date(s.signed_at).toLocaleString("vi-VN")
+                  ? formatDateTime(s.signed_at)
                   : "-"}
               </td>
               <td>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 
 export interface StudentSummaryRow {
   id: string;
@@ -259,11 +259,7 @@ export function StudentsExplorer({
                               </li>
                               <li>
                                 Ngày sinh:{" "}
-                                {s.dob
-                                  ? new Date(`${s.dob}T00:00:00`).toLocaleDateString(
-                                      "vi-VN",
-                                    )
-                                  : "-"}
+                                {s.dob ? formatDateOnly(s.dob) : "-"}
                               </li>
                               <li>Tổ: {s.groupName ?? "Chưa xếp tổ"}</li>
                               <li>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateTime } from "@/lib/utils";
 import { History } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export function SeatingHistoryClient({
             <td className="font-medium">{c.month}</td>
             <td>v{c.version}</td>
             <td className="text-muted-foreground">
-              {new Date(c.created_at).toLocaleString("vi-VN")}
+              {formatDateTime(c.created_at)}
             </td>
             <td>
               {c.is_current ? (

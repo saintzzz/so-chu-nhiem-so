@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { formatDate } from "@/lib/utils";
 import { CalendarPlus, Download, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -123,7 +124,7 @@ export function YearEventsClient({
         {events.map((e) => (
           <tr key={e.id}>
             <td className="font-medium">{e.title}</td>
-            <td>{new Date(e.event_date).toLocaleDateString("vi-VN")}</td>
+            <td>{formatDate(e.event_date)}</td>
             <td className="text-muted-foreground">{e.month ?? "-"}</td>
             <td>
               <StatusBadge

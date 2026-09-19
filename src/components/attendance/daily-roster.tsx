@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types";
 
 export interface RosterRow {
@@ -161,12 +161,12 @@ export function DailyRoster({
     setDirty(false);
     setFeedback({
       ok: true,
-      text: `Đã xác nhận chuyên cần ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")} cho ${rows.length} học sinh.`,
+      text: `Đã xác nhận chuyên cần ngày ${formatDateOnly(date)} cho ${rows.length} học sinh.`,
     });
     router.refresh();
   }
 
-  const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN", {
+  const dateLabel = formatDateOnly(date, {
     weekday: "long",
     day: "numeric",
     month: "numeric",

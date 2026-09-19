@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 import { Check, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAiJob } from "@/hooks/use-ai-job";
@@ -194,7 +195,7 @@ export function SuggestionsClient({
               <td className="font-medium">{t.title}</td>
               <td>
                 {t.due_date
-                  ? new Date(t.due_date).toLocaleDateString("vi-VN")
+                  ? formatDate(t.due_date)
                   : "-"}
               </td>
               <td className="text-muted-foreground">{t.month ?? "-"}</td>

@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { ClassRoom, Profile, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -104,13 +105,7 @@ export default async function RecordsHistoryPage() {
           return (
             <tr key={h.id}>
               <td className="whitespace-nowrap text-muted-foreground">
-                {new Date(h.changed_at).toLocaleString("vi-VN", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateTime(h.changed_at)}
               </td>
               <td>
                 <span className="font-medium">{st?.full_name ?? "-"}</span>

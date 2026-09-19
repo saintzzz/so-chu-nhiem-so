@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 export interface ChatMessage {
   id: string;
@@ -86,7 +86,7 @@ export function ChatThread({
                   mine ? "text-primary-foreground/70" : "text-muted-foreground",
                 )}
               >
-                {new Date(m.created_at).toLocaleString("vi-VN")}
+                {formatDateTime(m.created_at)}
               </p>
             </div>
           );

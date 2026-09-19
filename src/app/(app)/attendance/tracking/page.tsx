@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -130,7 +131,7 @@ export default async function AttendanceTrackingPage({
       <PageHeader
         section="Phân hệ II - Chuyên cần"
         title="Theo dõi tình trạng"
-        description={`Học sinh lớp ${selected.name} có từ 3 lượt vắng không phép / đi muộn trong 30 ngày gần nhất (đến ${new Date(`${anchor}T00:00:00`).toLocaleDateString("vi-VN")}).`}
+        description={`Học sinh lớp ${selected.name} có từ 3 lượt vắng không phép / đi muộn trong 30 ngày gần nhất (đến ${formatDateOnly(anchor)}).`}
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">

@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 
 export interface GradeStudent {
   id: string;
@@ -789,7 +789,7 @@ export function GradesEditor({
                 {s.full_name}
                 {s.dob && (
                   <span className="block text-xs font-normal text-muted-foreground">
-                    {new Date(`${s.dob}T00:00:00`).toLocaleDateString("vi-VN")}
+                    {formatDateOnly(s.dob)}
                   </span>
                 )}
               </td>

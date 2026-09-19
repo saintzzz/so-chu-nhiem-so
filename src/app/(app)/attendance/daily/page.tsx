@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AttendanceRecord,
@@ -87,7 +88,7 @@ export default async function AttendanceDailyPage({
     status: (attByStudent.get(s.id) ?? "present") as AttendanceStatus,
   }));
 
-  const dateLabel = new Date(`${today}T00:00:00`).toLocaleDateString("vi-VN", {
+  const dateLabel = formatDateOnly(today, {
     weekday: "long",
     day: "numeric",
     month: "numeric",

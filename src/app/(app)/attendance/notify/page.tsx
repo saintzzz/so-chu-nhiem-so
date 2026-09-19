@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDate } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Announcement, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -91,10 +92,7 @@ export default async function AttendanceNotifyPage({
             {announcements.map((a) => (
               <tr key={a.id}>
                 <td className="whitespace-nowrap text-muted-foreground">
-                  {new Date(a.created_at).toLocaleDateString("vi-VN", {
-                    day: "2-digit",
-                    month: "2-digit",
-                  })}
+                  {formatDate(a.created_at)}
                 </td>
                 <td className="max-w-40 font-medium">{a.title}</td>
                 <td className="whitespace-nowrap">

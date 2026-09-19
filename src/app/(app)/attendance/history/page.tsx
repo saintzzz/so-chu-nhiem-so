@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -261,7 +262,7 @@ export default async function AttendanceHistoryPage({
           return (
             <tr key={d}>
               <td className="font-medium">
-                {new Date(`${d}T00:00:00`).toLocaleDateString("vi-VN", {
+                {formatDateOnly(d, {
                   weekday: "short",
                   day: "numeric",
                   month: "numeric",

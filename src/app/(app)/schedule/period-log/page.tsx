@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
@@ -211,8 +212,8 @@ export default async function PeriodLogPage({
 
   const weekdayLabel =
     weekday !== null
-      ? `${WEEKDAY_NAMES[weekday]}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
-      : `Chủ nhật, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`;
+      ? `${WEEKDAY_NAMES[weekday]}, ngày ${formatDateOnly(date)}`
+      : `Chủ nhật, ngày ${formatDateOnly(date)}`;
   const description =
     myClasses.length > 0
       ? `Lớp ${myClasses.map((c) => c.name).join(", ")} - ${weekdayLabel}`

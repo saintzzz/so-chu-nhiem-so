@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import type { TaskRow } from "./types";
 
 const inputCls =
@@ -127,7 +127,7 @@ export function PlansClient({
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {t.due_date
-                        ? `Hạn: ${new Date(t.due_date).toLocaleDateString("vi-VN")}`
+                        ? `Hạn: ${formatDate(t.due_date)}`
                         : "Không hạn"}
                       {t.source === "suggested" && " · Gợi ý AI"}
                     </p>

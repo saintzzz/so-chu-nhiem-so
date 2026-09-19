@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/page-header";
 import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, LineChart } from "@/components/charts";
-import { cn } from "@/lib/utils";
+import { cn, formatDate as formatDateVN } from "@/lib/utils";
 
 const TODAY = "2026-09-18";
 const EMULATION_PERIOD = "2026-T9";
@@ -55,12 +55,12 @@ function relTime(iso: string | null): string {
   if (hours < 24) return `${hours} giờ trước`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days} ngày trước`;
-  return new Date(iso).toLocaleDateString("vi-VN");
+  return formatDateVN(iso);
 }
 
 function formatDate(iso: string | null): string {
   if (!iso) return "-";
-  return new Date(iso + "T00:00:00").toLocaleDateString("vi-VN");
+  return formatDateVN(iso + "T00:00:00");
 }
 
 export default async function DashboardPage() {

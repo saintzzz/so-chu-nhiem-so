@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { formatDateTime } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable, Pagination } from "@/components/data-table";
@@ -63,7 +64,7 @@ export default async function AuditPage({
         {logs.map((l) => (
           <tr key={l.id}>
             <td className="whitespace-nowrap text-muted-foreground">
-              {new Date(l.created_at).toLocaleString("vi-VN")}
+              {formatDateTime(l.created_at)}
             </td>
             <td className="font-medium">
               {l.actor_id ? (actorNames.get(l.actor_id) ?? "-") : "Hệ thống"}

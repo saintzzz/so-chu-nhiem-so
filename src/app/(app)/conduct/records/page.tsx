@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/utils";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -128,7 +129,7 @@ export default async function ConductRecordsPage({
           return (
             <tr key={r.id}>
               <td className="whitespace-nowrap text-muted-foreground">
-                {new Date(r.date).toLocaleDateString("vi-VN")}
+                {formatDate(r.date)}
               </td>
               <td>
                 <div className="font-medium">{student?.full_name ?? "-"}</div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ATT_STATUS, StatusBadge } from "@/components/status-badge";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types";
 
 export interface LeaveRow {
@@ -85,7 +85,7 @@ export function LeavesTable({ rows }: { rows: LeaveRow[] }) {
             {filtered.map((r) => (
               <tr key={r.id}>
                 <td className="whitespace-nowrap">
-                  {new Date(`${r.date}T00:00:00`).toLocaleDateString("vi-VN", {
+                  {formatDateOnly(r.date, {
                     weekday: "short",
                     day: "numeric",
                     month: "numeric",

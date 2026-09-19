@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/utils";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -109,7 +110,7 @@ export default async function CounselingIntakePage() {
             return (
               <tr key={c.id}>
                 <td className="whitespace-nowrap text-muted-foreground">
-                  {new Date(c.created_at).toLocaleDateString("vi-VN")}
+                  {formatDate(c.created_at)}
                 </td>
                 <td>
                   <div className="font-medium">{student?.full_name ?? "-"}</div>

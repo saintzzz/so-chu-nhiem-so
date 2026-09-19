@@ -249,65 +249,69 @@ export function ConductEvaluationEditor({
   }
 
   return (
-    <DataTable
-      columns={["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"]}
-      footer={
-        <>
-          <span>{students.length} học sinh</span>
-          <span className="flex flex-wrap items-center gap-3">
-            {saved && <span className="text-success">Đã lưu đánh giá.</span>}
-            {error && <span className="text-error">{error}</span>}
-            {importMsg && <span className="text-primary">{importMsg}</span>}
-            {aiJob.job && (
-              <span className="text-muted-foreground">
-                LLM hết hạn mức - Devin đang xử lý{" "}
-                <a
-                  href={aiJob.job.devinUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline"
-                >
-                  (mở session)
-                </a>
-                , nhận xét sẽ tự điền khi xong.
-              </span>
-            )}
-            {aiJob.failed && (
-              <span className="text-error">Tác vụ Devin thất bại.</span>
-            )}
-            <Button variant="outline" size="sm" onClick={downloadTemplate}>
-              Tải template
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileRef.current?.click()}
-            >
-              Import Excel
-            </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.csv"
-              className="hidden"
-              onChange={(e) => void onImport(e.target.files?.[0])}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={aiBusy !== null}
-              onClick={() => aiSuggest("all")}
-            >
-              <Sparkles />
-              {aiBusy === "all" ? "AI đang viết..." : "AI gợi ý nhận xét"}
-            </Button>
-            <Button onClick={save} disabled={pending} size="sm">
-              {pending ? "Đang lưu…" : "Lưu đánh giá"}
-            </Button>
-          </span>
-        </>
-      }
-    >
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm text-muted-foreground">
+          {students.length} học sinh
+        </span>
+        <span className="flex flex-wrap items-center gap-3">
+          {saved && <span className="text-sm text-success">Đã lưu đánh giá.</span>}
+          {error && <span className="text-sm text-error">{error}</span>}
+          {importMsg && (
+            <span className="text-sm text-primary">{importMsg}</span>
+          )}
+          {aiJob.job && (
+            <span className="text-sm text-muted-foreground">
+              LLM hết hạn mức - Devin đang xử lý{" "}
+              <a
+                href={aiJob.job.devinUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline"
+              >
+                (mở session)
+              </a>
+              , nhận xét sẽ tự điền khi xong.
+            </span>
+          )}
+          {aiJob.failed && (
+            <span className="text-sm text-error">Tác vụ Devin thất bại.</span>
+          )}
+          <Button variant="outline" size="sm" onClick={downloadTemplate}>
+            Tải template
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            Import Excel
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.csv"
+            className="hidden"
+            onChange={(e) => void onImport(e.target.files?.[0])}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={aiBusy !== null}
+            onClick={() => aiSuggest("all")}
+          >
+            <Sparkles />
+            {aiBusy === "all" ? "AI đang viết..." : "AI gợi ý nhận xét"}
+          </Button>
+          <Button onClick={save} disabled={pending} size="sm">
+            {pending ? "Đang lưu…" : "Lưu đánh giá"}
+          </Button>
+        </span>
+      </div>
+      <DataTable
+        columns={["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"]}
+        footer={<span>{students.length} học sinh</span>}
+      >
       {students.map((s) => {
         const d = draft[s.id] ?? { rating: "tot", comment: "" };
         return (
@@ -349,6 +353,7 @@ export function ConductEvaluationEditor({
           </tr>
         );
       })}
-    </DataTable>
+      </DataTable>
+    </div>
   );
 }

@@ -204,6 +204,54 @@ export function DailyRoster({
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={downloadTemplate}
+          disabled={rows.length === 0}
+        >
+          Tải template
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileRef.current?.click()}
+          disabled={rows.length === 0}
+        >
+          Import Excel
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.csv"
+          className="hidden"
+          onChange={(e) => void onImport(e.target.files?.[0])}
+        />
+        <Button
+          type="button"
+          onClick={confirm}
+          disabled={saving || rows.length === 0}
+        >
+          {saving ? "Đang lưu..." : "Xác nhận chuyên cần hôm nay"}
+        </Button>
+        {dirty && (
+          <span className="text-sm text-warning">Có thay đổi chưa lưu</span>
+        )}
+        {feedback && (
+          <span
+            className={cn(
+              "rounded-lg px-3 py-2 text-sm",
+              feedback.ok
+                ? "bg-success-bg text-success"
+                : "bg-error-bg text-error",
+            )}
+          >
+            {feedback.text}
+          </span>
+        )}
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">
         <table className="w-full min-w-max text-left text-sm">
           <thead>
@@ -265,55 +313,6 @@ export function DailyRoster({
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={downloadTemplate}
-          disabled={rows.length === 0}
-        >
-          Tải template
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => fileRef.current?.click()}
-          disabled={rows.length === 0}
-        >
-          Import Excel
-        </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".xlsx,.csv"
-          className="hidden"
-          onChange={(e) => void onImport(e.target.files?.[0])}
-        />
-        <Button
-          type="button"
-          onClick={confirm}
-          disabled={saving || rows.length === 0}
-          size="lg"
-        >
-          {saving ? "Đang lưu..." : "Xác nhận chuyên cần hôm nay"}
-        </Button>
-        {dirty && (
-          <span className="text-sm text-warning">Có thay đổi chưa lưu</span>
-        )}
-        {feedback && (
-          <span
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm",
-              feedback.ok
-                ? "bg-success-bg text-success"
-                : "bg-error-bg text-error",
-            )}
-          >
-            {feedback.text}
-          </span>
-        )}
       </div>
 
       <p className="rounded-lg bg-primary-bg px-3 py-2 text-sm text-primary">

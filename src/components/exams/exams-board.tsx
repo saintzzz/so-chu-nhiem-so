@@ -345,103 +345,6 @@ export function ExamsBoard({
 
       {examId ? (
         <>
-          <DataTable
-            columns={["Ngày", "Giờ", "Lớp", "Môn", "Phòng", "Giám thị", ...(canEdit ? [""] : [])]}
-            footer={<span>{sessions.length} buổi thi</span>}
-          >
-            {sessions.map((s) => (
-              <tr key={s.id}>
-                <td>
-                  {canEdit ? (
-                    <input
-                      type="date"
-                      defaultValue={s.date}
-                      onBlur={(e) =>
-                        e.target.value !== s.date &&
-                        patchSession(s.id, { date: e.target.value })
-                      }
-                      className={inputCls}
-                    />
-                  ) : (
-                    s.date
-                  )}
-                </td>
-                <td>
-                  {canEdit ? (
-                    <input
-                      type="time"
-                      defaultValue={s.start_time?.slice(0, 5)}
-                      onBlur={(e) =>
-                        patchSession(s.id, { start_time: e.target.value })
-                      }
-                      className={`${inputCls} w-24`}
-                    />
-                  ) : (
-                    s.start_time?.slice(0, 5)
-                  )}
-                </td>
-                <td className="font-medium">{className.get(s.class_id)}</td>
-                <td>{subjectName.get(s.subject_id)}</td>
-                <td>
-                  {canEdit ? (
-                    <input
-                      defaultValue={s.room ?? ""}
-                      placeholder="P.201"
-                      onBlur={(e) =>
-                        e.target.value !== (s.room ?? "") &&
-                        patchSession(s.id, { room: e.target.value || null })
-                      }
-                      className={`${inputCls} w-24`}
-                    />
-                  ) : (
-                    (s.room ?? "-")
-                  )}
-                </td>
-                <td>
-                  {canEdit ? (
-                    <select
-                      defaultValue={s.proctor_id ?? ""}
-                      onChange={(e) =>
-                        patchSession(s.id, {
-                          proctor_id: e.target.value || null,
-                        })
-                      }
-                      className={inputCls}
-                    >
-                      <option value="">-</option>
-                      {teachers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    (s.proctor_id ? teacherName.get(s.proctor_id) : "-")
-                  )}
-                </td>
-                {canEdit && (
-                  <td>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeSession(s.id)}
-                      disabled={pending}
-                    >
-                      Xóa
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {sessions.length === 0 && (
-              <tr>
-                <td colSpan={canEdit ? 7 : 6} className="text-center text-muted-foreground">
-                  Chưa có buổi thi nào trong kỳ này.
-                </td>
-              </tr>
-            )}
-          </DataTable>
-
           {canEdit && (
             <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <span className="w-full text-sm font-semibold">Thêm buổi thi</span>
@@ -542,6 +445,103 @@ export function ExamsBoard({
               </span>
             </div>
           )}
+
+          <DataTable
+            columns={["Ngày", "Giờ", "Lớp", "Môn", "Phòng", "Giám thị", ...(canEdit ? [""] : [])]}
+            footer={<span>{sessions.length} buổi thi</span>}
+          >
+            {sessions.map((s) => (
+              <tr key={s.id}>
+                <td>
+                  {canEdit ? (
+                    <input
+                      type="date"
+                      defaultValue={s.date}
+                      onBlur={(e) =>
+                        e.target.value !== s.date &&
+                        patchSession(s.id, { date: e.target.value })
+                      }
+                      className={inputCls}
+                    />
+                  ) : (
+                    s.date
+                  )}
+                </td>
+                <td>
+                  {canEdit ? (
+                    <input
+                      type="time"
+                      defaultValue={s.start_time?.slice(0, 5)}
+                      onBlur={(e) =>
+                        patchSession(s.id, { start_time: e.target.value })
+                      }
+                      className={`${inputCls} w-24`}
+                    />
+                  ) : (
+                    s.start_time?.slice(0, 5)
+                  )}
+                </td>
+                <td className="font-medium">{className.get(s.class_id)}</td>
+                <td>{subjectName.get(s.subject_id)}</td>
+                <td>
+                  {canEdit ? (
+                    <input
+                      defaultValue={s.room ?? ""}
+                      placeholder="P.201"
+                      onBlur={(e) =>
+                        e.target.value !== (s.room ?? "") &&
+                        patchSession(s.id, { room: e.target.value || null })
+                      }
+                      className={`${inputCls} w-24`}
+                    />
+                  ) : (
+                    (s.room ?? "-")
+                  )}
+                </td>
+                <td>
+                  {canEdit ? (
+                    <select
+                      defaultValue={s.proctor_id ?? ""}
+                      onChange={(e) =>
+                        patchSession(s.id, {
+                          proctor_id: e.target.value || null,
+                        })
+                      }
+                      className={inputCls}
+                    >
+                      <option value="">-</option>
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    (s.proctor_id ? teacherName.get(s.proctor_id) : "-")
+                  )}
+                </td>
+                {canEdit && (
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeSession(s.id)}
+                      disabled={pending}
+                    >
+                      Xóa
+                    </Button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {sessions.length === 0 && (
+              <tr>
+                <td colSpan={canEdit ? 7 : 6} className="text-center text-muted-foreground">
+                  Chưa có buổi thi nào trong kỳ này.
+                </td>
+              </tr>
+            )}
+          </DataTable>
         </>
       ) : (
         <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">

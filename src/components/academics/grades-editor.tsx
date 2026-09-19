@@ -304,38 +304,41 @@ export function GradesEditor({
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-sm text-muted-foreground">
+          {students.length} học sinh
+        </span>
+        <span className="flex flex-wrap items-center gap-3">
+          {saved && <span className="text-sm text-success">Đã lưu điểm.</span>}
+          {error && <span className="text-sm text-error">{error}</span>}
+          {importMsg && (
+            <span className="text-sm text-primary">{importMsg}</span>
+          )}
+          <Button variant="outline" size="sm" onClick={downloadTemplate}>
+            Tải template
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            Import Excel
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.csv"
+            className="hidden"
+            onChange={(e) => void onImport(e.target.files?.[0])}
+          />
+          <Button onClick={save} disabled={pending} size="sm">
+            {pending ? "Đang lưu…" : "Lưu điểm"}
+          </Button>
+        </span>
+      </div>
       <DataTable
         columns={columns}
-        footer={
-          <>
-            <span>{students.length} học sinh</span>
-            <span className="flex flex-wrap items-center gap-3">
-              {saved && <span className="text-success">Đã lưu điểm.</span>}
-              {error && <span className="text-error">{error}</span>}
-              {importMsg && <span className="text-primary">{importMsg}</span>}
-              <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                Tải template
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileRef.current?.click()}
-              >
-                Import Excel
-              </Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.csv"
-                className="hidden"
-                onChange={(e) => void onImport(e.target.files?.[0])}
-              />
-              <Button onClick={save} disabled={pending} size="sm">
-                {pending ? "Đang lưu…" : "Lưu điểm"}
-              </Button>
-            </span>
-          </>
-        }
+        footer={<span>{students.length} học sinh</span>}
       >
         {students.map((s) => {
           const c = cells[s.id] ?? { tx: "", gk: "", ck: "", result: "" };

@@ -175,17 +175,15 @@ export function AssignmentsBoard({
       )}
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">1. Phân công giáo viên chủ nhiệm</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">1. Phân công giáo viên chủ nhiệm</h2>
+          <Button size="sm" onClick={saveHomeroom} disabled={pending}>
+            Lưu phân công CN
+          </Button>
+        </div>
         <DataTable
           columns={["Lớp", "Khối", "GVCN phụ trách"]}
-          footer={
-            <>
-              <span>{classes.length} lớp</span>
-              <Button size="sm" onClick={saveHomeroom} disabled={pending}>
-                Lưu phân công CN
-              </Button>
-            </>
-          }
+          footer={<span>{classes.length} lớp</span>}
         >
           {classes.map((c) => (
             <tr key={c.id}>

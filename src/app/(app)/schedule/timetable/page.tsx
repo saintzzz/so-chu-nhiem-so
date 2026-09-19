@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
@@ -91,6 +92,50 @@ export default async function TimetablePage({
   const cell = new Map<string, EntryRow>();
   for (const e of entries) cell.set(`${e.weekday}-${e.period}`, e);
 
+  // BGH-only: full reference data for Excel template + import.
+  const isBgh = profile.role === "bgh";
+  let subjects: { id: string; name: string }[] = [];
+  let teachers: { id: string; name: string }[] = [];
+  let allEntries: {
+    className: string;
+    weekday: number;
+    period: number;
+    subject: string;
+    teacher: string | null;
+    room: string | null;
+  }[] = [];
+  if (isBgh) {
+    const [{ data: allSubjects }, { data: allTeachers }, { data: everyEntry }] =
+      await Promise.all([
+        supabase.from("subjects").select("id,name").order("name"),
+        supabase
+          .from("profiles")
+          .select("id,full_name")
+          .in("role", ["gvcn", "gvbm", "to_truong", "bgh"])
+          .order("full_name"),
+        supabase
+          .from("timetable_entries")
+          .select("class_id,subject_id,teacher_id,weekday,period,room")
+          .order("weekday")
+          .order("period"),
+      ]);
+    subjects = (allSubjects ?? []) as { id: string; name: string }[];
+    teachers = ((allTeachers ?? []) as { id: string; full_name: string }[]).map(
+      (t) => ({ id: t.id, name: t.full_name }),
+    );
+    const subjectById = new Map(subjects.map((s) => [s.id, s.name]));
+    const teacherById = new Map(teachers.map((t) => [t.id, t.name]));
+    const classById = new Map(classes.map((c) => [c.id, c.name]));
+    allEntries = ((everyEntry ?? []) as EntryRow[]).map((e) => ({
+      className: classById.get(e.class_id) ?? "?",
+      weekday: e.weekday,
+      period: e.period,
+      subject: subjectById.get(e.subject_id) ?? "?",
+      teacher: e.teacher_id ? (teacherById.get(e.teacher_id) ?? null) : null,
+      room: e.room,
+    }));
+  }
+
   return (
     <>
       <PageHeader
@@ -121,6 +166,25 @@ export default async function TimetablePage({
           </Link>
         ))}
       </div>
+
+      {isBgh && selected && (
+        <TimetableToolbar
+          classes={classes}
+          subjects={subjects}
+          teachers={teachers}
+          selectedClass={selected}
+          selectedEntries={entries.map((e) => ({
+            weekday: e.weekday,
+            period: e.period,
+            subject: subjectName.get(e.subject_id) ?? "-",
+            teacher: e.teacher_id
+              ? (teacherName.get(e.teacher_id) ?? null)
+              : null,
+            room: e.room,
+          }))}
+          allEntries={allEntries}
+        />
+      )}
 
       {/* Weekly grid */}
       <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">

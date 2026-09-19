@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
+import {
+  downloadXlsxTemplate,
+  normalizeDate,
+  parseSpreadsheet,
+} from "@/lib/excel";
 
 interface ExamRow {
   id: string;
@@ -58,6 +63,8 @@ export function ExamsBoard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [newExam, setNewExam] = useState({
     name: "",
@@ -151,6 +158,97 @@ export function ExamsBoard({
     });
   }
 
+  function downloadTemplate() {
+    void downloadXlsxTemplate(
+      "mau-lich-thi.xlsx",
+      ["Lớp", "Môn", "Ngày thi", "Giờ bắt đầu", "Giờ kết thúc", "Phòng", "Giám thị"],
+      sessions.length
+        ? sessions.map((s) => [
+            className.get(s.class_id) ?? "",
+            subjectName.get(s.subject_id) ?? "",
+            s.date,
+            s.start_time?.slice(0, 5) ?? "07:30",
+            s.end_time?.slice(0, 5) ?? "",
+            s.room ?? "",
+            s.proctor_id ? (teacherName.get(s.proctor_id) ?? "") : "",
+          ])
+        : [
+            [
+              classes[0]?.name ?? "6A1",
+              subjects[0]?.name ?? "Toán",
+              "2026-10-05",
+              "07:30",
+              "08:15",
+              "P.101",
+              teachers[0]?.full_name ?? "",
+            ],
+          ],
+    );
+  }
+
+  async function onImport(file: File | undefined) {
+    if (!file || !examId) return;
+    setImportMsg(null);
+    setError(null);
+    let table: string[][];
+    try {
+      table = await parseSpreadsheet(file);
+    } catch {
+      setImportMsg("Không đọc được file. Dùng file .xlsx hoặc .csv.");
+      return;
+    }
+    const clsByName = new Map(classes.map((c) => [c.name.toLowerCase(), c.id]));
+    const subByName = new Map(subjects.map((s) => [s.name.toLowerCase(), s.id]));
+    const teacherByName = new Map(
+      teachers.map((t) => [t.full_name.toLowerCase(), t.id]),
+    );
+    const rows: Record<string, unknown>[] = [];
+    const bad: string[] = [];
+    for (const r of table) {
+      const cls = (r[0] ?? "").trim().toLowerCase();
+      if (!cls || cls === "lớp") continue;
+      const class_id = clsByName.get(cls);
+      const subject_id = subByName.get((r[1] ?? "").trim().toLowerCase());
+      const date = normalizeDate(r[2] ?? "");
+      const start = (r[3] ?? "").trim().slice(0, 5);
+      const end = (r[4] ?? "").trim().slice(0, 5);
+      if (!class_id || !subject_id || !date || !/^\d{2}:\d{2}$/.test(start)) {
+        bad.push(`${r[0] ?? "?"} - ${r[1] ?? "?"}`);
+        continue;
+      }
+      rows.push({
+        exam_id: examId,
+        class_id,
+        subject_id,
+        date,
+        start_time: start,
+        end_time: /^\d{2}:\d{2}$/.test(end) ? end : null,
+        room: (r[5] ?? "").trim() || null,
+        proctor_id:
+          teacherByName.get((r[6] ?? "").trim().toLowerCase()) ?? null,
+      });
+    }
+    if (rows.length === 0) {
+      setImportMsg("Không có dòng hợp lệ. Tải template để xem định dạng cột.");
+      return;
+    }
+    startTransition(async () => {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from("exam_sessions")
+        .upsert(rows, { onConflict: "exam_id,class_id,subject_id" });
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      setImportMsg(
+        `Đã nhập ${rows.length} buổi thi${bad.length ? ` - ${bad.length} dòng lỗi: ${bad.slice(0, 3).join("; ")}` : ""}.`,
+      );
+      router.refresh();
+    });
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
   function patchSession(id: string, patch: Partial<SessionRow>) {
     run(async () => {
       const supabase = createClient();
@@ -167,6 +265,11 @@ export function ExamsBoard({
       {error && (
         <div className="rounded-xl border border-destructive p-3 text-sm text-error">
           {error}
+        </div>
+      )}
+      {importMsg && (
+        <div className="rounded-xl border border-border bg-primary-bg p-3 text-sm text-primary">
+          {importMsg}
         </div>
       )}
 
@@ -417,6 +520,26 @@ export function ExamsBoard({
               <Button size="sm" onClick={addSession} disabled={pending}>
                 Thêm buổi thi
               </Button>
+              <span className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                  Tải template
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={pending}
+                >
+                  Import Excel
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".xlsx,.csv"
+                  className="hidden"
+                  onChange={(e) => void onImport(e.target.files?.[0])}
+                />
+              </span>
             </div>
           )}
         </>

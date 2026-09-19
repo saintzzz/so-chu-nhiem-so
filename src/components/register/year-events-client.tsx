@@ -3,7 +3,11 @@
 import { useRef, useState } from "react";
 import { CalendarPlus, Download, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
+import {
+  downloadXlsxTemplate,
+  normalizeDate,
+  parseSpreadsheet,
+} from "@/lib/excel";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -60,13 +64,6 @@ export function YearEventsClient({
     setBusy(false);
   }
 
-  function normalizeEventDate(d: string): string | null {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-    const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-    return null;
-  }
-
   async function onUploadFile(file: File | undefined) {
     if (!file) return;
     setFileName(file.name);
@@ -81,7 +78,7 @@ export function YearEventsClient({
     const rows = table
       .map((cells) => {
         const [t, d, c] = cells.map((p) => (p ?? "").trim());
-        const date = normalizeEventDate(d);
+        const date = normalizeDate(d);
         if (!t || !date) return null;
         return {
           title: t,

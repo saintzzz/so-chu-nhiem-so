@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
+import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { cn } from "@/lib/utils";
 
 export interface GradeStudent {
@@ -114,6 +115,90 @@ export function GradesEditor({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const byCode = new Map(students.map((s) => [s.code.toLowerCase(), s.id]));
+
+  function downloadTemplate() {
+    if (method === "comment") {
+      void downloadXlsxTemplate(
+        "mau-nhap-danh-gia.xlsx",
+        ["Mã HS", "Họ và tên", "Đánh giá"],
+        students.map((s) => [
+          s.code,
+          s.full_name,
+          cells[s.id]?.result === "chua_dat" ? "Chưa đạt" : "Đạt",
+        ]),
+      );
+      return;
+    }
+    void downloadXlsxTemplate(
+      "mau-nhap-diem.xlsx",
+      ["Mã HS", "Họ và tên", "ĐĐGtx", "ĐĐGgk", "ĐĐGck"],
+      students.map((s) => [
+        s.code,
+        s.full_name,
+        cells[s.id]?.tx ?? "",
+        cells[s.id]?.gk ?? "",
+        cells[s.id]?.ck ?? "",
+      ]),
+    );
+  }
+
+  async function onImport(file: File | undefined) {
+    if (!file) return;
+    setImportMsg(null);
+    setError(null);
+    let table: string[][];
+    try {
+      table = await parseSpreadsheet(file);
+    } catch {
+      setImportMsg("Không đọc được file. Dùng file .xlsx hoặc .csv.");
+      return;
+    }
+    const isHeader = (cells: string[]) =>
+      (cells[0] ?? "").toLowerCase().includes("mã");
+    const dataRows = table.filter((r) => !isHeader(r));
+    let matched = 0;
+    const missed: string[] = [];
+    setCells((prev) => {
+      const next = { ...prev };
+      for (const r of dataRows) {
+        const code = (r[0] ?? "").trim().toLowerCase();
+        if (!code) continue;
+        const id = byCode.get(code);
+        if (!id) {
+          missed.push(r[0]);
+          continue;
+        }
+        matched += 1;
+        if (method === "comment") {
+          const v = (r[2] ?? "").trim().toLowerCase();
+          const result =
+            v.includes("chưa") || v === "chua_dat"
+              ? "chua_dat"
+              : v
+                ? "dat"
+                : "";
+          next[id] = { ...next[id], result: result as CellState["result"] };
+        } else {
+          next[id] = {
+            ...next[id],
+            tx: (r[2] ?? "").trim(),
+            gk: (r[3] ?? "").trim(),
+            ck: (r[4] ?? "").trim(),
+          };
+        }
+      }
+      return next;
+    });
+    setSaved(false);
+    setImportMsg(
+      `Đã điền ${matched} học sinh từ file${missed.length ? ` - không khớp mã: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}` : ""}. Kiểm tra rồi bấm Lưu điểm.`,
+    );
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   function setCell(id: string, patch: Partial<CellState>) {
     setSaved(false);
@@ -224,9 +309,27 @@ export function GradesEditor({
         footer={
           <>
             <span>{students.length} học sinh</span>
-            <span className="flex items-center gap-3">
+            <span className="flex flex-wrap items-center gap-3">
               {saved && <span className="text-success">Đã lưu điểm.</span>}
               {error && <span className="text-error">{error}</span>}
+              {importMsg && <span className="text-primary">{importMsg}</span>}
+              <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                Tải template
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+              >
+                Import Excel
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".xlsx,.csv"
+                className="hidden"
+                onChange={(e) => void onImport(e.target.files?.[0])}
+              />
               <Button onClick={save} disabled={pending} size="sm">
                 {pending ? "Đang lưu…" : "Lưu điểm"}
               </Button>

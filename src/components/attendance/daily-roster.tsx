@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { cn } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types";
 
@@ -46,6 +47,70 @@ export function DailyRoster({
     text: string;
   } | null>(null);
   const [dirty, setDirty] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const LABEL_TO_STATUS: Record<string, AttendanceStatus> = {
+    "có mặt": "present",
+    present: "present",
+    "vắng có phép": "excused",
+    excused: "excused",
+    "vắng không phép": "unexcused",
+    unexcused: "unexcused",
+    "đi muộn": "late",
+    late: "late",
+  };
+
+  function downloadTemplate() {
+    void downloadXlsxTemplate(
+      `mau-chuyen-can-${date}.xlsx`,
+      ["Mã HS", "Họ tên", "Trạng thái"],
+      rows.map((r) => [
+        r.code,
+        r.fullName,
+        ATT_STATUS[statuses[r.studentId] ?? "present"].label,
+      ]),
+    );
+  }
+
+  async function onImport(file: File | undefined) {
+    if (!file) return;
+    let table: string[][];
+    try {
+      table = await parseSpreadsheet(file);
+    } catch {
+      setFeedback({ ok: false, text: "Không đọc được file. Dùng .xlsx hoặc .csv." });
+      return;
+    }
+    const byCode = new Map(rows.map((r) => [r.code.toLowerCase(), r.studentId]));
+    let matched = 0;
+    const missed: string[] = [];
+    setStatuses((prev) => {
+      const next = { ...prev };
+      for (const r of table) {
+        const code = (r[0] ?? "").trim().toLowerCase();
+        if (!code || code.includes("mã")) continue;
+        const id = byCode.get(code);
+        if (!id) {
+          missed.push(r[0]);
+          continue;
+        }
+        const st = LABEL_TO_STATUS[(r[2] ?? "").trim().toLowerCase()];
+        if (st) {
+          next[id] = st;
+          matched += 1;
+        } else {
+          missed.push(`${r[0]} (trạng thái?)`);
+        }
+      }
+      return next;
+    });
+    setDirty(true);
+    setFeedback({
+      ok: true,
+      text: `Đã điền trạng thái cho ${matched} học sinh${missed.length ? ` - không khớp: ${missed.slice(0, 5).join(", ")}` : ""}. Rà soát rồi bấm Xác nhận.`,
+    });
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   const counts = useMemo(() => {
     const c: Record<AttendanceStatus, number> = {
@@ -203,6 +268,29 @@ export function DailyRoster({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={downloadTemplate}
+          disabled={rows.length === 0}
+        >
+          Tải template
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileRef.current?.click()}
+          disabled={rows.length === 0}
+        >
+          Import Excel
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.csv"
+          className="hidden"
+          onChange={(e) => void onImport(e.target.files?.[0])}
+        />
         <Button
           type="button"
           onClick={confirm}

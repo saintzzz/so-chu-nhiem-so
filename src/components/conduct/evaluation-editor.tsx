@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
+import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 
 export interface EvalStudent {
   id: string;
@@ -59,6 +60,73 @@ export function ConductEvaluationEditor({
   const [aiBusy, setAiBusy] = useState<string | "all" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const RATING_LABEL = Object.fromEntries(RATINGS.map((r) => [r.value, r.label]));
+  const LABEL_TO_RATING: Record<string, string> = {
+    tốt: "tot",
+    tot: "tot",
+    khá: "kha",
+    kha: "kha",
+    đạt: "dat",
+    dat: "dat",
+    "chưa đạt": "chua_dat",
+    chua_dat: "chua_dat",
+  };
+
+  function downloadTemplate() {
+    void downloadXlsxTemplate(
+      "mau-danh-gia-hanh-kiem.xlsx",
+      ["Mã HS", "Họ và tên", "Xếp loại", "Nhận xét"],
+      students.map((s) => [
+        s.code,
+        s.full_name,
+        RATING_LABEL[draft[s.id]?.rating ?? "tot"],
+        draft[s.id]?.comment ?? "",
+      ]),
+    );
+  }
+
+  async function onImport(file: File | undefined) {
+    if (!file) return;
+    setImportMsg(null);
+    setError(null);
+    let table: string[][];
+    try {
+      table = await parseSpreadsheet(file);
+    } catch {
+      setImportMsg("Không đọc được file. Dùng file .xlsx hoặc .csv.");
+      return;
+    }
+    const byCode = new Map(students.map((s) => [s.code.toLowerCase(), s.id]));
+    let matched = 0;
+    const missed: string[] = [];
+    setDraft((prev) => {
+      const next = { ...prev };
+      for (const r of table) {
+        const code = (r[0] ?? "").trim().toLowerCase();
+        if (!code || code.includes("mã")) continue;
+        const id = byCode.get(code);
+        if (!id) {
+          missed.push(r[0]);
+          continue;
+        }
+        matched += 1;
+        const rating = LABEL_TO_RATING[(r[2] ?? "").trim().toLowerCase()];
+        next[id] = {
+          rating: rating ?? next[id]?.rating ?? "tot",
+          comment: (r[3] ?? "").trim(),
+        };
+      }
+      return next;
+    });
+    setSaved(false);
+    setImportMsg(
+      `Đã điền ${matched} học sinh từ file${missed.length ? ` - không khớp mã: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}` : ""}. Kiểm tra rồi bấm Lưu đánh giá.`,
+    );
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   function patch(id: string, part: { rating?: string; comment?: string }) {
     setSaved(false);
@@ -156,9 +224,27 @@ export function ConductEvaluationEditor({
       footer={
         <>
           <span>{students.length} học sinh</span>
-          <span className="flex items-center gap-3">
+          <span className="flex flex-wrap items-center gap-3">
             {saved && <span className="text-success">Đã lưu đánh giá.</span>}
             {error && <span className="text-error">{error}</span>}
+            {importMsg && <span className="text-primary">{importMsg}</span>}
+            <Button variant="outline" size="sm" onClick={downloadTemplate}>
+              Tải template
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+            >
+              Import Excel
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.csv"
+              className="hidden"
+              onChange={(e) => void onImport(e.target.files?.[0])}
+            />
             <Button
               variant="outline"
               size="sm"

@@ -32,6 +32,15 @@ function splitCsvLine(line: string, delimiter: string): string[] {
   return out.map((s) => s.trim());
 }
 
+/** Accepts YYYY-MM-DD or DD/MM/YYYY, returns YYYY-MM-DD or null. */
+export function normalizeDate(d: string): string | null {
+  const t = d.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  return null;
+}
+
 export function parseCsvText(text: string): string[][] {
   const lines = text
     .split(/\r?\n/)

@@ -4,10 +4,12 @@ Date: 2026-09-18 · Full SDLC clone of `mockup-so-chu-nhiem.vercel.app` → real
 
 ## Preview deployment
 
-- **URL:** https://so-chu-nhiem-ap06bg3to-linhld7s-projects.vercel.app
+- **URL (git-linked, auto-deploy on push):** https://so-chu-nhiem-so-git-master-linhld7s-projects.vercel.app
 - Vercel project: `so-chu-nhiem-so` (prj_aU7hn4ih4LDA4ON8xcd1SAtFB0QC), team `linhld7s-projects` (hobby)
+- Git repo: **https://github.com/saintzzz/so-chu-nhiem-so** (branch `master`, git-linked — push to master auto-deploys preview)
 - Deployment protection **disabled** for preview (public link). Re-enable via `PATCH /v9/projects` `ssoProtection.deploymentType` if needed.
-- Preview deploy flow: `vercel build` → `vercel deploy --prebuilt` (remote build currently fails — see Known Issues).
+- Alternative deploy flow: `vercel build` → `vercel deploy --prebuilt` (local build; see Known Issues).
+- GitHub token: `~/.config/devin/secrets/github_token` (device-flow OAuth, `repo workflow` scope)
 
 ## Access
 
@@ -41,7 +43,7 @@ Date: 2026-09-18 · Full SDLC clone of `mockup-so-chu-nhiem.vercel.app` → real
 
 ## Known issues / limitations
 
-- **Vercel remote build fails** (`npm run build` exit 1, ENOENT, no log access with MCP OAuth token). Workaround used: `vercel build` locally + `vercel deploy --prebuilt`. Root cause unknown — check build logs in Vercel dashboard (inspector URL) or deploy via git-linked project.
+- ~~Vercel remote build fails~~ **RESOLVED** — root cause was `output: "standalone"` in `next.config.ts` (breaks Vercel file tracing → ENOENT). Removed; git-triggered remote builds now pass.
 - MCP OAuth token scope: file upload + deployment creation OK; `?teamId=` endpoints and `/events` logs → 403. CLI works when `.vercel/project.json` orgId = **user id** (not team id).
 - Appointment time shows raw ISO; teacher name "—" when join missing
 - Export PDF/PNG = browser print dialog, not a real PDF pipeline

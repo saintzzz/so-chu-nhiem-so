@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 
 export interface PeriodEntry {
   id: string;
+  class_id: string;
+  className?: string;
   period: number;
   subject: string;
   teacher: string | null;
@@ -34,6 +36,11 @@ interface StudentOption {
   code: string;
 }
 
+export interface ClassRoster {
+  students: StudentOption[];
+  size: number;
+}
+
 type Mark = "" | "excused" | "unexcused" | "late";
 
 interface DraftState {
@@ -42,14 +49,20 @@ interface DraftState {
   marks: Record<string, Mark>;
 }
 
-function initDraft(log: PeriodLogState | undefined, rosterSize: number): DraftState {
+function initDraft(
+  log: PeriodLogState | undefined,
+  rosterSize: number,
+): DraftState {
   const marks: Record<string, Mark> = {};
   for (const a of log?.absences ?? []) marks[a.student_id] = a.status;
   return {
     present:
       log?.present_count !== null && log?.present_count !== undefined
         ? String(log.present_count)
-        : String(rosterSize - (log?.absences ?? []).filter((a) => a.status !== "late").length),
+        : String(
+            rosterSize -
+              (log?.absences ?? []).filter((a) => a.status !== "late").length,
+          ),
     note: log?.note ?? "",
     marks,
   };
@@ -59,16 +72,14 @@ export function PeriodLogBoard({
   date,
   profileId,
   entries,
-  students,
+  rosters,
   logs,
-  rosterSize,
 }: {
   date: string;
   profileId: string;
   entries: PeriodEntry[];
-  students: StudentOption[];
+  rosters: Record<string, ClassRoster>;
   logs: Record<string, PeriodLogState>;
-  rosterSize: number;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -76,14 +87,22 @@ export function PeriodLogBoard({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function toggle(id: string) {
-    setOpenId((cur) => (cur === id ? null : id));
-    setDrafts((d) => (d[id] ? d : { ...d, [id]: initDraft(logs[id], rosterSize) }));
+  function rosterOf(entry: PeriodEntry): ClassRoster {
+    return rosters[entry.class_id] ?? { students: [], size: 0 };
   }
 
-  function setMark(entryId: string, studentId: string, mark: Mark) {
+  function toggle(entry: PeriodEntry) {
+    setOpenId((cur) => (cur === entry.id ? null : entry.id));
+    setDrafts((d) =>
+      d[entry.id]
+        ? d
+        : { ...d, [entry.id]: initDraft(logs[entry.id], rosterOf(entry).size) },
+    );
+  }
+
+  function setMark(entry: PeriodEntry, studentId: string, mark: Mark) {
     setDrafts((d) => {
-      const draft = d[entryId];
+      const draft = d[entry.id];
       if (!draft) return d;
       const marks = { ...draft.marks, [studentId]: mark };
       const absent = Object.values(marks).filter(
@@ -91,7 +110,11 @@ export function PeriodLogBoard({
       ).length;
       return {
         ...d,
-        [entryId]: { ...draft, marks, present: String(rosterSize - absent) },
+        [entry.id]: {
+          ...draft,
+          marks,
+          present: String(rosterOf(entry).size - absent),
+        },
       };
     });
   }
@@ -194,10 +217,11 @@ export function PeriodLogBoard({
               const log = logs[entry.id];
               const open = openId === entry.id;
               const draft = drafts[entry.id];
+              const roster = rosterOf(entry);
               return (
                 <li key={entry.id}>
                   <button
-                    onClick={() => toggle(entry.id)}
+                    onClick={() => toggle(entry)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50"
                     aria-expanded={open}
                   >
@@ -207,6 +231,7 @@ export function PeriodLogBoard({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">
                         Tiết {entry.period} - {entry.subject}
+                        {entry.className ? ` · ${entry.className}` : ""}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {entry.teacher ?? "Chưa phân công GV"}
@@ -215,7 +240,7 @@ export function PeriodLogBoard({
                     </span>
                     {log ? (
                       <StatusBadge
-                        label={`Đã ghi · Có mặt ${log.present_count ?? "-"}/${rosterSize}`}
+                        label={`Đã ghi · Có mặt ${log.present_count ?? "-"}/${roster.size}`}
                         tone="success"
                       />
                     ) : (
@@ -238,12 +263,15 @@ export function PeriodLogBoard({
                           <input
                             type="number"
                             min={0}
-                            max={rosterSize}
+                            max={roster.size}
                             value={draft.present}
                             onChange={(e) =>
                               setDrafts((d) => ({
                                 ...d,
-                                [entry.id]: { ...draft, present: e.target.value },
+                                [entry.id]: {
+                                  ...draft,
+                                  present: e.target.value,
+                                },
                               }))
                             }
                             className="h-8 w-24 rounded-lg border border-border bg-background px-2.5 text-sm"
@@ -267,7 +295,7 @@ export function PeriodLogBoard({
                           />
                         </label>
                         <span className="text-xs text-muted-foreground">
-                          / {rosterSize} học sinh
+                          / {roster.size} học sinh
                         </span>
                       </div>
 
@@ -275,7 +303,7 @@ export function PeriodLogBoard({
                         Đánh dấu học sinh vắng / đi muộn
                       </p>
                       <div className="mb-4 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {students.map((s) => {
+                        {roster.students.map((s) => {
                           const mark = draft.marks[s.id] ?? "";
                           return (
                             <div
@@ -296,7 +324,7 @@ export function PeriodLogBoard({
                                 value={mark}
                                 onChange={(e) =>
                                   setMark(
-                                    entry.id,
+                                    entry,
                                     s.id,
                                     e.target.value as Mark,
                                   )
@@ -326,7 +354,9 @@ export function PeriodLogBoard({
                           disabled={savingId === entry.id}
                         >
                           <Save />
-                          {savingId === entry.id ? "Đang lưu..." : "Lưu sổ đầu bài"}
+                          {savingId === entry.id
+                            ? "Đang lưu..."
+                            : "Lưu sổ đầu bài"}
                         </Button>
                         <Button variant="ghost" onClick={() => setOpenId(null)}>
                           Đóng

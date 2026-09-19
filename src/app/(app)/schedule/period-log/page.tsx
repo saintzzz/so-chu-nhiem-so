@@ -2,7 +2,11 @@ import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
-import type { PeriodEntry, PeriodLogState } from "@/components/schedule/period-log-board";
+import type {
+  ClassRoster,
+  PeriodEntry,
+  PeriodLogState,
+} from "@/components/schedule/period-log-board";
 
 const DEFAULT_DATE = "2026-09-18";
 
@@ -13,6 +17,7 @@ interface ClassRow {
 
 interface EntryRow {
   id: string;
+  class_id: string;
   subject_id: string;
   teacher_id: string | null;
   period: number;
@@ -55,6 +60,7 @@ export default async function PeriodLogPage({
   // DB convention: weekday 2..7 = Thứ 2..Thứ 7 (Mon..Sat); Sunday => none
   const weekday = jsDay === 0 ? null : jsDay + 1;
 
+  // GVCN xem toàn bộ tiết của lớp chủ nhiệm; GVBM xem các tiết mình dạy.
   const { data: clsRaw } = await supabase
     .from("classes")
     .select("id,name")
@@ -63,33 +69,24 @@ export default async function PeriodLogPage({
   const cls = (clsRaw ?? null) as ClassRow | null;
 
   let entries: PeriodEntry[] = [];
+  const rosters: Record<string, ClassRoster> = {};
   let logs: Record<string, PeriodLogState> = {};
-  let studentCount = 0;
-  let students: { id: string; full_name: string; code: string }[] = [];
 
-  if (cls && weekday !== null) {
-    const [{ data: entriesRaw }, { data: studentsRaw }] = await Promise.all([
-      supabase
-        .from("timetable_entries")
-        .select("id,subject_id,teacher_id,period,room")
-        .eq("class_id", cls.id)
-        .eq("weekday", weekday)
-        .order("period", { ascending: true }),
-      supabase
-        .from("students")
-        .select("id,full_name,code")
-        .eq("class_id", cls.id)
-        .eq("status", "active")
-        .order("full_name", { ascending: true }),
-    ]);
+  if (weekday !== null) {
+    let entryQuery = supabase
+      .from("timetable_entries")
+      .select("id,class_id,subject_id,teacher_id,period,room")
+      .eq("weekday", weekday)
+      .order("period", { ascending: true });
+    if (cls) {
+      entryQuery = entryQuery.eq("class_id", cls.id);
+    } else {
+      entryQuery = entryQuery.eq("teacher_id", profile.id);
+    }
+    const { data: entriesRaw } = await entryQuery;
     const entryRows = (entriesRaw ?? []) as EntryRow[];
-    students = (studentsRaw ?? []) as {
-      id: string;
-      full_name: string;
-      code: string;
-    }[];
-    studentCount = students.length;
 
+    const classIds = [...new Set(entryRows.map((e) => e.class_id))];
     const subjectIds = [...new Set(entryRows.map((e) => e.subject_id))];
     const teacherIds = [
       ...new Set(
@@ -98,14 +95,31 @@ export default async function PeriodLogPage({
           .filter((t): t is string => t !== null),
       ),
     ];
-    const [{ data: subjectsRaw }, { data: teachersRaw }] = await Promise.all([
-      subjectIds.length > 0
-        ? supabase.from("subjects").select("id,name").in("id", subjectIds)
-        : Promise.resolve({ data: [] }),
-      teacherIds.length > 0
-        ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
-        : Promise.resolve({ data: [] }),
-    ]);
+
+    const [{ data: classesData }, { data: studentsRaw }, { data: subjectsRaw }, { data: teachersRaw }] =
+      await Promise.all([
+        classIds.length > 0
+          ? supabase.from("classes").select("id,name").in("id", classIds)
+          : Promise.resolve({ data: [] }),
+        classIds.length > 0
+          ? supabase
+              .from("students")
+              .select("id,class_id,full_name,code")
+              .in("class_id", classIds)
+              .eq("status", "active")
+              .order("full_name", { ascending: true })
+          : Promise.resolve({ data: [] }),
+        subjectIds.length > 0
+          ? supabase.from("subjects").select("id,name").in("id", subjectIds)
+          : Promise.resolve({ data: [] }),
+        teacherIds.length > 0
+          ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+    const className = new Map(
+      ((classesData ?? []) as ClassRow[]).map((c) => [c.id, c.name]),
+    );
     const subjectName = new Map(
       ((subjectsRaw ?? []) as { id: string; name: string }[]).map((s) => [
         s.id,
@@ -119,8 +133,26 @@ export default async function PeriodLogPage({
       ]),
     );
 
+    for (const s of (studentsRaw ?? []) as {
+      id: string;
+      class_id: string;
+      full_name: string;
+      code: string;
+    }[]) {
+      const roster = rosters[s.class_id] ?? { students: [], size: 0 };
+      roster.students.push({
+        id: s.id,
+        full_name: s.full_name,
+        code: s.code,
+      });
+      roster.size += 1;
+      rosters[s.class_id] = roster;
+    }
+
     entries = entryRows.map((e) => ({
       id: e.id,
+      class_id: e.class_id,
+      className: className.get(e.class_id),
       period: e.period,
       subject: subjectName.get(e.subject_id) ?? "-",
       teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
@@ -170,23 +202,23 @@ export default async function PeriodLogPage({
     );
   }
 
+  const weekdayLabel =
+    weekday !== null
+      ? `${WEEKDAY_NAMES[weekday]}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
+      : `Chủ nhật, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`;
+  const description = cls
+    ? `Lớp ${cls.name} - ${weekdayLabel}`
+    : `Các tiết dạy của bạn - ${weekdayLabel}`;
+
   return (
     <>
       <PageHeader
         section="Phân hệ XIII - Thời khóa biểu & Sổ đầu bài"
         title="Sổ đầu bài"
-        description={
-          cls
-            ? `Lớp ${cls.name} - ${WEEKDAY_NAMES[weekday ?? 0] ?? "Chủ nhật"}, ngày ${new Date(`${date}T00:00:00`).toLocaleDateString("vi-VN")}`
-            : "Chưa được phân công lớp chủ nhiệm"
-        }
+        description={description}
       />
 
-      {!cls ? (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
-          Bạn chưa được phân công chủ nhiệm lớp nào.
-        </div>
-      ) : weekday === null ? (
+      {weekday === null ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
           Chủ nhật không có tiết học. Chọn ngày khác để xem sổ đầu bài.
           <div className="mt-4">
@@ -194,9 +226,8 @@ export default async function PeriodLogPage({
               date={date}
               profileId={profile.id}
               entries={[]}
-              students={students}
+              rosters={{}}
               logs={{}}
-              rosterSize={studentCount}
             />
           </div>
         </div>
@@ -205,9 +236,8 @@ export default async function PeriodLogPage({
           date={date}
           profileId={profile.id}
           entries={entries}
-          students={students}
+          rosters={rosters}
           logs={logs}
-          rosterSize={studentCount}
         />
       )}
     </>

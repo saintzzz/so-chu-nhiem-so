@@ -147,6 +147,13 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
       ],
     },
+    {
+      label: "Năng lực giáo viên",
+      children: [
+        { label: "Tự đánh giá & kế hoạch", href: "/competency/self-assessment" },
+        { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
+      ],
+    },
   ],
   to_truong: [
     {

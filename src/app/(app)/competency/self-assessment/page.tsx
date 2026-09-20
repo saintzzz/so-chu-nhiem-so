@@ -27,7 +27,7 @@ const ASSESSMENT_STATUS: Record<
 };
 
 export default async function SelfAssessmentPage() {
-  const profile = await requireRoles(["gvcn"]);
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong"]);
   const supabase = await createClient();
 
   const { data: yearRaw } = await supabase
@@ -53,11 +53,11 @@ export default async function SelfAssessmentPage() {
   return (
     <>
       <PageHeader
-        section="Năng lực giáo viên chủ nhiệm"
+        section={profile.role === "gvcn" ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
         title="Tự đánh giá & kế hoạch"
         description={
           year
-            ? `Đánh giá năng lực chủ nhiệm năm học ${year.name}`
+            ? `Đánh giá năng lực ${profile.role === "gvcn" ? "chủ nhiệm" : "giảng dạy"} năm học ${year.name}`
             : "Chưa có năm học hiện tại"
         }
         actions={<StatusBadge label={status.label} tone={status.tone} />}

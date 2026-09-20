@@ -35,7 +35,7 @@ const ASSESSMENT_STATUS: Record<
 };
 
 export default async function EvidencePage() {
-  const profile = await requireRoles(["gvcn"]);
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong"]);
   const supabase = await createClient();
 
   const { data: yearRaw } = await supabase
@@ -69,7 +69,7 @@ export default async function EvidencePage() {
   return (
     <>
       <PageHeader
-        section="Năng lực giáo viên chủ nhiệm"
+        section={profile.role === "gvcn" ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
         title="Minh chứng & đánh giá cuối năm"
         description={
           year

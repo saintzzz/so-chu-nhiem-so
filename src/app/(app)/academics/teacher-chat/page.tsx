@@ -27,34 +27,49 @@ export default async function TeacherChatPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
+  const peerRole = profile.role === "gvbm" ? "gvcn" : "gvbm";
   const { data: teacherData } = await supabase
     .from("profiles")
     .select("id,full_name")
-    .eq("role", "gvbm")
+    .eq("role", peerRole)
     .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
     .order("full_name");
   const teachers = (teacherData ?? []) as ProfileRow[];
 
   const teacherIds = teachers.map((t) => t.id);
-  const [{ data: tsData }, { data: subjData }] = teacherIds.length
-    ? await Promise.all([
-        supabase
-          .from("teacher_subjects")
-          .select("teacher_id,subject_id")
-          .in("teacher_id", teacherIds),
-        supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
-      ])
-    : [{ data: [] }, { data: [] }];
-  const teacherSubjects = (tsData ?? []) as TeacherSubjectRow[];
-  const subjects = (subjData ?? []) as SubjectRow[];
-  const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
   const teacherSubjectNames = new Map<string, string[]>();
-  for (const ts of teacherSubjects) {
-    const arr = teacherSubjectNames.get(ts.teacher_id) ?? [];
-    const name = subjectName.get(ts.subject_id);
-    if (name) arr.push(name);
-    teacherSubjectNames.set(ts.teacher_id, arr);
+  if (peerRole === "gvbm") {
+    const [{ data: tsData }, { data: subjData }] = teacherIds.length
+      ? await Promise.all([
+          supabase
+            .from("teacher_subjects")
+            .select("teacher_id,subject_id")
+            .in("teacher_id", teacherIds),
+          supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
+        ])
+      : [{ data: [] }, { data: [] }];
+    const teacherSubjects = (tsData ?? []) as TeacherSubjectRow[];
+    const subjects = (subjData ?? []) as SubjectRow[];
+    const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
+    for (const ts of teacherSubjects) {
+      const arr = teacherSubjectNames.get(ts.teacher_id) ?? [];
+      const name = subjectName.get(ts.subject_id);
+      if (name) arr.push(name);
+      teacherSubjectNames.set(ts.teacher_id, arr);
+    }
+  } else {
+    const { data: classData } = teacherIds.length
+      ? await supabase
+          .from("classes")
+          .select("name,gvcn_id")
+          .in("gvcn_id", teacherIds)
+      : { data: [] };
+    for (const c of (classData ?? []) as { name: string; gvcn_id: string }[]) {
+      const arr = teacherSubjectNames.get(c.gvcn_id) ?? [];
+      arr.push(c.name);
+      teacherSubjectNames.set(c.gvcn_id, arr);
+    }
   }
 
   const peerId =
@@ -78,14 +93,18 @@ export default async function TeacherChatPage({
     <div className="space-y-4">
       <PageHeader
         section="Học tập"
-        title="Trao đổi với giáo viên bộ môn"
-        description="Trao đổi trực tiếp với giáo viên bộ môn về tình hình học tập của học sinh."
+        title={peerRole === "gvbm" ? "Trao đổi với giáo viên bộ môn" : "Trao đổi với giáo viên chủ nhiệm"}
+        description={
+          peerRole === "gvbm"
+            ? "Trao đổi trực tiếp với giáo viên bộ môn về tình hình học tập của học sinh."
+            : "Trao đổi trực tiếp với giáo viên chủ nhiệm về tình hình học tập của học sinh."
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
         <aside className="rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">
           <p className="border-b border-border px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Giáo viên bộ môn
+            {peerRole === "gvbm" ? "Giáo viên bộ môn" : "Giáo viên chủ nhiệm"}
           </p>
           <ul className="max-h-[32rem] overflow-y-auto p-2">
             {teachers.map((t) => (
@@ -99,14 +118,15 @@ export default async function TeacherChatPage({
                 >
                   <span className="block font-medium">{t.full_name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {(teacherSubjectNames.get(t.id) ?? []).join(", ") || "GVBM"}
+                    {(teacherSubjectNames.get(t.id) ?? []).join(", ") ||
+                      (peerRole === "gvbm" ? "GVBM" : "GVCN")}
                   </span>
                 </Link>
               </li>
             ))}
             {teachers.length === 0 && (
               <li className="px-3 py-2 text-sm text-muted-foreground">
-                Không có GVBM nào.
+                {peerRole === "gvbm" ? "Không có GVBM nào." : "Không có GVCN nào."}
               </li>
             )}
           </ul>
@@ -122,7 +142,9 @@ export default async function TeacherChatPage({
           />
         ) : (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
-            Chọn một giáo viên bộ môn để bắt đầu trao đổi.
+            {peerRole === "gvbm"
+              ? "Chọn một giáo viên bộ môn để bắt đầu trao đổi."
+              : "Chọn một giáo viên chủ nhiệm để bắt đầu trao đổi."}
           </div>
         )}
       </div>

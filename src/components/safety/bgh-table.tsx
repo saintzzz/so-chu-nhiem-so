@@ -18,7 +18,13 @@ export interface BghIncidentRow {
   reported: boolean;
 }
 
-export function BghTable({ rows }: { rows: BghIncidentRow[] }) {
+export function BghTable({
+  rows,
+  canToggle = false,
+}: {
+  rows: BghIncidentRow[];
+  canToggle?: boolean;
+}) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,16 +90,18 @@ export function BghTable({ rows }: { rows: BghIncidentRow[] }) {
                 {r.reported ? (
                   <div className="flex items-center gap-2">
                     <StatusBadge label="Đã báo cáo" tone="success" />
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => toggle(r.id, false)}
-                      disabled={pendingId === r.id}
-                    >
-                      Bỏ đánh dấu
-                    </Button>
+                    {canToggle && (
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => toggle(r.id, false)}
+                        disabled={pendingId === r.id}
+                      >
+                        Bỏ đánh dấu
+                      </Button>
+                    )}
                   </div>
-                ) : (
+                ) : canToggle ? (
                   <Button
                     size="xs"
                     variant="outline"
@@ -102,6 +110,10 @@ export function BghTable({ rows }: { rows: BghIncidentRow[] }) {
                   >
                     {pendingId === r.id ? "Đang lưu..." : "Báo cáo BGH"}
                   </Button>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Chưa báo cáo
+                  </span>
                 )}
               </td>
             </tr>

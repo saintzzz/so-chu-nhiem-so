@@ -84,6 +84,7 @@ export default async function SafetyBghPage() {
         <StatCard label="Đã báo cáo Ban Giám Hiệu" value={reported} tone="success" />
       </div>
       <BghTable
+        canToggle={profile.role === "bgh"}
         rows={incidents.map((i) => ({
           id: i.id,
           occurredAt: fmtDateTime(i.occurred_at),

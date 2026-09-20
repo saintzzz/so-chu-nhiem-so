@@ -8,6 +8,7 @@ import type {
   Student,
 } from "@/types";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { DailyRoster, type RosterRow } from "@/components/attendance/daily-roster";
 
 export default async function AttendanceDailyPage({
@@ -101,6 +102,11 @@ export default async function AttendanceDailyPage({
         section="Chuyên cần"
         title="Điểm danh hàng ngày"
         description={`Lớp ${selected.name} · ${dateLabel}. Chọn trạng thái cho từng học sinh rồi xác nhận.`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={selected.id}
+        href="/attendance/daily"
       />
       <DailyRoster date={today} rows={rows} />
     </div>

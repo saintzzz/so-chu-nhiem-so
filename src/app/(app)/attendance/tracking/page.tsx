@@ -3,6 +3,7 @@ import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -133,6 +134,11 @@ export default async function AttendanceTrackingPage({
         section="Chuyên cần"
         title="Theo dõi tình trạng"
         description={`Học sinh lớp ${selected.name} có từ 3 lượt vắng không phép / đi muộn trong 30 ngày gần nhất (đến ${formatDateOnly(anchor)}).`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={selected.id}
+        href="/attendance/tracking"
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">

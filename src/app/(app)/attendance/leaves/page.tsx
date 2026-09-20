@@ -2,6 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { StatCard } from "@/components/stat-card";
 import {
   LeavesTable,
@@ -89,6 +90,11 @@ export default async function AttendanceLeavesPage({
         section="Chuyên cần"
         title="Nghỉ học / đi muộn"
         description={`Các lượt vắng và đi muộn của lớp ${selected.name}, gồm cả dữ liệu gộp từ Sổ đầu bài và báo của phụ huynh.`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={selected.id}
+        href="/attendance/leaves"
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">

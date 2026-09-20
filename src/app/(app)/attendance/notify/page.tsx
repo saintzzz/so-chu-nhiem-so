@@ -3,6 +3,7 @@ import { formatDate } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Announcement, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { DataTable } from "@/components/data-table";
 import { NotifyForm } from "@/components/attendance/notify-form";
 
@@ -69,6 +70,11 @@ export default async function AttendanceNotifyPage({
         section="Chuyên cần"
         title="Thông báo phụ huynh"
         description={`Soạn và gửi thông báo đến phụ huynh lớp ${selected.name} - toàn lớp hoặc từng học sinh.`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={selected.id}
+        href="/attendance/notify"
       />
 
       <div className="grid gap-6 lg:grid-cols-2">

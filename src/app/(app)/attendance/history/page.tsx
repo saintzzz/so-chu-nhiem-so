@@ -3,6 +3,7 @@ import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { ChartCard, BarChart } from "@/components/charts";
@@ -164,6 +165,11 @@ export default async function AttendanceHistoryPage({
         section="Chuyên cần"
         title="Lịch sử chuyên cần"
         description={`Tổng hợp chuyên cần của lớp ${selected.name} theo tháng và theo ngày.`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={selected.id}
+        href="/attendance/history"
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -1,12 +1,18 @@
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DailyReportForm } from "@/components/attendance/daily-report-form";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { ClassRoom, DailyReport, Student } from "@/types";
 
-export default async function DailyReportPage() {
+export default async function DailyReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ class?: string }>;
+}) {
   const profile = await requireRoles(["gvcn"]);
+  const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: classData } = await supabase
@@ -14,9 +20,10 @@ export default async function DailyReportPage() {
     .select("*")
     .eq("gvcn_id", profile.id)
     .eq("status", "active")
-    .order("name")
-    .limit(1);
-  const myClass = ((classData ?? []) as ClassRoom[])[0] ?? null;
+    .order("name");
+  const classes = (classData ?? []) as ClassRoom[];
+  const myClass =
+    classes.find((c) => c.id === classParam) ?? classes[0] ?? null;
 
   if (!myClass) {
     return (
@@ -100,6 +107,11 @@ export default async function DailyReportPage() {
         section="Chuyên cần"
         title="Báo cáo ngày"
         description={`Lớp ${myClass.name} · ${dateLabel}. Số liệu tự động tổng hợp từ điểm danh và hồ sơ rèn luyện.`}
+      />
+      <ClassChips
+        classes={classes}
+        selectedId={myClass.id}
+        href="/attendance/daily-report"
       />
       <DailyReportForm
         classId={myClass.id}

@@ -3,6 +3,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InboxClient } from "@/components/parents/inbox-client";
 import type { Profile, Student } from "@/types";
+import { fmtDateTimeVN } from "@/lib/utils";
 
 interface MessageRow {
   id: string;
@@ -15,12 +16,7 @@ interface MessageRow {
 }
 
 function fmtDateTime(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${d.getFullYear()} ${hh}:${mi}`;
+  return fmtDateTimeVN(iso);
 }
 
 export default async function InboxPage() {

@@ -5,6 +5,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
 import { Bell, CalendarClock } from "lucide-react";
+import { fmtDateVN, fmtTimeDateVN } from "@/lib/utils";
 import type {
   Announcement,
   Appointment,
@@ -23,15 +24,11 @@ interface ParentStudentLink {
 }
 
 function formatDate(iso: string): string {
-  return iso.slice(0, 10).split("-").reverse().join("/");
+  return fmtDateVN(iso);
 }
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const date = iso.slice(0, 10).split("-").reverse().join("/");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm} ${date}`;
+  return fmtTimeDateVN(iso);
 }
 
 const APPT_STATUS: Record<

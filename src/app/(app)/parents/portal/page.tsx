@@ -4,6 +4,7 @@ import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge"
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalPicker } from "@/components/parents/portal-picker";
+import { fmtDateTimeVN } from "@/lib/utils";
 import type {
   Announcement,
   Appointment,
@@ -39,12 +40,7 @@ async function scopedClasses(
 }
 
 function fmtDateTime(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${d.getFullYear()} ${hh}:${mi}`;
+  return fmtDateTimeVN(iso);
 }
 
 export default async function PortalPage({

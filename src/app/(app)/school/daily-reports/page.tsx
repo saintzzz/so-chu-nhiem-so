@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateOnly, todayVN } from "@/lib/utils";
@@ -88,6 +89,15 @@ export default async function SchoolDailyReportsPage() {
         <StatCard label="Học sinh vắng" value={totalAbsent} tone={totalAbsent > 10 ? "warning" : "default"} />
         <StatCard label="Vi phạm" value={totalViolations} tone={totalViolations > 0 ? "warning" : "default"} />
         <StatCard label="Cơ sở" value={campuses.length} />
+      </div>
+
+      <div className="mb-4">
+        <AiInsightCard
+          endpoint="/api/ai/daily-digest"
+          payload={() => ({ date: today })}
+          title="Bản tin ngày (AI gộp báo cáo các lớp)"
+          buttonLabel="Tóm tắt báo cáo ngày"
+        />
       </div>
 
       <DataTable

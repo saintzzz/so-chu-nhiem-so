@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
+import { AiDraftButton } from "@/components/ai/ai-draft-button";
 
 export interface IntakeStudent {
   id: string;
@@ -36,6 +37,7 @@ export function CounselingIntakeForm({
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [issue, setIssue] = useState("");
   const [severity, setSeverity] = useState("low");
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -113,6 +115,28 @@ export function CounselingIntakeForm({
           />
         </label>
       </div>
+      <AiDraftButton<{
+        summary: string;
+        suggestedSeverity: string;
+        suggestion: string;
+      }>
+        className="mt-3"
+        endpoint="/api/ai/counseling-summary"
+        payload={() => ({ issue })}
+        onApply={(r) => {
+          setIssue(r.summary);
+          setSeverity(r.suggestedSeverity);
+          setAiAdvice(r.suggestion || null);
+        }}
+        label="AI phân tích & gợi ý mức độ"
+        progressLabel="Đang phân tích ca..."
+        disabled={!issue.trim()}
+      />
+      {aiAdvice && (
+        <p className="mt-2 rounded-lg bg-primary-bg px-3 py-2 text-xs text-primary">
+          <span className="font-medium">Hướng xử lý gợi ý:</span> {aiAdvice}
+        </p>
+      )}
       <div className="mt-3 flex items-center gap-3">
         <Button size="sm" onClick={submit} disabled={pending}>
           {pending ? "Đang lưu…" : "Tiếp nhận"}

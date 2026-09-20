@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { ChartCard, BarChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { cn } from "@/lib/utils";
 
 const PERIOD = "2026-T9";
@@ -107,6 +108,15 @@ export default async function EmulationRankingPage() {
           </div>
         </div>
       )}
+
+      <div className="mb-4">
+        <AiInsightCard
+          endpoint="/api/ai/emulation-summary"
+          payload={() => ({ period: PERIOD })}
+          title="Tóm tắt thi đua bằng AI"
+          buttonLabel="Tóm tắt kỳ này"
+        />
+      </div>
 
       <div className="mb-4">
         <ChartCard

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { sendAnnouncement } from "@/app/(app)/parents/actions";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { AiDraftButton } from "@/components/ai/ai-draft-button";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -22,6 +23,7 @@ export function ComposeForm({
   const [studentId, setStudentId] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [bullets, setBullets] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<{
     kind: "success" | "error";
@@ -128,6 +130,36 @@ export function ComposeForm({
             </select>
           </div>
         )}
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">
+            Ý chính (tuỳ chọn - AI soạn giúp)
+          </label>
+          <AutoGrowTextarea
+            value={bullets}
+            onChange={(e) => setBullets(e.target.value)}
+            placeholder="VD: họp PH đầu HK2, thứ 7 tuần sau 8h, mang theo sổ liên lạc..."
+            className={INPUT_CLS}
+          />
+          <AiDraftButton<{ title: string; content: string }>
+            className="mt-2"
+            endpoint="/api/ai/draft-message"
+            payload={() => ({
+              bullets,
+              audience:
+                scope === "student"
+                  ? "phụ huynh của 1 học sinh (văn phong riêng tư, cá nhân hoá)"
+                  : "phụ huynh cả lớp",
+            })}
+            onApply={(r) => {
+              setTitle(r.title);
+              setContent(r.content);
+            }}
+            label="AI soạn thông báo từ ý chính"
+            progressLabel="Đang soạn thông báo..."
+            disabled={!bullets.trim()}
+          />
+        </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-medium">Tiêu đề</label>

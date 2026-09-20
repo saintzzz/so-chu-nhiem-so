@@ -3,6 +3,7 @@ import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import type {
   ClassRoster,
   PeriodEntry,
@@ -226,6 +227,17 @@ export default async function PeriodLogPage({
         title="Sổ đầu bài"
         description={description}
       />
+
+      {myClasses.length > 0 && (
+        <div className="mb-4">
+          <AiInsightCard
+            endpoint="/api/ai/period-log-summary"
+            payload={() => ({ classId: myClasses[0].id })}
+            title="AI tóm tắt sổ đầu bài"
+            buttonLabel="Tóm tắt tuần"
+          />
+        </div>
+      )}
 
       {weekday === null ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { createIncident } from "@/app/(app)/safety/actions";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { AiDraftButton } from "@/components/ai/ai-draft-button";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -41,6 +42,7 @@ export function IncidentForm({
   >("medium");
   const [occurredAt, setOccurredAt] = useState("");
   const [description, setDescription] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState("");
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<{
     kind: "success" | "error";
@@ -171,6 +173,28 @@ export function IncidentForm({
             placeholder="Mô tả chi tiết diễn biến, người liên quan, xử lý ban đầu..."
             className={INPUT_CLS}
           />
+          <AiDraftButton<{ description: string; suggestion: string }>
+            className="mt-2"
+            endpoint="/api/ai/incident-report"
+            payload={() => ({
+              type,
+              severity,
+              notes: description,
+              studentName: student?.full_name ?? "",
+            })}
+            onApply={(r) => {
+              setDescription(r.description);
+              setAiSuggestion(r.suggestion);
+            }}
+            label="AI viết lại mô tả + gợi ý xử lý"
+            progressLabel="Đang soạn hồ sơ sự cố..."
+            disabled={!description.trim()}
+          />
+          {aiSuggestion && (
+            <p className="mt-2 rounded-lg bg-primary-bg px-3 py-2 text-xs text-primary">
+              <span className="font-medium">Gợi ý xử lý:</span> {aiSuggestion}
+            </p>
+          )}
         </div>
 
         {feedback && (

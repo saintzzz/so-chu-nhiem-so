@@ -5,6 +5,7 @@ import { Check, X } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { AiDraftButton } from "@/components/ai/ai-draft-button";
 import { formatDateTime } from "@/lib/utils";
 import {
   submitLessonPlan,
@@ -190,6 +191,19 @@ export function LessonPlanBoard({
               placeholder="Mục tiêu, hoạt động khởi động - khám phá - luyện tập - vận dụng, đồ dùng dạy học..."
             />
           </label>
+          <AiDraftButton<{ content: string }>
+            className="mt-2"
+            endpoint="/api/ai/lesson-plan"
+            payload={() => ({
+              mode: "outline",
+              subject: subjectName.get(subjectId) ?? "",
+              title,
+            })}
+            onApply={(r) => setContent(r.content)}
+            label="AI gợi ý dàn ý giáo án"
+            progressLabel="Đang soạn dàn ý..."
+            disabled={!title.trim()}
+          />
           <button
             type="button"
             onClick={submit}
@@ -278,6 +292,21 @@ export function LessonPlanBoard({
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         placeholder="Ghi chú duyệt (tuỳ chọn)"
+                      />
+                      <AiDraftButton<{ note: string }>
+                        endpoint="/api/ai/lesson-plan"
+                        payload={() => ({
+                          mode: "review",
+                          subject: p.subject_id
+                            ? (subjectName.get(p.subject_id) ?? "")
+                            : "",
+                          title: p.title,
+                          content: p.content ?? "",
+                        })}
+                        onApply={(r) => setNote(r.note)}
+                        label="AI gợi ý nhận xét"
+                        progressLabel="Đang nhận xét..."
+                        disabled={!p.content}
                       />
                       <span className="flex gap-1">
                         <button

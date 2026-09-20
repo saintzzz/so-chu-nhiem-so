@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 
 interface AttRow {
   student_id: string;
@@ -142,6 +143,15 @@ export default async function AttendanceTrackingPage({
         />
         <StatCard label="Lượt vắng KP (30 ngày)" value={totalUnexcused} tone="error" />
         <StatCard label="Lượt đi muộn (30 ngày)" value={totalLate} tone="warning" />
+      </div>
+
+      <div className="mb-4">
+        <AiInsightCard
+          endpoint="/api/ai/attendance-insight"
+          payload={() => ({ classId: selected.id })}
+          title={`AI phân tích pattern vắng/muộn - lớp ${selected.name}`}
+          buttonLabel="Phân tích pattern"
+        />
       </div>
 
       <DataTable

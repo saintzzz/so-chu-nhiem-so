@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/utils";
 import { Check, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAiJob } from "@/hooks/use-ai-job";
+import { AiProgress } from "@/components/ai/ai-progress";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -166,22 +167,11 @@ export function SuggestionsClient({
       )}
 
       {aiJob.job && (
-        <p className="rounded-lg bg-muted px-3 py-2 text-sm">
-          LLM hết hạn mức - đã giao cho Devin xử lý.{" "}
-          <a
-            href={aiJob.job.devinUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-primary underline"
-          >
-            Mở session Devin
-          </a>{" "}
-          - kết quả sẽ tự cập nhật khi hoàn thành.
-        </p>
+        <AiProgress label="Đang xử lý - gợi ý sẽ tự cập nhật khi xong." />
       )}
       {aiJob.failed && (
         <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-          Tác vụ Devin không hoàn thành. Vui lòng thử lại sau.
+          Không nhận được kết quả. Vui lòng thử lại sau.
         </p>
       )}
 

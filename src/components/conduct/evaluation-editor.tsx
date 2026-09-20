@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAiJob } from "@/hooks/use-ai-job";
+import { AiProgress } from "@/components/ai/ai-progress";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
@@ -338,21 +339,12 @@ export function ConductEvaluationEditor({
             <span className="text-sm text-primary">{importMsg}</span>
           )}
           {aiJob.job && (
-            <span className="text-sm text-muted-foreground">
-              LLM hết hạn mức - Devin đang xử lý{" "}
-              <a
-                href={aiJob.job.devinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary underline"
-              >
-                (mở session)
-              </a>
-              , nhận xét sẽ tự điền khi xong.
-            </span>
+            <AiProgress label="Đang xử lý - nhận xét sẽ tự điền khi xong." />
           )}
           {aiJob.failed && (
-            <span className="text-sm text-error">Tác vụ Devin thất bại.</span>
+            <span className="text-sm text-error">
+              Không nhận được kết quả. Vui lòng thử lại.
+            </span>
           )}
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             Tải template

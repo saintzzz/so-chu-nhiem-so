@@ -6,6 +6,7 @@ import { ChartCard, BarChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { semesterAverage, scoreBand } from "@/lib/tt22";
 
 interface ClassRow {
@@ -228,6 +229,15 @@ export default async function AnalysisPage({
           params={params}
         />
       </div>
+
+      {classId && (
+        <AiInsightCard
+          endpoint="/api/ai/class-analysis"
+          payload={() => ({ classId, term })}
+          title="Nhận xét AI về kết quả lớp"
+          buttonLabel="Phân tích lớp"
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Sĩ số" value={students.length} />

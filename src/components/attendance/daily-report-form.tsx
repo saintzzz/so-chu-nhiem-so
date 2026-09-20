@@ -5,6 +5,7 @@ import { Sparkles, Send, Save } from "lucide-react";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { StatusBadge } from "@/components/status-badge";
 import { useAiJob } from "@/hooks/use-ai-job";
+import { AiProgress } from "@/components/ai/ai-progress";
 import { saveDailyReport } from "@/app/(app)/attendance/daily-report/actions";
 
 interface Counts {
@@ -79,7 +80,6 @@ export function DailyReportForm({
       if (json.draft) setContent(json.draft);
       else if (json.pending && json.jobId && json.devinUrl) {
         aiJob.start(json.jobId, json.devinUrl);
-        setMsg("AI chính đang bận - hệ thống dự phòng đang soạn, sẽ tự điền khi xong.");
       } else setErr(json.error ?? "AI chưa tạo được nháp. Thử lại sau.");
     } catch {
       setErr("Không kết nối được AI. Thử lại sau.");
@@ -141,6 +141,11 @@ export function DailyReportForm({
             {aiLoading ? "AI đang soạn..." : "AI soạn nháp"}
           </button>
         </div>
+        {aiJob.job && (
+          <div className="mb-2">
+            <AiProgress label="Đang xử lý - nháp sẽ tự điền khi xong." />
+          </div>
+        )}
         <AutoGrowTextarea
           value={content}
           onChange={(e) => setContent(e.target.value)}

@@ -56,7 +56,7 @@ export function useAiJob() {
         stopped = true;
         clearInterval(timer);
       }
-    }, 15000);
+    }, 3000);
 
     // Devin session có thể chạy lâu - dừng poll sau 15 phút (link vẫn mở được)
     const cap = setTimeout(() => {

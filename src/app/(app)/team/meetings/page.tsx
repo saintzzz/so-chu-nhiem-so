@@ -1,9 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import { createMeeting } from "./actions";
-import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { MeetingForm } from "@/components/team/meeting-form";
 
 interface DeptMeeting {
   id: string;
@@ -16,9 +14,6 @@ interface DeptMeeting {
 function formatDate(isoDate: string): string {
   return isoDate.slice(0, 10).split("-").reverse().join("/");
 }
-
-const inputCls =
-  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 
 export default async function TeamMeetingsPage() {
   const profile = await requireRoles(["to_truong"]);
@@ -42,53 +37,7 @@ export default async function TeamMeetingsPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)] lg:sticky lg:top-20 lg:self-start">
           <h2 className="mb-3 text-base font-semibold">Tạo buổi sinh hoạt</h2>
-          <form action={createMeeting} className="space-y-3">
-            <div>
-              <label htmlFor="title" className="mb-1.5 block text-sm font-medium">
-                Tiêu đề
-              </label>
-              <input
-                id="title"
-                name="title"
-                type="text"
-                required
-                placeholder="VD: Sinh hoạt chuyên môn tháng 9"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="meeting_date"
-                className="mb-1.5 block text-sm font-medium"
-              >
-                Ngày sinh hoạt
-              </label>
-              <input
-                id="meeting_date"
-                name="meeting_date"
-                type="date"
-                required
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="content"
-                className="mb-1.5 block text-sm font-medium"
-              >
-                Nội dung / biên bản
-              </label>
-              <AutoGrowTextarea
-                id="content"
-                name="content"
-                placeholder="Nội dung trao đổi, kết luận, phân công..."
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Tạo buổi sinh hoạt
-            </Button>
-          </form>
+          <MeetingForm />
         </div>
 
         <div className="lg:col-span-2">

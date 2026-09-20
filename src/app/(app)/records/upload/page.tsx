@@ -2,6 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StudentUploader } from "@/components/records/student-uploader";
+import { AiExtract } from "@/components/records/ai-extract";
 
 export default async function RecordsUploadPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -62,6 +63,7 @@ export default async function RecordsUploadPage() {
         </ul>
       </div>
 
+      <AiExtract />
       <StudentUploader classes={classes} />
     </div>
   );

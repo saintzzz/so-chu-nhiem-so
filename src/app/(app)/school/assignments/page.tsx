@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { AssignmentsBoard } from "@/components/school/assignments-board";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 
 interface ClassRow {
   id: string;
@@ -85,6 +86,12 @@ export default async function AssignmentsPage() {
         section="Quản trị"
         title="Phân công năm học"
         description="Phân công giáo viên chủ nhiệm cho từng lớp, môn phụ trách của giáo viên và phân công giảng dạy theo lớp."
+      />
+      <AiInsightCard
+        endpoint="/api/ai/assignment-suggest"
+        payload={() => ({})}
+        title="AI gợi ý phân công giảng dạy"
+        buttonLabel="Đề xuất phân công"
       />
       <AssignmentsBoard
         classes={classes}

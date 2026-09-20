@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ExamsBoard } from "@/components/exams/exams-board";
+import { QuestionGen } from "@/components/exams/question-gen";
 
 interface ExamRow {
   id: string;
@@ -81,6 +82,9 @@ export default async function ExamsPage({
         section="Học tập"
         title="Quản lý kỳ thi"
         description="Tạo kỳ thi, xếp lịch thi theo lớp và môn, phân công phòng thi và giám thị."
+      />
+      <QuestionGen
+        subjects={(subjectData ?? []) as { id: string; name: string }[]}
       />
       <ExamsBoard
         exams={exams}

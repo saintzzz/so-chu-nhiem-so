@@ -85,7 +85,7 @@ export function AdvisorChat() {
             i === userIdx + 1
               ? {
                   role: "assistant",
-                  text: "AI chính đang bận - hệ thống dự phòng đang xử lý, câu trả lời sẽ tự hiện ra.",
+                  text: "Đang xử lý, câu trả lời sẽ hiện khi hoàn thành...",
                   pending: true,
                 }
               : x,

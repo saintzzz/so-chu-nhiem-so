@@ -5,6 +5,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import type {
   AttendanceRecord,
   ClassRoom,
@@ -178,6 +179,15 @@ export default async function DeptDashboardPage() {
         <StatCard label="Lớp học" value={classes.length} />
         <StatCard label="Giáo viên" value={teachersRes.count ?? 0} />
         <StatCard label="Học sinh" value={scopedStudentIds.length} />
+      </div>
+
+      <div className="mt-4">
+        <AiInsightCard
+          endpoint="/api/ai/dept-brief"
+          payload={() => ({})}
+          title="Báo cáo AI cho cấp quản lý"
+          buttonLabel="Tổng hợp báo cáo"
+        />
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">

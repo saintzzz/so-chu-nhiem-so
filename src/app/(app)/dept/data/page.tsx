@@ -37,7 +37,7 @@ export default async function DeptDataPage() {
     ENTITIES.map(async (e) => {
       const { count } = await supabase
         .from(e.table)
-        .select("id", { count: "exact", head: true });
+        .select("*", { count: "exact", head: true });
       return { ...e, count: count ?? 0 };
     }),
   );

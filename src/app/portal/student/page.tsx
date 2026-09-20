@@ -42,11 +42,14 @@ export default async function StudentPortalPage() {
   const { data: classRow } = student
     ? await supabase
         .from("classes")
-        .select("id,name")
+        .select("id,name,school_id")
         .eq("id", student.class_id)
         .single()
     : { data: null };
-  const classroom = classRow as Pick<ClassRoom, "id" | "name"> | null;
+  const classroom = classRow as Pick<
+    ClassRoom,
+    "id" | "name" | "school_id"
+  > | null;
 
   const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes] = student
     ? await Promise.all([
@@ -60,7 +63,10 @@ export default async function StudentPortalPage() {
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
           .eq("student_id", student.id),
-        supabase.from("subjects").select("id,name"),
+        supabase
+          .from("subjects")
+          .select("id,name")
+          .eq("school_id", classroom?.school_id ?? ""),
         supabase
           .from("conduct_evaluations")
           .select("*")
@@ -126,6 +132,8 @@ export default async function StudentPortalPage() {
       );
       return {
         name: subjectNameOf.get(subjectId) ?? "Môn học",
+        hk1,
+        hk2,
         avg: yearAverage(hk1, hk2),
         result: commentRow?.result ?? null,
         count: rows.length,
@@ -233,26 +241,39 @@ export default async function StudentPortalPage() {
               <h2 className="mb-3 text-base font-semibold">
                 Điểm trung bình theo môn
               </h2>
-              <DataTable columns={["Môn học", "Số điểm", "Điểm TB / Kết quả"]}>
+              <DataTable
+                columns={[
+                  "Môn học",
+                  "ĐTBm HK1",
+                  "ĐTBm HK2",
+                  "ĐTBm cả năm",
+                ]}
+              >
                 {subjectAverages.map((s) => (
                   <tr key={s.name}>
                     <td className="font-medium">{s.name}</td>
-                    <td>{s.count}</td>
-                    <td className="font-semibold">
-                      {s.result != null
-                        ? s.result === "dat"
-                          ? "Đạt"
-                          : "Chưa đạt"
-                        : s.avg != null
-                          ? s.avg.toFixed(1)
-                          : "-"}
-                    </td>
+                    {s.result != null ? (
+                      <td colSpan={3} className="font-semibold">
+                        {s.result === "dat" ? "Đạt" : "Chưa đạt"}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          (môn đánh giá bằng nhận xét)
+                        </span>
+                      </td>
+                    ) : (
+                      <>
+                        <td>{s.hk1 != null ? s.hk1.toFixed(1) : "-"}</td>
+                        <td>{s.hk2 != null ? s.hk2.toFixed(1) : "-"}</td>
+                        <td className="font-semibold">
+                          {s.avg != null ? s.avg.toFixed(1) : "-"}
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
                 {subjectAverages.length === 0 && (
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={4}
                       className="py-8 text-center text-muted-foreground"
                     >
                       Chưa có điểm nào.

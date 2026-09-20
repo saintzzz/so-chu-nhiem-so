@@ -101,7 +101,7 @@ export default async function PlansPage({
           .select("id,student_id,subject_id,reason,plan,status,created_at")
           .in("student_id", studentIds)
           .order("created_at", { ascending: false }),
-        supabase.from("subjects").select("id,name"),
+        supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
       ])
     : [{ data: [] }, { data: [] }];
   const allPlans = (planData ?? []) as PlanRow[];

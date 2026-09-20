@@ -67,6 +67,7 @@ export default async function GradesPage({
       supabase
         .from("subjects")
         .select("id,name,assessment_method")
+        .eq("school_id", profile.school_id ?? "")
         .order("name"),
       profile.school_id
         ? supabase

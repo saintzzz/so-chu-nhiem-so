@@ -36,7 +36,7 @@ export default async function TeamTeachersPage() {
           .select("teacher_id,subject_id")
           .in("teacher_id", teacherIds)
       : Promise.resolve({ data: [] }),
-    supabase.from("subjects").select("id,name"),
+    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
     teacherIds.length
       ? supabase.from("classes").select("id,name,gvcn_id").in("gvcn_id", teacherIds)
       : Promise.resolve({ data: [] }),

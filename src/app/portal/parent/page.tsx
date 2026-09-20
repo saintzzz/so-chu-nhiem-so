@@ -15,7 +15,7 @@ import type {
   Profile,
   Student,
 } from "@/types";
-import { semesterAverage } from "@/lib/tt22";
+import { semesterAverage, yearAverage } from "@/lib/tt22";
 
 interface ParentStudentLink {
   parent_id: string;
@@ -83,11 +83,14 @@ export default async function ParentPortalPage() {
   const { data: classRow } = student
     ? await supabase
         .from("classes")
-        .select("id,name")
+        .select("id,name,school_id")
         .eq("id", student.class_id)
         .single()
     : { data: null };
-  const classroom = classRow as Pick<ClassRoom, "id" | "name"> | null;
+  const classroom = classRow as Pick<
+    ClassRoom,
+    "id" | "name" | "school_id"
+  > | null;
 
   const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes] = student
     ? await Promise.all([
@@ -99,7 +102,7 @@ export default async function ParentPortalPage() {
           .limit(40),
         supabase
           .from("grades")
-          .select("id,subject_id,term,assessment_type,score")
+          .select("id,subject_id,term,assessment_type,score,result")
           .eq("student_id", student.id),
         supabase
           .from("announcements")
@@ -127,7 +130,10 @@ export default async function ParentPortalPage() {
           .select("id,role,parents(id,full_name,phone)")
           .eq("class_id", student.class_id)
           .order("role"),
-        supabase.from("subjects").select("id,name"),
+        supabase
+          .from("subjects")
+          .select("id,name")
+          .eq("school_id", classroom?.school_id ?? ""),
       ])
     : [
         { data: [] },
@@ -160,7 +166,7 @@ export default async function ParentPortalPage() {
 
   const gradeRows = (gradeRes.data ?? []) as Pick<
     Grade,
-    "id" | "subject_id" | "term" | "assessment_type" | "score"
+    "id" | "subject_id" | "term" | "assessment_type" | "score" | "result"
   >[];
   const bySubjectTerm = new Map<string, typeof gradeRows>();
   for (const g of gradeRows) {
@@ -180,6 +186,34 @@ export default async function ParentPortalPage() {
       ).toFixed(1)
     : "-";
 
+  const subjectNames = new Map(
+    ((subjectRes.data ?? []) as { id: string; name: string }[]).map(
+      (x) => [x.id, x.name],
+    ),
+  );
+
+  // ĐTBm HK1/HK2/cả năm theo TT22 cho từng môn; môn nhận xét hiển thị Đạt/Chưa đạt
+  const bySubject = new Map<string, typeof gradeRows>();
+  for (const g of gradeRows) {
+    const arr = bySubject.get(g.subject_id) ?? [];
+    arr.push(g);
+    bySubject.set(g.subject_id, arr);
+  }
+  const subjectAverages = [...bySubject.entries()]
+    .map(([subjectId, rows]) => {
+      const commentRow = rows.find((r) => r.result != null);
+      const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
+      const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
+      return {
+        name: subjectNames.get(subjectId) ?? "Môn học",
+        hk1,
+        hk2,
+        avg: yearAverage(hk1, hk2),
+        result: commentRow?.result ?? null,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+
   const announcements = (annRes.data ?? []) as Pick<
     Announcement,
     "id" | "title" | "content" | "created_at"
@@ -189,11 +223,6 @@ export default async function ParentPortalPage() {
     "id" | "teacher_id" | "scheduled_at" | "purpose" | "status"
   >[];
 
-  const subjectNames = new Map(
-    ((subjectRes.data ?? []) as { id: string; name: string }[]).map(
-      (x) => [x.id, x.name],
-    ),
-  );
   const examSessions = ((examRes.data ?? []) as unknown as {
     id: string;
     date: string;
@@ -299,6 +328,47 @@ export default async function ParentPortalPage() {
                 </DataTable>
               </div>
             )}
+
+            <div>
+              <h2 className="mb-3 text-base font-semibold">
+                Điểm trung bình theo môn
+              </h2>
+              <DataTable
+                columns={["Môn học", "ĐTBm HK1", "ĐTBm HK2", "ĐTBm cả năm"]}
+              >
+                {subjectAverages.map((s) => (
+                  <tr key={s.name}>
+                    <td className="font-medium">{s.name}</td>
+                    {s.result != null ? (
+                      <td colSpan={3} className="font-semibold">
+                        {s.result === "dat" ? "Đạt" : "Chưa đạt"}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          (môn đánh giá bằng nhận xét)
+                        </span>
+                      </td>
+                    ) : (
+                      <>
+                        <td>{s.hk1 != null ? s.hk1.toFixed(1) : "-"}</td>
+                        <td>{s.hk2 != null ? s.hk2.toFixed(1) : "-"}</td>
+                        <td className="font-semibold">
+                          {s.avg != null ? s.avg.toFixed(1) : "-"}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {subjectAverages.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="py-8 text-center text-muted-foreground"
+                    >
+                      Chưa có điểm nào.
+                    </td>
+                  </tr>
+                )}
+              </DataTable>
+            </div>
 
             {cmhsMembers.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">

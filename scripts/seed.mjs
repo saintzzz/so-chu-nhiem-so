@@ -183,9 +183,11 @@ async function main() {
         positive_points: ri(0, 20),
       };
       studentRows.push(student);
+      const pName = vnName(chance(0.6) ? "nam" : "nu");
       parentRows.push({
-        full_name: vnName(chance(0.6) ? "nam" : "nu"),
+        full_name: pName,
         phone: `09${String(ri(10000000, 99999999))}`,
+        email: `${code.toLowerCase()}.ph@demo.scn`,
         relationship: rand(["bố", "mẹ", "ông/bà"]),
         _student_code: code,
       });
@@ -206,7 +208,7 @@ async function main() {
   const demoStudent = students.find((s) => s.class_id === classByName["8A2"].id);
   await supabase.from("parents").insert({
     profile_id: uids["phuhuynh@demo.scn"], full_name: "Nguyễn Văn Phụ Huynh",
-    phone: "0901234567", relationship: "bố",
+    phone: "0901234567", email: "duylinhcn3@gmail.com", relationship: "bố",
   }).select().single().then(async ({ data: dp }) => {
     await supabase.from("parent_students").insert({ parent_id: dp.id, student_id: demoStudent.id });
     await supabase.from("students").update({ full_name: "Nguyễn Gia Bảo" }).eq("id", demoStudent.id);
@@ -349,7 +351,7 @@ async function main() {
   await batch("announcements", annRows);
 
   const notifRows = [];
-  for (const [email, uid] of Object.entries(uids)) {
+  for (const uid of Object.values(uids)) {
     for (let i = 0; i < ri(2, 4); i++) {
       const type = rand(["announcement", "task", "incident", "grade", "message"]);
       const titles = {

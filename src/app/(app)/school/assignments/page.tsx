@@ -29,7 +29,7 @@ interface TimetableRow {
 }
 
 export default async function AssignmentsPage() {
-  await requireRoles(["bgh"]);
+  const profile = await requireRoles(["bgh"]);
   const supabase = await createClient();
 
   const [
@@ -42,16 +42,22 @@ export default async function AssignmentsPage() {
     supabase
       .from("classes")
       .select("id,name,grade,gvcn_id")
+      .eq("school_id", profile.school_id ?? "")
       .eq("status", "active")
       .order("grade")
       .order("name"),
     supabase
       .from("profiles")
       .select("id,full_name,role")
+      .eq("school_id", profile.school_id ?? "")
       .in("role", ["gvcn", "gvbm", "to_truong"])
       .order("full_name"),
     supabase.from("teacher_subjects").select("teacher_id,subject_id"),
-    supabase.from("subjects").select("id,name").order("name"),
+    supabase
+      .from("subjects")
+      .select("id,name")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
     supabase
       .from("timetable_entries")
       .select("class_id,subject_id,teacher_id"),

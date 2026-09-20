@@ -75,7 +75,6 @@ export default async function AttendanceNotifyPage({
         <NotifyForm
           classId={selected.id}
           className={selected.name}
-          senderId={profile.id}
           students={students.map((s) => ({
             id: s.id,
             fullName: s.full_name,

@@ -131,6 +131,31 @@ for (const [label, table, col, refTable, refCol] of orphans) {
   check("link:incidents->notifications", expectInc);
 }
 
+// A6. subjects are per-school (TH vs THCS have different sets with overlapping
+// names like Toán/Tiếng Anh) — a duplicate name inside ONE school is bad data.
+{
+  const subs = await fetchAll("subjects", "id,name,school_id");
+  const seen = new Map();
+  let dupes = 0;
+  const dupeNames = [];
+  for (const s of subs) {
+    const key = `${s.school_id}|${s.name}`;
+    if (seen.has(key)) { dupes++; dupeNames.push(s.name); }
+    else seen.set(key, s.id);
+  }
+  check("data:duplicate-subject-per-school", dupes, dupeNames.join(","));
+}
+
+// A7. parent_students links must be complete: every linked parent/student pair
+// must resolve, and a student linked to a parent should sit in a real class.
+{
+  const links = await fetchAll("parent_students", "parent_id,student_id");
+  const parents = new Set((await fetchAll("parents", "id")).map((p) => p.id));
+  const students = new Set((await fetchAll("students", "id")).map((s) => s.id));
+  const bad = links.filter((l) => !parents.has(l.parent_id) || !students.has(l.student_id));
+  check("orphan:parent_students", bad.length);
+}
+
 /* ============ B. Code rules ============ */
 
 function walk(dir, out = []) {
@@ -214,6 +239,22 @@ for (const [p, src] of srcFiles) {
     if (!/(onClick|onMouseDown|type=|asChild|\{\.\.\.)/.test(tag)) n++;
   }
   check(`code:dead-button:${rel(p)}`, n);
+}
+
+// B7. Full-list subjects queries must be scoped to the user's school —
+// subjects are per-school so an unscoped .from("subjects") leaks another
+// school's subjects (duplicate names like Toán/Tiếng Anh). A query that only
+// resolves known ids via .in("id", ...) is a safe lookup, not a list.
+for (const [p, src] of srcFiles) {
+  let n = 0;
+  for (const m of src.matchAll(/\.from\(["']subjects["']\)/g)) {
+    const win = src.slice(m.index, m.index + 800);
+    const end = win.search(/;|\}\)/);
+    const q = win.slice(0, end === -1 ? 800 : end);
+    if (/\.in\(["']id["']/.test(q)) continue; // id lookup, safe
+    if (!/school_id/.test(q)) n++;
+  }
+  check(`code:unscoped-subjects:${rel(p)}`, n);
 }
 
 console.log("\n" + (failures.length

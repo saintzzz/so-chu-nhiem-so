@@ -43,7 +43,14 @@ export function ComposeForm({
     if (res.error) {
       setFeedback({ kind: "error", text: res.error });
     } else {
-      setFeedback({ kind: "success", text: "Đã gửi thông báo thành công." });
+      setFeedback({
+        kind: "success",
+        text: res.emailSkipped
+          ? "Đã gửi thông báo in-app (chưa cấu hình RESEND_API_KEY nên không gửi email)."
+          : res.emailed
+            ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
+            : "Đã gửi thông báo thành công.",
+      });
       setTitle("");
       setContent("");
       setStudentId("");

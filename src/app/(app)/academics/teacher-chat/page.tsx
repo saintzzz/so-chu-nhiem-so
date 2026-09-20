@@ -42,7 +42,7 @@ export default async function TeacherChatPage({
           .from("teacher_subjects")
           .select("teacher_id,subject_id")
           .in("teacher_id", teacherIds),
-        supabase.from("subjects").select("id,name"),
+        supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
       ])
     : [{ data: [] }, { data: [] }];
   const teacherSubjects = (tsData ?? []) as TeacherSubjectRow[];

@@ -107,7 +107,7 @@ export default async function TimetablePage({
   if (isBgh) {
     const [{ data: allSubjects }, { data: allTeachers }, { data: everyEntry }] =
       await Promise.all([
-        supabase.from("subjects").select("id,name").order("name"),
+        supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
         supabase
           .from("profiles")
           .select("id,full_name")

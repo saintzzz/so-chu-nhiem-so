@@ -53,13 +53,22 @@ export function ClassReportExport({
     setMsg(null);
     const supabase = createClient();
 
+    const { data: classRow } = await supabase
+      .from("classes")
+      .select("school_id")
+      .eq("id", classId)
+      .single();
     const [{ data: studentData }, { data: subjectData }] = await Promise.all([
       supabase
         .from("students")
         .select("id,code,national_id,full_name,dob")
         .eq("class_id", classId)
         .eq("status", "active"),
-      supabase.from("subjects").select("id,name,assessment_method").order("name"),
+      supabase
+        .from("subjects")
+        .select("id,name,assessment_method")
+        .eq("school_id", classRow?.school_id ?? "")
+        .order("name"),
     ]);
     const students = (studentData ?? []) as {
       id: string;

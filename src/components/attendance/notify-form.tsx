@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { sendAnnouncement } from "@/app/(app)/parents/actions";
 
 const inputCls =
   "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -13,12 +13,10 @@ const inputCls =
 export function NotifyForm({
   classId,
   className,
-  senderId,
   students: rawStudents,
 }: {
   classId: string;
   className: string;
-  senderId: string;
   students: { id: string; fullName: string; code: string }[];
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.fullName);
@@ -40,23 +38,28 @@ export function NotifyForm({
       return;
     }
     setSending(true);
-    const supabase = createClient();
-    const { error } = await supabase.from("announcements").insert({
-      sender_id: senderId,
-      class_id: classId,
-      student_id: target === "all" ? null : target,
-      title: title.trim(),
-      content: content.trim(),
+    const res = await sendAnnouncement({
+      classId,
+      studentId: target === "all" ? null : target,
+      title,
+      content,
     });
     setSending(false);
-    if (error) {
-      setFeedback({ ok: false, text: `Gửi thất bại: ${error.message}` });
+    if (res.error) {
+      setFeedback({ ok: false, text: `Gửi thất bại: ${res.error}` });
       return;
     }
     setTitle("");
     setContent("");
     setTarget("all");
-    setFeedback({ ok: true, text: "Đã gửi thông báo đến phụ huynh." });
+    setFeedback({
+      ok: true,
+      text: res.emailSkipped
+        ? "Đã gửi thông báo in-app (chưa cấu hình RESEND_API_KEY nên không gửi email)."
+        : res.emailed
+          ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
+          : "Đã gửi thông báo đến phụ huynh.",
+    });
     router.refresh();
   }
 

@@ -69,7 +69,7 @@ export default async function SupportPage({
       : (classes[0]?.id ?? "");
 
   const [{ data: subjectData }, { data: studentData }] = await Promise.all([
-    supabase.from("subjects").select("id,name").order("name"),
+    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
     classId
       ? supabase
           .from("students")

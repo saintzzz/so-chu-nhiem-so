@@ -114,6 +114,7 @@ export default async function AnalysisPage({
   const { data: subjectData } = await supabase
     .from("subjects")
     .select("id,name")
+    .eq("school_id", profile.school_id ?? "")
     .order("name");
   const subjects = (subjectData ?? []) as SubjectRow[];
   const subjectName = new Map(subjects.map((s) => [s.id, s.name]));

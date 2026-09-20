@@ -48,7 +48,7 @@ export default async function ExamsPage({
       .select("id,name")
       .eq("status", "active")
       .order("name"),
-    supabase.from("subjects").select("id,name").order("name"),
+    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
     supabase
       .from("profiles")
       .select("id,full_name")

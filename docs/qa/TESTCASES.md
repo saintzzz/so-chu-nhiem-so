@@ -157,3 +157,49 @@ Bug nghiêm trọng phát hiện & vá trong đợt test này:
 5. **PHT redirect loop** + cross-school notification/teacher-list leak (bbde27a, 88e080f).
 
 Regression sau RLS hardening: BGH dashboard ✓, GVCN-TH chỉ thấy trường mình ✓, Sở GD đọc đủ 2 trường ✓, portal PH/HS ✓ (join subjects/exams không vỡ).
+
+---
+
+## Đợt 3 — Go-live rehearsal (wipe data → tạo lại bằng business flow, 21/9/2026)
+
+Dọn sạch operational data, bootstrap org structure, rồi tạo data qua chính UI production để bắt bug onboarding/day-1.
+
+### Bug phát hiện & vá
+
+| # | Bug | Fix |
+|---|---|---|
+| 1 | Lớp tạo qua UI ở `status='pending'` mãi mãi — không có flow duyệt lớp, upload HS chỉ liệt kê lớp `active` → ngõ cụt onboarding | `816afd8` — tạo lớp `active` + gán `campus_id` (profile hoặc cơ sở đầu tiên của trường) |
+| 2 | Timestamp hiển thị lệch -7h toàn hệ thống (server Vercel TZ=UTC, 9 trang tự format bằng `getHours()`) | `bee79fb` — helper `fmtDateTimeVN`/`fmtTimeDateVN`/`fmtDateVN` (Intl + Asia/Ho_Chi_Minh), verify live: sự cố nhập 08:30 hiển thị 08:30 |
+| 3 | (trước đó) `currentYearId=null` khi DB rỗng → không tạo lớp đầu tiên | `aa24271` |
+
+### Business-flow verify trên production (data mới)
+
+| Luồng | Kết quả |
+|---|---|
+| Upload CSV → 6A3 | PASS — validate mã định danh 10 số (reject 12 số), 5/5 hợp lệ → import persist DB |
+| Điểm danh 6A3 (1 vắng có phép, 1 muộn) | PASS — 5 record `attendance_records` đúng status |
+| Báo cáo ngày → BGH | PASS — BGH thấy 6A3 "Đã nộp" Vắng 1 Muộn 1, notif tới bgh+pht+pht2 (cùng trường) |
+| Sự cố 6A3 | PASS — hiện board BGH, giờ VN đúng 08:30, notif chỉ tới leadership cùng trường + PHT đúng cơ sở |
+| Giáo án 3 cấp | PASS — GVBM nộp Toán 8A2 → tổ trưởng duyệt → BGH phê duyệt, notif từng bước |
+| Điều động | PASS — chọn 8A2 tiết 1 → gợi ý 2 GV rảnh → BGH duyệt "Đã duyệt" |
+| Sổ điểm GVBM | PASS — ĐTBm tính live đúng TT22 ((Σtx+2gk+3ck)/(n+5)): 8 9/8/8→8.1 ✓, 7/7.5/9→8.2 ✓, persist DB |
+| Thi đua | PASS — lưới 4 tiêu chí × 9 lớp, tổng tính live, lưu OK |
+| Ký sổ chủ nhiệm | PASS — tạo đợt 2026-09 cho 9 lớp, ký 6A3 → "Đã ký" |
+| Tư vấn intake | PASS — ca mới Trần Thị Bích 6A3 hiện chờ đánh giá |
+| Portal PH | PASS render đúng con (trống điểm/tb — kỳ vọng, data mới chưa tới lớp con) |
+| P0 unauth sweep | PASS — 8/8 protected route → 307 /login; /login 248ms |
+
+### Observation chưa vá (không block go-live)
+
+- `Người ký` cột trong đợt ký sổ hiển thị "-" sau khi ký — cần ghi signer profile.
+- Notif "Báo cáo ngày" gửi tới PHT cơ sở khác (pht@ Bản Mới nhận báo cáo lớp Cơ sở Trung tâm) — design question: BGH-level xem toàn trường là hợp lý, nhưng cân nhắc scope theo campus cho nhất quán.
+- Form giáo án submit khi chưa chọn lớp → không báo lỗi hiển thị (fail silently).
+
+### P0 go-live checklist
+
+- [x] Login/logout các role
+- [x] Unauth redirect toàn bộ route nội bộ
+- [x] TTFB < 1s các route chính
+- [x] Business chain chính chạy đầy đủ trên data mới
+- [x] Cross-tenant RLS giữ sau wipe (không rò THCS → TH)
+- [x] Không lộ service key trong bundle

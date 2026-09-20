@@ -21,6 +21,7 @@ export async function createMeeting(formData: FormData) {
     title,
     meeting_date: meetingDate,
     content: content || null,
+    created_by: profile.id,
   });
   if (error) throw new Error("Tạo buổi sinh hoạt thất bại: " + error.message);
 

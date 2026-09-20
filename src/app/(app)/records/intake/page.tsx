@@ -79,6 +79,18 @@ export default async function RecordsIntakePage() {
     currentYearId = currentYear?.id ?? null;
   }
 
+  let campusId = profile.campus_id ?? null;
+  if (!campusId && profile.school_id) {
+    const { data: campus } = await supabase
+      .from("campuses")
+      .select("id")
+      .eq("school_id", profile.school_id)
+      .order("name")
+      .limit(1)
+      .maybeSingle();
+    campusId = campus?.id ?? null;
+  }
+
   return (
     <div>
       <PageHeader
@@ -94,6 +106,7 @@ export default async function RecordsIntakePage() {
             schoolId={profile.school_id}
             academicYearId={currentYearId}
             gvcnId={profile.id}
+            campusId={campusId}
           />
         }
       />

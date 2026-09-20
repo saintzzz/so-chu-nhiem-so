@@ -12,10 +12,12 @@ export function NewClassForm({
   schoolId,
   academicYearId,
   gvcnId,
+  campusId,
 }: {
   schoolId: string | null;
   academicYearId: string | null;
   gvcnId: string;
+  campusId: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -44,7 +46,8 @@ export function NewClassForm({
       name: trimmed,
       grade: Number(grade),
       gvcn_id: gvcnId,
-      status: "pending",
+      campus_id: campusId,
+      status: "active",
     });
     setLoading(false);
     if (error) {
@@ -99,9 +102,8 @@ export function NewClassForm({
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Lớp mới được tạo ở trạng thái &quot;Chờ duyệt&quot; và gán cho bạn làm
-            GVCN. Sau đó, vào mục &quot;Upload danh sách học sinh&quot; để nhập sĩ
-            số.
+            Lớp mới sẽ gán cho bạn làm GVCN. Sau đó, vào mục &quot;Upload danh
+            sách học sinh&quot; để nhập sĩ số.
           </p>
           {message && (
             <p className="rounded-lg bg-error-bg px-3 py-2 text-sm text-error">

@@ -47,3 +47,41 @@ radar nâng cấp, trợ lý AI BGH, multi-campus/NQ37/TT15, phân cấp Sở-Ph
   credits). Đề xuất thêm `OPENAI_API_KEY`/`ANTHROPIC_API_KEY` làm backup.
 - Trang báo cáo ngày GVCN chỉ xử lý lớp chủ nhiệm đầu tiên khi GV chủ nhiệm
   nhiều lớp - cần bộ chọn lớp nếu mở rộng.
+
+---
+
+## Đợt 2 - Gộp màn hình & siết phân quyền (commit 94d555e)
+
+### Thay đổi
+
+- Gộp TT15 vào `/school/campuses` ("Cơ sở & đánh giá TT15"), xóa `/school/tt15`.
+- Gộp danh sách GV + nhân sự hỗ trợ + ma trận NQ37 vào `/school/staff`
+  ("Nhân sự trường"), xóa `/school/nq37`.
+- Bỏ nav "Duyệt kế hoạch" trùng của BGH (đã có Trung tâm phê duyệt).
+- Label: bgh -> "Hiệu trưởng / BGH", pht -> "Phó Hiệu trưởng (cơ sở)".
+- Điều động dạy thay: chỉ BGH/PHT tạo (bỏ `gvcn` khỏi page guard + action).
+- RLS migration `dept_readonly_ops_rls`:
+  - Hàm mới `is_school_staff()` = gvcn, gvbm, to_truong, bgh, pht, ke_toan, admin.
+  - Mọi policy `ALL` dùng `is_staff()` được tách thành SELECT (is_staff,
+    dept vẫn đọc) + INSERT/UPDATE/DELETE (is_school_staff, dept không ghi).
+  - `classes_write`, `signoff_insert/update/delete`, `notif_insert_staff`:
+    bỏ `so_gd` khỏi đường ghi.
+
+### Verify production
+
+| Kiểm thử | Kết quả |
+|---|---|
+| Nav BGH | PASS - có "Nhân sự trường", "Cơ sở & đánh giá TT15"; không còn "Duyệt kế hoạch", NQ37 |
+| `/school/staff` | PASS - đủ 3 section: Giáo viên / Nhân sự hỗ trợ / Định mức NQ37 |
+| `/school/campuses` | PASS - form TT15 + lịch sử đánh giá render trong trang |
+| UBND dashboard sau siết RLS | PASS - vẫn đọc được 2 trường, 11 lớp, 371 HS (read-only giữ nguyên) |
+| GVCN -> `/school/substitutes` | PASS - redirect về `/dashboard`, không render UI |
+| DB audit | PASS - 0 policy ALL còn dùng is_staff; 131 write policy đều role-guarded |
+| tsc / lint / checker / build | PASS - 83 routes |
+
+### Ghi chú
+
+- Route `/school/nq37`, `/school/tt15` đã xóa - truy cập trả 404/redirect,
+  đúng ý đồ gộp.
+- Dept roles giờ read-only toàn bộ dữ liệu vận hành trường ở tầng RLS,
+  không chỉ page guard.

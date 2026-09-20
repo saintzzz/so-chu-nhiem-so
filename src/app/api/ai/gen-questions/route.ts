@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     profile,
     kind: "gen-questions",
     system:
-      "Bạn là giáo viên trường THCS Việt Nam ra đề theo chương trình GDPT 2018. Câu hỏi rõ ràng, có đáp án đúng. Chỉ trả về JSON hợp lệ.",
+      "Bạn là giáo viên trường phổ thông Việt Nam ra đề theo chương trình GDPT 2018. Câu hỏi rõ ràng, có đáp án đúng. Chỉ trả về JSON hợp lệ.",
     prompt: `Sinh ${count} câu hỏi ${kind === "trac_nghiem" ? "trắc nghiệm 4 phương án (A-D)" : "tự luận"} môn ${subject}, chủ đề "${topic}", mức độ ${level}.
 
 Trả về CHỈ JSON {"questions": [{"question": "...", ${kind === "trac_nghiem" ? '"options": ["A. ...","B. ...","C. ...","D. ..."], ' : ""}"answer": "..."}]}, không markdown.`,

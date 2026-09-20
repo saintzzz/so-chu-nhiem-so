@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     kind: "counseling-summary",
     system:
       "Bạn là cán bộ tư vấn tâm lý học đường. Phân tích thận trọng, không chẩn đoán y khoa, luôn khuyên tham khảo chuyên gia khi cần. Chỉ trả về JSON hợp lệ.",
-    prompt: `Phân tích dấu hiệu học sinh cần tư vấn/hỗ trợ (trường THCS Việt Nam):
+    prompt: `Phân tích dấu hiệu học sinh cần tư vấn/hỗ trợ (trường phổ thông Việt Nam):
 "${issue}"
 
 Trả về:

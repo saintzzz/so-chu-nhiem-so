@@ -104,7 +104,7 @@ Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
 
   const aiRes = await generateTextDetailed(prompt, {
     system:
-      "Bạn là trợ lý soạn báo cáo ngày cho giáo viên chủ nhiệm trường THCS Việt Nam. Chỉ trả về JSON hợp lệ.",
+      "Bạn là trợ lý soạn báo cáo ngày cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
     maxTokens: 1000,
     temperature: 0.6,
   });

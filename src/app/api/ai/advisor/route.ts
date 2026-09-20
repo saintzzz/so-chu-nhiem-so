@@ -130,7 +130,7 @@ export async function POST(req: Request) {
     ),
   };
 
-  const prompt = `Bạn là trợ lý điều hành cho Ban Giám Hiệu trường THCS Việt Nam. Dưới đây là số liệu thật của trường (JSON):
+  const prompt = `Bạn là trợ lý điều hành cho Ban Giám Hiệu trường phổ thông Việt Nam. Dưới đây là số liệu thật của trường (JSON):
 
 ${JSON.stringify(context)}
 

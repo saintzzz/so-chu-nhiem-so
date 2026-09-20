@@ -9,6 +9,7 @@ import type {
   ClassRoom,
   EmulationScore,
   Incident,
+  School,
   Student,
 } from "@/types";
 
@@ -34,15 +35,22 @@ function formatDate(isoDate: string): string {
 }
 
 export default async function SchoolDashboardPage() {
-  const profile = await requireRoles(["bgh", "admin"]);
+  const profile = await requireRoles(["bgh", "admin", "pht"]);
   const supabase = await createClient();
 
   const { data: classRows } = await supabase
     .from("classes")
-    .select("id,name")
+    .select("id,name,campus_id")
     .eq("school_id", profile.school_id ?? "")
     .order("name");
-  const classes = (classRows ?? []) as Pick<ClassRoom, "id" | "name">[];
+  let classes = (classRows ?? []) as Pick<
+    ClassRoom,
+    "id" | "name" | "campus_id"
+  >[];
+  // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách
+  if (profile.role === "pht" && profile.campus_id) {
+    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  }
   const classIds = classes.map((c) => c.id);
   const classNameOf = new Map(classes.map((c) => [c.id, c.name]));
 
@@ -140,12 +148,22 @@ export default async function SchoolDashboardPage() {
 
   const recentIncidents = incidents.slice(0, 6);
 
+  const { data: schoolRow } = profile.school_id
+    ? await supabase
+        .from("schools")
+        .select("name")
+        .eq("id", profile.school_id)
+        .single()
+    : { data: null };
+  const schoolName =
+    (schoolRow as Pick<School, "name"> | null)?.name ?? "Trường";
+
   return (
     <>
       <PageHeader
         section="Quản trị"
         title="Dashboard cấp trường"
-        description="THCS Nguyễn Du - theo dõi an toàn, thi đua và KPI của trường"
+        description={`${schoolName} - theo dõi an toàn, thi đua và KPI của trường`}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

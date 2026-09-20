@@ -57,7 +57,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
 
   const aiRes = await generateTextDetailed(prompt, {
     system:
-      "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường THCS Việt Nam. Chỉ trả về JSON hợp lệ.",
+      "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
     maxTokens: 1500,
     temperature: 0.5,
   });
@@ -68,7 +68,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
       const job = await fallbackToDevin({
         supabase,
         kind: "suggest-tasks",
-        prompt: `Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường THCS Việt Nam.\n\n${prompt}`,
+        prompt: `Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${prompt}`,
         expectedShape: '[{"title": "...", "due_date": "YYYY-MM-DD"}]',
         createdBy: profile.id,
         req,

@@ -34,7 +34,7 @@ export async function ReportAiCard({
           )}. Hãy viết 3-5 nhận xét phân tích ngắn gọn bằng tiếng Việt cho giáo viên chủ nhiệm/ban giám hiệu: lớp nổi bật, lớp cần chú ý, xu hướng và 1-2 đề xuất hành động cụ thể. Mỗi nhận xét một dòng, không đánh số, không ký tự đầu dòng.`,
           {
             system:
-              "Bạn là trợ lý phân tích dữ liệu giáo dục cho trường THCS Việt Nam. Trả lời ngắn gọn, thực tế, không emoji.",
+              "Bạn là trợ lý phân tích dữ liệu giáo dục cho trường phổ thông Việt Nam. Trả lời ngắn gọn, thực tế, không emoji.",
             maxTokens: 1024,
           },
         )

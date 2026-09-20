@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         .maybeSingle()
     : { data: null };
 
-  const prompt = `Bạn là cố vấn quản lý cho Ban Giám Hiệu trường THCS Việt Nam. Cảnh báo sớm sau cần phương án xử lý:
+  const prompt = `Bạn là cố vấn quản lý cho Ban Giám Hiệu trường phổ thông Việt Nam. Cảnh báo sớm sau cần phương án xử lý:
 
 Lớp: ${cls?.name ?? "-"}
 Nhóm: ${warn.category} | Mức: ${warn.severity}

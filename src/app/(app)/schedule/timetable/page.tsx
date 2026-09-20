@@ -28,16 +28,21 @@ export default async function TimetablePage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh"]);
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "pht"]);
   const supabase = await createClient();
   const sp = await searchParams;
 
+  let allClassesQuery = supabase
+    .from("classes")
+    .select("id,name")
+    .eq("status", "active")
+    .order("name", { ascending: true });
+  // PHT chỉ xem TKB các lớp thuộc cơ sở mình phụ trách
+  if (profile.role === "pht" && profile.campus_id) {
+    allClassesQuery = allClassesQuery.eq("campus_id", profile.campus_id);
+  }
   const [{ data: classesRaw }, { data: ownClsRaw }] = await Promise.all([
-    supabase
-      .from("classes")
-      .select("id,name")
-      .eq("status", "active")
-      .order("name", { ascending: true }),
+    allClassesQuery,
     supabase
       .from("classes")
       .select("id,name")

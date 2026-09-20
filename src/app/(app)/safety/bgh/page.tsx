@@ -15,13 +15,16 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyBghPage() {
-  const profile = await requireRoles(["gvcn", "bgh"]);
+  const profile = await requireRoles(["gvcn", "bgh", "pht"]);
   const supabase = await createClient();
 
-  // Trang tổng hợp toàn trường - dùng cho BGH và GVCN tra cứu liên lớp.
+  // Trang tổng hợp toàn trường - dùng cho BGH/PHT và GVCN tra cứu liên lớp.
   let classQuery = supabase.from("classes").select("*").order("name");
   if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
+  }
+  if (profile.role === "pht" && profile.campus_id) {
+    classQuery = classQuery.eq("campus_id", profile.campus_id);
   }
   const { data: classData } = await classQuery;
   const classes = (classData ?? []) as ClassRoom[];

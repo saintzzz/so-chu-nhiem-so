@@ -313,7 +313,7 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
   const aiRes = await generateTextDetailed(prompt, {
     system:
-      "Bạn là giáo viên chủ nhiệm trường THCS Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
+      "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
     maxTokens: 8000,
     temperature: 0.7,
   });
@@ -324,7 +324,7 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
       const job = await fallbackToDevin({
         supabase,
         kind: "comments",
-        prompt: `Bạn là giáo viên chủ nhiệm trường THCS Việt Nam viết nhận xét học sinh.\n\n${prompt}`,
+        prompt: `Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh.\n\n${prompt}`,
         expectedShape: '{"MA_HS": "nhận xét 1-2 câu"}',
         createdBy: profile.id,
         req,

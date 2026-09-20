@@ -7,6 +7,13 @@ export function cn(...inputs: ClassValue[]) {
 
 const VN_TZ = "Asia/Ho_Chi_Minh";
 
+// Current calendar date (YYYY-MM-DD) in Vietnam timezone.
+export function todayVN(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: VN_TZ }).format(
+    new Date(),
+  );
+}
+
 export function formatDate(
   iso: string | Date,
   options?: Intl.DateTimeFormatOptions,

@@ -4,7 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { Campus, ClassRoom, DailyReport } from "@/types";
 
 export default async function SchoolDailyReportsPage() {
@@ -32,11 +32,12 @@ export default async function SchoolDailyReportsPage() {
   const campuses = (campusData ?? []) as Campus[];
   const campusName = new Map(campuses.map((c) => [c.id, c.name]));
 
-  // Ngày báo cáo = ngày có attendance gần nhất (cùng convention toàn app)
-  let today = new Date().toISOString().slice(0, 10);
+  // Ngày báo cáo = ngày có attendance gần nhất của trường (đồng nhất với trang GVCN)
+  let today = todayVN();
   const { data: latestAtt } = await supabase
     .from("attendance_records")
-    .select("date")
+    .select("date, students!inner(classes!inner(school_id))")
+    .eq("students.classes.school_id", profile.school_id ?? "")
     .order("date", { ascending: false })
     .limit(1);
   const d = (latestAtt ?? []) as { date: string }[];

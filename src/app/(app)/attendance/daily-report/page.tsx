@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DailyReportForm } from "@/components/attendance/daily-report-form";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { ClassRoom, DailyReport, Student } from "@/types";
 
 export default async function DailyReportPage() {
@@ -38,13 +38,13 @@ export default async function DailyReportPage() {
     (s) => s.id,
   );
 
-  // "Hôm nay" = ngày có dữ liệu chuyên cần gần nhất (cùng convention với điểm danh)
-  let today = new Date().toISOString().slice(0, 10);
-  if (studentIds.length) {
+  // "Hôm nay" = ngày có dữ liệu chuyên cần gần nhất của trường (đồng nhất với trang BGH)
+  let today = todayVN();
+  {
     const { data: latest } = await supabase
       .from("attendance_records")
-      .select("date")
-      .in("student_id", studentIds)
+      .select("date, students!inner(classes!inner(school_id))")
+      .eq("students.classes.school_id", profile.school_id ?? "")
       .order("date", { ascending: false })
       .limit(1);
     const d = (latest ?? []) as { date: string }[];

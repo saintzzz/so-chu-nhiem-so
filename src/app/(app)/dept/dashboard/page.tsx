@@ -21,8 +21,48 @@ function addDays(isoDate: string, days: number): string {
 }
 
 export default async function DeptDashboardPage() {
-  await requireRoles(["so_gd", "admin"]);
+  const profile = await requireRoles(["so_gd", "phong_gd", "ubnd", "admin"]);
   const supabase = await createClient();
+
+  // Phạm vi theo cấp: so_gd xem toàn tỉnh; phong_gd xem các UBND/xã con;
+  // ubnd chỉ xem trường thuộc đơn vị mình.
+  const { data: orgData } = await supabase
+    .from("org_units")
+    .select("id,type,name,parent_id");
+  const orgs = (orgData ?? []) as {
+    id: string;
+    type: string;
+    name: string;
+    parent_id: string | null;
+  }[];
+
+  let scopedOrgIds: Set<string> | null = null;
+  if (profile.role === "phong_gd" && profile.org_unit_id) {
+    scopedOrgIds = new Set(
+      orgs
+        .filter((o) => o.parent_id === profile.org_unit_id)
+        .map((o) => o.id)
+        .concat(profile.org_unit_id),
+    );
+  } else if (profile.role === "ubnd" && profile.org_unit_id) {
+    scopedOrgIds = new Set([profile.org_unit_id]);
+  }
+
+  const { data: schoolRows } = await supabase
+    .from("schools")
+    .select("id,name,org_unit_id");
+  const allSchools = (schoolRows ?? []) as {
+    id: string;
+    name: string;
+    org_unit_id: string | null;
+  }[];
+  const scopedSchools = scopedOrgIds
+    ? allSchools.filter(
+        (s) => s.org_unit_id && scopedOrgIds.has(s.org_unit_id),
+      )
+    : allSchools;
+  const scopedSchoolIds = new Set(scopedSchools.map((s) => s.id));
+  const orgName = new Map(orgs.map((o) => [o.id, o.name]));
 
   // Anchor to the newest attendance date so demo stats are never empty.
   const { data: latestAtt } = await supabase
@@ -35,42 +75,67 @@ export default async function DeptDashboardPage() {
       ?.date ?? new Date().toISOString().slice(0, 10);
   const windowStart = addDays(anchor, -29);
 
+  const { data: scopedClassRows } = await supabase
+    .from("classes")
+    .select("id,name,school_id")
+    .order("name");
+  const classes = ((scopedClassRows ?? []) as Pick<
+    ClassRoom,
+    "id" | "name" | "school_id"
+  >[]).filter((c) => scopedSchoolIds.has(c.school_id));
+  const scopedClassIds = classes.map((c) => c.id);
+
+  const { data: scopedStudents } = scopedClassIds.length
+    ? await supabase
+        .from("students")
+        .select("id")
+        .in("class_id", scopedClassIds)
+    : { data: [] };
+  const scopedStudentIds = ((scopedStudents ?? []) as { id: string }[]).map(
+    (s) => s.id,
+  );
+
   const [
-    schoolsRes,
-    classesRes,
     teachersRes,
-    studentsRes,
     attTotalRes,
     attPresentRes,
     openIncidentsRes,
-    classRowsRes,
     emulationRes,
   ] = await Promise.all([
-    supabase.from("schools").select("id", { count: "exact", head: true }),
-    supabase.from("classes").select("id", { count: "exact", head: true }),
     supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
-      .in("role", TEACHER_ROLES),
-    supabase.from("students").select("id", { count: "exact", head: true }),
-    supabase
-      .from("attendance_records")
-      .select("id", { count: "exact", head: true })
-      .gte("date", windowStart),
-    supabase
-      .from("attendance_records")
-      .select("id", { count: "exact", head: true })
-      .gte("date", windowStart)
-      .in("status", ["present", "late"]),
-    supabase
-      .from("incidents")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["new", "following"]),
-    supabase.from("classes").select("id,name").order("name"),
-    supabase
-      .from("emulation_scores")
-      .select("class_id,score")
-      .eq("period", EMULATION_PERIOD),
+      .in("role", TEACHER_ROLES)
+      .in("school_id", [...scopedSchoolIds].length ? [...scopedSchoolIds] : ["none"]),
+    scopedStudentIds.length
+      ? supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .gte("date", windowStart)
+          .in("student_id", scopedStudentIds)
+      : Promise.resolve({ count: 0 }),
+    scopedStudentIds.length
+      ? supabase
+          .from("attendance_records")
+          .select("id", { count: "exact", head: true })
+          .gte("date", windowStart)
+          .in("status", ["present", "late"])
+          .in("student_id", scopedStudentIds)
+      : Promise.resolve({ count: 0 }),
+    scopedClassIds.length
+      ? supabase
+          .from("incidents")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["new", "following"])
+          .in("class_id", scopedClassIds)
+      : Promise.resolve({ count: 0 }),
+    scopedClassIds.length
+      ? supabase
+          .from("emulation_scores")
+          .select("class_id,score")
+          .eq("period", EMULATION_PERIOD)
+          .in("class_id", scopedClassIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const attRate =
@@ -79,11 +144,6 @@ export default async function DeptDashboardPage() {
           1,
         ) + "%"
       : "-";
-
-  const classes = (classRowsRes.data ?? []) as Pick<
-    ClassRoom,
-    "id" | "name"
-  >[];
 
   const totals = new Map<string, number>();
   for (const row of (emulationRes.data ?? []) as Pick<
@@ -101,15 +161,23 @@ export default async function DeptDashboardPage() {
     <>
       <PageHeader
         section="Quản trị"
-        title="Dashboard cấp Sở Giáo dục và Đào tạo"
-        description="Số liệu tổng hợp toàn hệ thống - trường, lớp, giáo viên, học sinh"
+        title={
+          profile.role === "so_gd" || profile.role === "admin"
+            ? "Dashboard cấp Sở Giáo dục và Đào tạo"
+            : `Dashboard ${orgName.get(profile.org_unit_id ?? "") ?? "đơn vị"}`
+        }
+        description={
+          scopedOrgIds
+            ? `Phạm vi: ${orgName.get(profile.org_unit_id ?? "") ?? "đơn vị của bạn"} - ${scopedSchools.length} trường`
+            : "Số liệu tổng hợp toàn hệ thống - trường, lớp, giáo viên, học sinh"
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Trường học" value={schoolsRes.count ?? 0} />
-        <StatCard label="Lớp học" value={classesRes.count ?? 0} />
+        <StatCard label="Trường học" value={scopedSchools.length} />
+        <StatCard label="Lớp học" value={classes.length} />
         <StatCard label="Giáo viên" value={teachersRes.count ?? 0} />
-        <StatCard label="Học sinh" value={studentsRes.count ?? 0} />
+        <StatCard label="Học sinh" value={scopedStudentIds.length} />
       </div>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -170,6 +238,91 @@ export default async function DeptDashboardPage() {
           )}
         </DataTable>
       </div>
+
+      {/* Phân cấp quản lý: Sở -> Phòng -> UBND -> Trường */}
+      <h2 className="mb-3 mt-6 text-base font-semibold">
+        Phân cấp quản lý địa bàn
+      </h2>
+      <DataTable columns={["Cấp", "Đơn vị", "Trực thuộc", "Số trường"]}>
+        {orgs
+          .filter(
+            (o) =>
+              !scopedOrgIds ||
+              scopedOrgIds.has(o.id) ||
+              (profile.role === "phong_gd" &&
+                o.id === profile.org_unit_id),
+          )
+          .map((o) => {
+            const schoolCount = allSchools.filter(
+              (s) =>
+                s.org_unit_id === o.id ||
+                (o.type === "phong" &&
+                  s.org_unit_id &&
+                  orgs.find(
+                    (x) => x.id === s.org_unit_id && x.parent_id === o.id,
+                  )),
+            ).length;
+            return (
+              <tr key={o.id}>
+                <td>
+                  <StatusBadge
+                    label={
+                      o.type === "so"
+                        ? "Sở GD&ĐT"
+                        : o.type === "phong"
+                          ? "Phòng GD&ĐT"
+                          : "UBND"
+                    }
+                    tone={
+                      o.type === "so"
+                        ? "primary"
+                        : o.type === "phong"
+                          ? "warning"
+                          : "muted"
+                    }
+                  />
+                </td>
+                <td className="font-medium">{o.name}</td>
+                <td className="text-muted-foreground">
+                  {o.parent_id ? (orgName.get(o.parent_id) ?? "-") : "-"}
+                </td>
+                <td>{schoolCount}</td>
+              </tr>
+            );
+          })}
+        {orgs.length === 0 && (
+          <tr>
+            <td colSpan={4} className="py-8 text-center text-muted-foreground">
+              Chưa cấu hình đơn vị hành chính.
+            </td>
+          </tr>
+        )}
+      </DataTable>
+
+      {/* Trường trong phạm vi */}
+      <h2 className="mb-3 mt-6 text-base font-semibold">
+        Trường trong phạm vi quản lý ({scopedSchools.length})
+      </h2>
+      <DataTable columns={["Trường", "Thuộc đơn vị", "Số lớp"]}>
+        {scopedSchools.map((s) => (
+          <tr key={s.id}>
+            <td className="font-medium">{s.name}</td>
+            <td className="text-muted-foreground">
+              {s.org_unit_id ? (orgName.get(s.org_unit_id) ?? "-") : "-"}
+            </td>
+            <td>
+              {classes.filter((c) => c.school_id === s.id).length}
+            </td>
+          </tr>
+        ))}
+        {scopedSchools.length === 0 && (
+          <tr>
+            <td colSpan={3} className="py-8 text-center text-muted-foreground">
+              Không có trường nào trong phạm vi đơn vị.
+            </td>
+          </tr>
+        )}
+      </DataTable>
     </>
   );
 }

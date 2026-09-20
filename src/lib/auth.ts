@@ -8,7 +8,11 @@ export const ROLE_HOME: Record<Role, string> = {
   gvbm: "/academics/grades",
   to_truong: "/team/home",
   bgh: "/school/dashboard",
+  pht: "/school/dashboard",
+  ke_toan: "/school/staff",
   so_gd: "/dept/dashboard",
+  phong_gd: "/dept/dashboard",
+  ubnd: "/dept/dashboard",
   phu_huynh: "/portal/parent",
   hoc_sinh: "/portal/student",
   admin: "/dept/dashboard",
@@ -19,9 +23,16 @@ export const STAFF_ROLES: Role[] = [
   "gvbm",
   "to_truong",
   "bgh",
+  "pht",
+  "ke_toan",
   "so_gd",
+  "phong_gd",
+  "ubnd",
   "admin",
 ];
+
+/** Vai trò lãnh đạo cấp trường (BGH + PHT phụ trách cơ sở). */
+export const SCHOOL_LEADER_ROLES: Role[] = ["bgh", "pht"];
 
 /**
  * Deduped per-request via React cache() - layout + page + actions share one

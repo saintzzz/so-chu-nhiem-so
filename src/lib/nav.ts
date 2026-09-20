@@ -29,6 +29,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Chuyên cần",
       children: [
         { label: "Điểm danh hàng ngày", href: "/attendance/daily" },
+        { label: "Báo cáo ngày cho Ban Giám Hiệu", href: "/attendance/daily-report" },
         { label: "Nghỉ học / đi muộn", href: "/attendance/leaves" },
         { label: "Thông báo phụ huynh", href: "/attendance/notify" },
         { label: "Theo dõi tình trạng", href: "/attendance/tracking" },
@@ -44,6 +45,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Trao đổi với giáo viên bộ môn", href: "/academics/teacher-chat" },
         { label: "Trao đổi phụ huynh", href: "/academics/parent-chat" },
         { label: "Kế hoạch hỗ trợ & tiến bộ", href: "/academics/plans" },
+        { label: "Giáo án / Kế hoạch bài dạy", href: "/academics/lesson-plans" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
       ],
     },
@@ -133,6 +135,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Học tập",
       children: [
         { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
+        { label: "Giáo án / Kế hoạch bài dạy", href: "/academics/lesson-plans" },
         { label: "Trao đổi với giáo viên chủ nhiệm", href: "/academics/teacher-chat" },
         { label: "Lịch thi", href: "/academics/exams" },
       ],
@@ -151,6 +154,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Trang chủ", href: "/team/home" },
         { label: "Danh sách giáo viên", href: "/team/teachers" },
+        { label: "Duyệt giáo án", href: "/team/lesson-plans" },
         { label: "Duyệt đánh giá năng lực", href: "/team/review" },
         { label: "Sinh hoạt chuyên môn", href: "/team/meetings" },
       ],
@@ -169,7 +173,15 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Quản trị",
       children: [
         { label: "Dashboard cấp trường", href: "/school/dashboard" },
+        { label: "Trung tâm phê duyệt", href: "/school/approvals" },
+        { label: "Báo cáo ngày các lớp", href: "/school/daily-reports" },
+        { label: "Điều động dạy thay", href: "/school/substitutes" },
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
+        { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
+        { label: "Cơ sở / phân hiệu", href: "/school/campuses" },
+        { label: "Nhân sự hỗ trợ", href: "/school/staff" },
+        { label: "Định mức nhân sự NQ37", href: "/school/nq37" },
+        { label: "Đánh giá chất lượng TT15", href: "/school/tt15" },
         { label: "Phân công năm học", href: "/school/assignments" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
         { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
@@ -197,6 +209,55 @@ export const NAV: Record<Role, NavSection[]> = {
     {
       label: "Thi đua",
       children: [{ label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" }],
+    },
+  ],
+  pht: [
+    {
+      label: "Quản trị",
+      children: [
+        { label: "Dashboard cấp trường", href: "/school/dashboard" },
+        { label: "Trung tâm phê duyệt", href: "/school/approvals" },
+        { label: "Báo cáo ngày các lớp", href: "/school/daily-reports" },
+        { label: "Điều động dạy thay", href: "/school/substitutes" },
+        { label: "Radar cảnh báo sớm", href: "/school/radar" },
+        { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
+        { label: "Nhân sự hỗ trợ", href: "/school/staff" },
+        { label: "Định mức nhân sự NQ37", href: "/school/nq37" },
+      ],
+    },
+    {
+      label: "An toàn học sinh",
+      children: [{ label: "Sự cố toàn trường", href: "/safety/bgh" }],
+    },
+    {
+      label: "Thời khóa biểu & Sổ đầu bài",
+      children: [{ label: "Thời khóa biểu", href: "/schedule/timetable" }],
+    },
+  ],
+  ke_toan: [
+    {
+      label: "Quản trị",
+      children: [
+        { label: "Nhân sự hỗ trợ", href: "/school/staff" },
+        { label: "Định mức nhân sự NQ37", href: "/school/nq37" },
+        { label: "Cơ sở / phân hiệu", href: "/school/campuses" },
+      ],
+    },
+  ],
+  phong_gd: [
+    {
+      label: "Quản trị",
+      children: [
+        { label: "Dashboard Phòng Giáo dục", href: "/dept/dashboard" },
+      ],
+    },
+  ],
+  ubnd: [
+    {
+      label: "Quản trị",
+      children: [
+        { label: "Dashboard địa bàn UBND", href: "/dept/dashboard" },
+      ],
     },
   ],
   so_gd: [
@@ -227,7 +288,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   gvbm: "Giáo viên bộ môn",
   to_truong: "Tổ trưởng chuyên môn",
   bgh: "Ban Giám Hiệu",
+  pht: "Phó Hiệu trưởng",
+  ke_toan: "Kế toán",
   so_gd: "Quản trị viên Sở Giáo dục và Đào tạo",
+  phong_gd: "Phòng Giáo dục và Đào tạo",
+  ubnd: "Cán bộ giáo dục UBND",
   phu_huynh: "Phụ huynh",
   hoc_sinh: "Học sinh",
   admin: "Quản trị hệ thống",

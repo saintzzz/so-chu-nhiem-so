@@ -65,7 +65,7 @@ export async function reviewActivity(
 ): Promise<{ error?: string }> {
   const { supabase, user, profile } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
-  if (!profile || !["bgh", "admin"].includes(profile.role)) {
+  if (!profile || !["bgh", "pht", "admin"].includes(profile.role)) {
     return { error: "Chỉ Ban Giám Hiệu mới có quyền phê duyệt." };
   }
   const { error } = await supabase
@@ -75,6 +75,7 @@ export async function reviewActivity(
     .eq("status", "pending");
   if (error) return { error: error.message };
   revalidatePath("/activities/plan");
+  revalidatePath("/school/approvals");
   return {};
 }
 

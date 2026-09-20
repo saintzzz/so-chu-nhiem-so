@@ -3,7 +3,11 @@ export type Role =
   | "gvbm"
   | "to_truong"
   | "bgh"
+  | "pht"
+  | "ke_toan"
   | "so_gd"
+  | "phong_gd"
+  | "ubnd"
   | "phu_huynh"
   | "hoc_sinh"
   | "admin";
@@ -16,6 +20,8 @@ export interface Profile {
   phone: string | null;
   school_id: string | null;
   department_id: string | null;
+  campus_id: string | null;
+  org_unit_id: string | null;
   avatar_url: string | null;
 }
 
@@ -25,6 +31,24 @@ export interface School {
   code: string | null;
   address: string | null;
   level: "th" | "thcs" | "thpt" | "lien_cap";
+  org_unit_id: string | null;
+}
+
+export interface OrgUnit {
+  id: string;
+  type: "so" | "phong" | "ubnd";
+  name: string;
+  parent_id: string | null;
+  province: string | null;
+}
+
+export interface Campus {
+  id: string;
+  school_id: string;
+  name: string;
+  kind: "main" | "phan_hieu" | "diem_truong";
+  distance_km: number | null;
+  address: string | null;
 }
 
 export interface AcademicYear {
@@ -40,6 +64,7 @@ export interface ClassRoom {
   id: string;
   school_id: string;
   academic_year_id: string;
+  campus_id: string | null;
   name: string;
   grade: number;
   gvcn_id: string | null;
@@ -254,4 +279,100 @@ export interface EmulationScore {
   criterion_id: string;
   period: string;
   score: number;
+}
+
+export interface DailyReport {
+  id: string;
+  class_id: string;
+  date: string;
+  gvcn_id: string;
+  absent_count: number;
+  late_count: number;
+  violation_count: number;
+  commendation_count: number;
+  content: string;
+  status: "draft" | "submitted";
+  submitted_at: string | null;
+}
+
+export interface SubstituteRequest {
+  id: string;
+  school_id: string;
+  class_id: string;
+  subject_id: string | null;
+  date: string;
+  period: number;
+  absent_teacher_id: string;
+  substitute_teacher_id: string | null;
+  reason: string | null;
+  status: "pending" | "approved" | "rejected";
+  requested_by: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  note: string | null;
+}
+
+export type LessonPlanStatus =
+  | "draft"
+  | "submitted"
+  | "team_approved"
+  | "approved"
+  | "rejected";
+
+export interface LessonPlan {
+  id: string;
+  school_id: string;
+  teacher_id: string;
+  class_id: string;
+  subject_id: string | null;
+  week: number | null;
+  periods: string | null;
+  title: string;
+  content: string | null;
+  status: LessonPlanStatus;
+  team_reviewed_by: string | null;
+  reviewed_by: string | null;
+  review_note: string | null;
+  created_at: string;
+}
+
+export interface SupportStaff {
+  id: string;
+  school_id: string;
+  campus_id: string | null;
+  full_name: string;
+  position: string;
+  qualification: string | null;
+  standardized: boolean;
+  note: string | null;
+}
+
+export interface EarlyWarning {
+  id: string;
+  school_id: string;
+  class_id: string | null;
+  student_id: string | null;
+  category: "chuyen_can" | "hoc_tap" | "an_toan" | "bo_hoc" | "tam_ly";
+  severity: "low" | "medium" | "high" | "critical";
+  title: string;
+  detail: string | null;
+  suggestion: string | null;
+  status: "open" | "acknowledged" | "resolved";
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  dedupe_key: string | null;
+  created_at: string;
+}
+
+export interface Tt15Evaluation {
+  id: string;
+  school_id: string;
+  campus_id: string | null;
+  term: string;
+  evaluator_id: string | null;
+  scores: Record<string, number>;
+  total: number | null;
+  rating: string | null;
+  status: "draft" | "submitted" | "verified";
+  created_at: string;
 }

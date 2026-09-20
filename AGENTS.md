@@ -71,6 +71,13 @@ scripts/            # Asset download scripts
 - Edit `.agents/skills/clone-website/` for cloning-workflow changes. It is the canonical skill used by Codex, Cursor, and OpenCode.
 - Keep `.claude/commands/clone-website.md` as a thin Claude Code bridge to the canonical skill; do not duplicate the workflow there.
 
+## Mandatory SDLC (no bypass)
+
+- **All feature work runs the multi-agent-framework pipeline** (PM → BA → Designer → Tech Lead → Developer → Tester → Deployer). Direct implementation is forbidden; the only exceptions are trivial fixes changing no requirement (typo, lint, one-line bug) - those still need typecheck/lint/build.
+- **Requirement changes are CRs.** Write `docs/project/CR-NNN-*.md` (scope + impact assessment + separate estimate), get user approval via Q&A, then re-enter the pipeline at the earliest affected phase. Cascade artifacts (PRD, ROLE-MATRIX, ARCHITECTURE, QA-REPORT).
+- If work happened outside the pipeline, stop and write the CR retroactively before continuing.
+- Active CRs: `docs/project/CR-001-ops-modules.md` (ops modules from school-management reference).
+
 ## Mandatory UI/UX Rules (apply by default, no prompt needed)
 
 - **Naming:** menu/nav labels use full Vietnamese names - no Roman numerals (`I.`, `II.`...), no abbreviations (GD → giáo dục, HS → học sinh, GVCN → giáo viên chủ nhiệm, GVBM → giáo viên bộ môn, BGH → Ban Giám Hiệu, CMHS → cha mẹ học sinh, KPI → chỉ tiêu hiệu suất, Sở GD&ĐT → Sở Giáo dục và Đào tạo). Page `section=` headers and titles must match the nav label. Icon maps keyed by label must be updated in the same change.

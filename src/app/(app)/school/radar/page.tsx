@@ -8,10 +8,12 @@ import type {
   AttendanceRecord,
   ClassRoom,
   CounselingCase,
+  EarlyWarning,
   Incident,
   Student,
 } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
+import { WarningList } from "@/components/school/warning-list";
 
 type RiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -68,16 +70,37 @@ function levelOf(score: number): RiskLevel {
   return "low";
 }
 
+const CATEGORY_SUGGESTION: Record<string, string> = {
+  chuyen_can:
+    "GVCN liên hệ gia đình các em vắng không phép trong tuần này, lập phiếu theo dõi chuyên cần, báo lại BGH nếu tái diễn 2 tuần liên tiếp.",
+  hoc_tap:
+    "Tổ chuyên môn rà soát tiến độ dạy, GVCN lập kế hoạch hỗ trợ cho từng em điểm dưới 5 và phối hợp GVBM theo dõi hàng tuần.",
+  an_toan:
+    "BGH chỉ đạo đóng sự cố đang mở trong tuần, rà soát quy trình xử lý và thông tin cho phụ huynh liên quan nếu cần.",
+  tam_ly:
+    "GV tư vấn tiếp nhận ca trong 48 giờ, phân mức độ và chuyển tuyến chuyên gia nếu mức cao/nghiêm trọng.",
+};
+
+function warningSeverity(count: number, highAt: number): "medium" | "high" {
+  return count >= highAt ? "high" : "medium";
+}
+
 export default async function SchoolRadarPage() {
-  const profile = await requireRoles(["bgh", "admin"]);
+  const profile = await requireRoles(["bgh", "pht", "admin"]);
   const supabase = await createClient();
 
   const { data: classRows } = await supabase
     .from("classes")
-    .select("id,name")
+    .select("id,name,campus_id")
     .eq("school_id", profile.school_id ?? "")
     .order("name");
-  const classes = (classRows ?? []) as Pick<ClassRoom, "id" | "name">[];
+  let classes = (classRows ?? []) as Pick<
+    ClassRoom,
+    "id" | "name" | "campus_id"
+  >[];
+  if (profile.role === "pht" && profile.campus_id) {
+    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  }
   const classIds = classes.map((c) => c.id);
 
   const { data: studentRows } = classIds.length
@@ -217,6 +240,111 @@ export default async function SchoolRadarPage() {
 
   const flagged = risks.filter((r) => r.level !== "low");
 
+  // Persist cảnh báo vào early_warnings (dedupe theo lớp+nhóm) để có
+  // workflow tiếp nhận/xử lý - radar computed thuần không giữ được trạng thái.
+  const candidates: {
+    class_id: string;
+    category: string;
+    severity: "medium" | "high";
+    title: string;
+    detail: string;
+    suggestion: string;
+    dedupe_key: string;
+  }[] = [];
+  for (const r of risks) {
+    if (r.unexcused >= 4) {
+      candidates.push({
+        class_id: r.classId,
+        category: "chuyen_can",
+        severity: warningSeverity(r.unexcused, 10),
+        title: "Vắng không phép tăng",
+        detail: `${r.unexcused} lượt vắng không phép trong 30 ngày`,
+        suggestion: CATEGORY_SUGGESTION.chuyen_can,
+        dedupe_key: `${r.classId}|chuyen_can`,
+      });
+    }
+    if (r.lowGrades >= 2) {
+      candidates.push({
+        class_id: r.classId,
+        category: "hoc_tap",
+        severity: warningSeverity(r.lowGrades, 5),
+        title: "Nhiều học sinh điểm dưới 5",
+        detail: `${r.lowGrades} em có điểm trung bình môn dưới 5`,
+        suggestion: CATEGORY_SUGGESTION.hoc_tap,
+        dedupe_key: `${r.classId}|hoc_tap`,
+      });
+    }
+    if (r.openIncidents >= 1) {
+      candidates.push({
+        class_id: r.classId,
+        category: "an_toan",
+        severity: warningSeverity(r.openIncidents, 2),
+        title: "Sự cố chưa xử lý xong",
+        detail: `${r.openIncidents} sự cố đang mở hoặc đang theo dõi`,
+        suggestion: CATEGORY_SUGGESTION.an_toan,
+        dedupe_key: `${r.classId}|an_toan`,
+      });
+    }
+    if (r.pendingCounseling >= 1) {
+      candidates.push({
+        class_id: r.classId,
+        category: "tam_ly",
+        severity: warningSeverity(r.pendingCounseling, 2),
+        title: "Ca tư vấn chờ xử lý",
+        detail: `${r.pendingCounseling} ca tư vấn chưa đóng`,
+        suggestion: CATEGORY_SUGGESTION.tam_ly,
+        dedupe_key: `${r.classId}|tam_ly`,
+      });
+    }
+  }
+
+  if (candidates.length) {
+    const { data: existing } = await supabase
+      .from("early_warnings")
+      .select("dedupe_key")
+      .eq("school_id", profile.school_id ?? "")
+      .in(
+        "dedupe_key",
+        candidates.map((c) => c.dedupe_key),
+      );
+    const have = new Set(
+      ((existing ?? []) as { dedupe_key: string }[]).map((e) => e.dedupe_key),
+    );
+    const fresh = candidates
+      .filter((c) => !have.has(c.dedupe_key))
+      .map((c) => ({ ...c, school_id: profile.school_id }));
+    if (fresh.length) {
+      await supabase.from("early_warnings").insert(fresh);
+    }
+  }
+
+  const { data: warnRows } = await supabase
+    .from("early_warnings")
+    .select("*")
+    .eq("school_id", profile.school_id ?? "")
+    .in("status", ["open", "acknowledged"])
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const warnings = ((warnRows ?? []) as EarlyWarning[]).filter(
+    (w) => !w.class_id || classIds.includes(w.class_id),
+  );
+  const warnStudentIds = [
+    ...new Set(warnings.map((w) => w.student_id).filter((x): x is string => !!x)),
+  ];
+  const { data: warnStudents } = warnStudentIds.length
+    ? await supabase
+        .from("students")
+        .select("id,full_name")
+        .in("id", warnStudentIds)
+    : { data: [] };
+  const warnStudentName = new Map(
+    ((warnStudents ?? []) as { id: string; full_name: string }[]).map((s) => [
+      s.id,
+      s.full_name,
+    ]),
+  );
+  const classNameMap = new Map(classes.map((c) => [c.id, c.name]));
+
   return (
     <>
       <PageHeader
@@ -309,6 +437,28 @@ export default async function SchoolRadarPage() {
           );
         })}
       </DataTable>
+
+      <h2 className="mb-3 mt-8 text-base font-semibold">
+        Cảnh báo cần xử lý{" "}
+        <span className="text-sm font-normal text-muted-foreground">
+          ({warnings.filter((w) => w.status === "open").length} đang mở)
+        </span>
+      </h2>
+      <WarningList
+        rows={warnings.map((w) => ({
+          id: w.id,
+          className: w.class_id ? (classNameMap.get(w.class_id) ?? "-") : "-",
+          studentName: w.student_id
+            ? (warnStudentName.get(w.student_id) ?? null)
+            : null,
+          category: w.category,
+          severity: w.severity,
+          title: w.title,
+          detail: w.detail,
+          suggestion: w.suggestion,
+          status: w.status,
+        }))}
+      />
     </>
   );
 }

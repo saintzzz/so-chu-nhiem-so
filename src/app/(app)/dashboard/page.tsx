@@ -111,6 +111,8 @@ export default async function DashboardPage() {
     { data: emuRaw },
     { data: notifRaw },
     { data: annRaw },
+    { data: reportRaw },
+    { data: evalRaw },
   ] = await Promise.all([
     hasStudents
       ? supabase
@@ -188,6 +190,21 @@ export default async function DashboardPage() {
           .eq("class_id", classId)
           .order("created_at", { ascending: false })
           .limit(4)
+      : Promise.resolve({ data: [] }),
+    classId
+      ? supabase
+          .from("daily_reports")
+          .select("id,status")
+          .eq("class_id", classId)
+          .eq("date", TODAY)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    hasStudents
+      ? supabase
+          .from("conduct_evaluations")
+          .select("student_id,comment,rating")
+          .in("student_id", studentIds)
+          .eq("term", "hk1")
       : Promise.resolve({ data: [] }),
   ]);
   const todayAtt = (todayAttRaw ?? []) as {
@@ -285,6 +302,26 @@ export default async function DashboardPage() {
   const incompleteRecords = students.filter(
     (s) => !s.dob || !s.address || !s.gender,
   ).length;
+
+  // Tác vụ nghiệp vụ bắt buộc hôm nay (giống mô hình "chưa điểm danh / chưa
+  // nộp báo cáo / chưa đánh giá" của hệ thống tham chiếu)
+  const todayReport = (reportRaw ?? null) as {
+    id: string;
+    status: string;
+  } | null;
+  const evalRows = (evalRaw ?? []) as {
+    student_id: string;
+    comment: string | null;
+    rating: string | null;
+  }[];
+  const evaluatedIds = new Set(
+    evalRows.filter((e) => e.rating && e.comment).map((e) => e.student_id),
+  );
+  const missingEvaluations = hasStudents
+    ? studentIds.filter((id) => !evaluatedIds.has(id)).length
+    : 0;
+  const notMarkedToday = hasStudents && todayAtt.length === 0;
+  const reportNotSubmitted = todayReport?.status !== "submitted";
 
   // Activity feed: notifications + announcements
   const feed: FeedItem[] = [
@@ -415,12 +452,83 @@ export default async function DashboardPage() {
         <h2 className="mb-3 text-base font-semibold">Việc cần làm hôm nay</h2>
         {tasks.length === 0 &&
         (unreadCount ?? 0) === 0 &&
-        openIncidents.length === 0 ? (
+        openIncidents.length === 0 &&
+        !notMarkedToday &&
+        !reportNotSubmitted &&
+        missingEvaluations === 0 ? (
           <p className="text-sm text-muted-foreground">
             Không có việc nào cần xử lý. Mọi thứ đều ổn!
           </p>
         ) : (
           <ul className="divide-y divide-border">
+            {notMarkedToday && (
+              <li>
+                <Link prefetch={false}
+                  href="/attendance/daily"
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error">
+                    <ClipboardCheck className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      Chưa điểm danh hôm nay
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Lớp {cls?.name} chưa có dữ liệu chuyên cần ngày hôm nay
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-error-bg px-2 py-0.5 text-xs font-medium text-error">
+                    Cần làm ngay
+                  </span>
+                </Link>
+              </li>
+            )}
+            {reportNotSubmitted && (
+              <li>
+                <Link prefetch={false}
+                  href="/attendance/daily-report"
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-warning-bg text-warning">
+                    <FileText className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      Chưa nộp báo cáo ngày cho Ban Giám Hiệu
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {todayReport
+                        ? "Báo cáo đang ở trạng thái nháp"
+                        : "Chưa tạo báo cáo hôm nay"}
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-warning-bg px-2 py-0.5 text-xs font-medium text-warning">
+                    Cần làm ngay
+                  </span>
+                </Link>
+              </li>
+            )}
+            {missingEvaluations > 0 && (
+              <li>
+                <Link prefetch={false}
+                  href="/conduct/evaluation"
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-bg text-primary">
+                    <Star className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">
+                      {missingEvaluations} học sinh chưa có đánh giá học kỳ I
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Hoàn thiện nhận xét và xếp loại rèn luyện
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            )}
             {tasks.slice(0, 5).map((t) => (
               <li key={t.id}>
                 <Link prefetch={false}

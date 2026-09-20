@@ -85,3 +85,79 @@ radar nâng cấp, trợ lý AI BGH, multi-campus/NQ37/TT15, phân cấp Sở-Ph
   đúng ý đồ gộp.
 - Dept roles giờ read-only toàn bộ dữ liệu vận hành trường ở tầng RLS,
   không chỉ page guard.
+
+---
+
+# Full System Test - Đợt 3 (2026-09-20)
+
+Phạm vi: RBAC toàn role, business flow E2E, data flow full-cycle, performance,
+cross-school leakage. Môi trường: production `so-chu-nhiem-so-theta.vercel.app`.
+
+## Ma trận RBAC (verify qua NEXT_REDIRECT marker + res.url)
+
+| Role | Home | Allowed crawl | Deny test | Kết quả |
+|---|---|---|---|---|
+| gvcn | /dashboard | 56/56 route render | 17/17 deny -> /dashboard | PASS |
+| gvbm | /academics/grades | 6/6 | deny -> /academics/grades; /safety/report cho phép có chủ đích | PASS |
+| to_truong | /team/home | 8/8 | deny -> /team/home | PASS |
+| bgh | /school/dashboard | 17/17 + 4 route giám sát (students, attendance, conduct, grades - có chủ đích) | deny đúng | PASS |
+| pht | /school/dashboard | 9/9 (sau fix) | campus scope: chỉ lớp 9A2 | PASS |
+| ke_toan | /school/staff | 2/2 | 8/8 deny -> /school/staff | PASS |
+| so_gd | /dept/dashboard | 3/3 | 6/6 deny -> /dept/dashboard | PASS |
+| phong_gd | /dept/dashboard | 1/1 | 7/7 deny -> /dept/dashboard | PASS |
+| ubnd | /dept/dashboard | 1/1 | 6/6 deny -> /dept/dashboard | PASS |
+| phu_huynh | /portal/parent | portal only | 7/7 route nội bộ -> /portal/parent (kể cả /portal/student) | PASS |
+| hoc_sinh | /portal/student | portal only | 7/7 -> /portal/student | PASS |
+| gvcn-th | /dashboard | lớp 3A, trường Tiểu học Chu Văn An | - | PASS |
+| bgh-th | /school/dashboard | trường Tiểu học Chu Văn An (sau fix tên) | /dept/* deny | PASS |
+
+## Business flow E2E (đợt này)
+
+| Luồng | Kết quả |
+|---|---|
+| GVCN ghi nhận sự cố -> incidents + notif BGH | PASS - DB `new`, notif tới bgh@ |
+| GVCN gửi thông báo PH -> announcements | PASS - persist, class_id=6A1, portal PH query đúng class_id con |
+| GVCN tiếp nhận ca tư vấn -> assessment | PASS - case `Mới` xuất hiện ở màn đánh giá |
+
+## Bug phát hiện & đã fix
+
+1. **Cross-school notification leak**: `createIncident` gửi notif tới MỌI
+   profile role=bgh toàn hệ thống (bgh-th nhận sự cố của THCS Nguyễn Du).
+   Fix: scope `school_id` + PHT theo `campus_id` của lớp. Commit `88e080f`.
+2. **Cross-school teacher list**: teacher-chat, exams proctor list, timetable
+   BGH-view liệt kê GV mọi trường. Fix: `.eq("school_id")`. Commit `88e080f`.
+3. **PHT redirect loop**: nav trỏ 3 route mà guard chặn pht
+   (/school/dashboard, /safety/bgh, /schedule/timetable; ROLE_HOME.pht trùng
+   trang bị chặn -> tự redirect). Fix: thêm pht vào guard + campus scope.
+   Commit `bbde27a`.
+4. **Tên trường hard-code**: /school/dashboard hiển thị "THCS Nguyễn Du" cho
+   mọi trường. Fix: query `schools.name` theo profile. Commit `bbde27a`.
+5. **Prompt AI hard-code "THCS"**: đổi "trường THCS Việt Nam" -> "trường phổ
+   thông Việt Nam" (6 file). Commit `bbde27a`.
+
+## Performance - root cause + fix hệ thống
+
+- Triệu chứng: `/dept/dashboard` ~5.5s, `/school/radar` ~1.1s,
+  `/register/signoff` ~1.0s.
+- Nguyên nhân: 140 policy `qual` + 88 `with_check` gọi `is_staff()`,
+  `is_school_staff()`, `my_role()`, `my_school_id()`, `auth.uid()` TRỰC TIẾP
+  -> Postgres eval lại cho từng row.
+- Fix: migration `rls_initplan_perf_wrap` - DO block wrap mọi hàm vào
+  `(select fn())` (initplan, eval 1 lần/query) cho toàn bộ 220 policy.
+
+| Route | Trước | Sau |
+|---|---|---|
+| /dept/dashboard | ~5500ms | ~600ms (9x) |
+| /school/radar | ~1098ms | ~550ms |
+| /register/signoff | ~1018ms | ~270ms |
+| Các route còn lại | 185-950ms | 217-590ms |
+
+Mọi route chính < 1s, đạt ngưỡng.
+
+## Còn theo dõi
+
+- `dept/users` (so_gd/admin) liệt kê toàn bộ profiles - có chủ đích (quản trị).
+- AI fallback Devin ~10-30s khi LLM chính hết quota (giới hạn engine);
+  UI chỉ hiện progress trung lập.
+- E2E artifacts trong DB: incident "[E2E-TEST]", announcement "[E2E]",
+  counseling case "[E2E]" của lớp 6A1 - có thể xóa khi lên data thật.

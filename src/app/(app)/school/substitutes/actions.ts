@@ -66,6 +66,7 @@ export async function decideSubstituteRequest(
   requestId: string,
   approve: boolean,
   note?: string,
+  substituteTeacherId?: string | null,
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "pht"]);
   if (deny) return { error: deny };
@@ -97,13 +98,18 @@ export async function decideSubstituteRequest(
       decided_by: profile.id,
       decided_at: new Date().toISOString(),
       note: note?.trim() || null,
+      // BGH có thể phân công GV dạy thay ngay lúc duyệt nếu yêu cầu chưa có.
+      ...(approve && substituteTeacherId
+        ? { substitute_teacher_id: substituteTeacherId }
+        : {}),
     })
     .eq("id", requestId)
     .eq("status", "pending");
   if (error) return { error: error.message };
 
   const targets = new Set([r.requested_by, r.absent_teacher_id]);
-  if (r.substitute_teacher_id) targets.add(r.substitute_teacher_id);
+  const effectiveSub = substituteTeacherId ?? r.substitute_teacher_id;
+  if (effectiveSub) targets.add(effectiveSub);
   targets.delete(profile.id);
   await supabase.from("notifications").insert(
     [...targets].map((id) => ({

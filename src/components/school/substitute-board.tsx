@@ -69,6 +69,7 @@ export function SubstituteBoard({
   });
   const [period, setPeriod] = useState(1);
   const [subId, setSubId] = useState("");
+  const [assignPick, setAssignPick] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -150,10 +151,40 @@ export function SubstituteBoard({
     });
   }
 
+  // Gợi ý GV dạy thay cho 1 yêu cầu pending (cùng môn, rảnh tiết đó)
+  function candidatesFor(r: Req) {
+    const jsDay = new Date(r.date + "T00:00:00").getDay();
+    if (jsDay === 0 || !r.subject_id) return teachers;
+    const wd = jsDay + 1;
+    const busy = new Set(
+      timetable
+        .filter((t) => t.weekday === wd && t.period === r.period)
+        .map((t) => t.teacher_id)
+        .filter((x): x is string => !!x),
+    );
+    const sameSubject = new Set(
+      teacherSubjects
+        .filter((ts) => ts.subject_id === r.subject_id)
+        .map((ts) => ts.teacher_id),
+    );
+    const free = teachers.filter(
+      (t) =>
+        sameSubject.has(t.id) &&
+        t.id !== r.absent_teacher_id &&
+        !busy.has(t.id),
+    );
+    return free.length ? free : teachers.filter((t) => !busy.has(t.id));
+  }
+
   function decide(id: string, approve: boolean) {
     start(async () => {
       setErr(null);
-      const r = await decideSubstituteRequest(id, approve);
+      const r = await decideSubstituteRequest(
+        id,
+        approve,
+        undefined,
+        assignPick[id] || null,
+      );
       if (r.error) setErr(r.error);
       else setMsg(approve ? "Đã duyệt điều động." : "Đã từ chối.");
     });
@@ -332,15 +363,35 @@ export function SubstituteBoard({
             {canDecide && (
               <td>
                 {r.status === "pending" && (
-                  <span className="flex gap-1">
+                  <span className="flex items-center gap-1">
+                    {!r.substitute_teacher_id && (
+                      <select
+                        value={assignPick[r.id] ?? ""}
+                        onChange={(e) =>
+                          setAssignPick((p) => ({
+                            ...p,
+                            [r.id]: e.target.value,
+                          }))
+                        }
+                        className="h-7 max-w-36 rounded-md border border-border bg-background px-1.5 text-xs"
+                        title="Phân công GV dạy thay (có thể để trống)"
+                      >
+                        <option value="">- Chọn GV thay -</option>
+                        {candidatesFor(r).map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <button
                       type="button"
                       onClick={() => decide(r.id, true)}
-                      disabled={pending || !r.substitute_teacher_id}
+                      disabled={pending}
                       title={
-                        r.substitute_teacher_id
+                        r.substitute_teacher_id || assignPick[r.id]
                           ? "Duyệt"
-                          : "Cần chọn GV dạy thay trước"
+                          : "Duyệt (chưa có GV thay - phân công sau)"
                       }
                       className="rounded-md p-1.5 text-success hover:bg-success-bg disabled:opacity-40"
                     >

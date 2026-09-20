@@ -54,6 +54,7 @@ export default async function ExamsPage({
       .from("profiles")
       .select("id,full_name")
       .in("role", ["gvcn", "gvbm", "to_truong", "bgh"])
+      .eq("school_id", profile.school_id ?? "")
       .order("full_name"),
     supabase.from("schools").select("id").limit(1),
   ]);

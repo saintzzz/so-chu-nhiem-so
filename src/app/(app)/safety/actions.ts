@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { checkActionRole } from "@/lib/auth";
+import { checkActionRole, getProfile } from "@/lib/auth";
 import type { Incident } from "@/types";
 
 export async function createIncident(input: {
@@ -15,6 +15,8 @@ export async function createIncident(input: {
 }): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "gvbm", "to_truong", "bgh"]);
   if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,12 +36,37 @@ export async function createIncident(input: {
     occurred_at: input.occurredAt || new Date().toISOString(),
   });
   if (error) return { error: error.message };
-  const { data: bghProfiles } = await supabase
+  // Chỉ báo lãnh đạo cùng trường; PHT chỉ nhận nếu sự cố thuộc cơ sở mình phụ trách.
+  const { data: leaderProfiles } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("role", "bgh");
-  const notifRows = ((bghProfiles ?? []) as { id: string }[])
-    .filter((p) => p.id !== user.id)
+    .select("id,role,campus_id")
+    .eq("school_id", profile.school_id ?? "")
+    .in("role", ["bgh", "pht"]);
+  let incidentCampusId: string | null = null;
+  if (input.classId) {
+    const { data: cls } = await supabase
+      .from("classes")
+      .select("campus_id")
+      .eq("id", input.classId)
+      .single();
+    incidentCampusId =
+      (cls as Pick<{ campus_id: string | null }, "campus_id"> | null)
+        ?.campus_id ?? null;
+  }
+  const notifRows = (
+    (leaderProfiles ?? []) as {
+      id: string;
+      role: string;
+      campus_id: string | null;
+    }[]
+  )
+    .filter(
+      (p) =>
+        p.id !== user.id &&
+        (p.role === "bgh" ||
+          !incidentCampusId ||
+          p.campus_id === incidentCampusId),
+    )
     .map((p) => ({
       profile_id: p.id,
       type: "incident",

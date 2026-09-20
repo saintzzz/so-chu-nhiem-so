@@ -31,6 +31,7 @@ export default async function TeacherChatPage({
     .from("profiles")
     .select("id,full_name")
     .eq("role", "gvbm")
+    .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
     .order("full_name");
   const teachers = (teacherData ?? []) as ProfileRow[];

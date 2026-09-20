@@ -70,9 +70,10 @@ export function RosterClient({
       await supabase.from("class_roles").delete().eq("student_id", studentId);
       setRoles((rs) => rs.filter((r) => r.student_id !== studentId));
     } else {
+      await supabase.from("class_roles").delete().eq("student_id", studentId);
       const { error } = await supabase
         .from("class_roles")
-        .upsert({ student_id: studentId, role }, { onConflict: "student_id" });
+        .insert({ student_id: studentId, role });
       if (!error) {
         setRoles((rs) => [
           ...rs.filter((r) => r.student_id !== studentId),

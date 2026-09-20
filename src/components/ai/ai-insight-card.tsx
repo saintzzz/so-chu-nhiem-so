@@ -7,8 +7,9 @@ import { useAiJob } from "@/hooks/use-ai-job";
 
 interface Props {
   endpoint: string;
-  /** Payload gửi lên route - phải serializable */
-  payload: () => Record<string, unknown>;
+  /** Payload gửi lên route - phải serializable (plain object, vì có thể
+   *  được truyền từ Server Component) */
+  payload: Record<string, unknown>;
   title: string;
   buttonLabel?: string;
   progressLabel?: string;
@@ -70,7 +71,7 @@ export function AiInsightCard({
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload()),
+        body: JSON.stringify(payload),
       });
       const json = (await res.json()) as {
         result?: InsightResult | null;

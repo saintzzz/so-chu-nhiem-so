@@ -233,7 +233,7 @@ export default async function AnalysisPage({
       {classId && (
         <AiInsightCard
           endpoint="/api/ai/class-analysis"
-          payload={() => ({ classId, term })}
+          payload={{ classId, term }}
           title="Nhận xét AI về kết quả lớp"
           buttonLabel="Phân tích lớp"
         />

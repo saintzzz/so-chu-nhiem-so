@@ -184,7 +184,7 @@ export default async function DeptDashboardPage() {
       <div className="mt-4">
         <AiInsightCard
           endpoint="/api/ai/dept-brief"
-          payload={() => ({})}
+          payload={{}}
           title="Báo cáo AI cho cấp quản lý"
           buttonLabel="Tổng hợp báo cáo"
         />

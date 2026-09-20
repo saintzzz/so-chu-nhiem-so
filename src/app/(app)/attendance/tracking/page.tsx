@@ -148,7 +148,7 @@ export default async function AttendanceTrackingPage({
       <div className="mb-4">
         <AiInsightCard
           endpoint="/api/ai/attendance-insight"
-          payload={() => ({ classId: selected.id })}
+          payload={{ classId: selected.id }}
           title={`AI phân tích pattern vắng/muộn - lớp ${selected.name}`}
           buttonLabel="Phân tích pattern"
         />

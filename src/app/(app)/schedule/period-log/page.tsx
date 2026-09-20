@@ -232,7 +232,7 @@ export default async function PeriodLogPage({
         <div className="mb-4">
           <AiInsightCard
             endpoint="/api/ai/period-log-summary"
-            payload={() => ({ classId: myClasses[0].id })}
+            payload={{ classId: myClasses[0].id }}
             title="AI tóm tắt sổ đầu bài"
             buttonLabel="Tóm tắt tuần"
           />

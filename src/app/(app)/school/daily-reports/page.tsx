@@ -94,7 +94,7 @@ export default async function SchoolDailyReportsPage() {
       <div className="mb-4">
         <AiInsightCard
           endpoint="/api/ai/daily-digest"
-          payload={() => ({ date: today })}
+          payload={{ date: today }}
           title="Bản tin ngày (AI gộp báo cáo các lớp)"
           buttonLabel="Tóm tắt báo cáo ngày"
         />

@@ -112,7 +112,7 @@ export default async function EmulationRankingPage() {
       <div className="mb-4">
         <AiInsightCard
           endpoint="/api/ai/emulation-summary"
-          payload={() => ({ period: PERIOD })}
+          payload={{ period: PERIOD }}
           title="Tóm tắt thi đua bằng AI"
           buttonLabel="Tóm tắt kỳ này"
         />

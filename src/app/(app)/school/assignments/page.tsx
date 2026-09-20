@@ -89,7 +89,7 @@ export default async function AssignmentsPage() {
       />
       <AiInsightCard
         endpoint="/api/ai/assignment-suggest"
-        payload={() => ({})}
+        payload={{}}
         title="AI gợi ý phân công giảng dạy"
         buttonLabel="Đề xuất phân công"
       />

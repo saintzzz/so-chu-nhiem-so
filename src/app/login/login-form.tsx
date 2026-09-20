@@ -22,6 +22,7 @@ const DEMO_ACCOUNTS = [
   { role: "Phòng GD&ĐT", email: "phonggd@demo.scn" },
   { role: "UBND địa bàn", email: "ubnd@demo.scn" },
   { role: "Phụ huynh", email: "phuhuynh@demo.scn" },
+  { role: "Phụ huynh 2 (mẹ - cùng con với TK trên)", email: "phuhuynh2@demo.scn" },
   { role: "Học sinh", email: "hocsinh@demo.scn" },
   { role: "[TH] GVCN - lớp 3A (Tiểu học Chu Văn An)", email: "gvcn-th@demo.scn" },
   { role: "[TH] BGH - Tiểu học Chu Văn An", email: "bgh-th@demo.scn" },

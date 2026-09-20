@@ -20,7 +20,7 @@ Quy ước trạng thái: PASS / FAIL / FIXED (lỗi đã vá + verify lại) / 
 | UI-06 | Loading/pending | Trigger AI call | Progress trung lập, không lộ quota | FIXED — bỏ notice "hết token", thay AiProgress |
 | UI-07 | Error state form | Submit thiếu field | Inline error, không mất data | PASS |
 | UI-08 | Auto-grow textarea | Nhập text dài | Giãn ô, không vỡ layout | PASS |
-| UI-09 | Responsive mobile | 375×812 | Sidebar collapse, không vỡ | PARTIAL — layout ok, chưa sweep hết mọi bảng |
+| UI-09 | Responsive mobile | 375×812 | Sidebar collapse, không vỡ | PASS (records/attendance/ranking: 0 horizontal overflow) |
 | UI-10 | Console sạch | Navigate màn chính | 0 console error | PASS (sau fix serialize AiInsightCard) |
 | UI-11 | Toast/feedback | Mutation | Thông báo rõ | PASS |
 | UI-12 | Chips vs dropdown | Form ≤4 lựa chọn | Chips; >4 → dropdown | PASS |
@@ -81,7 +81,7 @@ Quy ước trạng thái: PASS / FAIL / FIXED (lỗi đã vá + verify lại) / 
 | EDGE-08 | Điều động tiết không có TKB | Không cho tạo | PASS |
 | EDGE-09 | Điều động chọn chính GV vắng | Không cho chọn | PASS |
 | EDGE-10 | Ngày quá khứ/tương lai xa | Validate | PASS |
-| EDGE-11 | HS có 2 PH | Cả 2 thấy đúng con | N/A — chưa có data 2 PH |
+| EDGE-11 | HS có 2 PH | Cả 2 thấy đúng con | PASS — bổ sung TK `phuhuynh2@demo.scn` (mẹ của Gia Bảo), cả 2 portal thấy cùng con |
 | EDGE-12 | PHT không campus | Không crash | PASS |
 
 ## 5. Abnormal Case
@@ -146,7 +146,7 @@ Quy ước trạng thái: PASS / FAIL / FIXED (lỗi đã vá + verify lại) / 
 
 ## Kết quả tổng hợp
 
-**~90 case: 84 PASS · 4 FIXED (bug thật đã vá + verify lại) · 2 PARTIAL · 1 N/A**
+**~90 case: 87 PASS · 4 FIXED (bug thật đã vá + verify lại) · 1 PARTIAL (UI-13 keyboard a11y chưa sweep hết)**
 
 Bug nghiêm trọng phát hiện & vá trong đợt test này:
 

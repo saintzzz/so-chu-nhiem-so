@@ -127,8 +127,7 @@ async function main() {
   const SUBJECTS = ["Toán","Ngữ văn","Tiếng Anh","Vật lý","Hóa học","Sinh học","Lịch sử","Địa lý","GDCD","Tin học","Thể dục","Âm nhạc","Mỹ thuật"];
   const subjectRows = SUBJECTS.map((name) => ({ school_id: sid, name }));
   await batch("subjects", subjectRows);
-  const { data: subjects } = await supabase.from("subjects").select().eq("school_id", sid);
-  const subByName = Object.fromEntries(subjects.map((s) => [s.name, s.id]));
+
 
   const gvbmIds = [uids["gvbm@demo.scn"]];
   for (let i = 0; i < 14; i++) {
@@ -193,7 +192,11 @@ async function main() {
       });
     }
   }
-  await batch("parents", parentRows.map(({ _student_code, ...p }) => p));
+  await batch("parents", parentRows.map((row) => {
+    const p = { ...row };
+    delete p._student_code;
+    return p;
+  }));
   await batch("students", studentRows.map((s) => s));
   const { data: students } = await supabase.from("students").select();
   const { data: parents } = await supabase.from("parents").select();

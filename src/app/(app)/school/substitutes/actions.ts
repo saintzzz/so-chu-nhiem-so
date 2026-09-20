@@ -13,7 +13,7 @@ export async function createSubstituteRequest(input: {
   substituteTeacherId: string | null;
   reason: string;
 }): Promise<{ error?: string }> {
-  const deny = await checkActionRole(["bgh", "pht", "gvcn"]);
+  const deny = await checkActionRole(["bgh", "pht"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
   const profile = await getProfile();
@@ -43,17 +43,9 @@ export async function createSubstituteRequest(input: {
   });
   if (error) return { error: error.message };
 
-  // Thông báo cho BGH (nếu GVCN tạo) hoặc cho GV được đề xuất
+  // Thông báo cho GV được đề xuất dạy thay
   const targets = new Set<string>();
   if (input.substituteTeacherId) targets.add(input.substituteTeacherId);
-  if (profile.role === "gvcn") {
-    const { data: leaders } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("role", ["bgh", "pht"])
-      .eq("school_id", profile.school_id ?? "");
-    ((leaders ?? []) as { id: string }[]).forEach((p) => targets.add(p.id));
-  }
   targets.delete(profile.id);
   if (targets.size) {
     await supabase.from("notifications").insert(

@@ -11,7 +11,7 @@ import type {
 } from "@/types";
 
 export default async function SubstitutesPage() {
-  const profile = await requireRoles(["bgh", "pht", "gvcn"]);
+  const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 

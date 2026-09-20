@@ -15,7 +15,7 @@ const DEMO_ACCOUNTS = [
   { role: "GVCN - lớp 9A2", email: "gvcn8@school.scn" },
   { role: "GVBM (Giáo viên bộ môn)", email: "gvbm@demo.scn" },
   { role: "Tổ trưởng chuyên môn", email: "totruong@demo.scn" },
-  { role: "BGH (Ban Giám Hiệu)", email: "bgh@demo.scn" },
+  { role: "Hiệu trưởng / BGH", email: "bgh@demo.scn" },
   { role: "PHT - Phân hiệu Bản Mới", email: "pht@demo.scn" },
   { role: "Kế toán", email: "ketoan@demo.scn" },
   { role: "Quản trị viên Sở GD&ĐT", email: "sogd@demo.scn" },

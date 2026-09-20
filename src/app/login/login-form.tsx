@@ -14,9 +14,11 @@ const DEMO_ACCOUNTS = [
   { role: "GVCN - lớp 9A1", email: "gvcn7@school.scn" },
   { role: "GVCN - lớp 9A2", email: "gvcn8@school.scn" },
   { role: "GVBM (Giáo viên bộ môn)", email: "gvbm@demo.scn" },
-  { role: "Tổ trưởng chuyên môn", email: "totruong@demo.scn" },
+  { role: "Tổ trưởng chuyên môn - Tổ Tự nhiên", email: "totruong@demo.scn" },
+  { role: "Tổ trưởng chuyên môn - Tổ Xã hội", email: "totruong2@demo.scn" },
   { role: "Hiệu trưởng / BGH", email: "bgh@demo.scn" },
   { role: "PHT - Phân hiệu Bản Mới", email: "pht@demo.scn" },
+  { role: "PHT - Cơ sở Trung tâm", email: "pht2@demo.scn" },
   { role: "Kế toán", email: "ketoan@demo.scn" },
   { role: "Quản trị viên Sở GD&ĐT", email: "sogd@demo.scn" },
   { role: "Phòng GD&ĐT", email: "phonggd@demo.scn" },
@@ -26,6 +28,8 @@ const DEMO_ACCOUNTS = [
   { role: "Học sinh", email: "hocsinh@demo.scn" },
   { role: "[TH] GVCN - lớp 3A (Tiểu học Chu Văn An)", email: "gvcn-th@demo.scn" },
   { role: "[TH] BGH - Tiểu học Chu Văn An", email: "bgh-th@demo.scn" },
+  { role: "[TH] Phụ huynh (Tiểu học)", email: "phuhuynh-th@demo.scn" },
+  { role: "[TH] Học sinh (Tiểu học)", email: "hocsinh-th@demo.scn" },
 ];
 
 export function LoginForm() {

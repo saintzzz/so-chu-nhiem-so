@@ -63,10 +63,21 @@ export default async function RecordsIntakePage() {
     ((yearsRes.data ?? []) as AcademicYear[]).map((y) => [y.id, y.name]),
   );
 
-  const currentYearId =
+  const yearFromClasses =
     ((yearsRes.data ?? []) as AcademicYear[]).find((y) => y.is_current)?.id ??
     classes[0]?.academic_year_id ??
     null;
+
+  let currentYearId = yearFromClasses;
+  if (!currentYearId && profile.school_id) {
+    const { data: currentYear } = await supabase
+      .from("academic_years")
+      .select("id")
+      .eq("school_id", profile.school_id)
+      .eq("is_current", true)
+      .maybeSingle();
+    currentYearId = currentYear?.id ?? null;
+  }
 
   return (
     <div>

@@ -203,3 +203,45 @@ Dọn sạch operational data, bootstrap org structure, rồi tạo data qua ch�
 - [x] Business chain chính chạy đầy đủ trên data mới
 - [x] Cross-tenant RLS giữ sau wipe (không rò THCS → TH)
 - [x] Không lộ service key trong bundle
+
+## Đợt production rehearsal toàn role (20/09/2026) - qua UI thật, không script
+
+### Phạm vi đã quét theo role (tất cả option được dùng)
+
+- **GVCN**: điểm danh 4 trạng thái + import CSV (có dòng lỗi test validation) 2 lớp, nghỉ phép filter, thông báo PH cả lớp + từng HS, AI phân tích chuyên cần, history, báo cáo ngày. Điểm TT22 2 lớp 3 môn (số + nhận xét Đạt/Chưa đạt) + import Excel điểm 32 HS, phân tích + AI, HS cần hỗ trợ (tạo qua điểm yếu thật) -> plan duyệt -> triển khai. Teacher-chat, parent-chat, kỳ thi (2 buổi tay + 3 buổi import + publish + AI sinh câu hỏi 4 mức nhận thức). Rèn luyện 3 loại ghi nhận + xếp loại HK1 5 HS + student-chat. Tư vấn: intake + AI severity + counseling + referral + status lifecycle. CMHS 3 vai trò + đổi vai trò. HĐGD tạo plan -> trình duyệt. Sự cố 3 loại/mức + AI rewrite + followup + archive + báo cáo BGH. Sổ CN: BCS 4 chức danh, seating v1, year-events manual + CSV, AI gợi ý -> kế hoạch tháng từ year-events, KPI, export CSV. Sổ đầu bài -> sync attendance `source=period_log`. Thi đua 9 lớp ranking. Năng lực tự đánh giá + minh chứng.
+- **GVBM**: điểm Toán 6A2 34 HS (136 record), 2 giáo án (1 đầy đủ, 1 sơ sài), lịch thi, SĐB 7A1 (vắng KP -> sync).
+- **Tổ trưởng**: AI nhận xét giáo án (persist `review_note`), duyệt + trả về kèm note, sinh hoạt CM 2 buổi, review năng lực.
+- **BGH**: duyệt giáo án cấp 3, TKB 6A3 import 27 tiết (reject 2 môn sai), radar -> tiếp nhận cảnh báo, AI đề xuất, TT15 nộp 85/100 Mức 1, báo cáo sự cố lên BGH, ký sổ 6A3+8A2, đợt duyệt 9 lớp + khóa 6A3.
+- **PHT**: dashboard + báo cáo ngày scoped đúng cơ sở Bản Mới (chỉ 9A2).
+- **Kế toán**: nav giới hạn đúng (staff + campuses).
+- **Sở GD**: dashboard tổng hợp + /dept/data toàn vẹn (fix count `*`).
+- **Phòng GD / UBND**: dashboard scoped theo org_unit (2 trường), phân cấp địa bàn đúng. AI báo cáo cấp quản lý: FAIL "Chưa tạo được phân tích".
+- **Phụ huynh x2**: portal read-only đúng con (Gia Bảo 8A2 - 2 PH shared-child), chuyên cần/điểm TT22 HK1-HK2-CN/lịch thi/CMHS/thông báo.
+- **Học sinh**: portal read-only đúng bản thân.
+
+### Bug fix đợt này (đã push)
+
+- `bd33591` ClassChips switcher 6 trang chuyên cần + `?class=` cho daily-report (GVCN nhiều lớp bị kẹt lớp đầu)
+- `2862b06` Ẩn nút "Báo cáo BGH" với non-BGH (dead control cho GVCN)
+- `d1792c6` `class_roles` upsert onConflict sai composite key -> delete+insert
+- `5247e2c` teacher-chat role-aware (GVBM thấy GVCN)
+- `7a83b1f` dept/data count `*` (parent_students/teacher_subjects không có cột id -> đếm 0)
+- Competency self-assessment/evidence mở role gvbm+to_truong (review page chờ nhưng form chỉ gvcn)
+- Meeting `created_by` chưa ghi -> fix
+
+### Gap phát hiện (chờ CR quyết định)
+
+1. Portal PH hoàn toàn read-only: `appointments` không có nơi nào insert (không đặt lịch), PH không reply được `messages`, không đăng ký HĐGD - 3 bảng/flow chỉ đọc.
+2. `audit_logs` chỉ được đọc, không writer - trang nhật ký luôn trống.
+3. AI review note lưu DB nhưng không hiển thị trên UI tổ trưởng.
+4. AI báo cáo cấp quản lý (Phòng/UBND) + trợ lý BGH không trả kết quả (quota/fallback).
+5. Không có UI tạo `student_groups` (6A3: 5 HS không tổ) và link `parent_students` (5 HS không PH).
+6. `daily-report` trước đây `.limit(1)` - đã có `?class=` nhưng cần regression trên lớp thứ 2.
+
+### Notifications verify (35 bản ghi)
+
+lesson_plan 17, incident 6, message 5, substitute 3, daily_report 3, warning 1 - đúng recipient theo role+scope.
+
+### Consistency
+
+`node scripts/check-consistency.mjs` - ALL PASS (20/09/2026).

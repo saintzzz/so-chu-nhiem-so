@@ -5,6 +5,7 @@ import { Target } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { logAudit } from "@/lib/audit";
 import { CURRENT_PERIOD, type Kpi } from "./types";
 
 const KPI_LABELS: Record<string, string> = {
@@ -64,6 +65,12 @@ export function KpiClient({
     if (!error && data) {
       setKpis((ks) => [...ks, data as Kpi]);
       setMessage(`Đã đăng ký KPI kỳ "${period}".`);
+      logAudit(supabase, {
+        action: "Đăng ký KPI",
+        entity: "kpis",
+        entityId: data.id,
+        payload: { class_id: classId, period: period.trim() },
+      });
     } else {
       setMessage("Không thể đăng ký KPI.");
     }

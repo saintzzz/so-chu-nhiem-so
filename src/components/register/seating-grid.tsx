@@ -11,6 +11,7 @@ import { Copy, Printer, Save, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
+import { logAudit } from "@/lib/audit";
 import type { SeatingLayout, SeatingSeat, Student } from "@/types";
 
 const DEFAULT_COLS = 8;
@@ -209,6 +210,12 @@ export function SeatingGrid({
     } else {
       setVersion(nextVersion);
       setMessage(`Đã lưu sơ đồ phiên bản v${nextVersion}.`);
+      logAudit(supabase, {
+        action: "Lưu sơ đồ chỗ ngồi",
+        entity: "seating_charts",
+        entityId: classId,
+        payload: { month, version: nextVersion, seats: seats.length },
+      });
     }
     setSaving(false);
   }

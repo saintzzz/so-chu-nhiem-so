@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
+import { logAudit } from "@/lib/audit";
 import { EVENT_CATEGORIES, type SchoolYearEvent } from "./types";
 
 const inputCls =
@@ -59,6 +60,12 @@ export function YearEventsClient({
       setTitle("");
       setDate("");
       setMessage("Đã thêm sự kiện.");
+      logAudit(supabase, {
+        action: "Thêm sự kiện năm học",
+        entity: "school_year_events",
+        entityId: inserted.id,
+        payload: { title: row.title, event_date: row.event_date, category },
+      });
     } else {
       setMessage("Không thể thêm sự kiện.");
     }
@@ -112,6 +119,11 @@ export function YearEventsClient({
       if (fileRef.current) fileRef.current.value = "";
       setFileName(null);
       setMessage(`Đã nhập ${inserted.length} sự kiện.`);
+      logAudit(supabase, {
+        action: "Import sự kiện năm học",
+        entity: "school_year_events",
+        payload: { file: file.name, imported: inserted.length },
+      });
     } else {
       setMessage("Không thể nhập danh sách sự kiện.");
     }

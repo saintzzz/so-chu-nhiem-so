@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
+import { ParentActions } from "@/components/portal/parent-actions";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
@@ -80,16 +81,16 @@ export default async function ParentPortalPage() {
   const { data: classRow } = student
     ? await supabase
         .from("classes")
-        .select("id,name,school_id")
+        .select("id,name,school_id,gvcn_id")
         .eq("id", student.class_id)
         .single()
     : { data: null };
   const classroom = classRow as Pick<
     ClassRoom,
-    "id" | "name" | "school_id"
+    "id" | "name" | "school_id" | "gvcn_id"
   > | null;
 
-  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes] = student
+  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes] = student
     ? await Promise.all([
         supabase
           .from("attendance_records")
@@ -131,8 +132,23 @@ export default async function ParentPortalPage() {
           .from("subjects")
           .select("id,name")
           .eq("school_id", classroom?.school_id ?? ""),
+        supabase
+          .from("messages")
+          .select("id,sender_id,content,created_at")
+          .eq("recipient_id", profile.id)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("activities")
+          .select("id,title,activity_date,status")
+          .eq("class_id", student.class_id)
+          .in("status", ["approved", "announced"])
+          .order("activity_date", { ascending: false })
+          .limit(10),
       ])
     : [
+        { data: [] },
+        { data: [] },
         { data: [] },
         { data: [] },
         { data: [] },
@@ -252,6 +268,62 @@ export default async function ParentPortalPage() {
       t.full_name,
     ]),
   );
+
+  const gvcnId = classroom?.gvcn_id ?? null;
+  const rawMessages = (msgRes.data ?? []) as {
+    id: string;
+    sender_id: string;
+    content: string;
+    created_at: string;
+  }[];
+  const senderIds = [
+    ...new Set([...rawMessages.map((m) => m.sender_id), gvcnId].filter(Boolean)),
+  ] as string[];
+  const { data: senderRows } = senderIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", senderIds)
+    : { data: [] };
+  const senderNameOf = new Map(
+    ((senderRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((p) => [
+      p.id,
+      p.full_name,
+    ]),
+  );
+  const portalMessages = rawMessages.map((m) => ({
+    ...m,
+    senderName: senderNameOf.get(m.sender_id) ?? "Giáo viên",
+  }));
+
+  const rawActivities = (actRes.data ?? []) as {
+    id: string;
+    title: string;
+    activity_date: string;
+    status: string;
+  }[];
+  const { data: actAttRows } =
+    rawActivities.length > 0 && student
+      ? await supabase
+          .from("activity_attendance")
+          .select("activity_id,status")
+          .eq("student_id", student.id)
+          .in(
+            "activity_id",
+            rawActivities.map((a) => a.id),
+          )
+      : { data: [] };
+  const attByActivity = new Map(
+    ((actAttRows ?? []) as { activity_id: string; status: string }[]).map(
+      (r) => [r.activity_id, r.status],
+    ),
+  );
+  const portalActivities = rawActivities.map((a) => ({
+    id: a.id,
+    title: a.title,
+    activity_date: a.activity_date,
+    status: attByActivity.get(a.id) ?? null,
+  }));
 
   return (
     <div className="theme-fluent min-h-screen bg-background">
@@ -390,6 +462,16 @@ export default async function ParentPortalPage() {
                 </ul>
               </div>
             )}
+
+            <ParentActions
+              studentId={student.id}
+              teacherId={gvcnId}
+              teacherName={
+                gvcnId ? (senderNameOf.get(gvcnId) ?? "GVCN") : "GVCN"
+              }
+              messages={portalMessages}
+              activities={portalActivities}
+            />
 
             <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">

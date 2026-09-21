@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { CURRENT_MONTH, type Signoff } from "./types";
+import { logAudit } from "@/lib/audit";
 
 const STATUS_META: Record<string, { label: string; tone: "warning" | "success" | "muted" | "error" }> = {
   pending: { label: "Chờ ký", tone: "warning" },
@@ -58,6 +59,11 @@ export function SignoffClient({
     if (!error && data) {
       setSignoffs((ss) => [...ss, ...(data as Signoff[])]);
       setMessage(`Đã tạo đợt ký duyệt "${CURRENT_MONTH}" cho ${rows.length} lớp.`);
+      logAudit(supabase, {
+        action: "Tạo đợt ký duyệt sổ chủ nhiệm",
+        entity: "register_signoffs",
+        payload: { period: CURRENT_MONTH, classes: rows.length },
+      });
     } else {
       setMessage("Không thể tạo đợt ký duyệt.");
     }
@@ -85,6 +91,12 @@ export function SignoffClient({
       setMessage(
         `Đã ký duyệt sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period}.`,
       );
+      logAudit(supabase, {
+        action: "Ký duyệt sổ chủ nhiệm",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
     }
     setBusy(false);
   }

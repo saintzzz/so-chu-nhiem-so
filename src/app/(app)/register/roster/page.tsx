@@ -63,6 +63,33 @@ export default async function RosterPage({
       : { data: [] };
   const roles = (rolesData ?? []) as ClassRoleRow[];
 
+  const { data: linkData } =
+    students.length > 0
+      ? await supabase
+          .from("parent_students")
+          .select("student_id,parent_id")
+          .in(
+            "student_id",
+            students.map((s) => s.id),
+          )
+      : { data: [] };
+  const parentLinks = (linkData ?? []) as {
+    student_id: string;
+    parent_id: string;
+  }[];
+
+  const { data: parentsData } = await supabase
+    .from("parents")
+    .select("id,full_name,phone,email,relationship")
+    .order("full_name");
+  const parents = (parentsData ?? []) as {
+    id: string;
+    full_name: string;
+    phone: string | null;
+    email: string | null;
+    relationship: string | null;
+  }[];
+
   return (
     <>
       <PageHeader
@@ -75,6 +102,8 @@ export default async function RosterPage({
         students={students}
         groups={groups}
         roles={roles}
+        parents={parents}
+        parentLinks={parentLinks}
       />
     </>
   );

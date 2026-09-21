@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { CURRENT_PERIOD, type Signoff } from "./types";
+import { logAudit } from "@/lib/audit";
 
 const STATUS_META: Record<string, { label: string; tone: "warning" | "success" | "muted" | "error" }> = {
   pending: { label: "Chờ duyệt", tone: "warning" },
@@ -56,6 +57,12 @@ export function LockRecordsClient({
       setMessage(
         `Đã duyệt & khóa sổ học bạ lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period}.`,
       );
+      logAudit(supabase, {
+        action: "Khóa sổ học bạ",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
     }
     setBusy(false);
   }
@@ -84,6 +91,11 @@ export function LockRecordsClient({
     if (!error && data) {
       setSignoffs((ss) => [...ss, ...(data as Signoff[])]);
       setMessage(`Đã tạo đợt duyệt "${CURRENT_PERIOD}" cho ${rows.length} lớp.`);
+      logAudit(supabase, {
+        action: "Tạo đợt duyệt sổ học bạ",
+        entity: "register_signoffs",
+        payload: { period: CURRENT_PERIOD, classes: rows.length },
+      });
     } else {
       setMessage("Không thể tạo đợt duyệt.");
     }

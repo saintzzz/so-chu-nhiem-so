@@ -6,6 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { fmtDateVN } from "@/lib/utils";
 import type {
   Announcement,
   AttendanceRecord,
@@ -16,7 +17,7 @@ import type {
 } from "@/types";
 
 function formatDate(iso: string): string {
-  return iso.slice(0, 10).split("-").reverse().join("/");
+  return fmtDateVN(iso);
 }
 
 function pickString(row: Record<string, unknown>, key: string): string | null {

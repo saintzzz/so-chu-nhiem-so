@@ -1,6 +1,10 @@
 # CR-005 - Xem thời khóa biểu theo cá nhân / lớp chủ nhiệm
 
-Ngày: 21/09/2026 · Nguồn: yêu cầu user · Trạng thái: đã duyệt, đang implement
+Ngày: 21/09/2026 · Nguồn: yêu cầu user · Trạng thái: DONE (21/9/2026)
+
+Commits: `2e96bb3`, `9eaf0b9` (hiện tất cả tiết trùng slot), `3ae54c0` (tôn trọng ?view=class tường minh). Verify E2E production: GVCN chỉ thấy 6A3(CN), GVBM default lịch cá nhân, ô `Lớp · Môn · Phòng`, empty states - xem `docs/qa/TESTCASES.md` đợt CR-005.
+
+Phát hiện ngoài scope: TKB seed có xung đột GV (1 GV dạy 8-9 lớp cùng slot) - cần CR riêng chuẩn hoá dữ liệu/phân công TKB.
 
 ## 1. Nhu cầu
 

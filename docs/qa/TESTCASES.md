@@ -312,3 +312,20 @@ lesson_plan 17, incident 6, message 5, substitute 3, daily_report 3, warning 1 -
 ### Bug bắt được trong đợt này
 
 - Unique constraint `grades (student,subject,term,type,seq)` thiếu `subtype` -> 409 khi 2 loại cùng seq=1. Fix: subtype NOT NULL default '' + unique key gồm subtype (migration `20260921_cr004`), base row `subtype:""` cho gk/ck.
+
+## Đợt CR-005 (21/09/2026) - TKB cá nhân + scope lớp GVCN
+
+| Case | Kết quả |
+|---|---|
+| GVCN: chỉ thấy chip lớp chủ nhiệm | PASS - gvcn@demo.scn chỉ thấy "6A3(CN)", không thấy 8 lớp còn lại |
+| GVCN: mặc định view=class lớp CN | PASS - vào /schedule/timetable hiện "Lớp 6A3 - Tuần học" |
+| GVBM: mặc định view=me | PASS - gvbm@demo.scn hiện "Lịch dạy cá nhân" ngay khi vào |
+| Switcher 2 chế độ | PASS - chips "Lịch cá nhân" / "Theo lớp", ?view=class tường minh được tôn trọng (fix sau khi phát hiện override) |
+| Ô tiết cá nhân: Lớp - Môn - Phòng | PASS - "6A1 · Toán / Phòng P.601" |
+| Tiết trùng slot: hiện tất cả, ring amber | PASS - GV dạy 8-9 lớp cùng slot giờ hiện đủ thay vì ghi đè (phát hiện data seed xung đột) |
+| Class view: subject + GV + phòng | PASS - "Toán / Trần Văn Minh / Phòng P.601" |
+| Empty states | PASS - 2 chế độ đều có thông báo khi chưa có data |
+
+### Phát hiện data (không phải bug code)
+
+TKB seed có xung đột hệ thống: nhiều GV bị xếp dạy 8-9 lớp **cùng weekday+period** (VD: Phạm Thị Lan Anh dạy Vật lý 9 lớp cùng Thứ 5 tiết 1). Lịch cá nhân giờ hiển thị đúng thực trạng -> cần chuẩn hoá lại TKB toàn trường (phân bổ GV/slot không trùng).

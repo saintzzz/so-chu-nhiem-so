@@ -7,7 +7,16 @@ import {
   useDroppable,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Copy, Printer, Save, Sparkles } from "lucide-react";
+import {
+  Columns3,
+  Copy,
+  Minus,
+  Plus,
+  Printer,
+  Rows3,
+  Save,
+  Sparkles,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
@@ -126,8 +135,8 @@ export function SeatingGrid({
     () => buildCells(initialLayout, sortByVietnameseName(students, (s) => s.full_name)),
     [initialLayout, students],
   );
-  const [cols] = useState(initial.cols);
-  const [rows] = useState(initial.rows);
+  const [cols, setCols] = useState(initial.cols);
+  const [rows, setRows] = useState(initial.rows);
   const [cells, setCells] = useState<(string | null)[]>(initial.cells);
   const [praiseMode, setPraiseMode] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
@@ -173,6 +182,39 @@ export function SeatingGrid({
       swap(selected, i);
       setSelected(null);
     }
+  }
+
+  /** Đổi kích thước lưới: giữ vị trí (x,y) cũ, HS bị tràn xếp vào ô trống đầu. */
+  function resize(newCols: number, newRows: number) {
+    if (
+      newCols < 2 ||
+      newCols > 12 ||
+      newRows < 2 ||
+      newRows > 10 ||
+      (newCols === cols && newRows === rows)
+    )
+      return;
+    setCells((cs) => {
+      const seated: { x: number; y: number; sid: string }[] = [];
+      cs.forEach((sid, i) => {
+        if (sid) seated.push({ x: i % cols, y: Math.floor(i / cols), sid });
+      });
+      const next: (string | null)[] = Array(newCols * newRows).fill(null);
+      const overflow: string[] = [];
+      for (const s of seated) {
+        if (s.x < newCols && s.y < newRows) next[s.y * newCols + s.x] = s.sid;
+        else overflow.push(s.sid);
+      }
+      for (const sid of overflow) {
+        const idx = next.findIndex((c) => c === null);
+        if (idx >= 0) next[idx] = sid;
+      }
+      return next;
+    });
+    setCols(newCols);
+    setRows(newRows);
+    setSelected(null);
+    setMessage(`Đã đổi sơ đồ thành ${newRows} hàng x ${newCols} cột. Nhấn Lưu để áp dụng.`);
   }
 
   function copyPrevious() {
@@ -242,6 +284,54 @@ export function SeatingGrid({
         <Button onClick={save} disabled={saving}>
           <Save /> {saving ? "Đang lưu…" : `Lưu (v${version + 1})`}
         </Button>
+        <span className="ml-auto flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Rows3 className="size-4" aria-hidden />
+          Hàng
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => resize(cols, rows - 1)}
+            disabled={rows <= 2}
+            aria-label="Bớt hàng"
+          >
+            <Minus className="size-3.5" />
+          </Button>
+          <span className="w-5 text-center font-medium text-foreground">
+            {rows}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => resize(cols, rows + 1)}
+            disabled={rows >= 10}
+            aria-label="Thêm hàng"
+          >
+            <Plus className="size-3.5" />
+          </Button>
+          <Columns3 className="ml-2 size-4" aria-hidden />
+          Cột
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => resize(cols - 1, rows)}
+            disabled={cols <= 2}
+            aria-label="Bớt cột"
+          >
+            <Minus className="size-3.5" />
+          </Button>
+          <span className="w-5 text-center font-medium text-foreground">
+            {cols}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => resize(cols + 1, rows)}
+            disabled={cols >= 12}
+            aria-label="Thêm cột"
+          >
+            <Plus className="size-3.5" />
+          </Button>
+        </span>
       </div>
 
       {message && (

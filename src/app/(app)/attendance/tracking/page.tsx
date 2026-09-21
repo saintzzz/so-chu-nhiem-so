@@ -8,6 +8,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
+import { AttendanceDateNav } from "@/components/attendance/date-controls";
 
 interface AttRow {
   student_id: string;
@@ -24,10 +25,10 @@ function addDays(iso: string, days: number): string {
 export default async function AttendanceTrackingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; to?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
-  const { class: classParam } = await searchParams;
+  const { class: classParam, to: toParam } = await searchParams;
   const supabase = await createClient();
 
   let classQuery = supabase
@@ -71,9 +72,12 @@ export default async function AttendanceTrackingPage({
   const ids = students.map((s) => s.id);
   const studentById = new Map(students.map((s) => [s.id, s]));
 
-  // Ngày mốc = ngày có dữ liệu chuyên cần gần nhất
-  let anchor = new Date().toISOString().slice(0, 10);
-  if (ids.length > 0) {
+  // Ngày mốc = ?to= hoặc ngày có dữ liệu chuyên cần gần nhất
+  let anchor =
+    toParam && /^\d{4}-\d{2}-\d{2}$/.test(toParam)
+      ? toParam
+      : new Date().toISOString().slice(0, 10);
+  if (!toParam && ids.length > 0) {
     const { data: latest } = await supabase
       .from("attendance_records")
       .select("date")
@@ -139,6 +143,12 @@ export default async function AttendanceTrackingPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/tracking"
+      />
+      <AttendanceDateNav
+        date={anchor}
+        params={{ class: selected.id }}
+        label="Tính đến ngày"
+        paramName="to"
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">

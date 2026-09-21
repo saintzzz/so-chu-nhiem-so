@@ -7,6 +7,7 @@ import { ClassChips } from "@/components/class-chips";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { ChartCard, BarChart } from "@/components/charts";
+import { AttendanceRangeNav } from "@/components/attendance/date-controls";
 
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -15,19 +16,25 @@ interface AttDayRow {
   status: AttendanceStatus;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 async function fetchAllAttendance(
   supabase: ServerSupabase,
   studentIds: string[],
+  range: { from: string; to: string },
 ): Promise<AttDayRow[]> {
   const out: AttDayRow[] = [];
   const pageSize = 1000;
   for (let from = 0; from < 30000; from += pageSize) {
-    const { data } = await supabase
+    let q = supabase
       .from("attendance_records")
       .select("date,status")
       .in("student_id", studentIds)
       .order("date", { ascending: false })
       .range(from, from + pageSize - 1);
+    if (range.from) q = q.gte("date", range.from);
+    if (range.to) q = q.lte("date", range.to);
+    const { data } = await q;
     const rows = (data ?? []) as AttDayRow[];
     out.push(...rows);
     if (rows.length < pageSize) break;
@@ -49,10 +56,14 @@ const MONTH_LABEL = (ym: string) => {
 export default async function AttendanceHistoryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; from?: string; to?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
-  const { class: classParam } = await searchParams;
+  const {
+    class: classParam,
+    from: fromParam,
+    to: toParam,
+  } = await searchParams;
   const supabase = await createClient();
 
   let classQuery = supabase
@@ -90,10 +101,18 @@ export default async function AttendanceHistoryPage({
     .eq("status", "active");
   const students = (studentData ?? []) as Pick<Student, "id">[];
   const ids = students.map((s) => s.id);
-  const records = ids.length ? await fetchAllAttendance(supabase, ids) : [];
+  const range = {
+    from: fromParam && DATE_RE.test(fromParam) ? fromParam : "",
+    to: toParam && DATE_RE.test(toParam) ? toParam : "",
+  };
+  const hasRange = !!(range.from || range.to);
+  const records = ids.length
+    ? await fetchAllAttendance(supabase, ids, range)
+    : [];
 
-  const anchor = records[0]?.date ?? new Date().toISOString().slice(0, 10);
-  const windowStart = addDays(anchor, -29);
+  const anchor =
+    range.to || records[0]?.date || new Date().toISOString().slice(0, 10);
+  const windowStart = range.from || addDays(anchor, -29);
 
   // Tổng hợp theo ngày
   interface DayCount {
@@ -171,10 +190,19 @@ export default async function AttendanceHistoryPage({
         selectedId={selected.id}
         href="/attendance/history"
       />
+      <AttendanceRangeNav
+        from={range.from}
+        to={range.to}
+        params={{ class: selected.id }}
+      />
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="% chuyên cần (30 ngày)"
+          label={
+            hasRange
+              ? "% chuyên cần (khoảng chọn)"
+              : "% chuyên cần (30 ngày)"
+          }
           value={pct30 !== null ? `${pct30}%` : "-"}
           tone={pct30 !== null && pct30 >= 95 ? "success" : "warning"}
         />
@@ -186,7 +214,7 @@ export default async function AttendanceHistoryPage({
       {months.length > 0 && (
         <div className="mb-4">
           <ChartCard
-            title="Số lượt vắng không phép theo ngày (30 ngày)"
+            title={`Số lượt vắng không phép theo ngày (${hasRange ? "khoảng chọn" : "30 ngày"})`}
             ariaDescription="Biểu đồ cột số lượt vắng không phép mỗi ngày trong 30 ngày gần nhất"
           >
             <BarChart
@@ -247,7 +275,7 @@ export default async function AttendanceHistoryPage({
       </div>
 
       <h2 className="mb-3 text-base font-semibold">
-        Chi tiết theo ngày (30 ngày gần nhất)
+        Chi tiết theo ngày {hasRange ? "(khoảng chọn)" : "(30 ngày gần nhất)"}
       </h2>
       <DataTable
         columns={[

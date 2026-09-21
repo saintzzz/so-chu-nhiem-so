@@ -180,9 +180,10 @@ export function DailyRoster({
   return (
     <div className="space-y-4">
       {/* Summary counters */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
           { label: "Sĩ số", value: rows.length, cls: "text-foreground" },
+          { label: "Có mặt", value: counts.present, cls: "text-success" },
           {
             label: "Vắng",
             value: counts.excused + counts.unexcused,
@@ -237,7 +238,7 @@ export function DailyRoster({
           onClick={confirm}
           disabled={saving || rows.length === 0}
         >
-          {saving ? "Đang lưu..." : "Xác nhận chuyên cần hôm nay"}
+          {saving ? "Đang lưu..." : "Xác nhận chuyên cần"}
         </Button>
         {dirty && (
           <span className="text-sm text-warning">Có thay đổi chưa lưu</span>

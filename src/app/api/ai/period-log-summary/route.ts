@@ -58,7 +58,9 @@ export async function POST(req: Request) {
 
   const { data: logData } = await supabase
     .from("period_logs")
-    .select("id,date,timetable_entry_id,present_count,note")
+    .select(
+      "id,date,timetable_entry_id,present_count,note,lesson_title,lesson_content,teacher_comment",
+    )
     .in("timetable_entry_id", entries.map((e) => e.id))
     .order("date", { ascending: false })
     .limit(60);
@@ -68,6 +70,9 @@ export async function POST(req: Request) {
     timetable_entry_id: string;
     present_count: number | null;
     note: string | null;
+    lesson_title: string | null;
+    lesson_content: string | null;
+    teacher_comment: string | null;
   }[];
   if (!logs.length) {
     return NextResponse.json({
@@ -95,7 +100,11 @@ export async function POST(req: Request) {
         tiet: e?.period ?? null,
         mon: e?.subject_id ? (subjName.get(e.subject_id) ?? "-") : null,
         si_so_co_mat: l.present_count,
-        ghi_chu: (l.note ?? "").slice(0, 150),
+        bai_hoc: [l.lesson_title, l.lesson_content]
+          .filter(Boolean)
+          .join(" - ")
+          .slice(0, 150),
+        ghi_chu: (l.teacher_comment ?? l.note ?? "").slice(0, 150),
       };
     }),
   };

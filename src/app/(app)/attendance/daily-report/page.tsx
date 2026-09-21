@@ -3,16 +3,17 @@ import { ClassChips } from "@/components/class-chips";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DailyReportForm } from "@/components/attendance/daily-report-form";
+import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { ClassRoom, DailyReport, Student } from "@/types";
 
 export default async function DailyReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; date?: string }>;
 }) {
   const profile = await requireRoles(["gvcn"]);
-  const { class: classParam } = await searchParams;
+  const { class: classParam, date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: classData } = await supabase
@@ -45,9 +46,11 @@ export default async function DailyReportPage({
     (s) => s.id,
   );
 
-  // "Hôm nay" = ngày có dữ liệu chuyên cần gần nhất của trường (đồng nhất với trang BGH)
+  // Mặc định: ?date= hoặc ngày có dữ liệu chuyên cần gần nhất của trường
   let today = todayVN();
-  {
+  if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    today = dateParam;
+  } else {
     const { data: latest } = await supabase
       .from("attendance_records")
       .select("date, students!inner(classes!inner(school_id))")
@@ -113,6 +116,7 @@ export default async function DailyReportPage({
         selectedId={myClass.id}
         href="/attendance/daily-report"
       />
+      <AttendanceDateNav date={today} params={{ class: myClass.id }} />
       <DailyReportForm
         classId={myClass.id}
         className={myClass.name}

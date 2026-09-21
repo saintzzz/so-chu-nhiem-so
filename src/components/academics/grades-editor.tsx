@@ -26,12 +26,41 @@ export interface ExistingGrade {
   result: "dat" | "chua_dat" | null;
   comment: string | null;
   level: "T" | "H" | "C" | null;
+  seq: number | null;
+  subtype: string | null;
 }
 
 type Level = "" | "T" | "H" | "C";
 
+/** Loại cột điểm thường xuyên trong sổ điểm GVBM. "tx" = ĐĐGtx chung
+ *  (dữ liệu cũ chưa phân loại). Mọi loại đều lưu assessment_type=ddg_tx. */
+type TxKind = "mieng" | "kt15" | "kt1t" | "tx";
+
+interface TxCol {
+  id: string;
+  kind: TxKind;
+}
+
+const TX_KIND_LABEL: Record<TxKind, string> = {
+  mieng: "Miệng",
+  kt15: "15 phút",
+  kt1t: "1 tiết",
+  tx: "ĐĐGtx",
+};
+
+const TX_KIND_ORDER: TxKind[] = ["mieng", "kt15", "kt1t", "tx"];
+
+const DEFAULT_TX_KINDS: TxKind[] = ["mieng", "kt15", "kt1t"];
+
+let colSeq = 0;
+function newColId(kind: TxKind): string {
+  colSeq += 1;
+  return `${kind}-${colSeq}`;
+}
+
 interface CellState {
-  tx: string;
+  /** Điểm ĐĐGtx theo từng cột (key = TxCol.id) */
+  tx: Record<string, string>;
   gk: string;
   ck: string;
   result: "" | "dat" | "chua_dat";
@@ -44,7 +73,7 @@ interface CellState {
 }
 
 const EMPTY_CELL: CellState = {
-  tx: "",
+  tx: {},
   gk: "",
   ck: "",
   result: "",
@@ -62,21 +91,6 @@ const LEVEL_LABEL: Record<Level, string> = {
   C: "C",
 };
 
-function parseScores(raw: string): number[] | null {
-  const parts = raw
-    .split(/[\s,;]+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (!parts.length) return [];
-  const nums: number[] = [];
-  for (const p of parts) {
-    const n = Number(p.replace(",", "."));
-    if (Number.isNaN(n) || n < 0 || n > 10) return null;
-    nums.push(n);
-  }
-  return nums;
-}
-
 function parseScore(raw: string): number | null | undefined {
   const t = raw.trim();
   if (t === "") return null;
@@ -86,14 +100,18 @@ function parseScore(raw: string): number | null | undefined {
 }
 
 function cellAvg(c: CellState): number | null {
-  const tx = parseScores(c.tx);
+  const txNums: number[] = [];
+  for (const v of Object.values(c.tx)) {
+    const n = parseScore(v);
+    if (n === undefined) return null;
+    if (n !== null) txNums.push(n);
+  }
   const gk = c.gk.trim() === "" ? null : Number(c.gk.replace(",", "."));
   const ck = c.ck.trim() === "" ? null : Number(c.ck.replace(",", "."));
-  if (tx === null) return null;
   if (gk != null && (Number.isNaN(gk) || gk < 0 || gk > 10)) return null;
   if (ck != null && (Number.isNaN(ck) || ck < 0 || ck > 10)) return null;
   const rows = [
-    ...tx.map((score) => ({ assessment_type: "ddg_tx", score })),
+    ...txNums.map((score) => ({ assessment_type: "ddg_tx", score })),
     ...(gk != null ? [{ assessment_type: "ddg_gk", score: gk }] : []),
     ...(ck != null ? [{ assessment_type: "ddg_ck", score: ck }] : []),
   ];
@@ -104,7 +122,9 @@ function cellInvalid(c: CellState, isTh: boolean): boolean {
   if (isTh) {
     return parseScore(c.ktdk) === undefined;
   }
-  if (parseScores(c.tx) === null) return true;
+  for (const v of Object.values(c.tx)) {
+    if (parseScore(v) === undefined) return true;
+  }
   for (const v of [c.gk, c.ck]) {
     if (parseScore(v) === undefined) return true;
   }
@@ -113,7 +133,7 @@ function cellInvalid(c: CellState, isTh: boolean): boolean {
 
 function isEmpty(c: CellState): boolean {
   return (
-    !c.tx.trim() &&
+    Object.values(c.tx).every((v) => !v.trim()) &&
     !c.gk.trim() &&
     !c.ck.trim() &&
     !c.result &&
@@ -256,18 +276,57 @@ export function GradesEditor({
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
   const isTh = schoolLevel === "th";
+  // Số cột điểm thường xuyên mỗi loại = max seq của dữ liệu hiện có;
+  // lớp chưa có điểm nào thì mặc định 1 cột mỗi loại Miệng/15ph/1tiết.
+  const initialCols = (() => {
+    const counts = new Map<TxKind, number>();
+    for (const g of grades) {
+      if (g.assessment_type !== "ddg_tx") continue;
+      const kind = (
+        g.subtype && TX_KIND_ORDER.includes(g.subtype as TxKind)
+          ? g.subtype
+          : "tx"
+      ) as TxKind;
+      counts.set(kind, Math.max(counts.get(kind) ?? 0, g.seq ?? 1));
+    }
+    const cols: TxCol[] = [];
+    for (const kind of TX_KIND_ORDER) {
+      for (let i = 0; i < (counts.get(kind) ?? 0); i++) {
+        cols.push({ id: `${kind}-s${i + 1}`, kind });
+      }
+    }
+    if (!cols.length) {
+      for (const kind of DEFAULT_TX_KINDS) {
+        cols.push({ id: `${kind}-s1`, kind });
+      }
+    }
+    return cols;
+  })();
+  const [txCols, setTxCols] = useState<TxCol[]>(initialCols);
   const [cells, setCells] = useState<Record<string, CellState>>(() => {
+    const byKind = new Map<TxKind, TxCol[]>();
+    for (const col of initialCols) {
+      byKind.set(col.kind, [...(byKind.get(col.kind) ?? []), col]);
+    }
     const init: Record<string, CellState> = {};
     for (const s of students) {
       const rows = grades.filter((g) => g.student_id === s.id);
+      const tx: Record<string, string> = {};
+      for (const g of rows) {
+        if (g.assessment_type !== "ddg_tx" || g.score == null) continue;
+        const kind = (
+          g.subtype && TX_KIND_ORDER.includes(g.subtype as TxKind)
+            ? g.subtype
+            : "tx"
+        ) as TxKind;
+        const col = byKind.get(kind)?.[(g.seq ?? 1) - 1];
+        if (col) tx[col.id] = String(g.score);
+      }
       const gkRow = rows.find((g) => g.assessment_type === "ddg_gk");
       const ckRow = rows.find((g) => g.assessment_type === "ddg_ck");
       init[s.id] = {
         ...EMPTY_CELL,
-        tx: rows
-          .filter((g) => g.assessment_type === "ddg_tx")
-          .map((g) => g.score)
-          .join(" "),
+        tx,
         gk: gkRow?.score?.toString() ?? "",
         ck: ckRow?.score?.toString() ?? "",
         ktdk: ckRow?.score?.toString() ?? "",
@@ -280,6 +339,24 @@ export function GradesEditor({
     }
     return init;
   });
+  const [addKind, setAddKind] = useState<TxKind>("mieng");
+
+  function addColumn() {
+    setTxCols((cols) => [...cols, { id: newColId(addKind), kind: addKind }]);
+  }
+
+  function removeColumn(colId: string) {
+    setTxCols((cols) => cols.filter((c) => c.id !== colId));
+    setCells((prev) => {
+      const next = { ...prev };
+      for (const id of Object.keys(next)) {
+        const tx = { ...next[id].tx };
+        delete tx[colId];
+        next[id] = { ...next[id], tx };
+      }
+      return next;
+    });
+  }
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -344,12 +421,17 @@ export function GradesEditor({
         ],
         students.map((s, i) => {
           const avg = cellAvg(cells[s.id] ?? EMPTY_CELL);
+          const c = cells[s.id] ?? EMPTY_CELL;
+          const txJoined = txCols
+            .map((col) => c.tx[col.id])
+            .filter(Boolean)
+            .join(" ");
           return [
             String(i + 1),
             s.national_id ?? s.code,
             s.full_name,
             s.dob ?? "",
-            cells[s.id]?.tx ?? "",
+            txJoined,
             cells[s.id]?.gk ?? "",
             cells[s.id]?.ck ?? "",
             avg != null ? avg.toFixed(1) : "",
@@ -442,7 +524,11 @@ export function GradesEditor({
       );
       return;
     }
-    // Mẫu 1 bảng điểm CSDL ngành: STT | Lớp | Mã định danh | Họ tên | Ngày sinh | ĐĐGtx1-5 | ĐĐGgk | ĐĐGck | Nhận xét
+    // Mẫu 1 bảng điểm CSDL ngành: STT | Lớp | Mã định danh | Họ tên | Ngày sinh | <các cột ĐĐGtx> | ĐĐGgk | ĐĐGck | Nhận xét
+    const txHeaders = txCols.map((col) => {
+      const idx = txCols.filter((c) => c.kind === col.kind).indexOf(col) + 1;
+      return `ĐĐGtx - ${TX_KIND_LABEL[col.kind]} ${idx}`;
+    });
     void downloadXlsxTemplate(
       `mau-1-bang-diem-${className}.xlsx`,
       [
@@ -451,28 +537,20 @@ export function GradesEditor({
         "Mã định danh Bộ GD&ĐT",
         "Họ và tên",
         "Ngày sinh",
-        "ĐĐGtx1",
-        "ĐĐGtx2",
-        "ĐĐGtx3",
-        "ĐĐGtx4",
-        "ĐĐGtx5",
+        ...txHeaders,
         "ĐĐGgk",
         "ĐĐGck",
         "Nhận xét",
       ],
       students.map((s, i) => {
-        const tx = (cells[s.id]?.tx ?? "").split(/[\s,;]+/).filter(Boolean);
+        const c = cells[s.id] ?? EMPTY_CELL;
         return [
           String(i + 1),
           className,
           s.national_id ?? s.code,
           s.full_name,
           s.dob ?? "",
-          tx[0] ?? "",
-          tx[1] ?? "",
-          tx[2] ?? "",
-          tx[3] ?? "",
-          tx[4] ?? "",
+          ...txCols.map((col) => c.tx[col.id] ?? ""),
           cells[s.id]?.gk ?? "",
           cells[s.id]?.ck ?? "",
           cells[s.id]?.commentCk ?? "",
@@ -548,14 +626,18 @@ export function GradesEditor({
             commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
           };
         } else {
-          // gộp các cột ĐĐGtx1..n thành chuỗi; nếu 1 cột đơn thì giữ nguyên nội dung
-          const txVal =
-            cols.tx.length > 0
-              ? cols.tx.map((i) => (r[i] ?? "").trim()).filter(Boolean).join(" ")
-              : cur.tx;
+          // đổ các cột ĐĐGtx của file vào các cột hiện có theo thứ tự
+          const txPatch = { ...cur.tx };
+          if (cols.tx.length > 0) {
+            cols.tx.forEach((i, j) => {
+              const v = (r[i] ?? "").trim();
+              const col = txCols[j];
+              if (col && v) txPatch[col.id] = v;
+            });
+          }
           next[id] = {
             ...cur,
-            tx: txVal,
+            tx: txPatch,
             gk: cols.gk !== null ? (r[cols.gk] ?? "").trim() : cur.gk,
             ck: cols.ck !== null ? (r[cols.ck] ?? "").trim() : cur.ck,
             commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
@@ -650,12 +732,22 @@ export function GradesEditor({
           }
           continue;
         }
-        const tx = parseScores(c.tx) ?? [];
         const gk = parseScore(c.gk);
         const ck = parseScore(c.ck);
-        tx.forEach((score, i) => {
-          rows.push({ ...base, assessment_type: "ddg_tx", score, seq: i + 1 });
-        });
+        const colIndexByKind = new Map<TxKind, number>();
+        for (const col of txCols) {
+          const seq = (colIndexByKind.get(col.kind) ?? 0) + 1;
+          colIndexByKind.set(col.kind, seq);
+          const score = parseScore(c.tx[col.id] ?? "");
+          if (score == null) continue;
+          rows.push({
+            ...base,
+            assessment_type: "ddg_tx",
+            score,
+            seq,
+            subtype: col.kind === "tx" ? null : col.kind,
+          });
+        }
         if (gk != null) {
           rows.push({ ...base, assessment_type: "ddg_gk", score: gk, seq: 1 });
         }
@@ -701,6 +793,33 @@ export function GradesEditor({
     </select>
   );
 
+  function setTxScore(id: string, colId: string, v: string) {
+    setSaved(false);
+    setCells((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], tx: { ...prev[id].tx, [colId]: v } },
+    }));
+  }
+
+  const txHeaders = txCols.map((col) => {
+    const idx = txCols.filter((c) => c.kind === col.kind).indexOf(col) + 1;
+    const label = `${TX_KIND_LABEL[col.kind]} ${idx}`;
+    return (
+      <span key={col.id} className="inline-flex items-center gap-1">
+        {label}
+        <button
+          type="button"
+          onClick={() => removeColumn(col.id)}
+          aria-label={`Xoá cột ${label}`}
+          title={`Xoá cột ${label}`}
+          className="flex size-4 items-center justify-center rounded text-muted-foreground hover:bg-error-bg hover:text-error"
+        >
+          ×
+        </button>
+      </span>
+    );
+  });
+
   const columns = isTh
     ? [
         "STT",
@@ -717,9 +836,9 @@ export function GradesEditor({
           "STT",
           "Mã định danh",
           "Họ và tên",
-          "ĐĐGtx",
-          "ĐĐGgk",
-          "ĐĐGck",
+          ...txHeaders,
+          "ĐĐGgk (x2)",
+          "ĐĐGck (x3)",
           "ĐTBm",
           "Nhận xét",
         ]
@@ -728,8 +847,27 @@ export function GradesEditor({
   return (
     <div className="space-y-3">
       <div data-slot="toolbar" className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-sm text-muted-foreground">
+        <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {students.length} học sinh
+          {method === "score" && !isTh && (
+            <span className="flex items-center gap-1.5">
+              <select
+                value={addKind}
+                onChange={(e) => setAddKind(e.target.value as TxKind)}
+                className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+                aria-label="Loại cột điểm"
+              >
+                {TX_KIND_ORDER.filter((k) => k !== "tx").map((k) => (
+                  <option key={k} value={k}>
+                    {TX_KIND_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+              <Button variant="outline" size="sm" onClick={addColumn}>
+                Thêm cột điểm
+              </Button>
+            </span>
+          )}
         </span>
         <span className="flex flex-wrap items-center gap-3">
           {saved && <span className="text-sm text-success">Đã lưu điểm.</span>}
@@ -833,16 +971,27 @@ export function GradesEditor({
                 </>
               ) : method === "score" ? (
                 <>
-                  <td>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      placeholder="8 9 7.5"
-                      value={c.tx}
-                      onChange={(e) => setCell(s.id, { tx: e.target.value })}
-                      className={cn(inputCls(invalid && parseScores(c.tx) === null), "w-28")}
-                    />
-                  </td>
+                  {txCols.map((col) => (
+                    <td key={col.id}>
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        step={0.5}
+                        value={c.tx[col.id] ?? ""}
+                        onChange={(e) =>
+                          setTxScore(s.id, col.id, e.target.value)
+                        }
+                        className={cn(
+                          inputCls(
+                            invalid &&
+                              parseScore(c.tx[col.id] ?? "") === undefined,
+                          ),
+                          "w-16",
+                        )}
+                      />
+                    </td>
+                  ))}
                   <td>
                     <input
                       type="number"

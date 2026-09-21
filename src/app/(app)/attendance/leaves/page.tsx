@@ -8,14 +8,21 @@ import {
   LeavesTable,
   type LeaveRow,
 } from "@/components/attendance/leaves-table";
+import { AttendanceRangeNav } from "@/components/attendance/date-controls";
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export default async function AttendanceLeavesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; from?: string; to?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
-  const { class: classParam } = await searchParams;
+  const {
+    class: classParam,
+    from: fromParam,
+    to: toParam,
+  } = await searchParams;
   const supabase = await createClient();
 
   let classQuery = supabase
@@ -57,15 +64,21 @@ export default async function AttendanceLeavesPage({
   const studentById = new Map(students.map((s) => [s.id, s]));
   const ids = students.map((s) => s.id);
 
-  const { data: attData } = ids.length
-    ? await supabase
+  const from = fromParam && DATE_RE.test(fromParam) ? fromParam : "";
+  const to = toParam && DATE_RE.test(toParam) ? toParam : "";
+
+  let attQuery = ids.length
+    ? supabase
         .from("attendance_records")
         .select("*")
         .in("student_id", ids)
         .in("status", ["excused", "unexcused", "late"])
         .order("date", { ascending: false })
-        .limit(200)
-    : { data: [] };
+        .limit(500)
+    : null;
+  if (attQuery && from) attQuery = attQuery.gte("date", from);
+  if (attQuery && to) attQuery = attQuery.lte("date", to);
+  const { data: attData } = attQuery ? await attQuery : { data: [] };
   const records = (attData ?? []) as AttendanceRecord[];
 
   const rows: LeaveRow[] = records
@@ -95,6 +108,11 @@ export default async function AttendanceLeavesPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/leaves"
+      />
+      <AttendanceRangeNav
+        from={from}
+        to={to}
+        params={{ class: selected.id }}
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">

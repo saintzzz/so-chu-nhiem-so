@@ -29,6 +29,8 @@ interface GradeRow {
   result: "dat" | "chua_dat" | null;
   comment: string | null;
   level: "T" | "H" | "C" | null;
+  seq: number | null;
+  subtype: string | null;
 }
 
 const TERMS = [
@@ -117,7 +119,9 @@ export default async function GradesPage({
     studentIds.length && subjectId
       ? await supabase
           .from("grades")
-          .select("id,student_id,assessment_type,score,result,comment,level")
+          .select(
+            "id,student_id,assessment_type,score,result,comment,level,seq,subtype",
+          )
           .in("student_id", studentIds)
           .eq("subject_id", subjectId)
           .eq("term", term)
@@ -179,9 +183,10 @@ export default async function GradesPage({
         ) : method === "score" ? (
           <>
             ĐTB môn học kỳ = (Tổng ĐĐGtx + 2 x ĐĐGgk + 3 x ĐĐGck) / (số ĐĐGtx +
-            5), làm tròn 1 chữ số thập phân. Nhập nhiều điểm ĐĐGtx cách nhau
-            bởi dấu cách hoặc dấu phẩy. Template nhận dạng học sinh theo Mã
-            định danh Bộ GD&ĐT (hoặc Mã HS nội bộ).
+            5), làm tròn 1 chữ số thập phân. ĐĐGtx gồm các cột Miệng, Kiểm tra
+            15 phút, Kiểm tra 1 tiết (hệ số 1) - thêm cột tuỳ ý bằng nút Thêm
+            cột điểm. Template nhận dạng học sinh theo Mã định danh Bộ GD&ĐT
+            (hoặc Mã HS nội bộ).
           </>
         ) : (
           <>

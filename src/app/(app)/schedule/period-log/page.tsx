@@ -31,6 +31,9 @@ interface LogRow {
   timetable_entry_id: string;
   present_count: number | null;
   note: string | null;
+  lesson_title: string | null;
+  lesson_content: string | null;
+  teacher_comment: string | null;
 }
 
 interface AbsenceRow {
@@ -173,7 +176,9 @@ export default async function PeriodLogPage({
       entryIds.length > 0
         ? await supabase
             .from("period_logs")
-            .select("id,timetable_entry_id,present_count,note")
+            .select(
+              "id,timetable_entry_id,present_count,note,lesson_title,lesson_content,teacher_comment",
+            )
             .eq("date", date)
             .in("timetable_entry_id", entryIds)
         : { data: [] };
@@ -202,6 +207,9 @@ export default async function PeriodLogPage({
           id: l.id,
           present_count: l.present_count,
           note: l.note,
+          lesson_title: l.lesson_title,
+          lesson_content: l.lesson_content,
+          teacher_comment: l.teacher_comment,
           absences: (absByLog.get(l.id) ?? []).map((a) => ({
             student_id: a.student_id,
             status: a.status as "excused" | "unexcused" | "late",

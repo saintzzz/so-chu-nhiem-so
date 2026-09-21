@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Save } from "lucide-react";
+import { ChevronDown, ChevronUp, Minus, Plus, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ export interface PeriodLogState {
   id: string;
   present_count: number | null;
   note: string | null;
+  lesson_title: string | null;
+  lesson_content: string | null;
+  teacher_comment: string | null;
   absences: PeriodAbsenceState[];
 }
 
@@ -53,8 +56,12 @@ const MARK_TONE: Record<Mark, string> = {
 
 interface DraftState {
   present: string;
-  note: string;
+  title: string;
+  content: string;
+  comment: string;
   marks: Record<string, Mark>;
+  /** Điểm rèn luyện cộng/trừ tích lũy trong phiên (đã ghi conduct_records) */
+  points: Record<string, number>;
 }
 
 function initDraft(
@@ -71,8 +78,11 @@ function initDraft(
             rosterSize -
               (log?.absences ?? []).filter((a) => a.status !== "late").length,
           ),
-    note: log?.note ?? "",
+    title: log?.lesson_title ?? "",
+    content: log?.lesson_content ?? "",
+    comment: log?.teacher_comment ?? log?.note ?? "",
     marks,
+    points: {},
   };
 }
 
@@ -135,13 +145,25 @@ export function PeriodLogBoard({
     const supabase = createClient();
     try {
       const presentCount = draft.present === "" ? null : Number(draft.present);
-      const note = draft.note.trim() === "" ? null : draft.note.trim();
+      const title = draft.title.trim() === "" ? null : draft.title.trim();
+      const content =
+        draft.content.trim() === "" ? null : draft.content.trim();
+      const comment =
+        draft.comment.trim() === "" ? null : draft.comment.trim();
+      const logFields = {
+        present_count: presentCount,
+        lesson_title: title,
+        lesson_content: content,
+        teacher_comment: comment,
+        // giữ đồng bộ cột note cũ cho các surface chưa migrate
+        note: comment,
+      };
       let logId = logs[entryId]?.id ?? null;
 
       if (logId) {
         const { error: e } = await supabase
           .from("period_logs")
-          .update({ present_count: presentCount, note })
+          .update(logFields)
           .eq("id", logId);
         if (e) throw e;
       } else {
@@ -150,9 +172,8 @@ export function PeriodLogBoard({
           .insert({
             timetable_entry_id: entryId,
             date,
-            present_count: presentCount,
-            note,
             logged_by: profileId,
+            ...logFields,
           })
           .select("id")
           .single();
@@ -283,6 +304,45 @@ export function PeriodLogBoard({
     }
   }
 
+  /** Cộng/trừ điểm rèn luyện nhanh ngay trong sổ đầu bài -> conduct_records */
+  async function awardPoints(
+    entry: PeriodEntry,
+    studentId: string,
+    delta: number,
+  ) {
+    const supabase = createClient();
+    const { error: e } = await supabase.from("conduct_records").insert({
+      student_id: studentId,
+      type: delta > 0 ? "khen_thuong" : "vi_pham",
+      points: delta,
+      date,
+      content:
+        delta > 0
+          ? `Cộng điểm rèn luyện trong tiết ${entry.subject}`
+          : `Trừ điểm rèn luyện trong tiết ${entry.subject}`,
+      recorded_by: profileId,
+    });
+    if (e) {
+      setError(e.message);
+      return;
+    }
+    setError(null);
+    setDrafts((d) => {
+      const draft = d[entry.id];
+      if (!draft) return d;
+      return {
+        ...d,
+        [entry.id]: {
+          ...draft,
+          points: {
+            ...draft.points,
+            [studentId]: (draft.points[studentId] ?? 0) + delta,
+          },
+        },
+      };
+    });
+  }
+
   return (
     <div>
       {/* Date picker */}
@@ -367,9 +427,20 @@ export function PeriodLogBoard({
                           ))}
                         </span>
                       )}
-                      {log?.note && (
-                        <span className="mt-1 block truncate text-xs italic text-muted-foreground">
-                          “{log.note}”
+                      {(log?.lesson_title || log?.lesson_content) && (
+                        <span className="mt-1 block truncate text-xs text-muted-foreground">
+                          {log.lesson_title && (
+                            <span className="font-medium text-foreground">
+                              {log.lesson_title}
+                            </span>
+                          )}
+                          {log.lesson_content &&
+                            `${log.lesson_title ? " - " : ""}${log.lesson_content}`}
+                        </span>
+                      )}
+                      {(log?.teacher_comment ?? log?.note) && (
+                        <span className="mt-0.5 block truncate text-xs italic text-muted-foreground">
+                          “{log.teacher_comment ?? log.note}”
                         </span>
                       )}
                     </span>
@@ -417,22 +488,66 @@ export function PeriodLogBoard({
                             </span>
                           </span>
                         </label>
-                        <label className="block min-w-48 flex-1">
-                          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-                            Ghi chú tiết học
-                          </span>
-                          <AutoGrowTextarea
-                            value={draft.note}
-                            onChange={(e) =>
-                              setDrafts((d) => ({
-                                ...d,
-                                [entry.id]: { ...draft, note: e.target.value },
-                              }))
-                            }
-                            placeholder="Nội dung bài dạy, tình hình lớp..."
-                            className="w-full"
-                          />
-                        </label>
+                        <div className="grid flex-1 gap-3 sm:grid-cols-3">
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Tên bài học
+                            </span>
+                            <input
+                              type="text"
+                              value={draft.title}
+                              onChange={(e) =>
+                                setDrafts((d) => ({
+                                  ...d,
+                                  [entry.id]: {
+                                    ...draft,
+                                    title: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="VD: Bài 5 - Phép cộng phân số"
+                              className="h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus:border-ring"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Nội dung bài học
+                            </span>
+                            <AutoGrowTextarea
+                              value={draft.content}
+                              onChange={(e) =>
+                                setDrafts((d) => ({
+                                  ...d,
+                                  [entry.id]: {
+                                    ...draft,
+                                    content: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Nội dung chính đã dạy..."
+                              className="w-full"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Nhận xét của giáo viên
+                            </span>
+                            <AutoGrowTextarea
+                              value={draft.comment}
+                              onChange={(e) =>
+                                setDrafts((d) => ({
+                                  ...d,
+                                  [entry.id]: {
+                                    ...draft,
+                                    comment: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Tình hình lớp, ý thức học tập..."
+                              className="w-full"
+                            />
+                          </label>
+                        </div>
                       </div>
 
                       <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -441,11 +556,12 @@ export function PeriodLogBoard({
                       <div className="mb-4 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                         {sortByVietnameseName(roster.students, (s) => s.full_name).map((s) => {
                           const mark = draft.marks[s.id] ?? "";
+                          const pts = draft.points[s.id] ?? 0;
                           return (
                             <div
                               key={s.id}
                               className={cn(
-                                "flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5",
+                                "flex flex-col gap-1.5 rounded-lg border px-2.5 py-1.5",
                                 mark === ""
                                   ? "border-border bg-card"
                                   : mark === "late"
@@ -453,13 +569,55 @@ export function PeriodLogBoard({
                                     : "border-error/40 bg-error-bg",
                               )}
                             >
-                              <span className="min-w-0 truncate text-sm">
-                                {s.full_name}
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="min-w-0 flex-1 truncate text-sm"
+                                  title={s.full_name}
+                                >
+                                  {s.full_name}
+                                </span>
+                                <span
+                                  className="flex shrink-0 items-center gap-0.5"
+                                  title="Điểm rèn luyện"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void awardPoints(entry, s.id, -1)
+                                    }
+                                    aria-label={`Trừ điểm rèn luyện ${s.full_name}`}
+                                    className="flex size-6 items-center justify-center rounded-md border border-border text-error hover:bg-error-bg"
+                                  >
+                                    <Minus className="size-3.5" />
+                                  </button>
+                                  {pts !== 0 && (
+                                    <span
+                                      className={cn(
+                                        "w-7 text-center text-xs font-semibold",
+                                        pts > 0
+                                          ? "text-success"
+                                          : "text-error",
+                                      )}
+                                    >
+                                      {pts > 0 ? `+${pts}` : pts}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void awardPoints(entry, s.id, 1)
+                                    }
+                                    aria-label={`Cộng điểm rèn luyện ${s.full_name}`}
+                                    className="flex size-6 items-center justify-center rounded-md border border-border text-success hover:bg-success-bg"
+                                  >
+                                    <Plus className="size-3.5" />
+                                  </button>
+                                </span>
                               </span>
                               <span
                                 role="radiogroup"
                                 aria-label={`Trạng thái của ${s.full_name}`}
-                                className="flex shrink-0 flex-wrap gap-1"
+                                className="flex flex-wrap gap-1"
                               >
                                 {(
                                   [

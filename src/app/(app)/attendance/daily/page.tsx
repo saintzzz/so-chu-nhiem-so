@@ -1,5 +1,5 @@
 import { requireRoles } from "@/lib/auth";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AttendanceRecord,
@@ -10,14 +10,15 @@ import type {
 import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
 import { DailyRoster, type RosterRow } from "@/components/attendance/daily-roster";
+import { AttendanceDateNav } from "@/components/attendance/date-controls";
 
 export default async function AttendanceDailyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; date?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
-  const { class: classParam } = await searchParams;
+  const { class: classParam, date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   let classQuery = supabase
@@ -58,18 +59,11 @@ export default async function AttendanceDailyPage({
   const students = (studentData ?? []) as Student[];
   const ids = students.map((s) => s.id);
 
-  // "Hôm nay" = ngày có dữ liệu chuyên cần gần nhất của lớp
-  let today = new Date().toISOString().slice(0, 10);
-  if (ids.length > 0) {
-    const { data: latest } = await supabase
-      .from("attendance_records")
-      .select("date")
-      .in("student_id", ids)
-      .order("date", { ascending: false })
-      .limit(1);
-    const latestDate = (latest ?? []) as { date: string }[];
-    if (latestDate[0]?.date) today = latestDate[0].date;
-  }
+  // Mặc định hôm nay; chọn ngày cũ qua ?date= để xem/sửa lại
+  const today =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+      ? dateParam
+      : todayVN();
 
   const { data: attData } = ids.length
     ? await supabase
@@ -108,6 +102,7 @@ export default async function AttendanceDailyPage({
         selectedId={selected.id}
         href="/attendance/daily"
       />
+      <AttendanceDateNav date={today} params={{ class: selected.id }} />
       <DailyRoster date={today} rows={rows} />
     </div>
   );

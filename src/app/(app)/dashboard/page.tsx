@@ -14,7 +14,12 @@ import { PageHeader } from "@/components/page-header";
 import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, LineChart } from "@/components/charts";
-import { cn, formatDate as formatDateVN } from "@/lib/utils";
+import {
+  cn,
+  formatDate as formatDateVN,
+  formatDateOnly,
+  todayVN,
+} from "@/lib/utils";
 
 const TODAY = "2026-09-18";
 const EMULATION_PERIOD = "2026-T9";
@@ -96,6 +101,22 @@ export default async function DashboardPage() {
   const studentIds = students.map((s) => s.id);
   const hasStudents = studentIds.length > 0;
 
+  // Thẻ chuyên cần theo ngày điểm danh gần nhất có dữ liệu của lớp
+  let attDate = TODAY;
+  if (hasStudents) {
+    const { data: latestAtt } = await supabase
+      .from("attendance_records")
+      .select("date")
+      .in("student_id", studentIds)
+      .order("date", { ascending: false })
+      .limit(1);
+    if (latestAtt?.[0]?.date) attDate = latestAtt[0].date;
+  }
+  const attDateLabel = formatDateOnly(attDate, {
+    day: "numeric",
+    month: "numeric",
+  });
+
   // All remaining queries only depend on studentIds/classId/profile - run in one batch.
   const since30 = "2026-08-19";
   const [
@@ -118,7 +139,7 @@ export default async function DashboardPage() {
       ? supabase
           .from("attendance_records")
           .select("student_id,status")
-          .eq("date", TODAY)
+          .eq("date", attDate)
           .in("student_id", studentIds)
       : Promise.resolve({ data: [] }),
     hasStudents
@@ -131,7 +152,7 @@ export default async function DashboardPage() {
       ? supabase
           .from("attendance_records")
           .select("id", { count: "exact", head: true })
-          .eq("status", "present")
+          .in("status", ["present", "late"])
           .in("student_id", studentIds)
       : Promise.resolve({ count: 0 }),
     hasStudents
@@ -211,6 +232,7 @@ export default async function DashboardPage() {
     student_id: string;
     status: string;
   }[];
+  const presentToday = todayAtt.filter((r) => r.status === "present").length;
   const absentToday = todayAtt.filter(
     (r) => r.status === "excused" || r.status === "unexcused",
   ).length;
@@ -320,7 +342,7 @@ export default async function DashboardPage() {
   const missingEvaluations = hasStudents
     ? studentIds.filter((id) => !evaluatedIds.has(id)).length
     : 0;
-  const notMarkedToday = hasStudents && todayAtt.length === 0;
+  const notMarkedToday = hasStudents && attDate !== todayVN();
   const reportNotSubmitted = todayReport?.status !== "submitted";
 
   // Activity feed: notifications + announcements
@@ -386,13 +408,19 @@ export default async function DashboardPage() {
       {/* 10 KPI cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard
-          label="Học sinh nghỉ học hôm nay"
+          label={`Học sinh có mặt (${attDateLabel})`}
+          value={presentToday}
+          href="/attendance/daily"
+          tone="success"
+        />
+        <StatCard
+          label={`Học sinh nghỉ học (${attDateLabel})`}
           value={absentToday}
           href="/attendance/daily"
           tone={absentToday > 0 ? "warning" : "success"}
         />
         <StatCard
-          label="Học sinh đi học muộn"
+          label={`Học sinh đi muộn (${attDateLabel})`}
           value={lateToday}
           href="/attendance/leaves"
           tone={lateToday > 0 ? "warning" : "default"}

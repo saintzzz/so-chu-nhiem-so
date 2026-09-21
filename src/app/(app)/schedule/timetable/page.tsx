@@ -113,8 +113,13 @@ export default async function TimetablePage({
     ]),
   );
 
-  const cell = new Map<string, EntryRow>();
-  for (const e of entries) cell.set(`${e.weekday}-${e.period}`, e);
+  const cell = new Map<string, EntryRow[]>();
+  for (const e of entries) {
+    const key = `${e.weekday}-${e.period}`;
+    const list = cell.get(key) ?? [];
+    list.push(e);
+    cell.set(key, list);
+  }
 
   // BGH-only: full reference data for Excel template + import.
   const isBgh = profile.role === "bgh";
@@ -270,31 +275,42 @@ export default async function TimetablePage({
                   {p}
                 </td>
                 {WEEKDAYS.map((wd) => {
-                  const e = cell.get(`${wd}-${p}`);
+                  const list = cell.get(`${wd}-${p}`) ?? [];
                   return (
                     <td
                       key={wd}
                       className="border-l border-border px-3 py-2 align-top"
                     >
-                      {e ? (
-                        <div className="rounded-lg bg-primary-bg/60 px-2.5 py-2">
-                          <p className="text-sm font-medium text-primary">
-                            {view === "me"
-                              ? `${className.get(e.class_id) ?? "-"} · ${subjectName.get(e.subject_id) ?? "-"}`
-                              : (subjectName.get(e.subject_id) ?? "-")}
-                          </p>
-                          {view === "class" && (
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                              {e.teacher_id
-                                ? (teacherName.get(e.teacher_id) ?? "-")
-                                : "Chưa phân công"}
-                            </p>
-                          )}
-                          {e.room && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Phòng {e.room}
-                            </p>
-                          )}
+                      {list.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {list.map((e) => (
+                            <div
+                              key={e.id}
+                              className={cn(
+                                "rounded-lg bg-primary-bg/60 px-2.5 py-2",
+                                list.length > 1 &&
+                                  "ring-1 ring-amber-500/60",
+                              )}
+                            >
+                              <p className="text-sm font-medium text-primary">
+                                {view === "me"
+                                  ? `${className.get(e.class_id) ?? "-"} · ${subjectName.get(e.subject_id) ?? "-"}`
+                                  : (subjectName.get(e.subject_id) ?? "-")}
+                              </p>
+                              {view === "class" && (
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {e.teacher_id
+                                    ? (teacherName.get(e.teacher_id) ?? "-")
+                                    : "Chưa phân công"}
+                                </p>
+                              )}
+                              {e.room && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  Phòng {e.room}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>

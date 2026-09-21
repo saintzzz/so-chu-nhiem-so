@@ -84,5 +84,37 @@ Viết 4-6 nhận xét: tổng quan quy mô, trường có chuyên cần tốt/k
       const lines = parseLines(text);
       return lines ? { lines } : null;
     },
+    fallback: () => {
+      const lines: string[] = [];
+      const totalCls = perSchool.reduce((s, x) => s + x.so_lop, 0);
+      const totalStu = perSchool.reduce((s, x) => s + x.so_hs, 0);
+      lines.push(
+        `Hệ thống có ${perSchool.length} trường, ${totalCls} lớp, ${totalStu} học sinh.`,
+      );
+      const withAtt = perSchool.filter((x) => x.chuyen_can_pct !== null);
+      const sorted = [...withAtt].sort(
+        (a, b) => (b.chuyen_can_pct ?? 0) - (a.chuyen_can_pct ?? 0),
+      );
+      if (sorted.length) {
+        lines.push(
+          `Chuyên cần cao nhất: ${sorted[0].truong} (${sorted[0].chuyen_can_pct}%).`,
+        );
+        const low = sorted[sorted.length - 1];
+        if (sorted.length > 1)
+          lines.push(
+            `Chuyên cần thấp nhất: ${low.truong} (${low.chuyen_can_pct}%) - cần theo dõi.`,
+          );
+      }
+      const noData = perSchool.filter((x) => x.chuyen_can_pct === null);
+      if (noData.length) {
+        lines.push(
+          `${noData.length} trường chưa có dữ liệu điểm danh 30 ngày: ${noData.map((x) => x.truong).join(", ")}.`,
+        );
+      }
+      lines.push(
+        "Đề xuất: rà soát trường chuyên cần thấp và trường chưa báo cáo dữ liệu.",
+      );
+      return { lines };
+    },
   });
 }

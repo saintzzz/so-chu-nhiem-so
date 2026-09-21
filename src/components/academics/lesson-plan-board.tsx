@@ -212,6 +212,20 @@ export function LessonPlanBoard({
           >
             Nộp giáo án
           </button>
+          {(!classId || !subjectId || !title.trim() || !content.trim()) && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Cần đủ:{" "}
+              {[
+                !classId && "lớp",
+                !subjectId && "môn",
+                !title.trim() && "tên bài dạy",
+                !content.trim() && "nội dung giáo án",
+              ]
+                .filter(Boolean)
+                .join(", ")}
+              .
+            </p>
+          )}
         </div>
       )}
 

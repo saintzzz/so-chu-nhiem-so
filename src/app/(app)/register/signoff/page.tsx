@@ -52,6 +52,7 @@ export default async function SignoffPage() {
         classNames={Object.fromEntries(classNames)}
         signerNames={Object.fromEntries(signers)}
         profileId={profile.id}
+        profileName={profile.full_name}
       />
     </>
   );

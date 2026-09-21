@@ -163,7 +163,50 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
         });
       }
     }
-    return NextResponse.json({ error: "AI chưa phản hồi." });
+    const q = question.toLowerCase();
+    const c = context;
+    const answers: [RegExp, () => string][] = [
+      [
+        /báo cáo|chưa nộp/,
+        () =>
+          `Hôm nay (${c.hom_nay.ngay}) có ${c.hom_nay.lop_da_nop_bao_cao}/${c.hom_nay.tong_lop} lớp đã nộp báo cáo ngày.`,
+      ],
+      [
+        /sự cố/,
+        () =>
+          c.su_co_dang_mo.length
+            ? `Đang mở ${c.su_co_dang_mo.length} sự cố: ${c.su_co_dang_mo.join("; ")}.`
+            : "Hiện không có sự cố nào đang mở.",
+      ],
+      [
+        /phê duyệt|chờ duyệt/,
+        () => {
+          const p = c.cho_phe_duyet;
+          const total =
+            p.giao_an + p.dieu_dong_day_thay + p.ke_hoach_hoat_dong;
+          return `Có ${total} mục chờ phê duyệt: ${p.giao_an} giáo án, ${p.dieu_dong_day_thay} yêu cầu điều động, ${p.ke_hoach_hoat_dong} kế hoạch hoạt động.`;
+        },
+      ],
+      [
+        /chuyên cần|điểm danh|vắng/,
+        () =>
+          c.hom_nay.chuyen_can_pct === null
+            ? `Hôm nay chưa có dữ liệu điểm danh. Trường có ${c.truong.so_lop} lớp, ${c.truong.so_hoc_sinh} học sinh.`
+            : `Tỷ lệ chuyên cần hôm nay: ${c.hom_nay.chuyen_can_pct}% (${c.hom_nay.lop_da_nop_bao_cao}/${c.hom_nay.tong_lop} lớp đã báo cáo).`,
+      ],
+      [
+        /cảnh báo/,
+        () =>
+          c.canh_bao_dang_mo.length
+            ? `Có ${c.canh_bao_dang_mo.length} cảnh báo đang mở: ${c.canh_bao_dang_mo.join("; ")}.`
+            : "Không có cảnh báo sớm nào đang mở.",
+      ],
+    ];
+    const hit = answers.find(([re]) => re.test(q));
+    const answer = hit
+      ? hit[1]()
+      : `Trường có ${c.truong.so_lop} lớp, ${c.truong.so_hoc_sinh} học sinh, ${c.truong.so_giao_vien} giáo viên. Chuyên cần hôm nay ${c.hom_nay.chuyen_can_pct ?? "chưa có"}%. Sự cố mở ${c.su_co_dang_mo.length}, cảnh báo ${c.canh_bao_dang_mo.length}, chờ duyệt ${c.cho_phe_duyet.giao_an + c.cho_phe_duyet.dieu_dong_day_thay + c.cho_phe_duyet.ke_hoach_hoat_dong} mục.`;
+    return NextResponse.json({ answer });
   }
 
   try {

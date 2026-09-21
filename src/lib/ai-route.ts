@@ -21,6 +21,8 @@ export interface AiRouteParams<T> {
   temperature?: number;
   /** Biến text thô từ LLM thành payload trả về; null = coi như không có kết quả */
   parse: (text: string) => T | null;
+  /** Rule-based fallback khi cả LLM lẫn Devin đều không khả dụng */
+  fallback?: () => T;
 }
 
 export async function respondWithAi<T>(
@@ -57,7 +59,8 @@ export async function respondWithAi<T>(
       });
     }
   }
-  return NextResponse.json({ result: null });
+  const fb = p.fallback?.();
+  return NextResponse.json({ result: fb ?? null });
 }
 
 /** Parse JSON object từ output LLM; trả null nếu không parse được. */

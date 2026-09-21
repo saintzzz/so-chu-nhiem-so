@@ -23,12 +23,14 @@ export function SignoffClient({
   classNames,
   signerNames,
   profileId,
+  profileName,
 }: {
   signoffs: Signoff[];
   classes: { id: string; name: string }[];
   classNames: Record<string, string>;
   signerNames: Record<string, string>;
   profileId: string;
+  profileName: string;
 }) {
   const supabase = createClient();
   const [signoffs, setSignoffs] = useState<Signoff[]>(initialSignoffs);
@@ -136,7 +138,10 @@ export function SignoffClient({
                 <StatusBadge label={meta.label} tone={meta.tone} />
               </td>
               <td className="text-muted-foreground">
-                {s.signed_by ? (signerNames[s.signed_by] ?? "-") : "-"}
+                {s.signed_by
+                  ? (signerNames[s.signed_by] ??
+                    (s.signed_by === profileId ? profileName : "-"))
+                  : "-"}
               </td>
               <td className="text-muted-foreground">
                 {s.signed_at

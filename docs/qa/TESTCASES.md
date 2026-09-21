@@ -245,3 +245,46 @@ lesson_plan 17, incident 6, message 5, substitute 3, daily_report 3, warning 1 -
 ### Consistency
 
 `node scripts/check-consistency.mjs` - ALL PASS (20/09/2026).
+
+---
+
+## Đợt CR-002 + CR-003 (21/09/2026) - parent engagement + audit + integrity surfaces
+
+### CR-002: Phụ huynh tương tác (3 tính năng, qua portal UI thật)
+
+| Case | Kết quả |
+|---|---|
+| PH đặt lịch hẹn GVCN (chọn ngày giờ + mục đích) | PASS - persist `appointments` status `proposed`, đúng con + đúng GVCN |
+| GVCN xem + xác nhận lịch hẹn | PASS - `/parents/appointments` hiện đề xuất, bấm Xác nhận -> `confirmed`, portal PH hiện "Đã xác nhận" |
+| PH reply tin nhắn GV | PASS - persist `messages` phuhuynh2 -> gvcn, giữ student context |
+| PH đăng ký HĐGD | PASS - portal hiện activity `approved` của lớp con, bấm Đăng ký -> `activity_attendance` status `registered` |
+| RLS parent scope | PASS - policy `appt_parent_ins`, `aa_family_ins` scope `my_student_ids()`; PH chỉ thấy con mình |
+
+### CR-003: Audit + integrity surfaces
+
+| Case | Kết quả |
+|---|---|
+| Roster: Thêm tổ | PASS - `student_groups` persist Tổ 1/2/3, audit "Tạo tổ học sinh" |
+| Roster: Chia đều tổ | PASS - 5 HS 6A3 được gán đều, audit "Chia đều tổ" |
+| Roster: tạo + liên kết PH mới | PASS - RPC `create_parent_for_student` (security definer, tránh lỗi RLS insert `parents`), audit "Tạo + liên kết phụ huynh" |
+| Roster: gán BCS 4 chức danh | PASS (đã fix upsert onConflict composite key trước đó) |
+| Nhật ký thao tác | PASS - `audit_logs` ghi đủ actor/action/entity/payload, trang `/register/audit` hiển thị |
+
+### Bug fix đợt này
+
+- `e76853c` Roster link PH: client insert `parents` bị RLS `parents_staff_ins` chặn (scope check trên id chưa tồn tại) -> chuyển sang RPC `create_parent_for_student` security definer
+- Signoff: cột "Người ký" hiện `-` sau khi ký vì `signerNames` chỉ load người đã ký trước đó -> fallback `profileName` của user hiện tại
+- Lesson plan: submit thiếu field chỉ disable nút, không nói thiếu gì -> thêm hint inline liệt kê field thiếu
+- AI khi cả LLM + Devin đều hết quota trước đây trả "Chưa tạo được phân tích" trống:
+  - `respondWithAi` nhận `fallback` -> dept-brief có rule-based báo cáo từ `perSchool` (quy mô, chuyên cần cao/thấp nhất, trường chưa có data, đề xuất)
+  - `advisor` (BGH): rule-based trả lời theo keyword câu hỏi từ context thật (báo cáo, sự cố, phê duyệt, chuyên cần, cảnh báo) + default tổng hợp
+  - `warning-advice`: rule-based suggestion theo `category` (hoc_tap/chuyen_can/bo_hoc/tam_ly/an_toan), vẫn ghi vào `early_warnings.suggestion`
+
+### Verify AI fallback trên production
+
+- dept-brief qua Gemini: PASS khi còn quota (báo cáo đúng tên trường + % thật)
+- advisor khi Gemini 429 + Devin out_of_quota: PASS - trả câu trả lời rule-based đúng số liệu thay vì "AI chưa phản hồi"
+
+### Consistency
+
+`node scripts/check-consistency.mjs` - ALL PASS (21/09/2026).

@@ -73,7 +73,26 @@ Chi tiết: ${warn.detail ?? "-"}
         });
       }
     }
-    return NextResponse.json({ error: "AI chưa phản hồi." });
+    const advice: Record<string, string> = {
+      hoc_tap:
+        "GVCN rà soát điểm các môn yếu, lập kế hoạch hỗ trợ trong 1 tuần; phối hợp GVBM phụ đạo; thông báo phụ huynh cùng theo dõi.",
+      chuyen_can:
+        "GVCN liên hệ phụ huynh trong ngày để nắm lý do vắng; giao tổ trưởng/nhóm trưởng nhắc lịch; BGH theo dõi lại sau 1 tuần.",
+      bo_hoc:
+        "GVCN xác minh tình trạng bỏ học ngay, báo BGH và phối hợp địa phương vận động học sinh quay lại lớp trong tuần.",
+      tam_ly:
+        "Chuyển ngay ca sang luồng tư vấn tâm lý; GVCN trao đổi riêng với học sinh; mời phụ huynh phối hợp trong tuần này.",
+      an_toan:
+        "GVCN kiểm tra và xử lý sự cố đang mở theo quy trình an toàn; cập nhật trạng thái; BGH giám sát đến khi đóng.",
+    };
+    const suggestion =
+      advice[warn.category] ??
+      "GVCN xác minh nguyên nhân, trao đổi với học sinh và phụ huynh; lập kế hoạch theo dõi 1-2 tuần; báo cáo BGH kết quả.";
+    await supabase
+      .from("early_warnings")
+      .update({ suggestion })
+      .eq("id", warn.id);
+    return NextResponse.json({ suggestion });
   }
 
   try {

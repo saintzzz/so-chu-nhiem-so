@@ -9,3 +9,11 @@ SET teacher_comment = note
 WHERE teacher_comment IS NULL AND note IS NOT NULL;
 
 ALTER TABLE public.grades ADD COLUMN IF NOT EXISTS subtype text;
+
+-- subtype bắt buộc (chuỗi rỗng = ĐĐGtx chung/dữ liệu cũ) + đưa vào unique key
+UPDATE public.grades SET subtype = '' WHERE subtype IS NULL;
+ALTER TABLE public.grades ALTER COLUMN subtype SET DEFAULT '';
+ALTER TABLE public.grades ALTER COLUMN subtype SET NOT NULL;
+ALTER TABLE public.grades DROP CONSTRAINT grades_student_subject_term_type_seq_key;
+ALTER TABLE public.grades ADD CONSTRAINT grades_student_subject_term_type_seq_key
+  UNIQUE (student_id, subject_id, term, assessment_type, subtype, seq);

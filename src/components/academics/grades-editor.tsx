@@ -745,7 +745,7 @@ export function GradesEditor({
             assessment_type: "ddg_tx",
             score,
             seq,
-            subtype: col.kind === "tx" ? null : col.kind,
+            subtype: col.kind === "tx" ? "" : col.kind,
           });
         }
         if (gk != null) {

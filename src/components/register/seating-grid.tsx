@@ -16,6 +16,7 @@ import {
   Rows3,
   Save,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,36 @@ export function SeatingGrid({
       .slice(0, Math.max(3, Math.ceil(students.length / 4)));
     return new Set(top.map((s) => s.id));
   }, [students]);
+
+  const unseated = useMemo(() => {
+    const seated = new Set(cells.filter((sid): sid is string => !!sid));
+    return sortByVietnameseName(
+      students.filter((s) => !seated.has(s.id)),
+      (s) => s.full_name,
+    );
+  }, [cells, students]);
+
+  /** Xếp các HS chưa có ghế vào ô trống đầu tiên (trái->phải, trên->dưới). */
+  function autoAssign() {
+    const emptyCount = cells.filter((c) => !c).length;
+    const toSeat = unseated.slice(0, emptyCount);
+    if (toSeat.length === 0) {
+      setMessage(
+        `Không đủ ô trống cho ${unseated.length} học sinh chưa có chỗ - hãy thêm hàng/cột trước.`,
+      );
+      return;
+    }
+    const queue = [...toSeat];
+    setCells((cs) =>
+      cs.map((sid) => (sid ? sid : (queue.shift()?.id ?? null))),
+    );
+    const rest = unseated.length - toSeat.length;
+    setMessage(
+      rest > 0
+        ? `Đã xếp ${toSeat.length} em vào ô trống, còn ${rest} em chưa đủ chỗ - hãy thêm hàng/cột rồi xếp tiếp.`
+        : `Đã xếp ${toSeat.length} học sinh vào ô trống. Nhấn Lưu để áp dụng.`,
+    );
+  }
 
   function swap(a: number, b: number) {
     if (a === b) return;
@@ -333,6 +364,27 @@ export function SeatingGrid({
           </Button>
         </span>
       </div>
+
+      {unseated.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/40 bg-warning-bg px-3 py-2">
+          <p className="text-sm text-warning">
+            Còn <strong>{unseated.length}</strong> học sinh chưa có chỗ ngồi:{" "}
+            {unseated
+              .slice(0, 6)
+              .map((s) => s.full_name)
+              .join(", ")}
+            {unseated.length > 6 ? `, +${unseated.length - 6} em khác` : ""}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto"
+            onClick={autoAssign}
+          >
+            <UserPlus className="size-4" /> Xếp chỗ tự động
+          </Button>
+        </div>
+      )}
 
       {message && (
         <p className="rounded-lg bg-primary-bg px-3 py-2 text-sm text-primary">

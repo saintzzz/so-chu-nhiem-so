@@ -59,8 +59,8 @@ export default async function TimetablePage({
 
   const isTeacher = ["gvcn", "gvbm", "to_truong"].includes(profile.role);
   const view =
-    isTeacher && sp.view === "me"
-      ? "me"
+    isTeacher && (sp.view === "me" || sp.view === "class")
+      ? sp.view
       : isTeacher && !ownCls
         ? "me"
         : "class";

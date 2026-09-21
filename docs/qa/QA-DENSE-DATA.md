@@ -1,0 +1,79 @@
+# QA - Full test với data thực tế (dense data)
+
+Ngày: 21/09/2026. Môi trường: production `so-chu-nhiem-so-theta.vercel.app`.
+
+## 1. Chuẩn bị data
+
+Yêu cầu: lớp 5 học sinh là không chấp nhận được; dùng tính năng hệ thống (không seed script) để tạo data như thực tế.
+
+### Sĩ số sau nạp
+
+| Lớp | HS | Có PH | Có điểm | Có chuyên cần | Sơ đồ |
+|---|---:|---:|---:|---:|---:|
+| 1A | 25 | 25 | 25 | 25 | 1 |
+| 3A | 25 | 25 | 25 | 25 | 1 |
+| 5A | 24 | 24 | 24 | 24 | 1 |
+| 6A1 | 34 | 34 | 34 | 34 | 1 |
+| 6A2 | 34 | 34 | 34 | 34 | 1 |
+| 6A3 | **5 -> 32** | 32 | 32 | 32 | 1 |
+| 7A1 | 33 | 33 | 33 | 33 | 1 |
+| 7A2 | 33 | 33 | 33 | 33 | 1 |
+| 8A1 | 32 | 32 | 32 | 32 | 1 |
+| 8A2 | 32 | 32 | 32 | 32 | 1 |
+| 9A1 | 31 | 31 | 31 | 31 | 1 |
+| 9A2 | 31 | 31 | 31 | 31 | 1 |
+
+- 6A3: nạp 27 HS qua **Import Excel trên UI** (`/records/upload`), đúng quy trình nghiệp vụ.
+- Tổng quan bảng: attendance ~2.300 bản ghi (6 ngày × 12 lớp), grades ~7.800 (nhiều loại điểm TT22: miệng, 15 phút, 1 tiết, GK, CK), period_logs 146, period_absences 145, daily_reports 25, conduct_records 62, incidents 45, counseling_cases 38, seating_charts 12, notifications 86.
+- Toàn vẹn: 0 orphan FK (grades/attendance/parent_students), 0 điểm tham chiếu môn sai trường.
+
+## 2. Kiểm tra quan hệ xuyên role/màn hình
+
+| Luồng | Kết quả |
+|---|---|
+| GVCN gửi thông báo lớp 8A2 (UI `/attendance/notify`) -> PH của Gia Bảo thấy trên portal | PASS |
+| Cùng thông báo hiện trên portal học sinh | PASS |
+| Đánh vắng/muộn trong sổ đầu bài -> `period_absences` + `attendance_records(source=period_log)` đồng bộ | PASS (trang "Nghỉ học / đi muộn" hiển thị nguồn "Sổ đầu bài") |
+| GVCN nộp báo cáo ngày -> BGH `/school/daily-reports` thấy 9/9 lớp, đúng số liệu và cơ sở | PASS |
+| GVBM (Trần Văn Minh) vào sổ đầu bài chỉ thấy tiết mình dạy, không trùng slot sau CR-006 | PASS |
+| PH/HS portal hiển thị đúng điểm TB theo môn (8.3-8.5), lịch thi, chuyên cần của đúng em | PASS |
+| PH vào `/dashboard` -> redirect `/portal/parent`; GVBM vào `/safety/followup` -> denied | PASS |
+| Notifications: 86 bản ghi, có `daily_report` đến BGH/PHT khi GVCN nộp | PASS |
+
+## 3. UI/UX với data đầy
+
+Kiểm tra vỡ khung/overflow ở desktop 1905px, 1440px và mobile 375px (DOM scan: phần tử vượt viewport ngoài vùng scroll chứa, text bị cắt không ellipsis).
+
+| Trang | Kết quả |
+|---|---|
+| Điểm danh ngày (32 HS, 6 thẻ trạng thái) | OK |
+| Theo dõi tình trạng (empty state khi không ai qua ngưỡng) | OK |
+| Sổ điểm 32 HS x cột động (Miệng/15'/1 tiết/GK/CK) | OK, không overflow, ĐTBm đúng hệ số |
+| Sổ đầu bài (collapsed row đủ: tiết, môn, GV, phòng, sĩ số, vắng/muộn, có mặt x/y) | OK mobile + desktop |
+| Sơ đồ lớp 32 HS | OK sau khi tạo lại v3 (xem bug D2) |
+| Hồ sơ HS (sort theo tên, điểm TB, % chuyên cần, hạnh kiểm) | OK |
+| An toàn BGH (36 sự cố, mô tả dài nhiều dòng) | OK |
+| Tư vấn, Thi đua (12 lớp), Kỳ thi, Lịch sử chuyên cần theo khoảng ngày | OK |
+| Dashboard Sở GD (2 trường, 366 HS, 91.5% chuyên cần, 29 sự cố mở) | OK |
+| Bảng nặng ở 375px | scroll trong container, không tràn document |
+
+## 4. Lỗi phát hiện và xử lý
+
+| # | Lỗi | Xử lý |
+|---|---|---|
+| D1 | Portal học sinh hiển thị ngày thông báo lệch 1 ngày so với portal PH (slice UTC vs `fmtDateVN`) | Đã fix: student page dùng `fmtDateVN` - commit `ceac08f` |
+| D2 | 3 `attendance_records` trạng thái `present` đè `period_absences` (18/9: Chi-muộn, Ánh-vắng CP, Anh-vắng KP) | Đã sync lại `status` + `source=period_log`; `check-consistency` PASS |
+| D3 | Sơ đồ 6A3 (v2, 9x5) chỉ chứa 5 HS seed cũ - 27 HS import mới không có ghế | Đã tạo v3 (8x4) đủ 32 ghế. **Gap UX còn lại**: sau import HS mới, sơ đồ không tự gán ghế/cảnh báo - đề xuất CR nhỏ |
+| D4 | Sidebar "Báo cáo ngày cho Ban Giám Hiệu" bị cắt nhẹ ở 1440px | Minor - cần xác nhận có phải ellipsis chủ đích |
+
+## 5. Hiệu năng
+
+- TTFB dashboard ~33ms, DOMContentLoaded ~520ms.
+- `/academics/grades` lớp 32 HS: ~653ms (trong ngưỡng <1s server).
+- Console: 0 error; warnings chỉ là font preload (benign).
+
+## 6. Còn lại / đề xuất
+
+- Lớp tiểu học (1A/3A/5A) chưa có `emulation_scores` -> bảng xếp hạng Sở hiện 0 điểm cho 3 lớp này (data gap, không phải lỗi UI).
+- Đề xuất CR: sau import HS mới, sơ đồ chỗ ngồi nên tự gán ghế trống hoặc cảnh báo "X HS chưa có chỗ".
+- `check-consistency.mjs`: ALL PASS sau khi fix D2.

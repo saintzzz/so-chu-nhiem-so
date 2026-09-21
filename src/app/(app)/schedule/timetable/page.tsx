@@ -26,7 +26,7 @@ interface EntryRow {
 export default async function TimetablePage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; view?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "pht"]);
   const supabase = await createClient();
@@ -53,18 +53,36 @@ export default async function TimetablePage({
   const classes = (classesRaw ?? []) as ClassRow[];
   const ownCls = ((ownClsRaw ?? []) as ClassRow[])[0] ?? null;
 
-  const selectedId =
-    sp.class && classes.some((c) => c.id === sp.class)
-      ? sp.class
-      : (ownCls?.id ?? classes[0]?.id ?? null);
-  const selected = classes.find((c) => c.id === selectedId) ?? null;
+  // Giáo viên chủ nhiệm chỉ xem TKB lớp mình phụ trách; BGH/PHT/GV không chủ
+  // nhiệm giữ nguyên phạm vi lớp theo quyền hiện có.
+  const visibleClasses = ownCls ? [ownCls] : classes;
 
-  const { data: entriesRaw } = selectedId
-    ? await supabase
-        .from("timetable_entries")
-        .select("id,class_id,subject_id,teacher_id,weekday,period,room")
-        .eq("class_id", selectedId)
-    : { data: [] };
+  const isTeacher = ["gvcn", "gvbm", "to_truong"].includes(profile.role);
+  const view =
+    isTeacher && sp.view === "me"
+      ? "me"
+      : isTeacher && !ownCls
+        ? "me"
+        : "class";
+
+  const selectedId =
+    sp.class && visibleClasses.some((c) => c.id === sp.class)
+      ? sp.class
+      : (ownCls?.id ?? visibleClasses[0]?.id ?? null);
+  const selected = visibleClasses.find((c) => c.id === selectedId) ?? null;
+
+  const { data: entriesRaw } =
+    view === "class" && selectedId
+      ? await supabase
+          .from("timetable_entries")
+          .select("id,class_id,subject_id,teacher_id,weekday,period,room")
+          .eq("class_id", selectedId)
+      : view === "me"
+        ? await supabase
+            .from("timetable_entries")
+            .select("id,class_id,subject_id,teacher_id,weekday,period,room")
+            .eq("teacher_id", profile.id)
+        : { data: [] };
   const entries = (entriesRaw ?? []) as EntryRow[];
 
   const subjectIds = [...new Set(entries.map((e) => e.subject_id))];
@@ -81,6 +99,7 @@ export default async function TimetablePage({
       ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
       : Promise.resolve({ data: [] }),
   ]);
+  const className = new Map(classes.map((c) => [c.id, c.name]));
   const subjectName = new Map(
     ((subjectsRaw ?? []) as { id: string; name: string }[]).map((s) => [
       s.id,
@@ -131,9 +150,8 @@ export default async function TimetablePage({
     );
     const subjectById = new Map(subjects.map((s) => [s.id, s.name]));
     const teacherById = new Map(teachers.map((t) => [t.id, t.name]));
-    const classById = new Map(classes.map((c) => [c.id, c.name]));
     allEntries = ((everyEntry ?? []) as EntryRow[]).map((e) => ({
-      className: classById.get(e.class_id) ?? "?",
+      className: className.get(e.class_id) ?? "?",
       weekday: e.weekday,
       period: e.period,
       subject: subjectById.get(e.subject_id) ?? "?",
@@ -148,32 +166,67 @@ export default async function TimetablePage({
         section="Thời khóa biểu & Sổ đầu bài"
         title="Thời khóa biểu"
         description={
-          selected
-            ? `Lớp ${selected.name} - Tuần học (Thứ 2 đến Thứ 7)`
-            : "Chưa có lớp nào"
+          view === "me"
+            ? "Lịch dạy cá nhân - Tuần học (Thứ 2 đến Thứ 7)"
+            : selected
+              ? `Lớp ${selected.name} - Tuần học (Thứ 2 đến Thứ 7)`
+              : "Chưa có lớp nào"
         }
       />
 
-      {/* Class filter */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">Lớp:</span>
-        {classes.map((c) => (
+      {/* View switcher: lịch cá nhân / theo lớp */}
+      {isTeacher && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <Link prefetch={false}
-            key={c.id}
-            href={`/schedule/timetable?class=${c.id}`}
+            href="/schedule/timetable?view=me"
             className={cn(
               "rounded-full border px-3 py-1 text-sm transition-colors",
-              c.id === selectedId
+              view === "me"
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-foreground hover:bg-muted",
             )}
           >
-            {c.name}
+            Lịch cá nhân
           </Link>
-        ))}
-      </div>
+          <Link prefetch={false}
+            href="/schedule/timetable?view=class"
+            className={cn(
+              "rounded-full border px-3 py-1 text-sm transition-colors",
+              view === "class"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:bg-muted",
+            )}
+          >
+            Theo lớp
+          </Link>
+        </div>
+      )}
 
-      {isBgh && selected && (
+      {/* Class filter */}
+      {view === "class" && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Lớp:</span>
+          {visibleClasses.map((c) => (
+            <Link prefetch={false}
+              key={c.id}
+              href={`/schedule/timetable?view=class&class=${c.id}`}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                c.id === selectedId
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {c.name}
+              {ownCls?.id === c.id && (
+                <span className="ml-1 text-[11px] opacity-80">(CN)</span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {isBgh && view === "class" && selected && (
         <TimetableToolbar
           classes={classes}
           subjects={subjects}
@@ -226,13 +279,17 @@ export default async function TimetablePage({
                       {e ? (
                         <div className="rounded-lg bg-primary-bg/60 px-2.5 py-2">
                           <p className="text-sm font-medium text-primary">
-                            {subjectName.get(e.subject_id) ?? "-"}
+                            {view === "me"
+                              ? `${className.get(e.class_id) ?? "-"} · ${subjectName.get(e.subject_id) ?? "-"}`
+                              : (subjectName.get(e.subject_id) ?? "-")}
                           </p>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {e.teacher_id
-                              ? (teacherName.get(e.teacher_id) ?? "-")
-                              : "Chưa phân công"}
-                          </p>
+                          {view === "class" && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {e.teacher_id
+                                ? (teacherName.get(e.teacher_id) ?? "-")
+                                : "Chưa phân công"}
+                            </p>
+                          )}
                           {e.room && (
                             <p className="text-[11px] text-muted-foreground">
                               Phòng {e.room}
@@ -250,6 +307,17 @@ export default async function TimetablePage({
           </tbody>
         </table>
       </div>
+
+      {view === "me" && entries.length === 0 && (
+        <p className="mt-4 rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          Bạn chưa được phân công tiết dạy nào trong tuần.
+        </p>
+      )}
+      {view === "class" && selected && entries.length === 0 && (
+        <p className="mt-4 rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+          Lớp {selected.name} chưa có thời khóa biểu.
+        </p>
+      )}
     </>
   );
 }

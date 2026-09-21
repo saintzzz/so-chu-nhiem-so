@@ -29,3 +29,9 @@
 
 ## 3. Estimate
 ~0.5 ngày: helper + wire ~10 actions + 2 UI block + verify.
+
+---
+
+## Trạng thái triển khai (2026-09-21)
+
+DONE - đã lên production và verify E2E. Chi tiết: `docs/qa/QA-CR002-003.md`.

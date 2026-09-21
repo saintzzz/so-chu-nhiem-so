@@ -32,3 +32,9 @@
 
 ## 3. Estimate
 ~0.5 ngày: 3 server actions + 3 client components + 1 migration + E2E verify.
+
+---
+
+## Trạng thái triển khai (2026-09-21)
+
+DONE - đã lên production và verify E2E. Chi tiết: `docs/qa/QA-CR002-003.md`.

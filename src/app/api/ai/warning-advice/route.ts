@@ -96,10 +96,35 @@ Chi tiết: ${warn.detail ?? "-"}
   }
 
   const cleaned = aiRes.text.replace(/```json|```/g, "").trim();
+  const toText = (v: unknown): string | null => {
+    if (typeof v === "string") return v.trim() || null;
+    if (Array.isArray(v)) {
+      const lines = v
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : item && typeof item === "object"
+              ? Object.values(item as Record<string, unknown>)
+                  .filter((x) => typeof x === "string")
+                  .join(" - ")
+              : "",
+        )
+        .filter(Boolean);
+      return lines.length ? lines.join("\n") : null;
+    }
+    if (v && typeof v === "object") {
+      const parts = Object.values(v as Record<string, unknown>).filter(
+        (x): x is string => typeof x === "string",
+      );
+      return parts.length ? parts.join(" - ") : null;
+    }
+    return null;
+  };
   let suggestion: string | null = null;
   try {
-    const obj = JSON.parse(cleaned) as { suggestion?: string };
-    suggestion = obj.suggestion?.trim() || null;
+    suggestion = toText(
+      (JSON.parse(cleaned) as Record<string, unknown>).suggestion,
+    );
   } catch {
     // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
     suggestion = cleaned.length > 20 ? cleaned : null;

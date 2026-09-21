@@ -210,11 +210,35 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
   }
 
   const cleaned = aiRes.text.replace(/```json|```/g, "").trim();
-  try {
-    const obj = JSON.parse(cleaned) as { answer?: string };
-    if (obj.answer?.trim()) {
-      return NextResponse.json({ answer: obj.answer.trim() });
+  const toText = (v: unknown): string | null => {
+    if (typeof v === "string") return v.trim() || null;
+    if (Array.isArray(v)) {
+      const lines = v
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : item && typeof item === "object"
+              ? Object.values(item as Record<string, unknown>)
+                  .filter((x) => typeof x === "string")
+                  .join(" - ")
+              : "",
+        )
+        .filter(Boolean);
+      return lines.length ? lines.join("\n") : null;
     }
+    if (v && typeof v === "object") {
+      const parts = Object.values(v as Record<string, unknown>).filter(
+        (x): x is string => typeof x === "string",
+      );
+      return parts.length ? parts.join(" - ") : null;
+    }
+    return null;
+  };
+  try {
+    const answer = toText(
+      (JSON.parse(cleaned) as Record<string, unknown>).answer,
+    );
+    if (answer) return NextResponse.json({ answer });
   } catch {
     // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
     if (cleaned.length > 20) return NextResponse.json({ answer: cleaned });

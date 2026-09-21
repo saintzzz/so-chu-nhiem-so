@@ -696,6 +696,7 @@ export function GradesEditor({
           subject_id: subjectId,
           term,
           entered_by: meId,
+          subtype: "",
         };
         if (isTh) {
           // Tiểu học: đợt GK lưu mức + nhận xét; đợt CK lưu mức + điểm KTĐK + nhận xét

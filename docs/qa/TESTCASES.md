@@ -288,3 +288,27 @@ lesson_plan 17, incident 6, message 5, substitute 3, daily_report 3, warning 1 -
 ### Consistency
 
 `node scripts/check-consistency.mjs` - ALL PASS (21/09/2026).
+
+## Đợt CR-004 (21/09/2026) - chuyên cần theo ngày + sổ điểm cá nhân + UX
+
+| Case | Kết quả |
+|---|---|
+| Điểm danh: thẻ Có mặt | PASS - counters 6 thẻ (Sĩ số/Có mặt/Vắng/CP/KP/Muộn), ngày 20/9: có mặt 4, muộn 1 |
+| Điểm danh: chọn ngày cũ xem/sửa | PASS - `?date=2026-09-20` load đúng trạng thái đã lưu (1 late checked), DateNav prev/next + input |
+| Tracking: chọn ngày mốc `?to=` | PASS - anchor theo param, mặc định ngày data gần nhất |
+| Leaves: range `?from=&to=` | PASS - from=to=20/9 lọc đúng 1 lượt (Dung - Đi muộn) |
+| History: range + nhãn "khoảng chọn" | PASS - query gte/lte, stats + chart + bảng theo khoảng |
+| Daily-report: `?date=` | PASS - báo cáo theo ngày chọn |
+| Dashboard: thẻ chuyên cần anchor ngày data gần nhất | PASS - "Có mặt (20/9)=4, nghỉ (20/9)=0, đi muộn (20/9)=1" - fix bug hiện 0 |
+| Dashboard: attRate gồm late | PASS - present+late/total, nhất quán school/dept dashboard |
+| Seating: thêm/bớt hàng cột | PASS - 8->9 cột giữ nguyên vị trí HS, v2 persist `layout.cols=9` |
+| Sổ đầu bài: tách 3 trường | PASS - lesson_title/lesson_content/teacher_comment persist riêng, collapsed row hiện title+content+comment |
+| Sổ đầu bài: nút +/- điểm rèn luyện | PASS - +1 An -> `conduct_records` khen_thuong points=1 "Cộng điểm rèn luyện trong tiết Toán" |
+| Mobile 375px: tên HS trong grid đánh dấu | PASS - tên đầy đủ (216px), chip trạng thái xuống dòng |
+| Sổ điểm: cột động Miệng/15ph/1tiết | PASS - thêm/xoá cột, nhập 3 loại + GK + CK, ĐTBm đúng hệ số (An: (7+8+8.5+15+21)/8=7.4) |
+| Sổ điểm: subtype persist + round-trip | PASS - `grades.subtype` mieng/kt15/kt1t, reload dựng lại đúng cột |
+| Sổ điểm: data cũ (subtype rỗng) | PASS - hiện cột "ĐĐGtx" generic, lưu giữ subtype '' |
+
+### Bug bắt được trong đợt này
+
+- Unique constraint `grades (student,subject,term,type,seq)` thiếu `subtype` -> 409 khi 2 loại cùng seq=1. Fix: subtype NOT NULL default '' + unique key gồm subtype (migration `20260921_cr004`), base row `subtype:""` cho gk/ck.

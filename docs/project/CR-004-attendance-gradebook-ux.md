@@ -42,3 +42,17 @@
 ## 3. Estimate
 
 ~1.5-2 ngày: sổ điểm động ~0.75d, chọn ngày/khoảng chuyên cần ~0.5d, seating + period-log + 2 bug nhỏ ~0.5d.
+
+## 4. Quyết định đã duyệt (Q&A 21/9)
+
+1. Điểm danh: mặc định hôm nay, xem/sửa được ngày cũ + date-range cho trang thống kê.
+2. Điểm rèn luyện: nút +/− ngay trong form sổ đầu bài -> `conduct_records` (khen_thuong/vi_pham).
+3. Sổ điểm: cột động Miệng/15ph/1tiết/GK/CK - `grades.subtype` + `seq` theo cột.
+4. Sổ đầu bài: 3 trường riêng lesson_title/lesson_content/teacher_comment.
+
+## 5. Trạng thái: DONE (21/9/2026)
+
+- Commits: `ff6967c`, `2ae8b61`, `63c1277` - đã deploy production.
+- Migration `20260921_cr004_period_log_grade_subtype.sql` đã áp dụng.
+- Verify E2E production: toàn bộ 8 mục PASS (xem `docs/qa/TESTCASES.md` đợt CR-004).
+- Bug phát hiện khi verify: unique key `grades` thiếu subtype -> 409; đã fix bằng subtype NOT NULL '' + unique key mới.

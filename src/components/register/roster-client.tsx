@@ -148,24 +148,44 @@ export function RosterClient({
         setBusy(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("parents")
-        .insert({
-          full_name: newParentName.trim(),
-          phone: newParentPhone.trim() || null,
-          email: newParentEmail.trim() || null,
-          relationship: newParentRel,
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("create_parent_for_student", {
+        p_full_name: newParentName.trim(),
+        p_phone: newParentPhone.trim(),
+        p_email: newParentEmail.trim(),
+        p_relationship: newParentRel,
+        p_student_id: linkStudent,
+      });
       if (error || !data) {
         setMessage("Không thể tạo phụ huynh. Vui lòng thử lại.");
         setBusy(false);
         return;
       }
-      const p = data as ParentRow;
-      parentId = p.id;
-      setParents((ps) => [...ps, p]);
+      parentId = data as string;
+      setParents((ps) => [
+        ...ps,
+        {
+          id: parentId,
+          full_name: newParentName.trim(),
+          phone: newParentPhone.trim() || null,
+          email: newParentEmail.trim() || null,
+          relationship: newParentRel,
+        },
+      ]);
+      setLinks((ls) => [...ls, { student_id: linkStudent, parent_id: parentId }]);
+      setLinkStudent("");
+      setLinkParent("");
+      setNewParentName("");
+      setNewParentPhone("");
+      setNewParentEmail("");
+      setMessage("Đã tạo phụ huynh và liên kết với học sinh.");
+      logAudit(supabase, {
+        action: "Tạo + liên kết phụ huynh",
+        entity: "parent_students",
+        entityId: linkStudent,
+        payload: { parent_id: parentId },
+      });
+      setBusy(false);
+      return;
     }
     const { error } = await supabase
       .from("parent_students")

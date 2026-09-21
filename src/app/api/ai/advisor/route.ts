@@ -209,13 +209,15 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
     return NextResponse.json({ answer });
   }
 
+  const cleaned = aiRes.text.replace(/```json|```/g, "").trim();
   try {
-    const obj = JSON.parse(
-      aiRes.text.replace(/```json|```/g, "").trim(),
-    ) as { answer?: string };
-    if (obj.answer?.trim()) return NextResponse.json({ answer: obj.answer.trim() });
+    const obj = JSON.parse(cleaned) as { answer?: string };
+    if (obj.answer?.trim()) {
+      return NextResponse.json({ answer: obj.answer.trim() });
+    }
   } catch {
-    // fallthrough
+    // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
+    if (cleaned.length > 20) return NextResponse.json({ answer: cleaned });
   }
   return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
 }

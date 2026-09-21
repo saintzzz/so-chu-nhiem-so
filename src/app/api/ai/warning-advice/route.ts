@@ -95,19 +95,21 @@ Chi tiết: ${warn.detail ?? "-"}
     return NextResponse.json({ suggestion });
   }
 
+  const cleaned = aiRes.text.replace(/```json|```/g, "").trim();
+  let suggestion: string | null = null;
   try {
-    const obj = JSON.parse(
-      aiRes.text.replace(/```json|```/g, "").trim(),
-    ) as { suggestion?: string };
-    if (obj.suggestion?.trim()) {
-      await supabase
-        .from("early_warnings")
-        .update({ suggestion: obj.suggestion.trim() })
-        .eq("id", warn.id);
-      return NextResponse.json({ suggestion: obj.suggestion.trim() });
-    }
+    const obj = JSON.parse(cleaned) as { suggestion?: string };
+    suggestion = obj.suggestion?.trim() || null;
   } catch {
-    // fallthrough
+    // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
+    suggestion = cleaned.length > 20 ? cleaned : null;
   }
-  return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
+  if (!suggestion) {
+    return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
+  }
+  await supabase
+    .from("early_warnings")
+    .update({ suggestion })
+    .eq("id", warn.id);
+  return NextResponse.json({ suggestion });
 }

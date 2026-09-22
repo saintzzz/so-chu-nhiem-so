@@ -11,18 +11,31 @@ export default async function SchoolAnnouncePage() {
 
   const { data } = await supabase
     .from("announcements")
-    .select("id,title,content,created_at,sender_id,profiles(full_name)")
+    .select("id,title,content,created_at,sender_id")
     .eq("school_id", profile.school_id ?? "")
     .is("class_id", null)
     .order("created_at", { ascending: false })
     .limit(30);
-  const items = (data ?? []) as unknown as {
+  const items = (data ?? []) as {
     id: string;
     title: string;
     content: string;
     created_at: string;
-    profiles: { full_name: string } | null;
+    sender_id: string;
   }[];
+  const senderIds = [...new Set(items.map((a) => a.sender_id))];
+  const { data: senders } = senderIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", senderIds)
+    : { data: [] };
+  const senderName = new Map(
+    ((senders ?? []) as { id: string; full_name: string }[]).map((p) => [
+      p.id,
+      p.full_name,
+    ]),
+  );
 
   return (
     <div>
@@ -46,7 +59,7 @@ export default async function SchoolAnnouncePage() {
             </td>
             <td className="font-medium">{a.title}</td>
             <td className="text-muted-foreground">
-              {a.profiles?.full_name ?? "-"}
+              {senderName.get(a.sender_id) ?? "-"}
             </td>
             <td className="max-w-md">
               <span className="line-clamp-2 text-sm">{a.content}</span>

@@ -105,7 +105,9 @@ export default async function ParentPortalPage() {
         supabase
           .from("announcements")
           .select("id,title,content,created_at")
-          .or(`class_id.eq.${student.class_id},student_id.eq.${student.id}`)
+          .or(
+            `class_id.eq.${student.class_id},student_id.eq.${student.id},and(class_id.is.null,school_id.eq.${classroom?.school_id ?? "none"})`,
+          )
           .order("created_at", { ascending: false })
           .limit(8),
         parent

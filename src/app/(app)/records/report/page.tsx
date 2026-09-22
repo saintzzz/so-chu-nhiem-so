@@ -54,69 +54,87 @@ export default async function RecordsReportPage() {
     idsByClass.set(s.class_id, arr);
   }
 
-  const stats: ClassStats[] = await Promise.all(
-    classes.map(async (c) => {
-      const ids = idsByClass.get(c.id) ?? [];
-      if (ids.length === 0) {
-        return {
-          id: c.id,
-          name: c.name,
-          size: 0,
-          attendancePct: null,
-          avgScore: null,
-          violations: 0,
-        };
-      }
-      const [totalRes, absentRes, gradesRes, violRes] = await Promise.all([
+  const allIds = students.map((s) => s.id);
+  const classOf = new Map(students.map((s) => [s.id, s.class_id]));
+  const [attRes, gradesRes, violRes] = allIds.length
+    ? await Promise.all([
         supabase
           .from("attendance_records")
-          .select("id", { count: "exact", head: true })
-          .in("student_id", ids),
-        supabase
-          .from("attendance_records")
-          .select("status")
-          .in("student_id", ids)
-          .in("status", ["excused", "unexcused"])
-          .limit(5000),
+          .select("student_id,status")
+          .in("student_id", allIds)
+          .limit(100000),
         supabase
           .from("grades")
           .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", ids)
-          .limit(20000),
+          .in("student_id", allIds)
+          .limit(100000),
         supabase
           .from("conduct_records")
-          .select("id", { count: "exact", head: true })
-          .in("student_id", ids)
-          .eq("type", "vi_pham"),
-      ]);
-      const total = totalRes.count ?? 0;
-      const absent = ((absentRes.data ?? []) as { status: AttendanceStatus }[])
-        .length;
-      const avgMap = averageByStudent(
-        (gradesRes.data ?? []) as {
-          student_id: string;
-          subject_id: string;
-          term: string;
-          assessment_type: string;
-          score: number | null;
-        }[],
-      );
-      const classAvgs = [...avgMap.values()];
-      const avg =
-        classAvgs.length > 0
-          ? classAvgs.reduce((a, v) => a + v, 0) / classAvgs.length
-          : null;
-      return {
-        id: c.id,
-        name: c.name,
-        size: ids.length,
-        attendancePct:
-          total > 0 ? Math.round(((total - absent) / total) * 1000) / 10 : null,
-        avgScore: avg !== null ? Math.round(avg * 10) / 10 : null,
-        violations: violRes.count ?? 0,
-      };
-    }),
+          .select("student_id")
+          .in("student_id", allIds)
+          .eq("type", "vi_pham")
+          .limit(100000),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const attByClass = new Map<string, { total: number; absent: number }>();
+  for (const r of (attRes.data ?? []) as {
+    student_id: string;
+    status: AttendanceStatus;
+  }[]) {
+    const cid = classOf.get(r.student_id);
+    if (!cid) continue;
+    const a = attByClass.get(cid) ?? { total: 0, absent: 0 };
+    a.total += 1;
+    if (r.status === "excused" || r.status === "unexcused") a.absent += 1;
+    attByClass.set(cid, a);
+  }
+
+  const avgByStudent = averageByStudent(
+    (gradesRes.data ?? []) as {
+      student_id: string;
+      subject_id: string;
+      term: string;
+      assessment_type: string;
+      score: number | null;
+    }[],
   );
+  const scoreByClass = new Map<string, number[]>();
+  for (const [sid, avg] of avgByStudent) {
+    const cid = classOf.get(sid);
+    if (!cid) continue;
+    const arr = scoreByClass.get(cid) ?? [];
+    arr.push(avg);
+    scoreByClass.set(cid, arr);
+  }
+
+  const violByClass = new Map<string, number>();
+  for (const r of (violRes.data ?? []) as { student_id: string }[]) {
+    const cid = classOf.get(r.student_id);
+    if (!cid) continue;
+    violByClass.set(cid, (violByClass.get(cid) ?? 0) + 1);
+  }
+
+  const stats: ClassStats[] = classes.map((c) => {
+    const ids = idsByClass.get(c.id) ?? [];
+    const att = attByClass.get(c.id);
+    const scores = scoreByClass.get(c.id) ?? [];
+    const avg =
+      scores.length > 0
+        ? scores.reduce((a, v) => a + v, 0) / scores.length
+        : null;
+    return {
+      id: c.id,
+      name: c.name,
+      size: ids.length,
+      attendancePct:
+        att && att.total > 0
+          ? Math.round(((att.total - att.absent) / att.total) * 1000) / 10
+          : null,
+      avgScore: avg !== null ? Math.round(avg * 10) / 10 : null,
+      violations: violByClass.get(c.id) ?? 0,
+    };
+  });
 
   const totalStudents = stats.reduce((a, s) => a + s.size, 0);
   const pctValues = stats.filter((s) => s.attendancePct !== null);

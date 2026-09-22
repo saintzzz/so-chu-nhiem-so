@@ -75,5 +75,5 @@ Kiểm tra vỡ khung/overflow ở desktop 1905px, 1440px và mobile 375px (DOM 
 ## 6. Còn lại / đề xuất
 
 - Lớp tiểu học (1A/3A/5A) chưa có `emulation_scores` -> bảng xếp hạng Sở hiện 0 điểm cho 3 lớp này (data gap, không phải lỗi UI).
-- Đề xuất CR: sau import HS mới, sơ đồ chỗ ngồi nên tự gán ghế trống hoặc cảnh báo "X HS chưa có chỗ".
+- ~~Đề xuất CR: sau import HS mới, sơ đồ chỗ ngồi nên tự gán ghế trống hoặc cảnh báo "X HS chưa có chỗ".~~ Đã làm - **CR-007** (commit `677e79a`): banner "Còn X học sinh chưa có chỗ ngồi" kèm tên + nút "Xếp chỗ tự động" điền ô trống, hết ô thì gợi ý thêm hàng/cột. Verify E2E: tạo v4 thiếu 2 HS -> banner hiện đúng 2 em -> auto-assign -> lưu v5 đủ 32/32 ghế.
 - `check-consistency.mjs`: ALL PASS sau khi fix D2.

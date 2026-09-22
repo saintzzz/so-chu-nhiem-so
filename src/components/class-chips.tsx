@@ -11,12 +11,18 @@ export function ClassChips({
   classes,
   selectedId,
   href,
+  params,
 }: {
   classes: ClassChipItem[];
   selectedId: string;
   href: string;
+  /** Query params cần giữ lại khi đổi lớp (vd: date, from, to). */
+  params?: Record<string, string>;
 }) {
   if (classes.length <= 1) return null;
+  const extra = new URLSearchParams(
+    Object.entries(params ?? {}).filter(([, v]) => v !== ""),
+  ).toString();
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">Lớp:</span>
@@ -24,7 +30,7 @@ export function ClassChips({
         <Link
           prefetch={false}
           key={c.id}
-          href={`${href}?class=${c.id}`}
+          href={`${href}?class=${c.id}${extra ? `&${extra}` : ""}`}
           className={cn(
             "rounded-full border px-3 py-1 text-sm transition-colors",
             c.id === selectedId

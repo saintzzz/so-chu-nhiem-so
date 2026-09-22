@@ -101,9 +101,10 @@ export default async function AttendanceDailyPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/daily"
+        params={{ date: today }}
       />
       <AttendanceDateNav date={today} params={{ class: selected.id }} />
-      <DailyRoster date={today} rows={rows} />
+      <DailyRoster key={`${selected.id}-${today}`} date={today} rows={rows} />
     </div>
   );
 }

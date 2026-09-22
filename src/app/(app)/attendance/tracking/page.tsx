@@ -143,6 +143,7 @@ export default async function AttendanceTrackingPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/tracking"
+        params={{ to: anchor }}
       />
       <AttendanceDateNav
         date={anchor}

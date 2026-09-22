@@ -189,6 +189,7 @@ export default async function AttendanceHistoryPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/history"
+        params={{ from: range.from, to: range.to }}
       />
       <AttendanceRangeNav
         from={range.from}

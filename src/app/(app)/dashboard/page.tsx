@@ -11,6 +11,7 @@ import {
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { DashboardDateBar } from "@/components/attendance/date-controls";
 import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, LineChart } from "@/components/charts";
@@ -68,9 +69,21 @@ function formatDate(iso: string | null): string {
   return formatDateVN(iso + "T00:00:00");
 }
 
-export default async function DashboardPage() {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string; from?: string; to?: string }>;
+}) {
   const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
+  const sp = await searchParams;
+  const dateParam = sp.date && ISO_DATE.test(sp.date) ? sp.date : null;
+  const fromParam = sp.from && ISO_DATE.test(sp.from) ? sp.from : null;
+  const toParam = sp.to && ISO_DATE.test(sp.to) ? sp.to : null;
+  const rangeMode =
+    fromParam !== null && toParam !== null && fromParam <= toParam;
 
   const [{ data: clsRaw }, { data: schoolRaw }] = await Promise.all([
     supabase
@@ -101,9 +114,10 @@ export default async function DashboardPage() {
   const studentIds = students.map((s) => s.id);
   const hasStudents = studentIds.length > 0;
 
-  // Thẻ chuyên cần theo ngày điểm danh gần nhất có dữ liệu của lớp
+  // Thẻ chuyên cần: ?date= xem 1 ngày (mặc định ngày có data gần nhất),
+  // ?from=&to= xem tổng hợp theo khoảng ngày.
   let attDate = TODAY;
-  if (hasStudents) {
+  if (hasStudents && !dateParam && !rangeMode) {
     const { data: latestAtt } = await supabase
       .from("attendance_records")
       .select("date")
@@ -112,10 +126,12 @@ export default async function DashboardPage() {
       .limit(1);
     if (latestAtt?.[0]?.date) attDate = latestAtt[0].date;
   }
-  const attDateLabel = formatDateOnly(attDate, {
-    day: "numeric",
-    month: "numeric",
-  });
+  if (dateParam) attDate = dateParam;
+  const rangeFrom = fromParam ?? attDate;
+  const rangeTo = toParam ?? attDate;
+  const attDateLabel = rangeMode
+    ? `${formatDateOnly(rangeFrom, { day: "numeric", month: "numeric" })} - ${formatDateOnly(rangeTo, { day: "numeric", month: "numeric" })}`
+    : formatDateOnly(attDate, { day: "numeric", month: "numeric" });
 
   // All remaining queries only depend on studentIds/classId/profile - run in one batch.
   const since30 = "2026-08-19";
@@ -136,19 +152,24 @@ export default async function DashboardPage() {
     { data: evalRaw },
   ] = await Promise.all([
     hasStudents
-      ? supabase
-          .from("attendance_records")
-          .select("student_id,status")
-          .eq("date", attDate)
-          .in("student_id", studentIds)
+      ? (() => {
+          let q = supabase
+            .from("attendance_records")
+            .select("student_id,status")
+            .in("student_id", studentIds);
+          q = rangeMode
+            ? q.gte("date", rangeFrom).lte("date", rangeTo)
+            : q.eq("date", attDate);
+          return q;
+        })()
       : Promise.resolve({ data: [] }),
-    hasStudents
+    hasStudents && !rangeMode
       ? supabase
           .from("attendance_records")
           .select("id", { count: "exact", head: true })
           .in("student_id", studentIds)
       : Promise.resolve({ count: 0 }),
-    hasStudents
+    hasStudents && !rangeMode
       ? supabase
           .from("attendance_records")
           .select("id", { count: "exact", head: true })
@@ -217,7 +238,7 @@ export default async function DashboardPage() {
           .from("daily_reports")
           .select("id,status")
           .eq("class_id", classId)
-          .eq("date", TODAY)
+          .eq("date", rangeMode ? rangeTo : attDate)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     hasStudents
@@ -237,8 +258,13 @@ export default async function DashboardPage() {
     (r) => r.status === "excused" || r.status === "unexcused",
   ).length;
   const lateToday = todayAtt.filter((r) => r.status === "late").length;
-  const attRate =
-    attTotal && attTotal > 0
+  const attRate = rangeMode
+    ? todayAtt.length > 0
+      ? Math.round(
+          ((presentToday + lateToday) / todayAtt.length) * 1000,
+        ) / 10
+      : null
+    : attTotal && attTotal > 0
       ? Math.round(((attPresent ?? 0) / attTotal) * 1000) / 10
       : null;
 
@@ -342,7 +368,7 @@ export default async function DashboardPage() {
   const missingEvaluations = hasStudents
     ? studentIds.filter((id) => !evaluatedIds.has(id)).length
     : 0;
-  const notMarkedToday = hasStudents && attDate !== todayVN();
+  const notMarkedToday = hasStudents && !rangeMode && attDate !== todayVN();
   const reportNotSubmitted = todayReport?.status !== "submitted";
 
   // Activity feed: notifications + announcements
@@ -405,30 +431,53 @@ export default async function DashboardPage() {
         }
       />
 
+      <DashboardDateBar
+        mode={rangeMode ? "range" : "day"}
+        date={attDate}
+        from={rangeFrom}
+        to={rangeTo}
+      />
+
       {/* 10 KPI cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard
-          label={`Học sinh có mặt (${attDateLabel})`}
+          label={`${rangeMode ? "Lượt có mặt" : "Học sinh có mặt"} (${attDateLabel})`}
           value={presentToday}
-          href="/attendance/daily"
+          href={
+            rangeMode
+              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}`
+              : `/attendance/daily?date=${attDate}`
+          }
           tone="success"
         />
         <StatCard
-          label={`Học sinh nghỉ học (${attDateLabel})`}
+          label={`${rangeMode ? "Lượt vắng" : "Học sinh nghỉ học"} (${attDateLabel})`}
           value={absentToday}
-          href="/attendance/daily"
+          href={
+            rangeMode
+              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}`
+              : `/attendance/daily?date=${attDate}`
+          }
           tone={absentToday > 0 ? "warning" : "success"}
         />
         <StatCard
-          label={`Học sinh đi muộn (${attDateLabel})`}
+          label={`${rangeMode ? "Lượt đi muộn" : "Học sinh đi muộn"} (${attDateLabel})`}
           value={lateToday}
-          href="/attendance/leaves"
+          href={
+            rangeMode
+              ? `/attendance/leaves?from=${rangeFrom}&to=${rangeTo}`
+              : `/attendance/leaves?from=${attDate}&to=${attDate}`
+          }
           tone={lateToday > 0 ? "warning" : "default"}
         />
         <StatCard
-          label="Tỷ lệ chuyên cần"
+          label={`Tỷ lệ chuyên cần${rangeMode ? ` (${attDateLabel})` : ""}`}
           value={attRate !== null ? `${attRate}%` : "-"}
-          href="/attendance/tracking"
+          href={
+            rangeMode
+              ? `/attendance/tracking?to=${rangeTo}`
+              : "/attendance/tracking"
+          }
           tone="primary"
         />
         <StatCard

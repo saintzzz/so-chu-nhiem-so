@@ -72,6 +72,7 @@ export default async function SeatingPage({
         description={`Lớp ${cls.name} · Tháng ${CURRENT_MONTH.slice(5)}/${CURRENT_MONTH.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
       />
       <SeatingGrid
+        key={cls.id}
         classId={cls.id}
         className={cls.name}
         month={currentMonth}

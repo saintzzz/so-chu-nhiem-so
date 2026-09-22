@@ -2,6 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import type {
@@ -60,7 +61,10 @@ export default async function PeriodLogPage({
   const supabase = await createClient();
   const sp = await searchParams;
 
-  const date = sp.date ?? DEFAULT_DATE;
+  const date =
+    sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date)
+      ? sp.date
+      : DEFAULT_DATE;
   const jsDay = new Date(`${date}T00:00:00`).getDay();
   // DB convention: weekday 2..7 = Thứ 2..Thứ 7 (Mon..Sat); Sunday => none
   const weekday = jsDay === 0 ? null : jsDay + 1;
@@ -247,21 +251,15 @@ export default async function PeriodLogPage({
         </div>
       )}
 
+      <AttendanceDateNav date={date} params={{}} />
+
       {weekday === null ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
           Chủ nhật không có tiết học. Chọn ngày khác để xem sổ đầu bài.
-          <div className="mt-4">
-            <PeriodLogBoard
-              date={date}
-              profileId={profile.id}
-              entries={[]}
-              rosters={{}}
-              logs={{}}
-            />
-          </div>
         </div>
       ) : (
         <PeriodLogBoard
+          key={date}
           date={date}
           profileId={profile.id}
           entries={entries}

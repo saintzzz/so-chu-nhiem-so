@@ -108,6 +108,7 @@ export default async function AttendanceLeavesPage({
         classes={classes}
         selectedId={selected.id}
         href="/attendance/leaves"
+        params={{ from, to }}
       />
       <AttendanceRangeNav
         from={from}

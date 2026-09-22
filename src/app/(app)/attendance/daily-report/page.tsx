@@ -115,9 +115,11 @@ export default async function DailyReportPage({
         classes={classes}
         selectedId={myClass.id}
         href="/attendance/daily-report"
+        params={{ date: today }}
       />
       <AttendanceDateNav date={today} params={{ class: myClass.id }} />
       <DailyReportForm
+        key={`${myClass.id}-${today}`}
         classId={myClass.id}
         className={myClass.name}
         date={today}

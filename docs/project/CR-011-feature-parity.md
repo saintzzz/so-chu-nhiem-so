@@ -73,4 +73,13 @@ hẳn + 5 mục cần nâng cấp.
 
 ### Gates
 - typecheck PASS, lint 0 warning, build PASS (112 routes), check-consistency ALL PASS (kể cả 2 check vn-sort mới bắt).
-- Còn lại: deploy + Playwright verify production.
+
+### Playwright production verify (2026-09-22)
+- BGH: 10/10 route render đúng (profile, users, students, strategy, equipment, announce, journals, exam-analytics, nq37, schedule/manage).
+- Mutations: thêm KPI, thêm thiết bị, gửi thông báo trường - tất cả persist vào DB và hiển thị lại trên trang.
+- TKB editor: conflict teacher PASS ("Giáo viên đã dạy lớp 8A2 ở khung giờ này"), delete + re-add ô tiết PASS, dữ liệu khôi phục đúng sau test.
+- Portal HS: lịch học tuần T2-T7, streak "Đi học liên tiếp", hồ sơ đầy đủ, thông báo trường PASS; `/portal/student/hoc-ba` render TT22 đầy đủ.
+- Portal PH: thấy thông báo toàn trường PASS.
+- phong_gd: /dept/wards, /dept/reports, /dept/facilities PASS.
+- RBAC deny: hoc_sinh→/school/users redirect, phong_gd→/school/strategy redirect, gvcn→/school/users redirect - PASS.
+- 0 page errors toàn bộ sweep.

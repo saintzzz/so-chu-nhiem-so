@@ -89,3 +89,23 @@ nhiều lớp chủ nhiệm và lớp đang dạy.
 ## Gates
 - typecheck PASS, lint 0 warnings, build PASS, consistency ALL PASS.
 - Playwright production: xem QA log trong commit message / báo cáo.
+
+## QA production (2026-09-22, Playwright + DB)
+- roster/seating: 9 class chips (2 CN + 7 lớp dạy) ✓
+- timetable GVCN: 9 chips, badge (CN) trên 6A3 + 8A2 ✓
+- timetable GVBM: 8 chips (chỉ lớp dạy, trước thấy cả trường) ✓
+- student-chat: chips 6A3/8A2; 6A3 = đủ 32 HS, 31 badge "Chưa có
+  tài khoản", 1 HS có tài khoản click được + thread render ✓
+- period-log: chips "Tất cả" + 5 lớp có tiết, giữ ?date khi đổi lớp,
+  filter 6A3 chỉ còn tiết 6A3 sort theo tiết ✓
+- support: hủy plan cũ → tick checkbox → "Tạo kế hoạch cho 1 mục" →
+  DB có row pending mới + audit_logs ghi support_plans.create;
+  duyệt + triển khai lại về trạng thái ban đầu ✓
+- parent-chat: chips lớp; đủ 32 PH, badge + phone/email; empty-state
+  link sang roster ✓
+- audit gộp: 2 tab, filter actor/date/q (audit) + class/student/
+  field (records); /records/history redirect ?type=records;
+  Pagination render link thật; nav chỉ còn "Nhật ký & lịch sử" ✓
+- RBAC deny: GVBM vào /register/audit + /conduct/student-chat đều
+  redirect về /academics/grades ✓
+- Console: 0 errors ✓

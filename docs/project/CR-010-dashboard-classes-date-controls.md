@@ -26,3 +26,20 @@
 - Bấm ‹ › trên dashboard/điểm danh/sổ đầu bài: ô ngày hiển thị đúng ngày
   mới; form khoảng ngày cũng sync sau khi submit/đổi mode.
 - Gates: typecheck/lint/build + check-consistency; verify Playwright prod.
+
+## Kết quả triển khai (commit b2a9582)
+
+- Dashboard: bỏ `limit(1)` - gom mọi lớp chủ nhiệm (`classes.gvcn_id`) +
+  lớp có tiết dạy (`timetable_entries.teacher_id`, đánh dấu "(dạy)").
+  Class chips + `?class=`; header hiển thị "Lớp chủ nhiệm"/"Lớp đang dạy".
+  Chips giữ `date|from,to`; DashboardDateBar + link drill-down giữ `class`.
+- Date inputs: `key={date|from|to}` remount khi giá trị server đổi - fix
+  hiển thị cũ sau khi bấm ‹ › hoặc đổi mode (áp cho mọi trang dùng
+  AttendanceDateNav / AttendanceRangeNav / DashboardDateBar).
+
+## Verify production (Playwright, gvcn@demo.scn)
+- Chips hiện đủ 9 lớp: 6A3, 8A2 (chủ nhiệm) + 6A1,6A2,7A1,7A2,8A1,9A1,9A2 (dạy).
+- Đổi 6A3→8A2 ngày 21/9: 29→28 có mặt, URL `?class=...&date=2026-09-21`.
+- ‹ trên dashboard: input đổi 21/9→20/9 khớp URL; attendance ‹ › sync cả 2
+  chiều; period-log ‹ 18/9→17/9; range submit 15-21/9 input giữ đúng;
+  đổi mode range→day reset param sạch. 0 console error.

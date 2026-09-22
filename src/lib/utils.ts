@@ -14,21 +14,53 @@ export function todayVN(): string {
   );
 }
 
+const WD_LONG = [
+  "Chủ nhật",
+  "Thứ 2",
+  "Thứ 3",
+  "Thứ 4",
+  "Thứ 5",
+  "Thứ 6",
+  "Thứ 7",
+];
+const WD_SHORT = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+/** Day-of-week (0=CN) in Vietnam timezone - deterministic across ICU builds. */
+function weekdayVN(iso: string | Date): number {
+  const p = vnParts(iso);
+  return new Date(
+    Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)),
+  ).getUTCDay();
+}
+
 export function formatDate(
   iso: string | Date,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return new Date(iso).toLocaleDateString("vi-VN", {
+  // Intl weekday names differ between server/client ICU builds -> render
+  // them ourselves to avoid hydration mismatch.
+  const { weekday, ...rest } = options ?? {};
+  const base = new Date(iso).toLocaleDateString("vi-VN", {
     timeZone: VN_TZ,
-    ...options,
+    ...rest,
   });
+  if (!weekday) return base;
+  const name = (weekday === "short" ? WD_SHORT : WD_LONG)[weekdayVN(iso)];
+  return `${name}, ${base}`;
 }
 
 export function formatDateTime(
   iso: string | Date,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return new Date(iso).toLocaleString("vi-VN", { timeZone: VN_TZ, ...options });
+  const { weekday, ...rest } = options ?? {};
+  const base = new Date(iso).toLocaleString("vi-VN", {
+    timeZone: VN_TZ,
+    ...rest,
+  });
+  if (!weekday) return base;
+  const name = (weekday === "short" ? WD_SHORT : WD_LONG)[weekdayVN(iso)];
+  return `${name}, ${base}`;
 }
 
 export function formatDateOnly(

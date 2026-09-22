@@ -5,7 +5,7 @@ import { ParentActions } from "@/components/portal/parent-actions";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
-import { Bell, CalendarClock } from "lucide-react";
+import { Bell, CalendarClock, CalendarDays } from "lucide-react";
 import { fmtDateVN, fmtTimeDateVN } from "@/lib/utils";
 import type {
   Announcement,
@@ -90,7 +90,7 @@ export default async function ParentPortalPage() {
     "id" | "name" | "school_id" | "gvcn_id"
   > | null;
 
-  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes] = student
+  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes, evRes] = student
     ? await Promise.all([
         supabase
           .from("attendance_records")
@@ -145,8 +145,16 @@ export default async function ParentPortalPage() {
           .in("status", ["approved", "announced"])
           .order("activity_date", { ascending: false })
           .limit(10),
+        supabase
+          .from("school_year_events")
+          .select("id,title,event_date,category")
+          .eq("school_id", classroom?.school_id ?? "")
+          .gte("event_date", new Date().toISOString().slice(0, 10))
+          .order("event_date")
+          .limit(12),
       ])
     : [
+        { data: [] },
         { data: [] },
         { data: [] },
         { data: [] },
@@ -231,6 +239,12 @@ export default async function ParentPortalPage() {
     Announcement,
     "id" | "title" | "content" | "created_at"
   >[];
+  const yearEvents = (evRes.data ?? []) as {
+    id: string;
+    title: string;
+    event_date: string;
+    category: string | null;
+  }[];
   const appointments = (apptRes.data ?? []) as Pick<
     Appointment,
     "id" | "teacher_id" | "scheduled_at" | "purpose" | "status"
@@ -472,6 +486,39 @@ export default async function ParentPortalPage() {
               messages={portalMessages}
               activities={portalActivities}
             />
+
+            <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+              <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                Sự kiện năm học
+              </h2>
+              {yearEvents.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  Chưa có sự kiện nào sắp diễn ra.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {yearEvents.map((e) => (
+                    <li
+                      key={e.id}
+                      className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                    >
+                      <span className="w-12 shrink-0 rounded-lg bg-primary-bg px-2 py-1 text-center text-xs font-semibold text-primary">
+                        {formatDate(e.event_date)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        {e.title}
+                      </span>
+                      {e.category && (
+                        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                          {e.category}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
               <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">

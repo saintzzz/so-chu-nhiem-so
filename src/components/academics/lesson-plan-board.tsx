@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Paperclip, X } from "lucide-react";
 import { DataTable } from "@/components/data-table";
+import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { AiDraftButton } from "@/components/ai/ai-draft-button";
@@ -11,6 +12,7 @@ import {
   submitLessonPlan,
   teamReviewLessonPlan,
   bghDecideLessonPlan,
+  lessonPlanFileUrl,
 } from "@/app/(app)/academics/lesson-plans/actions";
 
 interface Plan {
@@ -21,6 +23,8 @@ interface Plan {
   periods: string | null;
   title: string;
   content: string | null;
+  file_path: string | null;
+  file_name: string | null;
   status: "draft" | "submitted" | "team_approved" | "approved" | "rejected";
   review_note: string | null;
   created_at: string;
@@ -44,12 +48,14 @@ export function LessonPlanBoard({
   subjects,
   plans,
   teacherNames,
+  schoolId,
 }: {
   mode: "teacher" | "team" | "bgh";
   classes: { id: string; name: string }[];
   subjects: { id: string; name: string }[];
   plans: Plan[];
   teacherNames: Record<string, string>;
+  schoolId: string;
 }) {
   const [classId, setClassId] = useState("");
   const [subjectId, setSubjectId] = useState("");
@@ -57,6 +63,7 @@ export function LessonPlanBoard({
   const [periods, setPeriods] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -71,6 +78,21 @@ export function LessonPlanBoard({
     start(async () => {
       setErr(null);
       setMsg(null);
+      let filePath: string | undefined;
+      let fileName: string | undefined;
+      if (file) {
+        const supabase = createClient();
+        const safe = file.name.replace(/[^\w.\-]+/g, "_");
+        filePath = `${schoolId}/${crypto.randomUUID()}-${safe}`;
+        const up = await supabase.storage
+          .from("lesson-plans")
+          .upload(filePath, file, { contentType: file.type });
+        if (up.error) {
+          setErr(`Không tải được file: ${up.error.message}`);
+          return;
+        }
+        fileName = file.name;
+      }
       const r = await submitLessonPlan({
         classId,
         subjectId,
@@ -78,6 +100,8 @@ export function LessonPlanBoard({
         periods,
         title,
         content,
+        filePath,
+        fileName,
       });
       if (r.error) setErr(r.error);
       else {
@@ -86,8 +110,15 @@ export function LessonPlanBoard({
         setContent("");
         setWeek("");
         setPeriods("");
+        setFile(null);
       }
     });
+  }
+
+  async function openFile(path: string) {
+    const r = await lessonPlanFileUrl(path);
+    if (r.url) window.open(r.url, "_blank");
+    else setErr(r.error ?? "Không mở được file.");
   }
 
   function decide(id: string, approve: boolean) {
@@ -191,6 +222,22 @@ export function LessonPlanBoard({
               placeholder="Mục tiêu, hoạt động khởi động - khám phá - luyện tập - vận dụng, đồ dùng dạy học..."
             />
           </label>
+          <label className="mt-3 block text-sm">
+            <span className="mb-1 block text-muted-foreground">
+              File đính kèm (docx, pdf, ảnh)
+            </span>
+            <input
+              type="file"
+              accept=".doc,.docx,.pdf,.png,.jpg,.jpeg,.pptx,.xlsx"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary-bg file:px-3 file:py-1 file:text-primary"
+            />
+            {file && (
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Đã chọn: {file.name}
+              </span>
+            )}
+          </label>
           <AiDraftButton<{ content: string }>
             className="mt-2"
             endpoint="/api/ai/lesson-plan"
@@ -207,19 +254,25 @@ export function LessonPlanBoard({
           <button
             type="button"
             onClick={submit}
-            disabled={pending || !classId || !subjectId || !title.trim() || !content.trim()}
+            disabled={
+              pending ||
+              !classId ||
+              !subjectId ||
+              !title.trim() ||
+              (!content.trim() && !file)
+            }
             className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             Nộp giáo án
           </button>
-          {(!classId || !subjectId || !title.trim() || !content.trim()) && (
+          {(!classId || !subjectId || !title.trim() || (!content.trim() && !file)) && (
             <p className="mt-1.5 text-xs text-muted-foreground">
               Cần đủ:{" "}
               {[
                 !classId && "lớp",
                 !subjectId && "môn",
                 !title.trim() && "tên bài dạy",
-                !content.trim() && "nội dung giáo án",
+                !content.trim() && !file && "nội dung hoặc file đính kèm",
               ]
                 .filter(Boolean)
                 .join(", ")}
@@ -285,8 +338,26 @@ export function LessonPlanBoard({
                 {expanded === p.id ? "Thu gọn" : "Xem"}
               </button>
               {expanded === p.id && (
-                <div className="mt-1 max-w-md whitespace-pre-wrap rounded-lg bg-muted p-2 text-xs text-muted-foreground">
-                  {p.content ?? "-"}
+                <div className="mt-1 w-[min(42rem,70vw)] whitespace-pre-wrap rounded-lg bg-muted p-3 text-sm text-foreground">
+                  {p.content ? (
+                    p.content
+                  ) : (
+                    <span className="text-muted-foreground">
+                      (Không có nội dung nhập tay)
+                    </span>
+                  )}
+                  {p.file_path && (
+                    <p className="mt-2 border-t border-border pt-2">
+                      <button
+                        type="button"
+                        onClick={() => void openFile(p.file_path!)}
+                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      >
+                        <Paperclip className="size-3.5" />
+                        {p.file_name ?? "File đính kèm"}
+                      </button>
+                    </p>
+                  )}
                   {p.review_note && (
                     <p className="mt-2 border-t border-border pt-1">
                       <span className="font-medium">Ghi chú duyệt:</span>{" "}

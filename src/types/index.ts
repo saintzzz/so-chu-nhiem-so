@@ -329,6 +329,8 @@ export interface LessonPlan {
   periods: string | null;
   title: string;
   content: string | null;
+  file_path: string | null;
+  file_name: string | null;
   status: LessonPlanStatus;
   team_reviewed_by: string | null;
   reviewed_by: string | null;

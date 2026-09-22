@@ -5,31 +5,40 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-const DEMO_ACCOUNTS = [
-  { role: "GVCN - lớp 6A1, 6A2", email: "gvcn@demo.scn" },
-  { role: "GVCN - lớp 7A1", email: "gvcn3@school.scn" },
-  { role: "GVCN - lớp 7A2", email: "gvcn4@school.scn" },
-  { role: "GVCN - lớp 8A1", email: "gvcn5@school.scn" },
-  { role: "GVCN - lớp 8A2", email: "gvcn6@school.scn" },
-  { role: "GVCN - lớp 9A1", email: "gvcn7@school.scn" },
-  { role: "GVCN - lớp 9A2", email: "gvcn8@school.scn" },
-  { role: "GVBM (Giáo viên bộ môn)", email: "gvbm@demo.scn" },
-  { role: "Tổ trưởng chuyên môn - Tổ Tự nhiên", email: "totruong@demo.scn" },
-  { role: "Tổ trưởng chuyên môn - Tổ Xã hội", email: "totruong2@demo.scn" },
-  { role: "Hiệu trưởng / BGH", email: "bgh@demo.scn" },
-  { role: "PHT - Phân hiệu Bản Mới", email: "pht@demo.scn" },
-  { role: "PHT - Cơ sở Trung tâm", email: "pht2@demo.scn" },
-  { role: "Kế toán", email: "ketoan@demo.scn" },
-  { role: "Quản trị viên Sở GD&ĐT", email: "sogd@demo.scn" },
-  { role: "Phòng GD&ĐT", email: "phonggd@demo.scn" },
-  { role: "UBND địa bàn", email: "ubnd@demo.scn" },
-  { role: "Phụ huynh", email: "phuhuynh@demo.scn" },
-  { role: "Phụ huynh 2 (mẹ - cùng con với TK trên)", email: "phuhuynh2@demo.scn" },
-  { role: "Học sinh", email: "hocsinh@demo.scn" },
-  { role: "[TH] GVCN - lớp 3A (Tiểu học Chu Văn An)", email: "gvcn-th@demo.scn" },
-  { role: "[TH] BGH - Tiểu học Chu Văn An", email: "bgh-th@demo.scn" },
-  { role: "[TH] Phụ huynh (Tiểu học)", email: "phuhuynh-th@demo.scn" },
-  { role: "[TH] Học sinh (Tiểu học)", email: "hocsinh-th@demo.scn" },
+const DEMO_GROUPS: {
+  label: string;
+  accounts: { role: string; email: string }[];
+}[] = [
+  {
+    label: "Trường THCS",
+    accounts: [
+      { role: "Giáo viên chủ nhiệm", email: "gvcn@demo.scn" },
+      { role: "Giáo viên bộ môn", email: "gvbm@demo.scn" },
+      { role: "Tổ trưởng chuyên môn", email: "totruong@demo.scn" },
+      { role: "Ban Giám Hiệu", email: "bgh@demo.scn" },
+      { role: "Phó hiệu trưởng", email: "pht@demo.scn" },
+      { role: "Kế toán", email: "ketoan@demo.scn" },
+      { role: "Phụ huynh", email: "phuhuynh@demo.scn" },
+      { role: "Học sinh", email: "hocsinh@demo.scn" },
+    ],
+  },
+  {
+    label: "Trường tiểu học",
+    accounts: [
+      { role: "Giáo viên chủ nhiệm", email: "gvcn-th@demo.scn" },
+      { role: "Ban Giám Hiệu", email: "bgh-th@demo.scn" },
+      { role: "Phụ huynh", email: "phuhuynh-th@demo.scn" },
+      { role: "Học sinh", email: "hocsinh-th@demo.scn" },
+    ],
+  },
+  {
+    label: "Cấp quản lý",
+    accounts: [
+      { role: "Sở Giáo dục và Đào tạo", email: "sogd@demo.scn" },
+      { role: "Phòng Giáo dục và Đào tạo", email: "phonggd@demo.scn" },
+      { role: "UBND địa bàn", email: "ubnd@demo.scn" },
+    ],
+  },
 ];
 
 export function LoginForm() {
@@ -106,10 +115,14 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
         >
-          {DEMO_ACCOUNTS.map((a) => (
-            <option key={a.email} value={a.email}>
-              {a.role}
-            </option>
+          {DEMO_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.accounts.map((a) => (
+                <option key={a.email} value={a.email}>
+                  {a.role}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         <p className="mt-1.5 text-xs text-muted-foreground">

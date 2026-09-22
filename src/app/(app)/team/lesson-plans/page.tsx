@@ -50,6 +50,7 @@ export default async function TeamLessonPlansPage() {
       />
       <LessonPlanBoard
         mode="team"
+        schoolId={sid}
         classes={((classData ?? []) as ClassRoom[]).map((c) => ({
           id: c.id,
           name: c.name,
@@ -67,6 +68,8 @@ export default async function TeamLessonPlansPage() {
           periods: p.periods,
           title: p.title,
           content: p.content,
+          file_path: p.file_path,
+          file_name: p.file_name,
           status: p.status,
           review_note: p.review_note,
           created_at: p.created_at,

@@ -16,13 +16,14 @@ export const NAV: Record<Role, NavSection[]> = {
   gvcn: [
     { label: "Dashboard", href: "/dashboard" },
     {
-      label: "Hồ sơ lớp học",
+      label: "Quản lý học sinh",
       children: [
-        { label: "Tiếp nhận lớp", href: "/records/intake" },
-        { label: "Upload danh sách học sinh", href: "/records/upload" },
+        { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
         { label: "Chi tiết hồ sơ học sinh", href: "/records/students" },
-        { label: "Lịch sử cập nhật hồ sơ", href: "/records/history" },
-        { label: "Báo cáo tổng hợp (AI)", href: "/records/report" },
+        { label: "Sơ đồ lớp", href: "/register/seating" },
+        { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
+        { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
+        { label: "Trao đổi học sinh", href: "/conduct/student-chat" },
       ],
     },
     {
@@ -37,94 +38,68 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "Học tập",
+      label: "Giảng dạy & học tập",
       children: [
+        { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Sổ đầu bài", href: "/schedule/period-log" },
         { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
-        { label: "Phân tích kết quả", href: "/academics/analysis" },
-        { label: "Học sinh cần hỗ trợ", href: "/academics/support" },
-        { label: "Trao đổi với giáo viên bộ môn", href: "/academics/teacher-chat" },
-        { label: "Trao đổi phụ huynh", href: "/academics/parent-chat" },
-        { label: "Kế hoạch hỗ trợ & tiến bộ", href: "/academics/plans" },
         { label: "Giáo án / Kế hoạch bài dạy", href: "/academics/lesson-plans" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
+        { label: "Phân tích kết quả", href: "/academics/analysis" },
+        { label: "Học sinh cần hỗ trợ", href: "/academics/support" },
+        { label: "Kế hoạch hỗ trợ & tiến bộ", href: "/academics/plans" },
+        { label: "Trao đổi với giáo viên bộ môn", href: "/academics/teacher-chat" },
       ],
     },
     {
-      label: "Rèn luyện",
-      children: [
-        { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
-        { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
-        { label: "Trao đổi học sinh", href: "/conduct/student-chat" },
-      ],
-    },
-    {
-      label: "Tư vấn học sinh",
-      children: [
-        { label: "Tiếp nhận & phát hiện", href: "/counseling/intake" },
-        { label: "Đánh giá mức độ", href: "/counseling/assessment" },
-        { label: "Chuyển tuyến chuyên gia", href: "/counseling/referral" },
-      ],
-    },
-    {
-      label: "Phụ huynh",
+      label: "Phụ huynh & hoạt động",
       children: [
         { label: "Soạn & gửi thông báo", href: "/parents/compose" },
         { label: "Hộp thư phản hồi", href: "/parents/inbox" },
         { label: "Lịch hẹn trao đổi", href: "/parents/appointments" },
-        { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
         { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
-      ],
-    },
-    {
-      label: "Hoạt động giáo dục",
-      children: [
+        { label: "Trao đổi phụ huynh", href: "/academics/parent-chat" },
         { label: "Lập kế hoạch & phê duyệt", href: "/activities/plan" },
         { label: "Thông báo & đăng ký", href: "/activities/announce" },
         { label: "Điểm danh & đánh giá", href: "/activities/attendance" },
       ],
     },
     {
-      label: "An toàn học sinh",
+      label: "Tư vấn & an toàn",
       children: [
         { label: "Ghi nhận sự cố", href: "/safety/report" },
         { label: "Báo cáo Ban Giám Hiệu", href: "/safety/bgh" },
         { label: "Theo dõi & nhắc", href: "/safety/followup" },
         { label: "Lưu trữ & tra cứu", href: "/safety/archive" },
+        { label: "Tiếp nhận & phát hiện", href: "/counseling/intake" },
+        { label: "Đánh giá mức độ", href: "/counseling/assessment" },
+        { label: "Chuyển tuyến chuyên gia", href: "/counseling/referral" },
       ],
     },
     {
       label: "Sổ chủ nhiệm",
       children: [
-        { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
-        { label: "Sơ đồ lớp", href: "/register/seating" },
-        { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
+        { label: "Tiếp nhận lớp", href: "/records/intake" },
+        { label: "Upload danh sách học sinh", href: "/records/upload" },
         { label: "Upload lịch năm học", href: "/register/year-events" },
-        { label: "Gợi ý công việc (AI)", href: "/register/suggestions" },
         { label: "Kế hoạch tháng / sơ kết tuần", href: "/register/plans" },
         { label: "Đăng ký chỉ tiêu hiệu suất", href: "/register/kpi" },
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
         { label: "Xuất sổ", href: "/register/export" },
+        { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
+        { label: "Lịch sử cập nhật hồ sơ", href: "/records/history" },
+        { label: "Báo cáo tổng hợp (AI)", href: "/records/report" },
+        { label: "Gợi ý công việc (AI)", href: "/register/suggestions" },
+        { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
         { label: "Nhật ký thao tác", href: "/register/audit" },
       ],
     },
     {
-      label: "Thời khóa biểu & Sổ đầu bài",
-      children: [
-        { label: "Thời khóa biểu", href: "/schedule/timetable" },
-        { label: "Sổ đầu bài", href: "/schedule/period-log" },
-      ],
-    },
-    {
-      label: "Thi đua",
+      label: "Thi đua & năng lực",
       children: [
         { label: "Thu thập & tính điểm", href: "/emulation/scoring" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
-      ],
-    },
-    {
-      label: "Năng lực giáo viên chủ nhiệm",
-      children: [
         { label: "Tự đánh giá & kế hoạch", href: "/competency/self-assessment" },
         { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
       ],
@@ -132,19 +107,14 @@ export const NAV: Record<Role, NavSection[]> = {
   ],
   gvbm: [
     {
-      label: "Học tập",
-      children: [
-        { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
-        { label: "Giáo án / Kế hoạch bài dạy", href: "/academics/lesson-plans" },
-        { label: "Trao đổi với giáo viên chủ nhiệm", href: "/academics/teacher-chat" },
-        { label: "Lịch thi", href: "/academics/exams" },
-      ],
-    },
-    {
-      label: "Thời khóa biểu & Sổ đầu bài",
+      label: "Giảng dạy bộ môn",
       children: [
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
+        { label: "Nhập / đồng bộ điểm", href: "/academics/grades" },
+        { label: "Giáo án / Kế hoạch bài dạy", href: "/academics/lesson-plans" },
+        { label: "Lịch thi", href: "/academics/exams" },
+        { label: "Trao đổi với giáo viên chủ nhiệm", href: "/academics/teacher-chat" },
       ],
     },
     {
@@ -193,23 +163,14 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "An toàn học sinh",
-      children: [{ label: "Sự cố toàn trường", href: "/safety/bgh" }],
-    },
-    {
-      label: "Sổ chủ nhiệm",
+      label: "Giám sát & báo cáo",
       children: [
+        { label: "Sự cố toàn trường", href: "/safety/bgh" },
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
+        { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
       ],
-    },
-    {
-      label: "Thời khóa biểu & Sổ đầu bài",
-      children: [{ label: "Thời khóa biểu", href: "/schedule/timetable" }],
-    },
-    {
-      label: "Thi đua",
-      children: [{ label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" }],
     },
   ],
   pht: [
@@ -226,12 +187,11 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
-      label: "An toàn học sinh",
-      children: [{ label: "Sự cố toàn trường", href: "/safety/bgh" }],
-    },
-    {
-      label: "Thời khóa biểu & Sổ đầu bài",
-      children: [{ label: "Thời khóa biểu", href: "/schedule/timetable" }],
+      label: "Giám sát & báo cáo",
+      children: [
+        { label: "Sự cố toàn trường", href: "/safety/bgh" },
+        { label: "Thời khóa biểu", href: "/schedule/timetable" },
+      ],
     },
   ],
   ke_toan: [

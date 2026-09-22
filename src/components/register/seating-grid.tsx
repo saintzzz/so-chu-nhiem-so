@@ -401,6 +401,12 @@ export function SeatingGrid({
             </span>
           )}
         </p>
+        {praiseMode && praisedIds.size === 0 && (
+          <p className="mb-3 rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
+            Chưa có học sinh nào có điểm tích cực - hãy cộng điểm rèn luyện
+            trong Sổ đầu bài hoặc Danh sách học sinh.
+          </p>
+        )}
         <p className="mb-3 text-xs text-muted-foreground md:hidden">
           Vuốt ngang để xem toàn bộ sơ đồ.
         </p>

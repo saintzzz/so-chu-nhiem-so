@@ -11,6 +11,8 @@ export async function submitLessonPlan(input: {
   periods: string;
   title: string;
   content: string;
+  filePath?: string;
+  fileName?: string;
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvbm", "gvcn"]);
   if (deny) return { error: deny };
@@ -18,7 +20,8 @@ export async function submitLessonPlan(input: {
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.title.trim()) return { error: "Vui lòng nhập tên bài dạy." };
-  if (!input.content.trim()) return { error: "Vui lòng nhập nội dung giáo án." };
+  if (!input.content.trim() && !input.filePath)
+    return { error: "Giáo án cần có nội dung hoặc file đính kèm." };
 
   const { data: cls } = await supabase
     .from("classes")
@@ -37,7 +40,9 @@ export async function submitLessonPlan(input: {
     week: input.week,
     periods: input.periods.trim() || null,
     title: input.title.trim(),
-    content: input.content.trim(),
+    content: input.content.trim() || null,
+    file_path: input.filePath ?? null,
+    file_name: input.fileName ?? null,
     status: "submitted",
   });
   if (error) return { error: error.message };
@@ -59,6 +64,21 @@ export async function submitLessonPlan(input: {
 
   revalidatePath("/academics/lesson-plans");
   return {};
+}
+
+/** URL ký (1 giờ) để người duyệt/GV mở file giáo án đính kèm. */
+export async function lessonPlanFileUrl(
+  filePath: string,
+): Promise<{ url?: string; error?: string }> {
+  const deny = await checkActionRole(["gvbm", "gvcn", "to_truong", "bgh", "pht"]);
+  if (deny) return { error: deny };
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage
+    .from("lesson-plans")
+    .createSignedUrl(filePath, 3600);
+  if (error || !data?.signedUrl)
+    return { error: error?.message ?? "Không tạo được liên kết file." };
+  return { url: data.signedUrl };
 }
 
 /** Tổ trưởng duyệt -> team_approved, hoặc từ chối -> rejected */

@@ -77,3 +77,37 @@ Kiểm tra vỡ khung/overflow ở desktop 1905px, 1440px và mobile 375px (DOM 
 - Lớp tiểu học (1A/3A/5A) chưa có `emulation_scores` -> bảng xếp hạng Sở hiện 0 điểm cho 3 lớp này (data gap, không phải lỗi UI).
 - ~~Đề xuất CR: sau import HS mới, sơ đồ chỗ ngồi nên tự gán ghế trống hoặc cảnh báo "X HS chưa có chỗ".~~ Đã làm - **CR-007** (commit `677e79a`): banner "Còn X học sinh chưa có chỗ ngồi" kèm tên + nút "Xếp chỗ tự động" điền ô trống, hết ô thì gợi ý thêm hàng/cột. Verify E2E: tạo v4 thiếu 2 HS -> banner hiện đúng 2 em -> auto-assign -> lưu v5 đủ 32/32 ghế.
 - `check-consistency.mjs`: ALL PASS sau khi fix D2.
+
+## CR-008 - Đồng bộ điều hướng ngày (2026-09-22)
+
+Báo lỗi: dashboard thiếu xem theo ngày/khoảng ngày; form điểm danh bấm ‹ › không đổi data.
+
+### Bugs tìm được (audit toàn bộ date-driven pages)
+1. `DailyRoster` giữ `statuses` trong useState, page không truyền `key` → đổi `?date=` server trả data mới nhưng React giữ state cũ (root cause lỗi user báo).
+2. `DailyReportForm`, `SeatingGrid`, `PeriodLogBoard` cùng pattern stale-state.
+3. `ClassChips` chỉ build `?class=` → đổi lớp mất `?date=`/`?from=`/`?to=`.
+4. `/schedule/period-log` có `?date=` nhưng không có UI chọn ngày (phải gõ URL).
+5. Dashboard không đọc searchParams - luôn neo ngày có data gần nhất.
+
+### Fix
+- Truyền `key={classId-date}` / `key={date}` cho 4 board client.
+- `ClassChips` nhận `params` giữ query khi đổi lớp.
+- Thêm `AttendanceDateNav` vào period-log.
+- Dashboard: `?date=` (1 ngày) + `?from=&to=` (khoảng) + `DashboardDateBar`; thẻ chuyên cần link sang trang chi tiết đúng ngày/khoảng.
+
+### Verify trên production (Playwright + đối chiếu DB)
+| Case | Kết quả |
+|---|---|
+| Điểm danh 21/9 | Sĩ số 32, có mặt 29, vắng 2, muộn 1 - khớp DB |
+| Bấm ‹ → 20/9 | Đổi thành có mặt 31, vắng 0, muộn 1 - khớp DB (trước fix giữ nguyên 29/2/1) |
+| Bấm › về 21/9 | State đổi đúng cả 2 chiều, từng radio HS cập nhật |
+| Đổi lớp 6A3 → 8A2 | URL giữ `date=2026-09-20`, roster lớp mới render đúng |
+| Dashboard `?date=18/9` | 28 có mặt / 3 nghỉ / 1 muộn - khớp DB |
+| Dashboard `?from=18/9&to=21/9` | Lượt có mặt 61, vắng 5, muộn 3, tỷ lệ 92.8% - khớp DB |
+| Dashboard ‹ | `?date=17/9` hiện 28/2/2 |
+| Range ngược (from>to) | Fallback day mode, không crash |
+| Sổ đầu bài ‹ | Thứ 5 17/9 render đúng TKB (Mỹ thuật/Sinh học/Lịch sử/Vật lý) |
+| Daily-report ‹ | Form reset - 17/9 trống, không sót nội dung 18/9 |
+| Console | 0 errors |
+
+Gates: typecheck/lint/build clean, `check-consistency.mjs` ALL PASS. Commit `2296944`.

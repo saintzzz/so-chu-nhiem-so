@@ -11,6 +11,7 @@ import {
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { DashboardDateBar } from "@/components/attendance/date-controls";
 import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
@@ -74,7 +75,12 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; from?: string; to?: string }>;
+  searchParams: Promise<{
+    date?: string;
+    from?: string;
+    to?: string;
+    class?: string;
+  }>;
 }) {
   const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
@@ -82,27 +88,54 @@ export default async function DashboardPage({
   const dateParam = sp.date && ISO_DATE.test(sp.date) ? sp.date : null;
   const fromParam = sp.from && ISO_DATE.test(sp.from) ? sp.from : null;
   const toParam = sp.to && ISO_DATE.test(sp.to) ? sp.to : null;
+  const classParam = sp.class ?? null;
   const rangeMode =
     fromParam !== null && toParam !== null && fromParam <= toParam;
 
-  const [{ data: clsRaw }, { data: schoolRaw }] = await Promise.all([
-    supabase
-      .from("classes")
-      .select("id,name")
-      .eq("gvcn_id", profile.id)
-      .order("name")
-      .limit(1),
-    profile.school_id
-      ? supabase
-          .from("schools")
-          .select("name")
-          .eq("id", profile.school_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-  const cls = ((clsRaw ?? []) as ClassRow[])[0] ?? null;
+  const [{ data: clsRaw }, { data: schoolRaw }, { data: taughtRaw }] =
+    await Promise.all([
+      supabase
+        .from("classes")
+        .select("id,name")
+        .eq("gvcn_id", profile.id)
+        .order("name"),
+      profile.school_id
+        ? supabase
+            .from("schools")
+            .select("name")
+            .eq("id", profile.school_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("timetable_entries")
+        .select("class_id")
+        .eq("teacher_id", profile.id),
+    ]);
+  const homeroomClasses = (clsRaw ?? []) as ClassRow[];
+  const homeroomIds = new Set(homeroomClasses.map((c) => c.id));
+  const taughtIds = [
+    ...new Set(
+      ((taughtRaw ?? []) as { class_id: string }[])
+        .map((t) => t.class_id)
+        .filter((id) => !homeroomIds.has(id)),
+    ),
+  ];
+  const { data: taughtClsRaw } =
+    taughtIds.length > 0
+      ? await supabase.from("classes").select("id,name").in("id", taughtIds)
+      : { data: [] };
+  // Lớp chủ nhiệm trước, lớp đang dạy sau (đánh dấu "(dạy)")
+  const allClasses: ClassRow[] = [
+    ...homeroomClasses,
+    ...((taughtClsRaw ?? []) as ClassRow[])
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+      .map((c) => ({ ...c, name: `${c.name} (dạy)` })),
+  ];
+  const cls =
+    allClasses.find((c) => c.id === classParam) ?? allClasses[0] ?? null;
   const school = (schoolRaw ?? null) as { name: string } | null;
   const classId = cls?.id ?? null;
+  const isHomeroomClass = classId !== null && homeroomIds.has(classId);
 
   const { data: studentsRaw } = classId
     ? await supabase
@@ -370,6 +403,7 @@ export default async function DashboardPage({
     : 0;
   const notMarkedToday = hasStudents && !rangeMode && attDate !== todayVN();
   const reportNotSubmitted = todayReport?.status !== "submitted";
+  const clsQ = classId ? `&class=${classId}` : "";
 
   // Activity feed: notifications + announcements
   const feed: FeedItem[] = [
@@ -408,13 +442,13 @@ export default async function DashboardPage({
         title={`Xin chào, ${profile.full_name}`}
         description={
           cls
-            ? `Lớp chủ nhiệm ${cls.name} - ${school?.name ?? ""}`
+            ? `${isHomeroomClass ? "Lớp chủ nhiệm" : "Lớp đang dạy"} ${cls.name.replace(" (dạy)", "")} - ${school?.name ?? ""}`
             : "Chưa được phân công lớp chủ nhiệm"
         }
         actions={
           <>
             <Link prefetch={false}
-              href="/attendance/daily"
+              href={classId ? `/attendance/daily?class=${classId}` : "/attendance/daily"}
               className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
             >
               <ClipboardCheck className="size-4" />
@@ -431,11 +465,23 @@ export default async function DashboardPage({
         }
       />
 
+      <ClassChips
+        classes={allClasses}
+        selectedId={classId ?? ""}
+        href="/dashboard"
+        params={
+          rangeMode
+            ? { from: rangeFrom, to: rangeTo }
+            : { date: attDate }
+        }
+      />
+
       <DashboardDateBar
         mode={rangeMode ? "range" : "day"}
         date={attDate}
         from={rangeFrom}
         to={rangeTo}
+        params={classId ? { class: classId } : {}}
       />
 
       {/* 10 KPI cards */}
@@ -445,8 +491,8 @@ export default async function DashboardPage({
           value={presentToday}
           href={
             rangeMode
-              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}`
-              : `/attendance/daily?date=${attDate}`
+              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}${clsQ}`
+              : `/attendance/daily?date=${attDate}${clsQ}`
           }
           tone="success"
         />
@@ -455,8 +501,8 @@ export default async function DashboardPage({
           value={absentToday}
           href={
             rangeMode
-              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}`
-              : `/attendance/daily?date=${attDate}`
+              ? `/attendance/history?from=${rangeFrom}&to=${rangeTo}${clsQ}`
+              : `/attendance/daily?date=${attDate}${clsQ}`
           }
           tone={absentToday > 0 ? "warning" : "success"}
         />
@@ -465,8 +511,8 @@ export default async function DashboardPage({
           value={lateToday}
           href={
             rangeMode
-              ? `/attendance/leaves?from=${rangeFrom}&to=${rangeTo}`
-              : `/attendance/leaves?from=${attDate}&to=${attDate}`
+              ? `/attendance/leaves?from=${rangeFrom}&to=${rangeTo}${clsQ}`
+              : `/attendance/leaves?from=${attDate}&to=${attDate}${clsQ}`
           }
           tone={lateToday > 0 ? "warning" : "default"}
         />
@@ -541,7 +587,7 @@ export default async function DashboardPage({
             {notMarkedToday && (
               <li>
                 <Link prefetch={false}
-                  href="/attendance/daily"
+                  href={classId ? `/attendance/daily?class=${classId}` : "/attendance/daily"}
                   className="flex items-center gap-3 py-2.5 hover:bg-muted/50"
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-error-bg text-error">

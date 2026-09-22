@@ -48,6 +48,7 @@ export function AttendanceDateNav({
         ))}
         <label className="text-sm text-muted-foreground">{label}</label>
         <input
+          key={date}
           type="date"
           name={paramName}
           defaultValue={date}
@@ -77,12 +78,16 @@ export function DashboardDateBar({
   date,
   from,
   to,
+  params,
 }: {
   mode: "day" | "range";
   date: string;
   from: string;
   to: string;
+  /** Query params cần giữ lại khi đổi ngày (vd: class). */
+  params?: Record<string, string>;
 }) {
+  const extra = params ?? {};
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-card px-3 py-2 shadow-[var(--shadow-sm-token)]">
       <div
@@ -91,15 +96,19 @@ export function DashboardDateBar({
       >
         <Link
           prefetch={false}
-          href={queryString({ date: addDays(date, -1) })}
+          href={queryString({ ...extra, date: addDays(date, -1) })}
           className="flex size-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
           aria-label="Ngày trước"
         >
           <ChevronLeft className="size-4" />
         </Link>
         <form method="get" className="flex items-center gap-2">
+          {Object.entries(extra).map(([k, v]) => (
+            <input key={k} type="hidden" name={k} value={v} />
+          ))}
           <label className="text-sm text-muted-foreground">Ngày</label>
           <input
+            key={date}
             type="date"
             name="date"
             defaultValue={date}
@@ -111,7 +120,7 @@ export function DashboardDateBar({
         </form>
         <Link
           prefetch={false}
-          href={queryString({ date: addDays(date, 1) })}
+          href={queryString({ ...extra, date: addDays(date, 1) })}
           className="flex size-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted"
           aria-label="Ngày sau"
         >
@@ -123,15 +132,25 @@ export function DashboardDateBar({
         className={cnWrap(mode === "range")}
         aria-label="Xem theo khoảng ngày"
       >
+        {Object.entries(extra).map(([k, v]) => (
+          <input key={k} type="hidden" name={k} value={v} />
+        ))}
         <label className="text-sm text-muted-foreground">Từ ngày</label>
         <input
+          key={from}
           type="date"
           name="from"
           defaultValue={from}
           className={inputCls}
         />
         <label className="text-sm text-muted-foreground">đến</label>
-        <input type="date" name="to" defaultValue={to} className={inputCls} />
+        <input
+          key={to}
+          type="date"
+          name="to"
+          defaultValue={to}
+          className={inputCls}
+        />
         <Button type="submit" variant="outline" size="sm">
           Xem
         </Button>
@@ -166,13 +185,20 @@ export function AttendanceRangeNav({
       ))}
       <label className="text-sm text-muted-foreground">Từ ngày</label>
       <input
+        key={from}
         type="date"
         name="from"
         defaultValue={from}
         className={inputCls}
       />
       <label className="text-sm text-muted-foreground">đến</label>
-      <input type="date" name="to" defaultValue={to} className={inputCls} />
+      <input
+        key={to}
+        type="date"
+        name="to"
+        defaultValue={to}
+        className={inputCls}
+      />
       <Button type="submit" variant="outline" size="sm">
         Xem
       </Button>

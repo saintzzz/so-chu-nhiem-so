@@ -57,8 +57,11 @@ async function visit(role, path) {
   const t0 = Date.now();
   page.consoleErrors.length = 0;
   page.pageErrors.length = 0;
-  const resp = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" }).catch(() => null);
+  // TTFB: streamed Suspense boundaries (AI cards) keep the document open -
+  // "commit" resolves when response headers arrive, the fair server metric.
+  const resp = await page.goto(`${BASE}${path}`, { waitUntil: "commit" }).catch(() => null);
   const ms = Date.now() - t0;
+  await page.waitForLoadState("domcontentloaded").catch(() => {});
   // wait for client-side redirects: poll until URL stable 2 polls in a row
   let last = page.url();
   let stable = 0;

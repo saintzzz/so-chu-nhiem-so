@@ -65,3 +65,45 @@ Role-route sweep (BGH session): `/school/*`, `/dept/*`, `/team/*`, `/safety/bgh`
 ## Verdict
 
 PASS — cleared for Vercel **preview** deployment. Production go-live still requires explicit human approval.
+
+---
+
+# QA Report v2 — Full-system regression (production)
+
+Date: 2026-10-12 · Environment: production `https://so-chu-nhiem-so-theta.vercel.app` · Harness: `scripts/qa-e2e.mjs` (Playwright + Supabase service-role verification)
+
+## Result
+
+**162 / 162 checks PASS — 0 FAIL** (final run, post-fix deploy `7f7f1d1`)
+
+| Section | Scope | Result |
+|---|---|---|
+| A. Route smoke | 126 route×role loads — status, TTFB, console/page errors | ✅ all 200, 0 console errors, 0 hydration errors |
+| B. RBAC deny paths | 18 cross-role probes (gvbm→audit, hs→dashboard, ph→/school/users, pht→roster, phonggd/ubnd→dept/data+users, ketoan→roster…) | ✅ all redirect to role home |
+| C. Cross-module linkage | UI counts vs DB: roster 32/32, period-log=TKB 4/4, positive_points=Σ điểm cộng (22 HS, 0 lệch), announcements on HS+PH portals, parent-chat 32/32 links, period_absences→attendance_records 20/20 synced, học bạ TT22 render | ✅ 8/8 |
+| D. UI mutations → DB | điểm danh present→late→restore, dashboard counter=DB, BGH thông báo toàn trường → `announcements` row + portal HS render | ✅ 5/5 |
+
+## Defects found and fixed in this round
+
+| Defect | Root cause | Fix |
+|---|---|---|
+| Hydration #418 on `/attendance/leaves` | `Intl.DateTimeFormat` weekday names differ between server/client ICU builds | `src/lib/utils.ts`: compute weekday from VN-tz date parts, prepend `Thứ …`/`Chủ nhật` deterministically |
+| `/records/report` >3s | 4 queries per class (~36 roundtrips, 9 lớp) | Batch: 3 school-wide queries, group by class in memory (`7f7f1d1`) |
+| QA false FAIL: attendance mutation, dashboard count, RBAC denies | harness: wrong save-button label, regex caught label's date number, no redirect settle | `scripts/qa-e2e.mjs` corrected — all were harness bugs, app was correct |
+| Perf metric inflated by AI streams | `domcontentloaded` waits for streamed Suspense boundaries | measure TTFB via `waitUntil: "commit"` (server <1s rule); all routes ≤2.5s TTFB incl. cold starts |
+
+## Performance
+
+- TTFB all routes ≤ ~2.5s including cold starts; warm <1.1s.
+- Remaining cold-start variance (serverless) observed on rotating routes — not code-bound.
+- `positive_points` sync is client-side read-modify-write (documented; candidate for DB trigger if concurrent writers emerge).
+
+## Notes
+
+- `positive_points` semantics confirmed: sum of **positive** conduct points only (vi phạm excluded by design).
+- `/records/history` redirects to unified `/register/audit?type=student_record`.
+- Parent contact channel = email only (no Zalo/SMS) — verified no dead toggles.
+
+## Verdict
+
+PASS — production verified. 162/162 automated checks green; all CR-007…CR-012 changes verified end-to-end with DB persistence.

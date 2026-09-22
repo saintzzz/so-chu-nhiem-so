@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { RosterClient } from "@/components/register/roster-client";
 import {
   EmptyClassNotice,
@@ -97,6 +98,7 @@ export default async function RosterPage({
         title="Danh sách học sinh & Tổ"
         description={`Lớp ${cls.name} · ${students.length} học sinh · ${groups.length} tổ`}
       />
+      <ClassChips classes={classes} selectedId={cls.id} href="/register/roster" />
       <RosterClient
         classId={cls.id}
         students={students}

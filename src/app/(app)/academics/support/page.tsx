@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
-import { DataTable } from "@/components/data-table";
-import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
+import type { FLOW_STATUS } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
-import { SupportPlanButton } from "@/components/academics/support-plan-button";
+import {
+  SupportPlanBoard,
+  type WeakPair,
+} from "@/components/academics/support-plan-board";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
 
 interface ClassRow {
@@ -161,56 +163,20 @@ export default async function SupportPage({
         />
       </div>
 
-      <DataTable
-        columns={["Học sinh", "Môn yếu", "Điểm TB", "Trạng thái kế hoạch", "Thao tác"]}
-        footer={<span>{weak.length} cặp học sinh - môn cần hỗ trợ</span>}
-      >
-        {weak.map((w) => {
-          const plan = planKey.get(`${w.student_id}:${w.subject_id}`);
-          const st = plan ? FLOW_STATUS[plan.status] : null;
-          const student = studentName.get(w.student_id);
-          return (
-            <tr key={`${w.student_id}-${w.subject_id}`}>
-              <td>
-                <div className="font-medium">{student?.full_name}</div>
-                <div className="font-mono text-xs text-muted-foreground">
-                  {student?.code}
-                </div>
-              </td>
-              <td>{subjectName.get(w.subject_id) ?? "-"}</td>
-              <td>
-                <span className="font-semibold text-error">
-                  {w.avg.toFixed(1)}
-                </span>
-              </td>
-              <td>
-                {st ? (
-                  <StatusBadge label={st.label} tone={st.tone} />
-                ) : (
-                  <StatusBadge label="Chưa có" tone="muted" />
-                )}
-              </td>
-              <td>
-                {!plan && (
-                  <SupportPlanButton
-                    studentId={w.student_id}
-                    subjectId={w.subject_id}
-                    avg={w.avg}
-                    meId={profile.id}
-                  />
-                )}
-              </td>
-            </tr>
-          );
-        })}
-        {weak.length === 0 && (
-          <tr>
-            <td colSpan={5} className="text-center text-muted-foreground">
-              Không có học sinh nào dưới 5.0. 
-            </td>
-          </tr>
+      <SupportPlanBoard
+        rows={weak.map(
+          (w): WeakPair => ({
+            studentId: w.student_id,
+            subjectId: w.subject_id,
+            studentName: studentName.get(w.student_id)?.full_name ?? "-",
+            studentCode: studentName.get(w.student_id)?.code ?? "-",
+            subjectName: subjectName.get(w.subject_id) ?? "-",
+            avg: w.avg,
+            planStatus:
+              planKey.get(`${w.student_id}:${w.subject_id}`)?.status ?? null,
+          }),
         )}
-      </DataTable>
+      />
     </div>
   );
 }

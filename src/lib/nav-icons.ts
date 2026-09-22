@@ -137,7 +137,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "Ký duyệt sổ chủ nhiệm": PenLine,
   "Duyệt & khóa sổ học bạ": Lock,
   "Xuất sổ": Download,
-  "Nhật ký thao tác": ScrollText,
+  "Nhật ký & lịch sử": ScrollText,
   // Thời khóa biểu & Sổ đầu bài
   "Thời khóa biểu": Table,
   "Sổ đầu bài": NotebookPen,

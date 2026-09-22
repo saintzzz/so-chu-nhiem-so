@@ -3,7 +3,8 @@ import type { ClassRoom, Profile } from "@/types";
 
 /**
  * Classes the current user may manage in the register module.
- * GVCN sees their homeroom class; BGH/admin/so_gd see all classes.
+ * GVCN sees homeroom classes AND classes they teach (timetable_entries);
+ * BGH/admin/so_gd see all classes.
  */
 export async function getAccessibleClasses(
   profile: Profile,
@@ -13,10 +14,35 @@ export async function getAccessibleClasses(
     profile.role === "bgh" ||
     profile.role === "admin" ||
     profile.role === "so_gd";
-  let query = supabase.from("classes").select("*").order("name");
-  if (!scoped) query = query.eq("gvcn_id", profile.id);
-  const { data } = await query;
-  return (data ?? []) as ClassRoom[];
+  if (scoped) {
+    const { data } = await supabase
+      .from("classes")
+      .select("*")
+      .order("name");
+    return (data ?? []) as ClassRoom[];
+  }
+  const { data: homeroom } = await supabase
+    .from("classes")
+    .select("*")
+    .eq("gvcn_id", profile.id)
+    .order("name");
+  const list = (homeroom ?? []) as ClassRoom[];
+  const { data: taught } = await supabase
+    .from("timetable_entries")
+    .select("class_id,classes(*)")
+    .eq("teacher_id", profile.id);
+  const seen = new Set(list.map((c) => c.id));
+  for (const t of (taught ?? []) as unknown as {
+    class_id: string;
+    classes: ClassRoom | null;
+  }[]) {
+    if (t.classes && !seen.has(t.class_id)) {
+      seen.add(t.class_id);
+      list.push(t.classes);
+    }
+  }
+  list.sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  return list;
 }
 
 /** Pick a class from the list using the `?class=` search param. */

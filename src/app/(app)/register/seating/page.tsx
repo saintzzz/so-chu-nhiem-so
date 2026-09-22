@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { SeatingGrid } from "@/components/register/seating-grid";
 import {
   EmptyClassNotice,
@@ -71,6 +72,7 @@ export default async function SeatingPage({
         title="Sơ đồ lớp"
         description={`Lớp ${cls.name} · Tháng ${CURRENT_MONTH.slice(5)}/${CURRENT_MONTH.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
       />
+      <ClassChips classes={classes} selectedId={cls.id} href="/register/seating" />
       <SeatingGrid
         key={cls.id}
         classId={cls.id}

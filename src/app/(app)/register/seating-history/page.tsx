@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { SeatingHistoryClient } from "@/components/register/seating-history-client";
 import {
   EmptyClassNotice,
@@ -49,6 +50,7 @@ export default async function SeatingHistoryPage({
         title="Lịch sử phiên bản sơ đồ"
         description={`Lớp ${cls.name} · ${charts.length} phiên bản đã lưu`}
       />
+      <ClassChips classes={classes} selectedId={cls.id} href="/register/seating-history" />
       <SeatingHistoryClient classId={cls.id} charts={charts} />
     </>
   );

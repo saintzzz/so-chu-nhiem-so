@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function DataTable({
@@ -48,21 +49,51 @@ export function Pagination({
   total,
   page,
   pageSize,
+  href,
+  onPage,
 }: {
   total: number;
   page: number;
   pageSize: number;
+  /** URL builder for server-driven pagination. */
+  href?: (page: number) => string;
+  /** Callback for client-driven pagination. */
+  onPage?: (page: number) => void;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
+  const btn = "rounded-md border border-border px-2 py-0.5 text-sm transition-colors enabled:hover:bg-muted disabled:opacity-40";
+  const nav = (target: number, label: string, enabled: boolean) =>
+    onPage ? (
+      <button
+        type="button"
+        className={btn}
+        disabled={!enabled}
+        onClick={() => onPage(target)}
+      >
+        {label}
+      </button>
+    ) : href ? (
+      enabled ? (
+        <Link prefetch={false} href={href(target)} className={btn}>
+          {label}
+        </Link>
+      ) : (
+        <button type="button" className={btn} disabled>
+          {label}
+        </button>
+      )
+    ) : (
+      <span>{label}</span>
+    );
   return (
     <>
       <span>{total} kết quả</span>
       <span className="flex items-center gap-2">
-        <span>Trước</span>
+        {nav(page - 1, "Trước", page > 1)}
         <span>
           Trang {page}/{pages}
         </span>
-        <span>Sau</span>
+        {nav(page + 1, "Sau", page < pages)}
       </span>
     </>
   );

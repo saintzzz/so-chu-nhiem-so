@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { PlansClient } from "@/components/register/plans-client";
 import {
   EmptyClassNotice,
@@ -49,6 +50,7 @@ export default async function PlansPage({
         title="Kế hoạch tháng / Sơ kết tuần"
         description={`Lớp ${cls.name} · Kế hoạch công tác chủ nhiệm theo tháng và tổng kết tuần.`}
       />
+      <ClassChips classes={classes} selectedId={cls.id} href="/register/plans" />
       <PlansClient classId={cls.id} tasks={tasks} />
     </>
   );

@@ -1,7 +1,9 @@
 import { requireRoles } from "@/lib/auth";
 import { formatDateOnly } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { cn } from "@/lib/utils";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { PeriodLogBoard } from "@/components/schedule/period-log-board";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
@@ -55,7 +57,7 @@ const WEEKDAY_NAMES: Record<number, string> = {
 export default async function PeriodLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; class?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong"]);
   const supabase = await createClient();
@@ -81,6 +83,8 @@ export default async function PeriodLogPage({
   let entries: PeriodEntry[] = [];
   const rosters: Record<string, ClassRoster> = {};
   let logs: Record<string, PeriodLogState> = {};
+  let filterClasses: ClassRow[] = [];
+  let selectedClassId: string | null = null;
 
   if (weekday !== null) {
     let entryQuery = supabase
@@ -89,12 +93,14 @@ export default async function PeriodLogPage({
       .eq("weekday", weekday)
       .order("period", { ascending: true });
     if (myClassIds.length > 0) {
-      entryQuery = entryQuery.in("class_id", myClassIds);
+      entryQuery = entryQuery.or(
+        `class_id.in.(${myClassIds.join(",")}),teacher_id.eq.${profile.id}`,
+      );
     } else {
       entryQuery = entryQuery.eq("teacher_id", profile.id);
     }
     const { data: entriesRaw } = await entryQuery;
-    const entryRows = (entriesRaw ?? []) as EntryRow[];
+    let entryRows = (entriesRaw ?? []) as EntryRow[];
 
     const classIds = [...new Set(entryRows.map((e) => e.class_id))];
     const subjectIds = [...new Set(entryRows.map((e) => e.subject_id))];
@@ -126,6 +132,16 @@ export default async function PeriodLogPage({
           ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
           : Promise.resolve({ data: [] }),
       ]);
+
+    filterClasses = (classesData ?? []) as ClassRow[];
+    const validFilter =
+      sp.class && filterClasses.some((c) => c.id === sp.class)
+        ? sp.class
+        : null;
+    selectedClassId = validFilter;
+    if (validFilter) {
+      entryRows = entryRows.filter((e) => e.class_id === validFilter);
+    }
 
     const className = new Map(
       ((classesData ?? []) as ClassRow[]).map((c) => [c.id, c.name]),
@@ -171,8 +187,8 @@ export default async function PeriodLogPage({
       }))
       .sort(
         (a, b) =>
-          a.period - b.period ||
-          (a.className ?? "").localeCompare(b.className ?? ""),
+          (a.className ?? "").localeCompare(b.className ?? "", "vi") ||
+          a.period - b.period,
       );
 
     const entryIds = entryRows.map((e) => e.id);
@@ -251,7 +267,41 @@ export default async function PeriodLogPage({
         </div>
       )}
 
-      <AttendanceDateNav date={date} params={{}} />
+      <AttendanceDateNav
+        date={date}
+        params={selectedClassId ? { class: selectedClassId } : {}}
+      />
+
+      {filterClasses.length > 1 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Lớp:</span>
+          <Link prefetch={false}
+            href={`/schedule/period-log?date=${date}`}
+            className={cn(
+              "rounded-full border px-3 py-1 text-sm transition-colors",
+              !selectedClassId
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:bg-muted",
+            )}
+          >
+            Tất cả
+          </Link>
+          {filterClasses.map((c) => (
+            <Link prefetch={false}
+              key={c.id}
+              href={`/schedule/period-log?date=${date}&class=${c.id}`}
+              className={cn(
+                "rounded-full border px-3 py-1 text-sm transition-colors",
+                c.id === selectedClassId
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {weekday === null ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

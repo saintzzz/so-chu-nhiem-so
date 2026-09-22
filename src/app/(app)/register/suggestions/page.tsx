@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { ClassChips } from "@/components/class-chips";
 import { SuggestionsClient } from "@/components/register/suggestions-client";
 import {
   EmptyClassNotice,
@@ -49,6 +50,7 @@ export default async function SuggestionsPage({
         title="Gợi ý công việc (AI)"
         description={`Lớp ${cls.name} · Các công việc được hệ thống đề xuất từ lịch năm học và dữ liệu lớp.`}
       />
+      <ClassChips classes={classes} selectedId={cls.id} href="/register/suggestions" />
       <SuggestionsClient classId={cls.id} tasks={tasks} />
     </>
   );

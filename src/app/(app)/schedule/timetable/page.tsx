@@ -41,34 +41,44 @@ export default async function TimetablePage({
   if (profile.role === "pht" && profile.campus_id) {
     allClassesQuery = allClassesQuery.eq("campus_id", profile.campus_id);
   }
-  const [{ data: classesRaw }, { data: ownClsRaw }] = await Promise.all([
-    allClassesQuery,
-    supabase
-      .from("classes")
-      .select("id,name")
-      .eq("gvcn_id", profile.id)
-      .order("name")
-      .limit(1),
-  ]);
+  const [{ data: classesRaw }, { data: ownClsRaw }, { data: taughtRaw }] =
+    await Promise.all([
+      allClassesQuery,
+      supabase
+        .from("classes")
+        .select("id,name")
+        .eq("gvcn_id", profile.id)
+        .order("name"),
+      supabase
+        .from("timetable_entries")
+        .select("class_id")
+        .eq("teacher_id", profile.id),
+    ]);
   const classes = (classesRaw ?? []) as ClassRow[];
-  const ownCls = ((ownClsRaw ?? []) as ClassRow[])[0] ?? null;
-
-  // Giáo viên chủ nhiệm chỉ xem TKB lớp mình phụ trách; BGH/PHT/GV không chủ
-  // nhiệm giữ nguyên phạm vi lớp theo quyền hiện có.
-  const visibleClasses = ownCls ? [ownCls] : classes;
+  const ownClasses = (ownClsRaw ?? []) as ClassRow[];
+  const ownClsIds = new Set(ownClasses.map((c) => c.id));
 
   const isTeacher = ["gvcn", "gvbm", "to_truong"].includes(profile.role);
+  // Giáo viên xem TKB các lớp chủ nhiệm + lớp đang dạy; BGH/PHT xem toàn
+  // trường/cơ sở theo quyền.
+  const taughtIds = new Set(
+    ((taughtRaw ?? []) as { class_id: string }[]).map((t) => t.class_id),
+  );
+  const visibleClasses = isTeacher
+    ? classes.filter((c) => ownClsIds.has(c.id) || taughtIds.has(c.id))
+    : classes;
+
   const view =
     isTeacher && (sp.view === "me" || sp.view === "class")
       ? sp.view
-      : isTeacher && !ownCls
+      : isTeacher && ownClasses.length === 0
         ? "me"
         : "class";
 
   const selectedId =
     sp.class && visibleClasses.some((c) => c.id === sp.class)
       ? sp.class
-      : (ownCls?.id ?? visibleClasses[0]?.id ?? null);
+      : (ownClasses[0]?.id ?? visibleClasses[0]?.id ?? null);
   const selected = visibleClasses.find((c) => c.id === selectedId) ?? null;
 
   const { data: entriesRaw } =
@@ -223,7 +233,7 @@ export default async function TimetablePage({
               )}
             >
               {c.name}
-              {ownCls?.id === c.id && (
+              {ownClsIds.has(c.id) && (
                 <span className="ml-1 text-[11px] opacity-80">(CN)</span>
               )}
             </Link>

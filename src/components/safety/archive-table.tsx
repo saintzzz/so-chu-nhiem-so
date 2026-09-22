@@ -101,6 +101,7 @@ export function ArchiveTable({ rows }: { rows: ArchivedIncident[] }) {
             total={filtered.length}
             page={safePage}
             pageSize={PAGE_SIZE}
+            onPage={setPage}
           />
         }
       >

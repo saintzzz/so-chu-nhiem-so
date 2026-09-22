@@ -31,13 +31,21 @@ export default async function StudentPortalPage() {
 
   const { data: studentRow } = await supabase
     .from("students")
-    .select("id,class_id,full_name,code,positive_points")
+    .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id")
     .eq("profile_id", profile.id)
     .limit(1)
     .single();
   const student = studentRow as Pick<
     Student,
-    "id" | "class_id" | "full_name" | "code" | "positive_points"
+    | "id"
+    | "class_id"
+    | "full_name"
+    | "code"
+    | "positive_points"
+    | "dob"
+    | "gender"
+    | "address"
+    | "national_id"
   > | null;
 
   const { data: classRow } = student
@@ -52,14 +60,14 @@ export default async function StudentPortalPage() {
     "id" | "name" | "school_id"
   > | null;
 
-  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes] =
+  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes] =
     student ? await Promise.all([
         supabase
           .from("attendance_records")
           .select("id,date,status")
           .eq("student_id", student.id)
           .order("date", { ascending: false })
-          .limit(30),
+          .limit(120),
         supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
@@ -76,7 +84,9 @@ export default async function StudentPortalPage() {
         supabase
           .from("announcements")
           .select("id,title,content,created_at")
-          .or(`class_id.eq.${student.class_id},student_id.eq.${student.id}`)
+          .or(
+            `class_id.eq.${student.class_id},student_id.eq.${student.id},and(class_id.is.null,school_id.eq.${classroom?.school_id ?? "none"})`,
+          )
           .order("created_at", { ascending: false })
           .limit(8),
         supabase
@@ -93,8 +103,15 @@ export default async function StudentPortalPage() {
           .gte("event_date", new Date().toISOString().slice(0, 10))
           .order("event_date")
           .limit(12),
+        supabase
+          .from("timetable_entries")
+          .select("id,subject_id,teacher_id,weekday,period,room")
+          .eq("class_id", student.class_id)
+          .order("weekday")
+          .order("period"),
       ])
     : [
+        { data: [] },
         { data: [] },
         { data: [] },
         { data: [] },
@@ -112,6 +129,41 @@ export default async function StudentPortalPage() {
   const todayRec = attRows.find((r) => r.date === todayIso);
   const latestRec = attRows[0];
   const shownRec = todayRec ?? latestRec;
+
+  // Streak: số ngày có điểm danh liên tiếp đi học (có mặt/đi muộn), tính từ
+  // ngày gần nhất lùi về - ngày không có bản ghi (cuối tuần/nghỉ) không ngắt streak.
+  let streak = 0;
+  for (const r of attRows) {
+    if (r.status === "present" || r.status === "late") streak++;
+    else break;
+  }
+
+  const ttEntries = (ttRes.data ?? []) as {
+    id: string;
+    subject_id: string;
+    teacher_id: string | null;
+    weekday: number;
+    period: number;
+    room: string | null;
+  }[];
+  const ttTeacherIds = [
+    ...new Set(ttEntries.map((e) => e.teacher_id).filter(Boolean) as string[]),
+  ];
+  const { data: ttTeacherRows } = ttTeacherIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", ttTeacherIds)
+    : { data: [] };
+  const ttTeacherName = new Map(
+    ((ttTeacherRows ?? []) as { id: string; full_name: string }[]).map((p) => [
+      p.id,
+      p.full_name,
+    ]),
+  );
+  const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
+  const PERIODS = [1, 2, 3, 4, 5] as const;
+  const ttGrid = new Map(ttEntries.map((e) => [`${e.weekday}-${e.period}`, e]));
 
   const subjectNameOf = new Map(
     ((subjectRes.data ?? []) as Pick<Subject, "id" | "name">[]).map((s) => [
@@ -217,6 +269,28 @@ export default async function StudentPortalPage() {
                 Lớp {classroom?.name ?? "-"} - Năm học 2026-2027 · Mã HS:{" "}
                 {student.code}
               </p>
+              <div className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                <p>
+                  <span className="text-muted-foreground">Ngày sinh: </span>
+                  {student.dob ? formatDate(student.dob) : "-"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Giới tính: </span>
+                  {student.gender === "nam"
+                    ? "Nam"
+                    : student.gender === "nu"
+                      ? "Nữ"
+                      : "-"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Mã định danh: </span>
+                  {student.national_id ?? "-"}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Địa chỉ: </span>
+                  {student.address ?? "-"}
+                </p>
+              </div>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -227,7 +301,7 @@ export default async function StudentPortalPage() {
 
         {student && (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label={`Chuyên cần ${todayRec ? "hôm nay" : latestRec ? `ngày ${formatDate(latestRec.date)}` : "hôm nay"}`}
                 value={
@@ -251,6 +325,77 @@ export default async function StudentPortalPage() {
                 value={conductRating ?? "-"}
                 tone={conductRating ? "success" : "default"}
               />
+              <StatCard
+                label="Đi học liên tiếp"
+                value={streak > 0 ? `${streak} ngày` : "-"}
+                tone={streak >= 10 ? "success" : streak > 0 ? "primary" : "default"}
+              />
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold">Lịch học tuần</h2>
+                <a
+                  href="/portal/student/hoc-ba"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Xem học bạ chi tiết
+                </a>
+              </div>
+              {ttEntries.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  Lớp chưa có thời khóa biểu.
+                </p>
+              ) : (
+                <div className="relative overflow-x-auto">
+                  <table className="w-full min-w-[560px] border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="px-2 py-1.5 text-left text-xs font-medium text-muted-foreground">
+                          Tiết
+                        </th>
+                        {WEEKDAYS.map((d) => (
+                          <th
+                            key={d}
+                            className="px-2 py-1.5 text-left text-xs font-medium"
+                          >
+                            Thứ {d}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PERIODS.map((p) => (
+                        <tr key={p} className="border-b border-border last:border-0">
+                          <td className="px-2 py-1.5 text-xs text-muted-foreground">
+                            {p}
+                          </td>
+                          {WEEKDAYS.map((d) => {
+                            const e = ttGrid.get(`${d}-${p}`);
+                            return (
+                              <td key={d} className="px-1 py-1">
+                                {e && (
+                                  <div className="rounded-md bg-primary-bg px-2 py-1">
+                                    <p className="text-xs font-medium leading-tight">
+                                      {subjectNameOf.get(e.subject_id) ?? "?"}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {e.teacher_id
+                                        ? (ttTeacherName.get(e.teacher_id) ?? "")
+                                        : ""}
+                                      {e.room ? ` - ${e.room}` : ""}
+                                    </p>
+                                  </div>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div>

@@ -124,6 +124,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   to_truong: [
     {
@@ -144,6 +145,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Lịch thi", href: "/academics/exams" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   bgh: [
     {
@@ -157,9 +159,16 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
         { label: "Cơ sở & đánh giá TT15", href: "/school/campuses" },
         { label: "Nhân sự trường", href: "/school/staff" },
+        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
         { label: "Phân công năm học", href: "/school/assignments" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
         { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
+        { label: "Tài khoản giáo viên", href: "/school/users" },
+        { label: "Học sinh toàn trường", href: "/school/students" },
+        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
+        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
+        { label: "Thông báo toàn trường", href: "/school/announce" },
+        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
       ],
     },
     {
@@ -169,9 +178,12 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Sổ đầu bài toàn trường", href: "/school/journals" },
+        { label: "Phân tích điểm thi", href: "/school/exam-analytics" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   pht: [
     {
@@ -184,6 +196,12 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
         { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
         { label: "Nhân sự trường", href: "/school/staff" },
+        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
+        { label: "Học sinh toàn trường", href: "/school/students" },
+        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
+        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
+        { label: "Thông báo toàn trường", href: "/school/announce" },
+        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
       ],
     },
     {
@@ -191,33 +209,47 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Sự cố toàn trường", href: "/safety/bgh" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Sổ đầu bài phân hiệu", href: "/school/journals" },
+        { label: "Phân tích điểm thi", href: "/school/exam-analytics" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   ke_toan: [
     {
       label: "Quản trị",
       children: [
         { label: "Nhân sự trường", href: "/school/staff" },
+        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
         { label: "Cơ sở & đánh giá TT15", href: "/school/campuses" },
+        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   phong_gd: [
     {
       label: "Quản trị",
       children: [
         { label: "Dashboard Phòng Giáo dục", href: "/dept/dashboard" },
+        { label: "Đơn vị hành chính", href: "/dept/wards" },
+        { label: "Báo cáo tổng hợp", href: "/dept/reports" },
+        { label: "Cơ sở vật chất", href: "/dept/facilities" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   ubnd: [
     {
       label: "Quản trị",
       children: [
         { label: "Dashboard địa bàn UBND", href: "/dept/dashboard" },
+        { label: "Đơn vị hành chính", href: "/dept/wards" },
+        { label: "Báo cáo tổng hợp", href: "/dept/reports" },
+        { label: "Cơ sở vật chất", href: "/dept/facilities" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   so_gd: [
     {
@@ -226,8 +258,12 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Quản trị người dùng", href: "/dept/users" },
         { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
         { label: "Quản trị dữ liệu", href: "/dept/data" },
+        { label: "Đơn vị hành chính", href: "/dept/wards" },
+        { label: "Báo cáo tổng hợp", href: "/dept/reports" },
+        { label: "Cơ sở vật chất", href: "/dept/facilities" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   admin: [
     {

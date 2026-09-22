@@ -159,6 +159,25 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "Quản trị người dùng": UserCog,
   "Dashboard cấp Sở Giáo dục và Đào tạo": BarChart3,
   "Quản trị dữ liệu": Database,
+  // CR-011 - feature parity
+  "Hồ sơ cá nhân": Contact,
+  "Tài khoản giáo viên": UserCog,
+  "Học sinh toàn trường": Users,
+  "Chiến lược & chỉ tiêu": Target,
+  "Thiết bị & cơ sở vật chất": Archive,
+  "Thông báo toàn trường": Megaphone,
+  "Xếp thời khóa biểu": CalendarRange,
+  "Sổ đầu bài toàn trường": NotebookPen,
+  "Sổ đầu bài phân hiệu": NotebookPen,
+  "Phân tích điểm thi": BarChart3,
+  "Đơn vị hành chính": Building2,
+  "Báo cáo tổng hợp": BarChart3,
+  "Cơ sở vật chất": Building2,
+  "Dashboard Phòng Giáo dục": BarChart3,
+  "Dashboard địa bàn UBND": BarChart3,
+  "Nhân sự trường": Users,
+  "Cơ sở & đánh giá TT15": Building2,
+  "Định mức biên chế Nghị quyết 37": ClipboardList,
 };
 
 export const FALLBACK_ICON: LucideIcon = SquarePen;

@@ -26,8 +26,14 @@ export default async function SignoffPage() {
 
   const signoffs = (data ?? []) as Signoff[];
 
-  // Resolve signer names for the "Người ký" column.
-  const signerIds = [...new Set(signoffs.map((s) => s.signed_by).filter(Boolean))] as string[];
+  // Resolve names for the "Người nộp / ký" column (submitted_by + signed_by).
+  const signerIds = [
+    ...new Set(
+      signoffs
+        .flatMap((s) => [s.signed_by, s.submitted_by])
+        .filter((x): x is string => Boolean(x)),
+    ),
+  ];
   const { data: signerData } =
     signerIds.length > 0
       ? await supabase.from("profiles").select("id,full_name").in("id", signerIds)
@@ -43,8 +49,12 @@ export default async function SignoffPage() {
     <>
       <PageHeader
         section="Sổ chủ nhiệm"
-        title="Ký duyệt sổ chủ nhiệm"
-        description="Ký xác nhận sổ chủ nhiệm theo kỳ. GVCN ký cho lớp chủ nhiệm của mình; BGH xem và ký toàn bộ lớp."
+        title={profile.role === "bgh" ? "Ký duyệt sổ chủ nhiệm" : "Nộp sổ chủ nhiệm"}
+        description={
+          profile.role === "bgh"
+            ? "Xem và ký duyệt sổ chủ nhiệm các lớp đã nộp theo kỳ."
+            : "Nộp sổ chủ nhiệm lớp mình lên Ban Giám Hiệu để ký duyệt theo kỳ."
+        }
       />
       <SignoffClient
         signoffs={signoffs}
@@ -53,6 +63,7 @@ export default async function SignoffPage() {
         signerNames={Object.fromEntries(signers)}
         profileId={profile.id}
         profileName={profile.full_name}
+        role={profile.role === "bgh" ? "bgh" : "gvcn"}
       />
     </>
   );

@@ -32,7 +32,9 @@ export interface Signoff {
   class_id: string;
   period: string;
   type: "so_chu_nhiem" | "so_hoc_ba";
-  status: "pending" | "signed" | "locked" | "rejected";
+  status: "pending" | "submitted" | "signed" | "locked" | "rejected";
+  submitted_by: string | null;
+  submitted_at: string | null;
   signed_by: string | null;
   signed_at: string | null;
 }

@@ -13,9 +13,12 @@ const INPUT_CLS =
 export function ComposeForm({
   classes,
   students: rawStudents,
+  coverage,
 }: {
   classes: { id: string; name: string }[];
   students: { id: string; full_name: string; class_id: string; code: string }[];
+  /** studentId -> số phụ huynh có email / tổng phụ huynh liên kết. */
+  coverage: Record<string, { withEmail: number; total: number }>;
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const [scope, setScope] = useState<"class" | "student">("class");
@@ -31,6 +34,23 @@ export function ComposeForm({
   } | null>(null);
 
   const classStudents = students.filter((s) => s.class_id === classId);
+
+  // Coverage của phạm vi đang chọn: tổng PH liên kết và số có email nhận được.
+  const targetIds =
+    scope === "student" && studentId
+      ? [studentId]
+      : classStudents.map((s) => s.id);
+  const cov = targetIds.reduce(
+    (a, sid) => {
+      const c = coverage[sid];
+      if (c) {
+        a.withEmail += c.withEmail;
+        a.total += c.total;
+      }
+      return a;
+    },
+    { withEmail: 0, total: 0 },
+  );
 
   async function handleSubmit() {
     setPending(true);
@@ -180,6 +200,29 @@ export function ComposeForm({
             className={INPUT_CLS}
           />
         </div>
+
+        {classId && (
+          <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            {cov.total === 0 ? (
+              <>
+                Chưa có phụ huynh nào được liên kết với{" "}
+                {scope === "student" ? "học sinh này" : "lớp này"} - thông báo
+                chỉ lưu trong hệ thống, không gửi email được. Liên kết phụ huynh
+                trong Danh sách học sinh.
+              </>
+            ) : (
+              <>
+                Sẽ gửi đến <strong>{cov.withEmail}</strong>/{cov.total} phụ
+                huynh có email
+                {scope === "student" ? " của học sinh" : " của lớp"}
+                {cov.withEmail < cov.total
+                  ? ` - ${cov.total - cov.withEmail} phụ huynh chưa có email chỉ xem được trên cổng thông tin`
+                  : ""}
+                .
+              </>
+            )}
+          </p>
+        )}
 
         {feedback && (
           <p

@@ -29,14 +29,21 @@ export default async function LockRecordsPage() {
     <>
       <PageHeader
         section="Sổ chủ nhiệm"
-        title="Duyệt & khóa sổ học bạ"
-        description="Duyệt và khóa sổ học bạ theo kỳ - sau khi khóa, dữ liệu không thể chỉnh sửa."
+        title={
+          profile.role === "bgh" ? "Duyệt & khóa sổ học bạ" : "Nộp sổ học bạ"
+        }
+        description={
+          profile.role === "bgh"
+            ? "Duyệt và khóa sổ học bạ các lớp đã nộp theo kỳ - sau khi khóa, dữ liệu không thể chỉnh sửa."
+            : "Nộp sổ học bạ lớp mình lên Ban Giám Hiệu để duyệt & khóa theo kỳ."
+        }
       />
       <LockRecordsClient
         signoffs={signoffs}
         classes={classes.map((c) => ({ id: c.id, name: c.name }))}
         classNames={Object.fromEntries(classNames)}
         profileId={profile.id}
+        role={profile.role === "bgh" ? "bgh" : "gvcn"}
       />
     </>
   );

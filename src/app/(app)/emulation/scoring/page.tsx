@@ -26,10 +26,10 @@ interface ScoreRow {
 }
 
 export default async function EmulationScoringPage() {
-  await requireRoles(["gvcn", "bgh"]);
+  const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
-  const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =
+  const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }, { data: ownRaw }] =
     await Promise.all([
       supabase
         .from("emulation_criteria")
@@ -44,7 +44,15 @@ export default async function EmulationScoringPage() {
         .from("emulation_scores")
         .select("id,class_id,criterion_id,score")
         .eq("period", PERIOD),
+      // GVCN chỉ chấm lớp chủ nhiệm của mình; BGH chấm tất cả.
+      profile.role === "gvcn"
+        ? supabase.from("classes").select("id").eq("gvcn_id", profile.id)
+        : Promise.resolve({ data: [] }),
     ]);
+  const editableClassIds =
+    profile.role === "gvcn"
+      ? ((ownRaw ?? []) as { id: string }[]).map((c) => c.id)
+      : (classesRaw ?? []).map((c: { id: string }) => c.id);
 
   const criteria = (critRaw ?? []) as CriterionRow[];
   const classes = (classesRaw ?? []) as ClassRow[];
@@ -69,6 +77,7 @@ export default async function EmulationScoringPage() {
         criteria={criteria}
         classes={classes}
         initialScores={initialScores}
+        editableClassIds={editableClassIds}
       />
     </>
   );

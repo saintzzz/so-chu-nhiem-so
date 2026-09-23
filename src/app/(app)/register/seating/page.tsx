@@ -14,10 +14,10 @@ import type { SeatingChart, Student } from "@/types";
 export default async function SeatingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ class?: string }>;
+  searchParams: Promise<{ class?: string; praise?: string }>;
 }) {
   const profile = await requireRoles(["gvcn"]);
-  const { class: classParam } = await searchParams;
+  const { class: classParam, praise } = await searchParams;
   const supabase = await createClient();
 
   const classes = await getAccessibleClasses(profile);
@@ -56,6 +56,25 @@ export default async function SeatingPage({
   const charts = (chartsData ?? []) as SeatingChart[];
   const students = (studentsData ?? []) as Student[];
 
+  const studentIds = students.map((s) => s.id);
+  const { data: praiseData } = studentIds.length
+    ? await supabase
+        .from("conduct_records")
+        .select("student_id,points,content,date")
+        .eq("type", "khen_thuong")
+        .in("student_id", studentIds)
+        .order("date", { ascending: false })
+    : { data: [] };
+  const praiseReasons = new Map<string, string>();
+  for (const r of (praiseData ?? []) as {
+    student_id: string;
+    content: string | null;
+  }[]) {
+    if (!praiseReasons.has(r.student_id) && r.content) {
+      praiseReasons.set(r.student_id, r.content);
+    }
+  }
+
   const current =
     charts.find((c) => c.month === currentMonth && c.is_current) ??
     charts.find((c) => c.month === currentMonth) ??
@@ -72,7 +91,12 @@ export default async function SeatingPage({
         title="Sơ đồ lớp"
         description={`Lớp ${cls.name} · Tháng ${CURRENT_MONTH.slice(5)}/${CURRENT_MONTH.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
       />
-      <ClassChips classes={classes} selectedId={cls.id} href="/register/seating" />
+      <ClassChips
+        classes={classes}
+        selectedId={cls.id}
+        href="/register/seating"
+        params={praise === "1" ? { praise: "1" } : {}}
+      />
       <SeatingGrid
         key={cls.id}
         classId={cls.id}
@@ -82,6 +106,8 @@ export default async function SeatingPage({
         initialLayout={current?.layout ?? null}
         previousLayout={previous?.layout ?? null}
         students={students}
+        initialPraise={praise === "1"}
+        praiseReasons={Object.fromEntries(praiseReasons)}
       />
     </>
   );

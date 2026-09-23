@@ -68,7 +68,6 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Tư vấn & an toàn",
       children: [
         { label: "Ghi nhận sự cố", href: "/safety/report" },
-        { label: "Báo cáo Ban Giám Hiệu", href: "/safety/bgh" },
         { label: "Theo dõi & nhắc", href: "/safety/followup" },
         { label: "Lưu trữ & tra cứu", href: "/safety/archive" },
         { label: "Tiếp nhận & phát hiện", href: "/counseling/intake" },
@@ -84,8 +83,8 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Upload lịch năm học", href: "/register/year-events" },
         { label: "Kế hoạch tháng / sơ kết tuần", href: "/register/plans" },
         { label: "Đăng ký chỉ tiêu hiệu suất", href: "/register/kpi" },
-        { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
-        { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
+        { label: "Nộp sổ chủ nhiệm", href: "/register/signoff" },
+        { label: "Nộp sổ học bạ", href: "/register/lock-records" },
         { label: "Xuất sổ", href: "/register/export" },
         { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
         { label: "Báo cáo tổng hợp (AI)", href: "/records/report" },

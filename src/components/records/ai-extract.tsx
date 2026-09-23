@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { FileSpreadsheet, Sparkles } from "lucide-react";
 import { AiProgress } from "@/components/ai/ai-progress";
 import { useAiJob } from "@/hooks/use-ai-job";
 import { Button } from "@/components/ui/button";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { parseSpreadsheet } from "@/lib/excel";
 
 const INPUT_CLS =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -21,6 +22,7 @@ interface ExtractedRow {
 /** Dán văn bản danh sách HS (copy từ giấy tờ/Excel lộn xộn) -> AI trả về bảng CSV. */
 export function AiExtract() {
   const job = useAiJob();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,6 +92,21 @@ export function AiExtract() {
     setCopied(true);
   }
 
+  /** Đọc file Excel/CSV thành bảng text rồi đưa vào ô văn bản cho AI xử lý. */
+  async function onFile(file: File | undefined) {
+    if (!file) return;
+    setErr(null);
+    try {
+      const table = await parseSpreadsheet(file);
+      const asText = table
+        .map((row) => row.map((c) => c ?? "").join("\t"))
+        .join("\n");
+      setText(asText);
+    } catch {
+      setErr("Không đọc được file. Thử file Excel (.xlsx) hoặc CSV khác.");
+    }
+  }
+
   return (
     <div className="mb-4 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
       <div className="flex items-center justify-between gap-2">
@@ -105,6 +122,25 @@ export function AiExtract() {
       </div>
       {open && (
         <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => onFile(e.target.files?.[0])}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+            >
+              <FileSpreadsheet /> Chọn file Excel/CSV
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              hoặc dán văn bản vào ô bên dưới
+            </span>
+          </div>
           <AutoGrowTextarea
             value={text}
             onChange={(e) => setText(e.target.value)}

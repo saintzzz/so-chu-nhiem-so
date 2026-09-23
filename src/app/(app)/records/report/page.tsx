@@ -6,11 +6,8 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
-import { Suspense } from "react";
-import {
-  ReportAiCard,
-  ReportAiCardSkeleton,
-} from "@/components/records/report-ai-card";
+import { AiInsightCard } from "@/components/ai/ai-insight-card";
+import { Sparkles } from "lucide-react";
 import { averageByStudent } from "@/lib/tt22";
 
 interface ClassStats {
@@ -274,9 +271,29 @@ export default async function RecordsReportPage() {
         </div>
       )}
 
-      <Suspense fallback={<ReportAiCardSkeleton />}>
-        <ReportAiCard stats={stats} fallbackNarrative={ruleNarrative} />
-      </Suspense>
+      {ruleNarrative.length > 0 && (
+        <div className="mb-4 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+          <div className="mb-2 flex items-center gap-2">
+            <Sparkles className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">
+              Gợi ý (phân tích tự động)
+            </h2>
+          </div>
+          <ul className="list-disc space-y-1.5 pl-5 text-sm text-foreground">
+            {ruleNarrative.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <AiInsightCard
+        endpoint="/api/ai/report-analysis"
+        payload={{ stats }}
+        title="Phân tích AI tổng hợp"
+        buttonLabel="Phân tích"
+        progressLabel="Đang phân tích số liệu các lớp..."
+      />
     </div>
   );
 }

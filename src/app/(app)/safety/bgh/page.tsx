@@ -11,10 +11,10 @@ function fmtDateTime(iso: string): string {
 }
 
 export default async function SafetyBghPage() {
-  const profile = await requireRoles(["gvcn", "bgh", "pht"]);
+  const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
 
-  // Trang tổng hợp toàn trường - dùng cho BGH/PHT và GVCN tra cứu liên lớp.
+  // Trang tổng hợp toàn trường - chỉ BGH/PHT (GVCN theo dõi sự cố lớp mình ở safety/followup).
   let classQuery = supabase.from("classes").select("*").order("name");
   if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatDateTime } from "@/lib/utils";
-import { Lock, PlusCircle } from "lucide-react";
+import { Lock, PlusCircle, Send, Undo2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -10,11 +10,15 @@ import { StatusBadge } from "@/components/status-badge";
 import { CURRENT_PERIOD, type Signoff } from "./types";
 import { logAudit } from "@/lib/audit";
 
-const STATUS_META: Record<string, { label: string; tone: "warning" | "success" | "muted" | "error" }> = {
-  pending: { label: "Chờ duyệt", tone: "warning" },
+const STATUS_META: Record<
+  string,
+  { label: string; tone: "warning" | "success" | "muted" | "error" | "primary" }
+> = {
+  pending: { label: "Chờ GVCN nộp", tone: "warning" },
+  submitted: { label: "Chờ BGH duyệt", tone: "primary" },
   signed: { label: "Đã ký", tone: "success" },
   locked: { label: "Đã khóa", tone: "muted" },
-  rejected: { label: "Từ chối", tone: "error" },
+  rejected: { label: "Bị từ chối", tone: "error" },
 };
 
 export function LockRecordsClient({
@@ -22,27 +26,60 @@ export function LockRecordsClient({
   classes,
   classNames,
   profileId,
+  role,
 }: {
   signoffs: Signoff[];
   classes: { id: string; name: string }[];
   classNames: Record<string, string>;
   profileId: string;
+  role: "gvcn" | "bgh";
 }) {
   const supabase = createClient();
   const [signoffs, setSignoffs] = useState<Signoff[]>(initialSignoffs);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const isBgh = role === "bgh";
 
+  /** GVCN nộp sổ học bạ lên BGH (pending/rejected -> submitted). */
+  async function submit(row: Signoff) {
+    setBusy(true);
+    setMessage(null);
+    const at = new Date().toISOString();
+    const { error } = await supabase
+      .from("register_signoffs")
+      .update({ status: "submitted", submitted_at: at, submitted_by: profileId })
+      .eq("id", row.id);
+    if (error) {
+      setMessage("Không thể nộp sổ học bạ.");
+    } else {
+      setSignoffs((ss) =>
+        ss.map((s) =>
+          s.id === row.id
+            ? { ...s, status: "submitted", submitted_at: at, submitted_by: profileId }
+            : s,
+        ),
+      );
+      setMessage(
+        `Đã nộp sổ học bạ lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} lên Ban Giám Hiệu.`,
+      );
+      logAudit(supabase, {
+        action: "Nộp sổ học bạ",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
+    }
+    setBusy(false);
+  }
+
+  /** BGH duyệt & khóa (submitted -> locked) - sau khi khóa không chỉnh sửa. */
   async function lock(row: Signoff) {
     setBusy(true);
     setMessage(null);
+    const at = new Date().toISOString();
     const { error } = await supabase
       .from("register_signoffs")
-      .update({
-        status: "locked",
-        signed_at: new Date().toISOString(),
-        signed_by: profileId,
-      })
+      .update({ status: "locked", signed_at: at, signed_by: profileId })
       .eq("id", row.id);
     if (error) {
       setMessage("Không thể khóa sổ học bạ.");
@@ -50,7 +87,7 @@ export function LockRecordsClient({
       setSignoffs((ss) =>
         ss.map((s) =>
           s.id === row.id
-            ? { ...s, status: "locked", signed_by: profileId, signed_at: new Date().toISOString() }
+            ? { ...s, status: "locked", signed_by: profileId, signed_at: at }
             : s,
         ),
       );
@@ -67,6 +104,34 @@ export function LockRecordsClient({
     setBusy(false);
   }
 
+  /** BGH từ chối - trả sổ về GVCN (submitted -> rejected). */
+  async function reject(row: Signoff) {
+    setBusy(true);
+    setMessage(null);
+    const { error } = await supabase
+      .from("register_signoffs")
+      .update({ status: "rejected" })
+      .eq("id", row.id);
+    if (error) {
+      setMessage("Không thể từ chối.");
+    } else {
+      setSignoffs((ss) =>
+        ss.map((s) => (s.id === row.id ? { ...s, status: "rejected" } : s)),
+      );
+      setMessage(
+        `Đã từ chối sổ học bạ lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} - GVCN cần nộp lại.`,
+      );
+      logAudit(supabase, {
+        action: "Từ chối sổ học bạ",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
+    }
+    setBusy(false);
+  }
+
+  /** BGH mở đợt duyệt cho các lớp trong kỳ. */
   async function createBatch() {
     setBusy(true);
     setMessage(null);
@@ -102,15 +167,28 @@ export function LockRecordsClient({
     setBusy(false);
   }
 
+  const awaiting = signoffs.filter(
+    (s) => s.status === "pending" || s.status === "rejected",
+  ).length;
+  const awaitingBgh = signoffs.filter((s) => s.status === "submitted").length;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {signoffs.filter((s) => s.status === "pending").length} đợt chờ duyệt
+          {isBgh
+            ? `${awaitingBgh} đợt chờ BGH duyệt · ${awaiting} lớp chưa nộp`
+            : `${awaiting} kỳ cần nộp · ${awaitingBgh} kỳ đang chờ BGH duyệt`}
         </p>
-        <Button variant="outline" onClick={createBatch} disabled={busy || classes.length === 0}>
-          <PlusCircle /> Tạo đợt duyệt
-        </Button>
+        {isBgh && (
+          <Button
+            variant="outline"
+            onClick={createBatch}
+            disabled={busy || classes.length === 0}
+          >
+            <PlusCircle /> Tạo đợt duyệt
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -120,7 +198,7 @@ export function LockRecordsClient({
       )}
 
       <DataTable
-        columns={["Lớp", "Kỳ", "Trạng thái", "Thời điểm khóa", "Hành động"]}
+        columns={["Lớp", "Kỳ", "Trạng thái", "Thời điểm", "Hành động"]}
       >
         {signoffs.map((s) => {
           const meta = STATUS_META[s.status] ?? STATUS_META.pending;
@@ -136,17 +214,31 @@ export function LockRecordsClient({
               <td className="text-muted-foreground">
                 {s.signed_at
                   ? formatDateTime(s.signed_at)
-                  : "-"}
+                  : s.submitted_at
+                    ? formatDateTime(s.submitted_at)
+                    : "-"}
               </td>
               <td>
-                {s.status !== "locked" && (
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => lock(s)}
-                  >
-                    <Lock /> Duyệt & khóa
-                  </Button>
+                {!isBgh &&
+                  (s.status === "pending" || s.status === "rejected") && (
+                    <Button size="sm" disabled={busy} onClick={() => submit(s)}>
+                      <Send /> {s.status === "rejected" ? "Nộp lại" : "Nộp sổ"}
+                    </Button>
+                  )}
+                {isBgh && s.status === "submitted" && (
+                  <span className="inline-flex gap-1">
+                    <Button size="sm" disabled={busy} onClick={() => lock(s)}>
+                      <Lock /> Duyệt & khóa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => reject(s)}
+                    >
+                      <Undo2 /> Từ chối
+                    </Button>
+                  </span>
                 )}
               </td>
             </tr>
@@ -155,7 +247,9 @@ export function LockRecordsClient({
         {signoffs.length === 0 && (
           <tr>
             <td colSpan={5} className="text-center text-muted-foreground">
-              Chưa có đợt duyệt nào - nhấn &quot;Tạo đợt duyệt&quot; để bắt đầu.
+              {isBgh
+                ? "Chưa có đợt duyệt nào - nhấn \"Tạo đợt duyệt\" để bắt đầu."
+                : "Chưa có đợt duyệt nào - chờ Ban Giám Hiệu mở đợt."}
             </td>
           </tr>
         )}

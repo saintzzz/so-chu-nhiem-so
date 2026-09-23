@@ -115,6 +115,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -179,7 +180,22 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center shadow-[var(--shadow-sm-token)]">
+      <div
+        className={cn(
+          "rounded-xl border border-dashed bg-card p-6 text-center shadow-[var(--shadow-sm-token)] transition-colors",
+          dragOver ? "border-primary bg-primary-bg" : "border-border",
+        )}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          onFile(e.dataTransfer.files?.[0]);
+        }}
+      >
         <input
           ref={inputRef}
           type="file"
@@ -188,8 +204,8 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
           onChange={(e) => onFile(e.target.files?.[0])}
         />
         <p className="text-sm text-muted-foreground">
-          Chọn file Excel (.xlsx) hoặc CSV danh sách học sinh để xem trước dữ
-          liệu.
+          Kéo thả file vào đây hoặc chọn file Excel (.xlsx) / CSV danh sách học
+          sinh để xem trước dữ liệu.
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Button type="button" onClick={() => inputRef.current?.click()}>

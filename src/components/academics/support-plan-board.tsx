@@ -7,6 +7,23 @@ import {
   createSupportPlans,
   type SupportPlanPair,
 } from "@/app/(app)/academics/support/actions";
+import { PlanActions } from "@/components/academics/plan-actions";
+
+type PlanStatus =
+  | "draft"
+  | "pending"
+  | "approved"
+  | "in_progress"
+  | "done"
+  | "cancelled";
+const PLAN_STATUSES = new Set<string>([
+  "draft",
+  "pending",
+  "approved",
+  "in_progress",
+  "done",
+  "cancelled",
+]);
 
 export interface WeakPair {
   studentId: string;
@@ -15,11 +32,18 @@ export interface WeakPair {
   studentCode: string;
   subjectName: string;
   avg: number;
+  planId: string | null;
   planStatus: keyof typeof FLOW_STATUS | null;
 }
 
 /** Multi-select table for weak student+subject pairs with bulk plan creation. */
-export function SupportPlanBoard({ rows }: { rows: WeakPair[] }) {
+export function SupportPlanBoard({
+  rows,
+  meId,
+}: {
+  rows: WeakPair[];
+  meId: string;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -153,7 +177,7 @@ export function SupportPlanBoard({ rows }: { rows: WeakPair[] }) {
                     )}
                   </td>
                   <td className="px-3 py-2.5">
-                    {r.planStatus === null && (
+                    {r.planStatus === null ? (
                       <Button
                         size="xs"
                         variant="outline"
@@ -170,6 +194,16 @@ export function SupportPlanBoard({ rows }: { rows: WeakPair[] }) {
                       >
                         Tạo kế hoạch
                       </Button>
+                    ) : (
+                      r.planId &&
+                      r.planStatus &&
+                      PLAN_STATUSES.has(r.planStatus) && (
+                        <PlanActions
+                          planId={r.planId}
+                          status={r.planStatus as PlanStatus}
+                          meId={meId}
+                        />
+                      )
                     )}
                   </td>
                 </tr>

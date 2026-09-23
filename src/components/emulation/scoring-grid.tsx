@@ -33,13 +33,17 @@ export function ScoringGrid({
   criteria,
   classes,
   initialScores,
+  editableClassIds,
 }: {
   period: string;
   criteria: Criterion[];
   classes: ClassInfo[];
   initialScores: Record<string, ScoreCell>;
+  /** Lớp được phép nhập điểm - GVCN chỉ lớp chủ nhiệm; BGH tất cả. */
+  editableClassIds: string[];
 }) {
   const router = useRouter();
+  const editable = new Set(editableClassIds);
   const [values, setValues] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
     for (const c of classes) {
@@ -74,6 +78,7 @@ export function ScoringGrid({
     try {
       const ops: PromiseLike<unknown>[] = [];
       for (const c of classes) {
+        if (!editable.has(c.id)) continue;
         for (const cr of criteria) {
           const key = keyOf(c.id, cr.id);
           const existing = initialScores[key];
@@ -186,19 +191,26 @@ export function ScoringGrid({
                 </td>
                 {classes.map((c) => {
                   const key = keyOf(c.id, cr.id);
+                  const canEdit = editable.has(c.id);
                   return (
                     <td key={c.id} className="px-2 py-2 text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={cr.max_score}
-                        value={values[key] ?? ""}
-                        onChange={(e) =>
-                          setValues((v) => ({ ...v, [key]: e.target.value }))
-                        }
-                        className="h-8 w-16 rounded-lg border border-border bg-background px-2 text-center text-sm"
-                        aria-label={`Điểm ${cr.name} lớp ${c.name}`}
-                      />
+                      {canEdit ? (
+                        <input
+                          type="number"
+                          min={0}
+                          max={cr.max_score}
+                          value={values[key] ?? ""}
+                          onChange={(e) =>
+                            setValues((v) => ({ ...v, [key]: e.target.value }))
+                          }
+                          className="h-8 w-16 rounded-lg border border-border bg-background px-2 text-center text-sm"
+                          aria-label={`Điểm ${cr.name} lớp ${c.name}`}
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {values[key] || "-"}
+                        </span>
+                      )}
                     </td>
                   );
                 })}

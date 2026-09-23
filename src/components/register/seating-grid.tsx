@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   useDraggable,
@@ -51,10 +52,12 @@ function StudentChip({
   seatIndex,
   student,
   praised,
+  praiseReason,
 }: {
   seatIndex: number;
   student: Student;
   praised: boolean;
+  praiseReason?: string | null;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: `seat-${seatIndex}` });
@@ -68,13 +71,22 @@ function StudentChip({
       {...attributes}
       style={style}
       className={cn(
-        "flex h-full w-full cursor-grab touch-none items-center justify-center rounded-lg border border-border bg-background px-1 py-2 text-center text-xs font-medium leading-tight",
+        "flex h-full w-full cursor-grab touch-none flex-col items-center justify-center rounded-lg border border-border bg-background px-1 py-1.5 text-center text-xs font-medium leading-tight",
         isDragging && "z-20 opacity-80 shadow-lg",
         praised && "border-warning bg-warning-bg text-warning",
       )}
-      title={student.full_name}
+      title={
+        praised && praiseReason
+          ? `${student.full_name} - ${praiseReason}`
+          : student.full_name
+      }
     >
-      {student.full_name}
+      <span>{student.full_name}</span>
+      {praised && (
+        <span className="mt-0.5 line-clamp-2 w-full text-[10px] font-normal leading-tight text-warning/90">
+          +{student.positive_points} điểm{praiseReason ? ` - ${praiseReason}` : ""}
+        </span>
+      )}
     </button>
   );
 }
@@ -83,12 +95,14 @@ function SeatCell({
   index,
   student,
   praised,
+  praiseReason,
   selected,
   onSelect,
 }: {
   index: number;
   student: Student | null;
   praised: boolean;
+  praiseReason?: string | null;
   selected: boolean;
   onSelect: (i: number) => void;
 }) {
@@ -98,13 +112,19 @@ function SeatCell({
       ref={setNodeRef}
       onClick={() => onSelect(index)}
       className={cn(
-        "h-14 min-w-[86px] rounded-lg",
+        "min-h-14 min-w-[86px] rounded-lg",
+        praised && "min-h-[72px]",
         isOver && "ring-2 ring-primary",
         selected && "ring-2 ring-primary",
       )}
     >
       {student ? (
-        <StudentChip seatIndex={index} student={student} praised={praised} />
+        <StudentChip
+          seatIndex={index}
+          student={student}
+          praised={praised}
+          praiseReason={praiseReason}
+        />
       ) : (
         <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
           Trống
@@ -122,6 +142,8 @@ export function SeatingGrid({
   initialLayout,
   previousLayout,
   students,
+  initialPraise = false,
+  praiseReasons = {},
 }: {
   classId: string;
   className: string;
@@ -130,8 +152,13 @@ export function SeatingGrid({
   initialLayout: SeatingLayout | null;
   previousLayout: SeatingLayout | null;
   students: Student[];
+  initialPraise?: boolean;
+  praiseReasons?: Record<string, string>;
 }) {
   const supabase = createClient();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const initial = useMemo(
     () => buildCells(initialLayout, sortByVietnameseName(students, (s) => s.full_name)),
     [initialLayout, students],
@@ -139,7 +166,17 @@ export function SeatingGrid({
   const [cols, setCols] = useState(initial.cols);
   const [rows, setRows] = useState(initial.rows);
   const [cells, setCells] = useState<(string | null)[]>(initial.cells);
-  const [praiseMode, setPraiseMode] = useState(false);
+  const [praiseMode, setPraiseMode] = useState(initialPraise);
+
+  /** Bật/tắt chế độ tuyên dương - đồng bộ ?praise=1 để giữ khi đổi lớp. */
+  function togglePraise() {
+    const next = !praiseMode;
+    setPraiseMode(next);
+    const sp = new URLSearchParams(searchParams.toString());
+    if (next) sp.set("praise", "1");
+    else sp.delete("praise");
+    router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
+  }
   const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [version, setVersion] = useState(currentVersion);
@@ -298,7 +335,7 @@ export function SeatingGrid({
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant={praiseMode ? "default" : "outline"}
-          onClick={() => setPraiseMode((p) => !p)}
+          onClick={togglePraise}
         >
           <Sparkles /> Chế độ Tuyên dương
         </Button>
@@ -422,12 +459,14 @@ export function SeatingGrid({
               {Array.from({ length: cols * rows }).map((_, i) => {
                 const sid = cells[i];
                 const student = sid ? (studentMap.get(sid) ?? null) : null;
+                const praised = praiseMode && !!sid && praisedIds.has(sid);
                 return (
                   <SeatCell
                     key={i}
                     index={i}
                     student={student}
-                    praised={praiseMode && !!sid && praisedIds.has(sid)}
+                    praised={praised}
+                    praiseReason={praised && sid ? praiseReasons[sid] : null}
                     selected={selected === i}
                     onSelect={onSelect}
                   />

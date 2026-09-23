@@ -164,17 +164,21 @@ export default async function SupportPage({
       </div>
 
       <SupportPlanBoard
+        meId={profile.id}
         rows={weak.map(
-          (w): WeakPair => ({
-            studentId: w.student_id,
-            subjectId: w.subject_id,
-            studentName: studentName.get(w.student_id)?.full_name ?? "-",
-            studentCode: studentName.get(w.student_id)?.code ?? "-",
-            subjectName: subjectName.get(w.subject_id) ?? "-",
-            avg: w.avg,
-            planStatus:
-              planKey.get(`${w.student_id}:${w.subject_id}`)?.status ?? null,
-          }),
+          (w): WeakPair => {
+            const plan = planKey.get(`${w.student_id}:${w.subject_id}`);
+            return {
+              studentId: w.student_id,
+              subjectId: w.subject_id,
+              studentName: studentName.get(w.student_id)?.full_name ?? "-",
+              studentCode: studentName.get(w.student_id)?.code ?? "-",
+              subjectName: subjectName.get(w.subject_id) ?? "-",
+              avg: w.avg,
+              planId: plan?.id ?? null,
+              planStatus: plan?.status ?? null,
+            };
+          },
         )}
       />
     </div>

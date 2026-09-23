@@ -380,9 +380,23 @@ export default async function DashboardPage({
       : null;
 
   // Incomplete student records (missing dob / address / gender)
-  const incompleteRecords = students.filter(
-    (s) => !s.dob || !s.address || !s.gender,
-  ).length;
+  const missingFields = { dob: 0, address: 0, gender: 0 };
+  const incompleteRecords = students.filter((s) => {
+    if (!s.dob) missingFields.dob += 1;
+    if (!s.address) missingFields.address += 1;
+    if (!s.gender) missingFields.gender += 1;
+    return !s.dob || !s.address || !s.gender;
+  }).length;
+  const missingSummary = (
+    [
+      [missingFields.dob, "ngày sinh"],
+      [missingFields.address, "địa chỉ"],
+      [missingFields.gender, "giới tính"],
+    ] as const
+  )
+    .filter(([n]) => n > 0)
+    .map(([n, label]) => `${n} thiếu ${label}`)
+    .join(", ");
 
   // Tác vụ nghiệp vụ bắt buộc hôm nay (giống mô hình "chưa điểm danh / chưa
   // nộp báo cáo / chưa đánh giá" của hệ thống tham chiếu)
@@ -563,7 +577,7 @@ export default async function DashboardPage({
           tone={emuRank === 1 ? "success" : "primary"}
         />
         <StatCard
-          label="Hồ sơ chưa hoàn thành"
+          label={`Hồ sơ chưa hoàn thành${missingSummary ? ` (${missingSummary})` : ""}`}
           value={incompleteRecords}
           href="/records/students"
           tone={incompleteRecords > 0 ? "error" : "success"}

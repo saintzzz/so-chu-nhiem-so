@@ -56,6 +56,40 @@ export default async function ComposePage() {
     .limit(10);
   const announcements = (annData ?? []) as Announcement[];
 
+  // Coverage: lớp/HS -> số phụ huynh có email (kênh nhận thông báo duy nhất).
+  const studentIds = students.map((s) => s.id);
+  const { data: linkData } = studentIds.length
+    ? await supabase
+        .from("parent_students")
+        .select("student_id,parent_id")
+        .in("student_id", studentIds)
+    : { data: [] };
+  const links = (linkData ?? []) as {
+    student_id: string;
+    parent_id: string;
+  }[];
+  const parentIds = [...new Set(links.map((l) => l.parent_id))];
+  const { data: parentData } = parentIds.length
+    ? await supabase
+        .from("parents")
+        .select("id,email")
+        .in("id", parentIds)
+    : { data: [] };
+  const emailByParent = new Map(
+    ((parentData ?? []) as { id: string; email: string | null }[]).map((p) => [
+      p.id,
+      Boolean(p.email),
+    ]),
+  );
+  // studentId -> {withEmail,total}
+  const coverage = new Map<string, { withEmail: number; total: number }>();
+  for (const l of links) {
+    const c = coverage.get(l.student_id) ?? { withEmail: 0, total: 0 };
+    c.total += 1;
+    if (emailByParent.get(l.parent_id)) c.withEmail += 1;
+    coverage.set(l.student_id, c);
+  }
+
   const className = new Map(classes.map((c) => [c.id, c.name]));
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));
 
@@ -70,6 +104,7 @@ export default async function ComposePage() {
         <ComposeForm
           classes={classes.map((c) => ({ id: c.id, name: c.name }))}
           students={students}
+          coverage={Object.fromEntries(coverage)}
         />
         <div>
           <h2 className="mb-3 text-base font-semibold">

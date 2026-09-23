@@ -50,13 +50,22 @@ export function AiInsightCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.done, job.failed, job.result]);
 
+  function stripMd(l: string) {
+    return l
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/__(.+?)__/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/^[\s\-*•#>\d.)\]]+/, "")
+      .trim();
+  }
+
   function applyResult(r: InsightResult) {
     const ls =
-      r.lines ??
+      r.lines?.map(stripMd).filter(Boolean) ??
       (r.text
         ? r.text
             .split(/\n+/)
-            .map((l) => l.replace(/^[\s\-*•\d.)\]]+/, "").trim())
+            .map(stripMd)
             .filter(Boolean)
         : null);
     setLines(ls && ls.length ? ls : null);

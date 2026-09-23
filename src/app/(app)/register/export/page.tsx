@@ -16,7 +16,7 @@ export default async function ExportPage() {
       <PageHeader
         section="Sổ chủ nhiệm"
         title="Xuất sổ chủ nhiệm"
-        description="Xuất dữ liệu sổ chủ nhiệm (học sinh, điểm, chuyên cần) ra CSV hoặc bản in."
+        description="Xuất dữ liệu sổ chủ nhiệm (học sinh, điểm, chuyên cần) ra Excel hoặc bản in."
       />
       {classes.length === 0 ? (
         <EmptyClassNotice />

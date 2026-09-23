@@ -18,14 +18,23 @@ interface ExportRow {
   excused: number;
   late: number;
   points: number;
+  attDetail: { date: string; status: string }[];
 }
 
 const inputCls =
   "w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm";
 
-function csvCell(v: string | number) {
-  const s = String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+const STATUS_LABEL: Record<string, string> = {
+  present: "Có mặt",
+  excused: "Vắng có phép",
+  unexcused: "Vắng không phép",
+  late: "Đi muộn",
+};
+
+/** Ngày cuối tháng của "YYYY-MM" - tránh lỗi "-31" cho tháng 30 ngày. */
+function monthEnd(period: string): string {
+  const [y, m] = period.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 }
 
 export function ExportClient({
@@ -65,13 +74,15 @@ export function ExportClient({
               .select("*")
               .in("student_id", ids)
               .gte("date", `${period}-01`)
-              .lte("date", `${period}-31`),
+              .lte("date", monthEnd(period))
+              .order("date"),
           ])
         : [{ data: [] }, { data: [] }];
     const grades = (gradesData ?? []) as Grade[];
     const attendance = (attData ?? []) as {
       student_id: string;
       status: string;
+      date: string;
     }[];
 
     return students.map((s) => {
@@ -102,50 +113,76 @@ export function ExportClient({
         excused: att.filter((a) => a.status === "excused").length,
         late: att.filter((a) => a.status === "late").length,
         points: s.positive_points,
+        attDetail: att.map((a) => ({ date: a.date, status: a.status })),
       };
     });
   }
 
-  async function exportCsv() {
+  async function exportXlsx() {
     setBusy(true);
     setMessage(null);
     const data = await loadRows();
-    const header = [
+    const ExcelJS = (await import("exceljs")).default;
+    const wb = new ExcelJS.Workbook();
+
+    // Sheet 1: tổng hợp theo học sinh
+    const ws = wb.addWorksheet("Tổng hợp");
+    const headers = [
       "Mã HS",
       "Họ tên",
       "Tổ",
       "Điểm TB",
-      "Vắng KP",
+      "Có mặt",
       "Vắng CP",
+      "Vắng KP",
       "Đi muộn",
       "Điểm tích cực",
     ];
-    const csv = [
-      header.join(","),
-      ...data.map((r) =>
-        [
-          r.code,
-          r.name,
-          r.group,
-          r.avgScore,
-          r.unexcused,
-          r.excused,
-          r.late,
-          r.points,
-        ]
-          .map(csvCell)
-          .join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    ws.addRow(headers);
+    ws.getRow(1).font = { bold: true };
+    headers.forEach((h, i) => {
+      ws.getColumn(i + 1).width = Math.max(14, h.length + 4);
+    });
+    data.forEach((r) => {
+      ws.addRow([
+        r.code,
+        r.name,
+        r.group,
+        r.avgScore,
+        r.attDetail.filter((a) => a.status === "present").length,
+        r.excused,
+        r.unexcused,
+        r.late,
+        r.points,
+      ]);
+    });
+
+    // Sheet 2: chuyên cần chi tiết theo ngày
+    const ws2 = wb.addWorksheet("Chuyên cần chi tiết");
+    ws2.addRow(["Mã HS", "Họ tên", "Ngày", "Trạng thái"]);
+    ws2.getRow(1).font = { bold: true };
+    ws2.getColumn(1).width = 12;
+    ws2.getColumn(2).width = 28;
+    ws2.getColumn(3).width = 14;
+    ws2.getColumn(4).width = 18;
+    for (const r of data) {
+      for (const a of r.attDetail) {
+        ws2.addRow([r.code, r.name, a.date, STATUS_LABEL[a.status] ?? a.status]);
+      }
+    }
+
+    const cls = classes.find((c) => c.id === classId);
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const cls = classes.find((c) => c.id === classId);
     a.href = url;
-    a.download = `so-chu-nhiem-${cls?.name ?? "lop"}-${period}.csv`;
+    a.download = `so-chu-nhiem-${cls?.name ?? "lop"}-${period}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
-    setMessage(`Đã xuất CSV cho ${data.length} học sinh.`);
+    setMessage(`Đã xuất Excel cho ${data.length} học sinh (2 sheet: tổng hợp + chuyên cần chi tiết).`);
     setBusy(false);
   }
 
@@ -191,8 +228,8 @@ export function ExportClient({
               onChange={(e) => setPeriod(e.target.value)}
             />
           </label>
-          <Button onClick={exportCsv} disabled={busy || !classId}>
-            <Download /> Xuất CSV
+          <Button onClick={exportXlsx} disabled={busy || !classId}>
+            <Download /> Xuất Excel
           </Button>
           <Button variant="outline" onClick={exportPrint} disabled={busy || !classId}>
             <Printer /> Bản in

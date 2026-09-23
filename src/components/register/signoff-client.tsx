@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatDateTime } from "@/lib/utils";
-import { PenLine, PlusCircle } from "lucide-react";
+import { PenLine, PlusCircle, Send, Undo2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -10,11 +10,15 @@ import { StatusBadge } from "@/components/status-badge";
 import { CURRENT_MONTH, type Signoff } from "./types";
 import { logAudit } from "@/lib/audit";
 
-const STATUS_META: Record<string, { label: string; tone: "warning" | "success" | "muted" | "error" }> = {
-  pending: { label: "Chờ ký", tone: "warning" },
+const STATUS_META: Record<
+  string,
+  { label: string; tone: "warning" | "success" | "muted" | "error" | "primary" }
+> = {
+  pending: { label: "Chờ GVCN nộp", tone: "warning" },
+  submitted: { label: "Chờ BGH duyệt", tone: "primary" },
   signed: { label: "Đã ký", tone: "success" },
   locked: { label: "Đã khóa", tone: "muted" },
-  rejected: { label: "Từ chối", tone: "error" },
+  rejected: { label: "Bị từ chối", tone: "error" },
 };
 
 export function SignoffClient({
@@ -24,19 +28,24 @@ export function SignoffClient({
   signerNames,
   profileId,
   profileName,
+  role,
 }: {
   signoffs: Signoff[];
   classes: { id: string; name: string }[];
   classNames: Record<string, string>;
+  /** Tên cho cả người nộp lẫn người ký (submitted_by + signed_by). */
   signerNames: Record<string, string>;
   profileId: string;
   profileName: string;
+  role: "gvcn" | "bgh";
 }) {
   const supabase = createClient();
   const [signoffs, setSignoffs] = useState<Signoff[]>(initialSignoffs);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const isBgh = role === "bgh";
 
+  /** BGH mở đợt ký duyệt cho các lớp trong kỳ hiện tại. */
   async function createBatch() {
     setBusy(true);
     setMessage(null);
@@ -72,6 +81,44 @@ export function SignoffClient({
     setBusy(false);
   }
 
+  /** GVCN nộp sổ lên BGH (pending/rejected -> submitted). */
+  async function submit(row: Signoff) {
+    setBusy(true);
+    setMessage(null);
+    const at = new Date().toISOString();
+    const { error } = await supabase
+      .from("register_signoffs")
+      .update({ status: "submitted", submitted_at: at, submitted_by: profileId })
+      .eq("id", row.id);
+    if (error) {
+      setMessage("Không thể nộp sổ.");
+    } else {
+      setSignoffs((ss) =>
+        ss.map((s) =>
+          s.id === row.id
+            ? {
+                ...s,
+                status: "submitted",
+                submitted_at: at,
+                submitted_by: profileId,
+              }
+            : s,
+        ),
+      );
+      setMessage(
+        `Đã nộp sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} lên Ban Giám Hiệu.`,
+      );
+      logAudit(supabase, {
+        action: "Nộp sổ chủ nhiệm",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
+    }
+    setBusy(false);
+  }
+
+  /** BGH ký duyệt (submitted -> signed). */
   async function sign(row: Signoff) {
     setBusy(true);
     setMessage(null);
@@ -103,19 +150,55 @@ export function SignoffClient({
     setBusy(false);
   }
 
+  /** BGH từ chối - trả sổ về cho GVCN (submitted -> rejected). */
+  async function reject(row: Signoff) {
+    setBusy(true);
+    setMessage(null);
+    const { error } = await supabase
+      .from("register_signoffs")
+      .update({ status: "rejected" })
+      .eq("id", row.id);
+    if (error) {
+      setMessage("Không thể từ chối.");
+    } else {
+      setSignoffs((ss) =>
+        ss.map((s) => (s.id === row.id ? { ...s, status: "rejected" } : s)),
+      );
+      setMessage(
+        `Đã từ chối sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} - GVCN cần chỉnh sửa và nộp lại.`,
+      );
+      logAudit(supabase, {
+        action: "Từ chối sổ chủ nhiệm",
+        entity: "register_signoffs",
+        entityId: row.id,
+        payload: { class_id: row.class_id, period: row.period },
+      });
+    }
+    setBusy(false);
+  }
+
+  const awaiting = signoffs.filter(
+    (s) => s.status === "pending" || s.status === "rejected",
+  ).length;
+  const awaitingBgh = signoffs.filter((s) => s.status === "submitted").length;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {signoffs.filter((s) => s.status === "pending").length} đợt chờ ký
+          {isBgh
+            ? `${awaitingBgh} đợt chờ BGH ký duyệt · ${awaiting} lớp chưa nộp`
+            : `${awaiting} kỳ cần nộp · ${awaitingBgh} kỳ đang chờ BGH duyệt`}
         </p>
-        <Button
-          variant="outline"
-          onClick={createBatch}
-          disabled={busy || classes.length === 0}
-        >
-          <PlusCircle /> Tạo đợt ký
-        </Button>
+        {isBgh && (
+          <Button
+            variant="outline"
+            onClick={createBatch}
+            disabled={busy || classes.length === 0}
+          >
+            <PlusCircle /> Tạo đợt ký
+          </Button>
+        )}
       </div>
 
       {message && (
@@ -124,10 +207,18 @@ export function SignoffClient({
         </p>
       )}
       <DataTable
-        columns={["Lớp", "Kỳ", "Trạng thái", "Người ký", "Thời điểm", "Hành động"]}
+        columns={[
+          "Lớp",
+          "Kỳ",
+          "Trạng thái",
+          "Người nộp / ký",
+          "Thời điểm",
+          "Hành động",
+        ]}
       >
         {signoffs.map((s) => {
           const meta = STATUS_META[s.status] ?? STATUS_META.pending;
+          const actorId = s.signed_by ?? s.submitted_by;
           return (
             <tr key={s.id}>
               <td className="font-medium">
@@ -138,25 +229,38 @@ export function SignoffClient({
                 <StatusBadge label={meta.label} tone={meta.tone} />
               </td>
               <td className="text-muted-foreground">
-                {s.signed_by
-                  ? (signerNames[s.signed_by] ??
-                    (s.signed_by === profileId ? profileName : "-"))
+                {actorId
+                  ? (signerNames[actorId] ??
+                    (actorId === profileId ? profileName : "-"))
                   : "-"}
               </td>
               <td className="text-muted-foreground">
                 {s.signed_at
                   ? formatDateTime(s.signed_at)
-                  : "-"}
+                  : s.submitted_at
+                    ? formatDateTime(s.submitted_at)
+                    : "-"}
               </td>
               <td>
-                {s.status === "pending" && (
-                  <Button
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => sign(s)}
-                  >
-                    <PenLine /> Ký duyệt
+                {!isBgh && (s.status === "pending" || s.status === "rejected") && (
+                  <Button size="sm" disabled={busy} onClick={() => submit(s)}>
+                    <Send /> {s.status === "rejected" ? "Nộp lại" : "Nộp sổ"}
                   </Button>
+                )}
+                {isBgh && s.status === "submitted" && (
+                  <span className="inline-flex gap-1">
+                    <Button size="sm" disabled={busy} onClick={() => sign(s)}>
+                      <PenLine /> Ký duyệt
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => reject(s)}
+                    >
+                      <Undo2 /> Từ chối
+                    </Button>
+                  </span>
                 )}
               </td>
             </tr>
@@ -165,7 +269,9 @@ export function SignoffClient({
         {signoffs.length === 0 && (
           <tr>
             <td colSpan={6} className="text-center text-muted-foreground">
-              Chưa có đợt ký duyệt nào - nhấn &quot;Tạo đợt ký&quot; để bắt đầu.
+              {isBgh
+                ? "Chưa có đợt ký duyệt nào - nhấn \"Tạo đợt ký\" để bắt đầu."
+                : "Chưa có đợt ký duyệt nào - chờ Ban Giám Hiệu mở đợt ký."}
             </td>
           </tr>
         )}

@@ -23,7 +23,7 @@ interface ExtractedRow {
 export function AiExtract() {
   const job = useAiJob();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [rows, setRows] = useState<ExtractedRow[] | null>(null);

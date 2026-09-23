@@ -48,3 +48,16 @@ Date: 2026-10-12 · Reporter: user · Priority: medium
 ## Estimate
 
 ~0.5 ngày: server action + editor component + 2 chỗ nhúng + migration + nav + verify.
+
+## Ket qua implement + verify production
+
+- Editor modal trong panel expand `/records/students` - GVCN thay dia chi "Nguyen Van An" -> DB update + `student_record_history` ghi dung old/new + editor. GVBM vao route -> redirect `/academics/grades`.
+- Scope: GVCN chi thay lop `gvcn_id = self` (UI) + RLS + server action double-check.
+- Nav verify: GVCN nhom theo flow ngay lam viec; BGH 4 nhom (Dieu hanh / Nhan su & to chuc / Hoc sinh & chat luong / Giam sat & phe duyet).
+
+### Bug phat hien khi verify: RLS de quy vo han
+
+- Loi: "infinite recursion detected in policy for relation students".
+- Root cause: `classes_parent_student` (SELECT tren classes) query nguoc `students`. Inline `exists(select classes)` trong policy students/emulation_scores chay quyen user -> classes RLS -> query students -> students RLS -> `scn_class_in_school` ... lap vo han.
+- Fix: function `scn_is_my_homeroom_class(cid)` SECURITY DEFINER (bypass RLS nhu `scn_class_in_school`) - ap dung cho ca students va emulation_scores.
+- Verify sau fix: edit HS persist, emulation save OK, khong con loi recursion.

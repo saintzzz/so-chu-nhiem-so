@@ -6,6 +6,21 @@ alter table register_signoffs
   add column if not exists submitted_at timestamptz;
 
 -- 2. Siết emulation_scores: GVCN chỉ lớp chủ nhiệm, BGH mọi lớp trong trường
+-- Check lớp CN phải qua SECURITY DEFINER: classes có policy SELECT query ngược
+-- students (classes_parent_student), inline exists sẽ gây đệ quy vô hạn.
+create or replace function scn_is_my_homeroom_class(cid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = 'public'
+as $$
+  select exists(
+    select 1 from classes c
+    where c.id = cid and c.gvcn_id = auth.uid()
+  )
+$$;
+
 drop policy if exists es_staff_ins on emulation_scores;
 drop policy if exists es_staff_upd on emulation_scores;
 drop policy if exists es_staff_del on emulation_scores;
@@ -14,10 +29,7 @@ create policy es_staff_ins on emulation_scores for insert with check (
   is_school_staff() and (
     my_role() = 'admin'
     or (my_role() = 'bgh' and scn_class_in_school(class_id))
-    or (my_role() = 'gvcn' and exists (
-      select 1 from classes c
-      where c.id = emulation_scores.class_id and c.gvcn_id = auth.uid()
-    ))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
   )
 );
 
@@ -25,19 +37,13 @@ create policy es_staff_upd on emulation_scores for update using (
   is_school_staff() and (
     my_role() = 'admin'
     or (my_role() = 'bgh' and scn_class_in_school(class_id))
-    or (my_role() = 'gvcn' and exists (
-      select 1 from classes c
-      where c.id = emulation_scores.class_id and c.gvcn_id = auth.uid()
-    ))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
   )
 ) with check (
   is_school_staff() and (
     my_role() = 'admin'
     or (my_role() = 'bgh' and scn_class_in_school(class_id))
-    or (my_role() = 'gvcn' and exists (
-      select 1 from classes c
-      where c.id = emulation_scores.class_id and c.gvcn_id = auth.uid()
-    ))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
   )
 );
 
@@ -45,10 +51,7 @@ create policy es_staff_del on emulation_scores for delete using (
   is_school_staff() and (
     my_role() = 'admin'
     or (my_role() = 'bgh' and scn_class_in_school(class_id))
-    or (my_role() = 'gvcn' and exists (
-      select 1 from classes c
-      where c.id = emulation_scores.class_id and c.gvcn_id = auth.uid()
-    ))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
   )
 );
 

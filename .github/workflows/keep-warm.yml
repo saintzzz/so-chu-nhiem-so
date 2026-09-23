@@ -1,0 +1,22 @@
+name: Keep Warm
+
+# Ping cac route dynamic de giu Vercel serverless functions nong,
+# tranh cold start ~1-1.4s cho nguoi dung dau tien sau idle.
+# (Bo sung cho pg_cron 'vercel-keep-warm' trong Supabase.)
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping dynamic routes
+        run: |
+          BASE="https://so-chu-nhiem-so-theta.vercel.app"
+          for r in /login /dashboard /portal/parent /portal/student /school/dashboard /register/roster; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$BASE$r")
+            echo "$code $r"
+          done

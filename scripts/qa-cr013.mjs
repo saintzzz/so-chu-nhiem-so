@@ -150,7 +150,6 @@ section("8. Signoff flow");
   const page = await visit("gvcn", "/register/signoff");
   const text = await page.locator("body").innerText();
   const hasSubmit = /Nộp|nộp/i.test(text);
-  const noSign = !/Ký duyệt|ký duyệt/i.test(text) || text.indexOf("Nộp") < text.indexOf("Ký");
   check("GVCN thay flow NOP (khong ky truc tiep)", hasSubmit);
   const { page: p2 } = await login("bgh");
   await p2.goto(`${BASE}/register/signoff`, { waitUntil: "domcontentloaded" });

@@ -163,6 +163,7 @@ export default async function RecordsStudentsPage({
       fullName: s.full_name,
       gender: s.gender,
       dob: s.dob,
+      address: s.address,
       status: s.status,
       groupName: s.group_id ? (groupName.get(s.group_id) ?? null) : null,
       roleLabel: roleByStudent.has(s.id)

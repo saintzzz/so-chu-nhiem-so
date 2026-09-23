@@ -16,17 +16,7 @@ export const NAV: Record<Role, NavSection[]> = {
   gvcn: [
     { label: "Dashboard", href: "/dashboard" },
     {
-      label: "Quản lý học sinh",
-      children: [
-        { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
-        { label: "Chi tiết hồ sơ học sinh", href: "/records/students" },
-        { label: "Sơ đồ lớp", href: "/register/seating" },
-        { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
-        { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
-        { label: "Trao đổi học sinh", href: "/conduct/student-chat" },
-      ],
-    },
-    {
+      // Viec dau ngay: diem danh -> bao cao -> xu ly vang/muon
       label: "Chuyên cần",
       children: [
         { label: "Điểm danh hàng ngày", href: "/attendance/daily" },
@@ -35,6 +25,17 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Thông báo phụ huynh", href: "/attendance/notify" },
         { label: "Theo dõi tình trạng", href: "/attendance/tracking" },
         { label: "Lịch sử chuyên cần", href: "/attendance/history" },
+      ],
+    },
+    {
+      label: "Quản lý học sinh",
+      children: [
+        { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
+        { label: "Chi tiết hồ sơ học sinh", href: "/records/students" },
+        { label: "Sơ đồ lớp", href: "/register/seating" },
+        { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
+        { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
+        { label: "Trao đổi học sinh", href: "/conduct/student-chat" },
       ],
     },
     {
@@ -76,20 +77,21 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
+      // Vong doi so chu nhiem: dau nam -> dinh ky -> cuoi ky -> he thong
       label: "Sổ chủ nhiệm",
       children: [
         { label: "Tiếp nhận lớp", href: "/records/intake" },
         { label: "Upload danh sách học sinh", href: "/records/upload" },
         { label: "Upload lịch năm học", href: "/register/year-events" },
-        { label: "Kế hoạch tháng / sơ kết tuần", href: "/register/plans" },
         { label: "Đăng ký chỉ tiêu hiệu suất", href: "/register/kpi" },
+        { label: "Kế hoạch tháng / sơ kết tuần", href: "/register/plans" },
+        { label: "Gợi ý công việc (AI)", href: "/register/suggestions" },
+        { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
+        { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
         { label: "Nộp sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Nộp sổ học bạ", href: "/register/lock-records" },
         { label: "Xuất sổ", href: "/register/export" },
-        { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
         { label: "Báo cáo tổng hợp (AI)", href: "/records/report" },
-        { label: "Gợi ý công việc (AI)", href: "/register/suggestions" },
-        { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
       ],
     },
@@ -147,7 +149,8 @@ export const NAV: Record<Role, NavSection[]> = {
   ],
   bgh: [
     {
-      label: "Quản trị",
+      // Dieu hanh hang ngay
+      label: "Điều hành",
       children: [
         { label: "Dashboard cấp trường", href: "/school/dashboard" },
         { label: "Trung tâm phê duyệt", href: "/school/approvals" },
@@ -155,29 +158,39 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Điều động dạy thay", href: "/school/substitutes" },
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
         { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
-        { label: "Cơ sở & đánh giá TT15", href: "/school/campuses" },
-        { label: "Nhân sự trường", href: "/school/staff" },
-        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
-        { label: "Phân công năm học", href: "/school/assignments" },
-        { label: "Quản lý kỳ thi", href: "/academics/exams" },
-        { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
-        { label: "Tài khoản giáo viên", href: "/school/users" },
-        { label: "Học sinh toàn trường", href: "/school/students" },
-        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
-        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
         { label: "Thông báo toàn trường", href: "/school/announce" },
-        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
+        { label: "Ban đại diện cha mẹ học sinh", href: "/parents/cmhs" },
       ],
     },
     {
-      label: "Giám sát & báo cáo",
+      label: "Nhân sự & tổ chức",
+      children: [
+        { label: "Nhân sự trường", href: "/school/staff" },
+        { label: "Phân công năm học", href: "/school/assignments" },
+        { label: "Tài khoản giáo viên", href: "/school/users" },
+        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
+        { label: "Cơ sở & đánh giá TT15", href: "/school/campuses" },
+        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
+      ],
+    },
+    {
+      label: "Học sinh & chất lượng",
+      children: [
+        { label: "Học sinh toàn trường", href: "/school/students" },
+        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
+        { label: "Quản lý kỳ thi", href: "/academics/exams" },
+        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
+        { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Sổ đầu bài toàn trường", href: "/school/journals" },
+        { label: "Phân tích điểm thi", href: "/school/exam-analytics" },
+      ],
+    },
+    {
+      label: "Giám sát & phê duyệt",
       children: [
         { label: "Sự cố toàn trường", href: "/safety/bgh" },
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
-        { label: "Thời khóa biểu", href: "/schedule/timetable" },
-        { label: "Sổ đầu bài toàn trường", href: "/school/journals" },
-        { label: "Phân tích điểm thi", href: "/school/exam-analytics" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
       ],
@@ -186,7 +199,7 @@ export const NAV: Record<Role, NavSection[]> = {
   ],
   pht: [
     {
-      label: "Quản trị",
+      label: "Điều hành",
       children: [
         { label: "Dashboard cấp trường", href: "/school/dashboard" },
         { label: "Trung tâm phê duyệt", href: "/school/approvals" },
@@ -194,19 +207,24 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Điều động dạy thay", href: "/school/substitutes" },
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
         { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
-        { label: "Nhân sự trường", href: "/school/staff" },
-        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
-        { label: "Học sinh toàn trường", href: "/school/students" },
-        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
-        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
+        { label: "Sự cố toàn trường", href: "/safety/bgh" },
         { label: "Thông báo toàn trường", href: "/school/announce" },
-        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
       ],
     },
     {
-      label: "Giám sát & báo cáo",
+      label: "Nhân sự & tổ chức",
       children: [
-        { label: "Sự cố toàn trường", href: "/safety/bgh" },
+        { label: "Nhân sự trường", href: "/school/staff" },
+        { label: "Định mức biên chế Nghị quyết 37", href: "/school/nq37" },
+        { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment" },
+      ],
+    },
+    {
+      label: "Học sinh & chất lượng",
+      children: [
+        { label: "Học sinh toàn trường", href: "/school/students" },
+        { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
+        { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài phân hiệu", href: "/school/journals" },
         { label: "Phân tích điểm thi", href: "/school/exam-analytics" },

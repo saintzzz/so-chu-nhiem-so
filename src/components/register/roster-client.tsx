@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Shuffle, ClipboardCheck, PlusCircle, UserPlus } from "lucide-react";
+import { StudentRecordEditor } from "@/components/records/student-record-editor";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
@@ -253,19 +254,16 @@ export function RosterClient({
     });
     if (!error) {
       setMessage(`Đã ghi nhận rèn luyện cho ${student.full_name}.`);
-      if (points !== 0) {
-        const next = students.map((s) =>
-          s.id === student.id
-            ? { ...s, positive_points: s.positive_points + points }
-            : s,
+      if (points > 0) {
+        // Trigger trg_sync_positive_points dong bo students.positive_points;
+        // cap nhat local state de UI phan anh ngay.
+        setStudents((ss) =>
+          ss.map((s) =>
+            s.id === student.id
+              ? { ...s, positive_points: s.positive_points + points }
+              : s,
+          ),
         );
-        setStudents(next);
-        await supabase
-          .from("students")
-          .update({
-            positive_points: student.positive_points + points,
-          })
-          .eq("id", student.id);
       }
       logAudit(supabase, {
         action: "Ghi nhận rèn luyện",
@@ -307,14 +305,17 @@ export function RosterClient({
           />
         </td>
         <td>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy}
-            onClick={() => quickConduct(s)}
-          >
-            <ClipboardCheck /> Ghi nhận
-          </Button>
+          <div className="flex gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => quickConduct(s)}
+            >
+              <ClipboardCheck /> Ghi nhận
+            </Button>
+            <StudentRecordEditor student={s} />
+          </div>
         </td>
       </tr>
     );

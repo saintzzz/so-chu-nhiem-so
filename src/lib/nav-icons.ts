@@ -75,6 +75,10 @@ export const SECTION_ICONS: Record<string, LucideIcon> = {
   "Tổ chuyên môn": UsersRound,
   "Giám sát & báo cáo": Radar,
   "Quản trị": Building2,
+  "Điều hành": Gauge,
+  "Nhân sự & tổ chức": UsersRound,
+  "Học sinh & chất lượng": BarChart3,
+  "Giám sát & phê duyệt": ShieldCheck,
 };
 
 /** Item-level icons — keyed by nav item label. Fallback: SquarePen. */

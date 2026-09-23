@@ -6,6 +6,7 @@ import { Search, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
 import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
+import { StudentRecordEditor } from "@/components/records/student-record-editor";
 
 export interface StudentSummaryRow {
   id: string;
@@ -14,6 +15,7 @@ export interface StudentSummaryRow {
   fullName: string;
   gender: string | null;
   dob: string | null;
+  address: string | null;
   status: string;
   groupName: string | null;
   roleLabel: string | null;
@@ -275,7 +277,21 @@ export function StudentsExplorer({
                                   initial={s.nationalId}
                                 />
                               </li>
+                              <li>Địa chỉ: {s.address ?? "-"}</li>
                             </ul>
+                            <div className="mt-3">
+                              <StudentRecordEditor
+                                student={{
+                                  id: s.id,
+                                  full_name: s.fullName,
+                                  code: s.code,
+                                  dob: s.dob,
+                                  gender: s.gender,
+                                  address: s.address,
+                                  national_id: s.nationalId,
+                                }}
+                              />
+                            </div>
                           </div>
                           <div>
                             <p className="text-xs font-medium uppercase text-muted-foreground">

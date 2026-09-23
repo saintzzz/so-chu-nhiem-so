@@ -326,18 +326,7 @@ export function PeriodLogBoard({
       setError(e.message);
       return;
     }
-    // Đồng bộ điểm tích lũy trên hồ sơ HS (dùng cho chế độ Tuyên dương sơ đồ)
-    const { data: stu } = await supabase
-      .from("students")
-      .select("positive_points")
-      .eq("id", studentId)
-      .maybeSingle();
-    if (stu) {
-      await supabase
-        .from("students")
-        .update({ positive_points: (stu.positive_points ?? 0) + delta })
-        .eq("id", studentId);
-    }
+    // positive_points duoc trigger trg_sync_positive_points dong bo tu conduct_records
     setError(null);
     setDrafts((d) => {
       const draft = d[entry.id];

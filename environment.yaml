@@ -1,0 +1,28 @@
+initialize:
+  - run: |
+      npm ci
+      npx playwright install chromium --with-deps || npx playwright install chromium
+
+maintenance:
+  - run: |
+      npm ci
+
+knowledge:
+  - name: lint
+    contents: |
+      npm run lint        # eslint - 0 warnings expected
+      npm run typecheck   # tsc --noEmit
+      node scripts/check-consistency.mjs   # ALL PASS required before done
+  - name: test
+    contents: |
+      npm run build       # production build is the gate (no unit suite)
+      node scripts/qa-e2e.mjs       # full E2E vs production (needs .env.local)
+      node scripts/qa-ui-cr014.mjs  # UI flow tests with screenshots
+  - name: startup
+    contents: |
+      npm run dev         # dev server :3000 - requires .env.local (see docs/CLOUD-SETUP.md)
+  - name: deploy
+    contents: |
+      Push to master auto-deploys to Vercel (so-chu-nhiem-so-theta.vercel.app).
+      Supabase schema changes go through MCP execute_sql / migrations in
+      supabase/migrations/.

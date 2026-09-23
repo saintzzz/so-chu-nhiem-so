@@ -147,15 +147,39 @@ export function DailyRoster({
       .from("attendance_records")
       .upsert(payload, { onConflict: "student_id,date" });
     if (error) {
-      // Fallback khi bảng chưa có unique constraint (student_id,date)
+      // Fallback khi bảng chưa có unique constraint (student_id,date).
+      // Giữ nguyên rows source="period_log" (ghi từ sổ đầu bài) - chi xoá
+      // manual rows cũ rồi upsert thủ công từng HS.
       const ids = rows.map((r) => r.studentId);
       await supabase
         .from("attendance_records")
         .delete()
         .eq("date", date)
+        .in("student_id", ids)
+        .eq("source", "manual");
+      const { data: existing } = await supabase
+        .from("attendance_records")
+        .select("student_id")
+        .eq("date", date)
         .in("student_id", ids);
-      const retry = await supabase.from("attendance_records").insert(payload);
-      error = retry.error;
+      const hasPeriodLog = new Set(
+        (existing ?? []).map((r) => r.student_id as string),
+      );
+      // HS đã có row period_log: update status, giữ source
+      for (const r of rows.filter((x) => hasPeriodLog.has(x.studentId))) {
+        await supabase
+          .from("attendance_records")
+          .update({ status: statuses[r.studentId] ?? "present" })
+          .eq("student_id", r.studentId)
+          .eq("date", date);
+      }
+      const toInsert = payload.filter((r) => !hasPeriodLog.has(r.student_id));
+      if (toInsert.length) {
+        const retry = await supabase.from("attendance_records").insert(toInsert);
+        error = retry.error;
+      } else {
+        error = null;
+      }
     }
     setSaving(false);
     if (error) {

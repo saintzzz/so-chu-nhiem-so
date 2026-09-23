@@ -3,10 +3,10 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ChevronDown } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { StatusBadge } from "@/components/status-badge";
 import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
 import { StudentRecordEditor } from "@/components/records/student-record-editor";
+import { updateStudentRecord } from "@/app/(app)/records/students/actions";
 
 export interface StudentSummaryRow {
   id: string;
@@ -46,13 +46,10 @@ function NationalIdField({
     }
     setBusy(true);
     setMsg(null);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("students")
-      .update({ national_id: v || null })
-      .eq("id", studentId);
+    // Qua server action de co role/ownership check + history + audit log.
+    const res = await updateStudentRecord(studentId, { national_id: v || null });
     setBusy(false);
-    setMsg(error ? `Lỗi: ${error.message}` : "Đã lưu.");
+    setMsg(res.error ? `Lỗi: ${res.error}` : "Đã lưu.");
   }
 
   return (

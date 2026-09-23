@@ -63,7 +63,14 @@ export default async function GradesPage({
   if (profile.role === "gvcn") {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const [{ data: classData }, { data: subjectData }, { data: schoolData }] =
+  // gvcn/gvbm/to_truong: lay them lop minh duoc phan cong day (timetable_entries)
+  const teachQuery = ["gvcn", "gvbm", "to_truong"].includes(profile.role)
+    ? supabase
+        .from("timetable_entries")
+        .select("class_id,subject_id")
+        .eq("teacher_id", profile.id)
+    : null;
+  const [{ data: classData }, { data: subjectData }, { data: schoolData }, teachRes] =
     await Promise.all([
       classQuery.order("name"),
       supabase
@@ -78,17 +85,58 @@ export default async function GradesPage({
             .eq("id", profile.school_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      teachQuery ?? Promise.resolve({ data: null }),
     ]);
   const schoolLevel =
     (schoolData?.level as "th" | "thcs" | "thpt" | "lien_cap" | undefined) ??
     "thcs";
-  const classes = (classData ?? []) as ClassRow[];
-  const subjects = (subjectData ?? []) as SubjectRow[];
+  let classes = (classData ?? []) as ClassRow[];
+  let subjects = (subjectData ?? []) as SubjectRow[];
+  const teaching = (teachRes?.data ?? null) as
+    | { class_id: string; subject_id: string }[]
+    | null;
+  if (teaching) {
+    const taughtClassIds = new Set(teaching.map((t) => t.class_id));
+    if (profile.role === "gvcn") {
+      // GVCN kiem day: them lop minh day vao picker (ngoai lop CN)
+      const missing = taughtClassIds.size
+        ? await supabase
+            .from("classes")
+            .select("id,name")
+            .in("id", [...taughtClassIds])
+            .eq("status", "active")
+        : { data: [] };
+      const have = new Set(classes.map((c) => c.id));
+      classes = [
+        ...classes,
+        ...((missing.data ?? []) as ClassRow[]).filter((c) => !have.has(c.id)),
+      ].sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // gvbm/to_truong: chi lop + mon minh day
+      const taughtSubjectIds = new Set(teaching.map((t) => t.subject_id));
+      classes = classes.filter((c) => taughtClassIds.has(c.id));
+      subjects = subjects.filter((s) => taughtSubjectIds.has(s.id));
+    }
+  }
 
   const classId =
     typeof sp.class === "string" && classes.some((c) => c.id === sp.class)
       ? sp.class
       : (classes[0]?.id ?? "");
+
+  // GVCN xem lop kiem day (khong phai CN): chi mon minh day lop do,
+  // tranh chon mon khong day -> RLS chan khi luu
+  if (profile.role === "gvcn" && teaching && classId) {
+    const isHomeroom = (classData ?? []).some(
+      (c) => (c as ClassRow).id === classId,
+    );
+    if (!isHomeroom) {
+      const taughtHere = new Set(
+        teaching.filter((t) => t.class_id === classId).map((t) => t.subject_id),
+      );
+      subjects = subjects.filter((s) => taughtHere.has(s.id));
+    }
+  }
 
   const subject =
     typeof sp.subject === "string"

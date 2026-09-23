@@ -9,7 +9,10 @@ export default async function LockRecordsPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  // Chi lop chu nhiem moi duoc nop so - lop dang day khong nam trong pham vi.
+  const classes = (await getAccessibleClasses(profile)).filter(
+    (c) => profile.role !== "gvcn" || c.gvcn_id === profile.id,
+  );
   const classIds = classes.map((c) => c.id);
   const classNames = new Map(classes.map((c) => [c.id, c.name]));
 

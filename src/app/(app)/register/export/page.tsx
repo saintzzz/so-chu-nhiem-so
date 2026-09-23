@@ -9,7 +9,10 @@ import { CURRENT_MONTH } from "@/components/register/types";
 
 export default async function ExportPage() {
   const profile = await requireRoles(["gvcn"]);
-  const classes = await getAccessibleClasses(profile);
+  // So chu nhiem chi thuoc lop minh chu nhiem - lop dang day khong xuat.
+  const classes = (await getAccessibleClasses(profile)).filter(
+    (c) => c.gvcn_id === profile.id,
+  );
 
   return (
     <>

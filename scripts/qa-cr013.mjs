@@ -70,8 +70,9 @@ section("2. Praise mode persist");
   const page = await visit("gvcn", "/register/seating");
   const praiseBtn = page.locator('button:has-text("Tuyên dương")').first();
   if (await praiseBtn.count()) {
+    await page.waitForTimeout(1500); // cho hydrate xong
     await praiseBtn.click();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500);
     const url1 = page.url();
     check("praise bat -> URL co praise=1", url1.includes("praise=1"), url1);
     // chuyen lop khac qua chip (tat ca chip phai giu praise=1)
@@ -261,19 +262,21 @@ section("12. Seed qua UI");
 {
   const { data: m0 } = await sb.from("messages").select("id");
   const n0 = (m0 ?? []).length;
-  const page = await visit("gvcn", "/academics/parent-chat");
+  const page = await visit("gvcn", "/academics/parent-chat?class=64cc7939-d3e9-4205-a5fb-8e24cdfd857a");
   // chon PH dau tien co the chat
-  const parentLink = page.locator('main a[href*="parent="], main button:has-text("Phụ huynh")').first();
+  const parentLink = page.locator('main a[href*="parent-chat"][href*="to="]').first();
   if (await parentLink.count()) {
     await parentLink.click();
     await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(800);
-    const box = page.locator('textarea[placeholder*="trao đổi"], textarea').last();
+    const box = page.locator('textarea').last();
     if (await box.count()) {
       await box.fill("Chào anh/chị, em xin trao đổi về tình hình học tập của cháu.");
       await page.locator('button:has-text("Gửi")').last().click();
       await page.waitForTimeout(1500);
     }
+  } else {
+    console.log("  (khong tim thay link PH co tai khoan)");
   }
   const { data: m1 } = await sb.from("messages").select("id");
   check("GVCN gui tin nhan PH", (m1 ?? []).length > n0, `${n0} -> ${(m1 ?? []).length}`);

@@ -12,9 +12,8 @@ import type {
   School,
   Student,
 } from "@/types";
+import { currentPeriodVN, currentSemesterVN } from "@/lib/utils";
 
-const EMULATION_PERIOD = "2026-T9";
-const KPI_PERIOD = "2026-HK1";
 const KPI_SUBMITTED = new Set(["submitted", "approved", "locked", "done"]);
 
 interface KpiRow {
@@ -37,6 +36,8 @@ function formatDate(isoDate: string): string {
 export default async function SchoolDashboardPage() {
   const profile = await requireRoles(["bgh", "admin", "pht"]);
   const supabase = await createClient();
+  const EMULATION_PERIOD = currentPeriodVN();
+  const KPI_PERIOD = currentSemesterVN();
 
   const { data: classRows } = await supabase
     .from("classes")

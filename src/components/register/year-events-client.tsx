@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { formatDate } from "@/lib/utils";
+import { currentSchoolYearVN, formatDate } from "@/lib/utils";
 import { CalendarPlus, Download, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -217,8 +217,16 @@ export function YearEventsClient({
                   "template_lich_nam_hoc.xlsx",
                   ["tieu_de", "ngay", "danh_muc"],
                   [
-                    ["Khai giảng", "2026-09-05", "le_hoi"],
-                    ["Thi giữa kỳ I", "2026-10-20", "kiem_tra"],
+                    [
+                      "Khai giảng",
+                      `${currentSchoolYearVN().slice(0, 4)}-09-05`,
+                      "le_hoi",
+                    ],
+                    [
+                      "Thi giữa kỳ I",
+                      `${currentSchoolYearVN().slice(0, 4)}-10-20`,
+                      "kiem_tra",
+                    ],
                   ],
                 )
               }

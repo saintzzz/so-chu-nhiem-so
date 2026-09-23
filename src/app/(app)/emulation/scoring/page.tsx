@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { ScoringGrid } from "@/components/emulation/scoring-grid";
 import type { ScoreCell } from "@/components/emulation/scoring-grid";
-
-const PERIOD = "2026-T9";
+import { currentPeriodVN } from "@/lib/utils";
 
 interface CriterionRow {
   id: string;
@@ -27,6 +26,7 @@ interface ScoreRow {
 
 export default async function EmulationScoringPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
+  const PERIOD = currentPeriodVN();
   const supabase = await createClient();
 
   const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }, { data: ownRaw }] =

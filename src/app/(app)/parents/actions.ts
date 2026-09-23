@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email";
-import { checkActionRole } from "@/lib/auth";
+import { checkActionRole, getProfile } from "@/lib/auth";
 
 export async function sendAnnouncement(input: {
   classId: string;
@@ -21,8 +21,10 @@ export async function sendAnnouncement(input: {
   if (!input.title.trim() || !input.content.trim()) {
     return { error: "Vui lòng nhập tiêu đề và nội dung." };
   }
+  const profile = await getProfile();
   const { error } = await supabase.from("announcements").insert({
     sender_id: user.id,
+    school_id: profile?.school_id ?? null,
     class_id: input.classId,
     student_id: input.studentId,
     title: input.title.trim(),

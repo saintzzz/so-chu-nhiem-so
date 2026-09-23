@@ -31,9 +31,6 @@ export function Topbar({
   const router = useRouter();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const crumbs = breadcrumb(pathname, profile.role);
-  const inboxHref = NAV[profile.role]
-    ?.flatMap((s) => s.children ?? [])
-    .find((c) => c.href.endsWith("/inbox"))?.href;
   const initials = profile.full_name
     .split(" ")
     .map((w) => w[0])
@@ -86,16 +83,14 @@ export function Topbar({
         >
           <Search className="size-5" />
         </button>
-        {inboxHref && (
-          <button
-            onClick={() => router.push(inboxHref)}
-            className="relative rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-            aria-label="Thông báo"
-            title="Hộp thư phản hồi"
-          >
-            <Bell className="size-5" />
-          </button>
-        )}
+        <button
+          onClick={() => router.push("/notifications")}
+          className="relative rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+          aria-label="Thông báo"
+          title="Thông báo"
+        >
+          <Bell className="size-5" />
+        </button>
         <span className="hidden rounded-md bg-primary-bg px-2 py-1 text-xs font-medium text-primary lg:inline">
           {ROLE_LABELS[profile.role]}
         </span>

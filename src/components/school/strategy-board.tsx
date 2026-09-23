@@ -5,6 +5,7 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { addSchoolKpi, updateSchoolKpi } from "@/app/(app)/school/actions";
+import { currentSchoolYearVN } from "@/lib/utils";
 
 interface Kpi {
   id: string;
@@ -28,7 +29,7 @@ const inputCls =
   "h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring";
 
 export function StrategyBoard({ kpis }: { kpis: Kpi[] }) {
-  const [period, setPeriod] = useState("2026-2027");
+  const [period, setPeriod] = useState(currentSchoolYearVN());
   const [title, setTitle] = useState("");
   const [target, setTarget] = useState("");
   const [unit, setUnit] = useState("");

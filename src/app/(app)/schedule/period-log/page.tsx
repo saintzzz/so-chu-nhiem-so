@@ -1,5 +1,5 @@
 import { requireRoles } from "@/lib/auth";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -13,7 +13,7 @@ import type {
   PeriodLogState,
 } from "@/components/schedule/period-log-board";
 
-const DEFAULT_DATE = "2026-09-18";
+
 
 interface ClassRow {
   id: string;
@@ -66,7 +66,7 @@ export default async function PeriodLogPage({
   const date =
     sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date)
       ? sp.date
-      : DEFAULT_DATE;
+      : todayVN();
   const jsDay = new Date(`${date}T00:00:00`).getDay();
   // DB convention: weekday 2..7 = Thứ 2..Thứ 7 (Mon..Sat); Sunday => none
   const weekday = jsDay === 0 ? null : jsDay + 1;
@@ -184,6 +184,7 @@ export default async function PeriodLogPage({
         subject: subjectName.get(e.subject_id) ?? "-",
         teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
         room: e.room,
+        mine: e.teacher_id === profile.id,
       }))
       .sort(
         (a, b) =>

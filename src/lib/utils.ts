@@ -14,6 +14,39 @@ export function todayVN(): string {
   );
 }
 
+// Current emulation period ("2026-T9") in Vietnam timezone.
+export function currentPeriodVN(): string {
+  const p = vnParts(new Date());
+  return `${p.year}-T${Number(p.month)}`;
+}
+
+// Current school semester ("2026-HK1"). VN school year: HK1 Aug-Dec,
+// HK2 Jan-Jul (belongs to the school year started the previous August).
+export function currentSemesterVN(): string {
+  const p = vnParts(new Date());
+  const y = Number(p.year);
+  const m = Number(p.month);
+  return m >= 8 ? `${y}-HK1` : `${y - 1}-HK2`;
+}
+
+// Current school year label ("2026-2027"). VN school year starts in August.
+export function currentSchoolYearVN(): string {
+  const p = vnParts(new Date());
+  const y = Number(p.year);
+  const m = Number(p.month);
+  return m >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+}
+
+// First and last calendar day of the current month in Vietnam timezone.
+export function currentMonthRangeVN(): { start: string; end: string } {
+  const p = vnParts(new Date());
+  const y = Number(p.year);
+  const m = Number(p.month);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const mm = String(m).padStart(2, "0");
+  return { start: `${y}-${mm}-01`, end: `${y}-${mm}-${last}` };
+}
+
 const WD_LONG = [
   "Chủ nhật",
   "Thứ 2",

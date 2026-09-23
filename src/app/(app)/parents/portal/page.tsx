@@ -4,7 +4,11 @@ import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge"
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalPicker } from "@/components/parents/portal-picker";
-import { fmtDateTimeVN } from "@/lib/utils";
+import {
+  currentMonthRangeVN,
+  fmtDateTimeVN,
+  todayVN,
+} from "@/lib/utils";
 import type {
   Announcement,
   Appointment,
@@ -18,11 +22,6 @@ import type {
 import { semesterAverage } from "@/lib/tt22";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-/** Ngày hiện tại của dữ liệu demo (năm học 2026-2027). */
-const TODAY = "2026-09-18";
-const MONTH_START = "2026-09-01";
-const MONTH_END = "2026-09-30";
 
 async function scopedClasses(
   supabase: Supabase,
@@ -51,6 +50,8 @@ export default async function PortalPage({
   const sp = await searchParams;
   const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
+  const TODAY = todayVN();
+  const { start: MONTH_START, end: MONTH_END } = currentMonthRangeVN();
 
   const classes = await scopedClasses(supabase, profile);
   const classIds = classes.map((c) => c.id);

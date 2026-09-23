@@ -47,6 +47,7 @@ export function ParentActions({
   const [apptPurpose, setApptPurpose] = useState("");
   const [reply, setReply] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
 
   async function submitAppointment() {
     if (!teacherId || !apptAt || !apptPurpose.trim()) return;
@@ -78,6 +79,7 @@ export function ParentActions({
     if (!res.error) {
       setReply("");
       setReplyTo(null);
+      setComposing(false);
     }
     setBusy(false);
   }
@@ -140,10 +142,51 @@ export function ParentActions({
       )}
 
       <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
-        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
-          <MessageSquare className="size-4 text-muted-foreground" />
-          Tin nhắn từ giáo viên
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <MessageSquare className="size-4 text-muted-foreground" />
+            Tin nhắn với giáo viên
+          </h2>
+          {teacherId && !composing && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setComposing(true);
+                setReply("");
+                setReplyTo(null);
+              }}
+            >
+              Soạn tin nhắn
+            </Button>
+          )}
+        </div>
+        {teacherId && composing && (
+          <div className="mb-3 space-y-2 rounded-lg border border-border p-3">
+            <AutoGrowTextarea
+              value={reply}
+              onChange={(e) => setReply(e.target.value)}
+              placeholder={`Soạn tin nhắn gửi ${teacherName}...`}
+              aria-label="Nội dung tin nhắn mới"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => submitReply(teacherId)}
+                disabled={busy || !reply.trim()}
+              >
+                Gửi
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setComposing(false)}
+              >
+                Hủy
+              </Button>
+            </div>
+          </div>
+        )}
         {messages.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             Chưa có tin nhắn nào.

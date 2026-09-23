@@ -6,7 +6,14 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS, FLOW_STATUS } from "@/components/status-badge";
 import { Bell, CalendarClock, CalendarDays } from "lucide-react";
-import { fmtDateVN, fmtTimeDateVN } from "@/lib/utils";
+import {
+  currentSchoolYearVN,
+  fmtDateVN,
+  fmtTimeDateVN,
+  todayVN,
+} from "@/lib/utils";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import type {
   Announcement,
   Appointment,
@@ -42,9 +49,14 @@ const APPT_STATUS: Record<
   cancelled: { label: "Đã hủy", tone: "muted" },
 };
 
-export default async function ParentPortalPage() {
+export default async function ParentPortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ child?: string }>;
+}) {
   const profile = await requireRoles(["phu_huynh"]);
   const supabase = await createClient();
+  const sp = await searchParams;
 
   const { data: parentRow } = await supabase
     .from("parents")
@@ -62,33 +74,42 @@ export default async function ParentPortalPage() {
         .from("parent_students")
         .select("parent_id,student_id")
         .eq("parent_id", parent.id)
-        .limit(1)
     : { data: [] };
-  const link = ((linkRows ?? []) as ParentStudentLink[])[0] ?? null;
+  const links = (linkRows ?? []) as ParentStudentLink[];
+  const studentIds = links.map((l) => l.student_id);
 
-  const { data: studentRow } = link
-    ? await supabase
-        .from("students")
-        .select("id,class_id,full_name,code")
-        .eq("id", link.student_id)
-        .single()
-    : { data: null };
-  const student = studentRow as Pick<
+  const { data: studentRows } =
+    studentIds.length > 0
+      ? await supabase
+          .from("students")
+          .select("id,class_id,full_name,code")
+          .in("id", studentIds)
+      : { data: [] };
+  const children = (studentRows ?? []) as Pick<
     Student,
     "id" | "class_id" | "full_name" | "code"
-  > | null;
+  >[];
+  const student =
+    children.find((s) => s.id === sp.child) ?? children[0] ?? null;
 
-  const { data: classRow } = student
-    ? await supabase
-        .from("classes")
-        .select("id,name,school_id,gvcn_id")
-        .eq("id", student.class_id)
-        .single()
-    : { data: null };
-  const classroom = classRow as Pick<
-    ClassRoom,
-    "id" | "name" | "school_id" | "gvcn_id"
-  > | null;
+  const { data: classRows } =
+    children.length > 0
+      ? await supabase
+          .from("classes")
+          .select("id,name,school_id,gvcn_id")
+          .in(
+            "id",
+            [...new Set(children.map((c) => c.class_id))],
+          )
+      : { data: [] };
+  const classById = new Map(
+    ((classRows ?? []) as Pick<
+      ClassRoom,
+      "id" | "name" | "school_id" | "gvcn_id"
+    >[]).map((c) => [c.id, c]),
+  );
+  const classroom = student ? (classById.get(student.class_id) ?? null) : null;
+  const classNameOf = (classId: string) => classById.get(classId)?.name ?? "-";
 
   const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes, evRes] = student
     ? await Promise.all([
@@ -122,7 +143,7 @@ export default async function ParentPortalPage() {
           .from("exam_sessions")
           .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
           .eq("class_id", student.class_id)
-          .gte("date", new Date().toISOString().slice(0, 10))
+          .gte("date", todayVN())
           .order("date")
           .limit(10),
         supabase
@@ -136,8 +157,9 @@ export default async function ParentPortalPage() {
           .eq("school_id", classroom?.school_id ?? ""),
         supabase
           .from("messages")
-          .select("id,sender_id,content,created_at")
-          .eq("recipient_id", profile.id)
+          .select("id,sender_id,recipient_id,content,created_at")
+          .or(`sender_id.eq.${profile.id},recipient_id.eq.${profile.id}`)
+          .eq("student_id", student.id)
           .order("created_at", { ascending: false })
           .limit(10),
         supabase
@@ -151,7 +173,7 @@ export default async function ParentPortalPage() {
           .from("school_year_events")
           .select("id,title,event_date,category")
           .eq("school_id", classroom?.school_id ?? "")
-          .gte("event_date", new Date().toISOString().slice(0, 10))
+          .gte("event_date", todayVN())
           .order("event_date")
           .limit(12),
       ])
@@ -172,7 +194,7 @@ export default async function ParentPortalPage() {
     AttendanceRecord,
     "id" | "date" | "status" | "note"
   >[];
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayVN();
   const todayRec = attRows.find((r) => r.date === todayIso);
   const latestRec = attRows[0];
   const shownRec = todayRec ?? latestRec;
@@ -309,7 +331,10 @@ export default async function ParentPortalPage() {
   );
   const portalMessages = rawMessages.map((m) => ({
     ...m,
-    senderName: senderNameOf.get(m.sender_id) ?? "Giáo viên",
+    senderName:
+      m.sender_id === profile.id
+        ? "Bạn"
+        : (senderNameOf.get(m.sender_id) ?? "Giáo viên"),
   }));
 
   const rawActivities = (actRes.data ?? []) as {
@@ -352,11 +377,30 @@ export default async function ParentPortalPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Con em
               </p>
+              {children.length > 1 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {children.map((c) => (
+                    <Link
+                      prefetch={false}
+                      key={c.id}
+                      href={`/portal/parent?child=${c.id}`}
+                      className={cn(
+                        "rounded-full border px-3 py-1 text-sm transition-colors",
+                        c.id === student.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {c.full_name} · {classNameOf(c.class_id)}
+                    </Link>
+                  ))}
+                </div>
+              )}
               <h1 className="mt-1 text-xl font-semibold">
                 Con em: {student.full_name}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Lớp {classroom?.name ?? "-"} - Năm học 2026-2027 · Mã HS:{" "}
+                Lớp {classroom?.name ?? "-"} - Năm học {currentSchoolYearVN()} · Mã HS:{" "}
                 {student.code}
               </p>
             </>

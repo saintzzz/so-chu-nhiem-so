@@ -86,7 +86,7 @@ const MATRIX = {
   "/school/dashboard": ["bgh", "pht"],
   "/school/staff": ["bgh", "pht", "ke_toan"],
   "/school/users": ["bgh"],
-  "/school/students": ["bgh", "pht", "ke_toan"],
+  "/school/students": ["bgh", "pht"],
   "/school/announce": ["bgh", "pht"],
   "/school/approvals": ["bgh", "pht"],
   "/school/assignments": ["bgh"],
@@ -115,6 +115,7 @@ const MATRIX = {
   "/portal/student": ["hoc_sinh"],
   "/portal/student/hoc-ba": ["hoc_sinh"],
   "/profile": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "phong_gd", "ubnd"],
+  "/notifications": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "phong_gd", "ubnd"],
 };
 // Route alias hop le (redirect duoc cho phep)
 const ALIASES = { "/records/history": "/register/audit" };
@@ -540,6 +541,69 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
     check("W28", "PH dat lich hen -> appointments", (ap?.length ?? 0) === 1,
       `rows=${ap?.length} status=${ap?.[0]?.status}`);
   } else check("W28", "PH dat lich hen", false, "no form (teacherId missing?)");
+  await ctx.close();
+}
+
+// W29: To truong duyet giao an (submitted -> team_approved)
+{
+  const { ctx, p } = await loginCtx("totruong@demo.scn");
+  const { data: lp } = await db.from("lesson_plans").select("id,title,status")
+    .eq("status", "submitted").limit(1);
+  await p.goto(`${BASE}/team/lesson-plans`);
+  await settle(p, 1500);
+  if (lp?.length) {
+    const approveBtn = p.locator('button[title*="Duyệt"], button:has-text("Duyệt")').first();
+    if ((await approveBtn.count()) > 0) {
+      await approveBtn.click();
+      await p.waitForTimeout(800);
+      // Mo o ghi chu -> phai bam "Duyệt" xac nhan
+      const confirmBtn = p.locator('button:has-text("Duyệt")').first();
+      if ((await confirmBtn.count()) > 0) await confirmBtn.click();
+      await p.waitForTimeout(2500);
+      const { data: after } = await db.from("lesson_plans").select("status").eq("id", lp[0].id).single();
+      check("W29", "To truong duyet giao an -> team_approved",
+        after?.status === "team_approved", `status=${after?.status}`);
+    } else check("W29", "To truong duyet giao an", false, "no approve btn");
+  } else check("W29", "To truong duyet giao an", true, "khong co submitted");
+  await ctx.close();
+}
+
+// W30: BGH duyet cuoi giao an (team_approved -> approved)
+{
+  const { ctx, p } = await loginCtx("bgh@demo.scn");
+  const { data: lp } = await db.from("lesson_plans").select("id,status")
+    .eq("status", "team_approved").limit(1);
+  if (lp?.length) {
+    // BGH review o route nao? tim page co LessonPlanBoard mode=bgh
+    await p.goto(`${BASE}/school/approvals`);
+    await settle(p, 1500);
+    const approveBtn = p.locator('button:has-text("Duyệt")').first();
+    if ((await approveBtn.count()) > 0) {
+      await approveBtn.click();
+      await p.waitForTimeout(2500);
+      const { data: after } = await db.from("lesson_plans").select("status").eq("id", lp[0].id).single();
+      check("W30", "BGH duyet giao an -> approved", after?.status === "approved", `status=${after?.status}`);
+    } else check("W30", "BGH duyet giao an", false, "no approve btn at /school/approvals");
+  } else check("W30", "BGH duyet giao an", true, "khong co team_approved");
+  await ctx.close();
+}
+
+// W31: GVCN xac nhan lich hen (proposed -> confirmed)
+{
+  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  const { data: appt } = await db.from("appointments").select("id,status")
+    .eq("status", "proposed").limit(1);
+  await p.goto(`${BASE}/parents/appointments`);
+  await settle(p, 1500);
+  if (appt?.length) {
+    const confirmBtn = p.locator('button:has-text("Xác nhận"), button:has-text("Nhận lịch")').first();
+    if ((await confirmBtn.count()) > 0) {
+      await confirmBtn.click();
+      await p.waitForTimeout(2500);
+      const { data: after } = await db.from("appointments").select("status").eq("id", appt[0].id).single();
+      check("W31", "GVCN xac nhan lich hen -> confirmed", after?.status === "confirmed", `status=${after?.status}`);
+    } else check("W31", "GVCN xac nhan lich hen", false, "no confirm btn");
+  } else check("W31", "GVCN xac nhan lich hen", true, "khong co proposed");
   await ctx.close();
 }
 

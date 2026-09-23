@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
 import { cn, formatDateOnly, sortByVietnameseName } from "@/lib/utils";
 import type { AttendanceStatus } from "@/types";
@@ -14,6 +15,7 @@ export interface RosterRow {
   code: string;
   fullName: string;
   status: AttendanceStatus;
+  note?: string | null;
 }
 
 const STATUSES: AttendanceStatus[] = [
@@ -44,6 +46,9 @@ export function DailyRoster({
   const router = useRouter();
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>(
     () => Object.fromEntries(rows.map((r) => [r.studentId, r.status])),
+  );
+  const [notes, setNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(rows.map((r) => [r.studentId, r.note ?? ""])),
   );
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{
@@ -133,14 +138,25 @@ export function DailyRoster({
     setFeedback(null);
   }
 
+  function setNote(studentId: string, note: string) {
+    setNotes((s) => ({ ...s, [studentId]: note }));
+    setDirty(true);
+    setFeedback(null);
+  }
+
   async function confirm() {
     setSaving(true);
     setFeedback(null);
     const supabase = createClient();
+    const noteFor = (studentId: string) =>
+      statuses[studentId] && statuses[studentId] !== "present"
+        ? notes[studentId]?.trim() || null
+        : null;
     const payload = rows.map((r) => ({
       student_id: r.studentId,
       date,
       status: statuses[r.studentId] ?? "present",
+      note: noteFor(r.studentId),
       source: "manual",
     }));
     let { error } = await supabase
@@ -169,7 +185,10 @@ export function DailyRoster({
       for (const r of rows.filter((x) => hasPeriodLog.has(x.studentId))) {
         await supabase
           .from("attendance_records")
-          .update({ status: statuses[r.studentId] ?? "present" })
+          .update({
+            status: statuses[r.studentId] ?? "present",
+            note: noteFor(r.studentId),
+          })
           .eq("student_id", r.studentId)
           .eq("date", date);
       }
@@ -285,7 +304,7 @@ export function DailyRoster({
         <table className="w-full min-w-max text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
-              {["#", "Mã HS", "Họ tên", "Trạng thái"].map((c) => (
+              {["#", "Mã HS", "Họ tên", "Trạng thái", "Ghi chú"].map((c) => (
                 <th
                   key={c}
                   className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
@@ -330,12 +349,26 @@ export function DailyRoster({
                       ))}
                     </div>
                   </td>
+                  <td>
+                    {current !== "present" && (
+                      <AutoGrowTextarea
+                        bare
+                        value={notes[r.studentId] ?? ""}
+                        onChange={(e) =>
+                          setNote(r.studentId, e.target.value)
+                        }
+                        placeholder="Lý do vắng / đi muộn..."
+                        aria-label={`Ghi chú cho ${r.fullName}`}
+                        className="w-full min-w-40 text-xs"
+                      />
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="py-8 text-center text-muted-foreground">
                   Chưa có học sinh nào trong lớp.
                 </td>
               </tr>

@@ -37,6 +37,7 @@ export interface Signoff {
   submitted_at: string | null;
   signed_by: string | null;
   signed_at: string | null;
+  reject_reason: string | null;
 }
 
 export interface AuditLog {
@@ -64,6 +65,13 @@ export const EVENT_CATEGORIES: Record<string, string> = {
   khac: "Khác",
 };
 
-export const CURRENT_MONTH = "2026-09";
-export const PREV_MONTH = "2026-08";
-export const CURRENT_PERIOD = "Tháng 9/2026";
+import { todayVN } from "@/lib/utils";
+
+// "YYYY-MM" tháng hiện tại theo giờ VN; PREV_MONTH = tháng trước.
+const _today = todayVN();
+export const CURRENT_MONTH = _today.slice(0, 7);
+const _prev = new Date(
+  Date.UTC(Number(_today.slice(0, 4)), Number(_today.slice(5, 7)) - 2, 1),
+);
+export const PREV_MONTH = _prev.toISOString().slice(0, 7);
+export const CURRENT_PERIOD = `Tháng ${Number(_today.slice(5, 7))}/${_today.slice(0, 4)}`;

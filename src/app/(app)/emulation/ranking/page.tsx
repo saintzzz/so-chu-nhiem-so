@@ -5,9 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { ChartCard, BarChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
-import { cn } from "@/lib/utils";
-
-const PERIOD = "2026-T9";
+import { cn, currentPeriodVN } from "@/lib/utils";
 
 interface CriterionRow {
   id: string;
@@ -35,6 +33,7 @@ const RANK_TONES = [
 
 export default async function EmulationRankingPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
+  const PERIOD = currentPeriodVN();
   const supabase = await createClient();
 
   const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =

@@ -676,16 +676,6 @@ export function GradesEditor({
     startTransition(async () => {
       const supabase = createClient();
       const studentIds = students.map((s) => s.id);
-      const { error: delErr } = await supabase
-        .from("grades")
-        .delete()
-        .in("student_id", studentIds)
-        .eq("subject_id", subjectId)
-        .eq("term", term);
-      if (delErr) {
-        setError(delErr.message);
-        return;
-      }
 
       const rows: Record<string, unknown>[] = [];
       for (const s of students) {
@@ -763,12 +753,16 @@ export function GradesEditor({
         }
       }
 
-      if (rows.length) {
-        const { error: insErr } = await supabase.from("grades").insert(rows);
-        if (insErr) {
-          setError(insErr.message);
-          return;
-        }
+      // Delete+insert nguyên tử qua RPC - lỗi insert không làm mất điểm cũ.
+      const { error: saveErr } = await supabase.rpc("scn_save_grades", {
+        p_student_ids: studentIds,
+        p_subject_id: subjectId,
+        p_term: term,
+        p_rows: rows,
+      });
+      if (saveErr) {
+        setError(saveErr.message);
+        return;
       }
       setSaved(true);
       router.refresh();

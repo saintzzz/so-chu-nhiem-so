@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveTt15Evaluation } from "@/app/(app)/school/actions";
+import { currentSemesterVN } from "@/lib/utils";
 
 /** 5 nhóm tiêu chuẩn kiểm định chất lượng (rút gọn từ TT15) */
 const CRITERIA: { key: string; label: string; max: number }[] = [
@@ -18,7 +19,11 @@ export function Tt15Form({
   campuses: { id: string; name: string }[];
 }) {
   const [campusId, setCampusId] = useState(campuses[0]?.id ?? "");
-  const [term, setTerm] = useState("HK1-2026");
+  const [term, setTerm] = useState(() => {
+    const p = currentSemesterVN(); // "2026-HK1" -> "HK1-2026"
+    const [y, hk] = p.split("-");
+    return `${hk}-${y}`;
+  });
   const [scores, setScores] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);

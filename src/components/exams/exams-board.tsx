@@ -12,7 +12,7 @@ import {
   normalizeDate,
   parseSpreadsheet,
 } from "@/lib/excel";
-import { sortByVietnameseName } from "@/lib/utils";
+import { sortByVietnameseName, currentSchoolYearVN } from "@/lib/utils";
 
 interface ExamRow {
   id: string;
@@ -178,7 +178,7 @@ export function ExamsBoard({
             [
               classes[0]?.name ?? "6A1",
               subjects[0]?.name ?? "Toán",
-              "2026-10-05",
+              `${currentSchoolYearVN().slice(0, 4)}-10-05`,
               "07:30",
               "08:15",
               "P.101",

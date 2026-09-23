@@ -73,14 +73,18 @@ export default async function AttendanceDailyPage({
         .eq("date", today)
     : { data: [] };
   const attByStudent = new Map(
-    ((attData ?? []) as AttendanceRecord[]).map((a) => [a.student_id, a.status]),
+    ((attData ?? []) as AttendanceRecord[]).map((a) => [
+      a.student_id,
+      { status: a.status, note: a.note },
+    ]),
   );
 
   const rows: RosterRow[] = students.map((s) => ({
     studentId: s.id,
     code: s.code,
     fullName: s.full_name,
-    status: (attByStudent.get(s.id) ?? "present") as AttendanceStatus,
+    status: (attByStudent.get(s.id)?.status ?? "present") as AttendanceStatus,
+    note: attByStudent.get(s.id)?.note ?? "",
   }));
 
   const dateLabel = formatDateOnly(today, {

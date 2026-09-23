@@ -19,6 +19,21 @@ async function getOwnParent(supabase: Awaited<ReturnType<typeof createClient>>) 
   return (data as { id: string } | null) ?? null;
 }
 
+// Xac minh studentId la con cua phu huynh dang nhap (parent_students).
+async function ownsStudent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  parentId: string,
+  studentId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("parent_students")
+    .select("student_id")
+    .eq("parent_id", parentId)
+    .eq("student_id", studentId)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
 export async function bookAppointment(input: {
   teacherId: string;
   studentId: string;
@@ -32,6 +47,9 @@ export async function bookAppointment(input: {
   if (!parent) return { error: "Không tìm thấy hồ sơ phụ huynh." };
   if (!input.scheduledAt || !input.purpose.trim()) {
     return { error: "Vui lòng chọn thời điểm và nhập mục đích." };
+  }
+  if (!(await ownsStudent(supabase, parent.id, input.studentId))) {
+    return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
   }
   const { error } = await supabase.from("appointments").insert({
     parent_id: parent.id,
@@ -73,6 +91,11 @@ export async function replyToTeacher(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.content.trim()) return { error: "Vui lòng nhập nội dung." };
+  const parent = await getOwnParent(supabase);
+  if (!parent) return { error: "Không tìm thấy hồ sơ phụ huynh." };
+  if (!(await ownsStudent(supabase, parent.id, input.studentId))) {
+    return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
+  }
   const { error } = await supabase.from("messages").insert({
     sender_id: user.id,
     recipient_id: input.recipientId,
@@ -99,6 +122,11 @@ export async function registerActivity(input: {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
+  const parent = await getOwnParent(supabase);
+  if (!parent) return { error: "Không tìm thấy hồ sơ phụ huynh." };
+  if (!(await ownsStudent(supabase, parent.id, input.studentId))) {
+    return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
+  }
   // Hoạt động được announce sẽ auto-registered; nếu PH đã báo vắng thì đăng ký lại
   const { data: existing } = await supabase
     .from("activity_attendance")
@@ -136,6 +164,11 @@ export async function reportActivityAbsence(input: {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
+  const parent = await getOwnParent(supabase);
+  if (!parent) return { error: "Không tìm thấy hồ sơ phụ huynh." };
+  if (!(await ownsStudent(supabase, parent.id, input.studentId))) {
+    return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
+  }
   const { error } = await supabase
     .from("activity_attendance")
     .update({ status: "excused" })

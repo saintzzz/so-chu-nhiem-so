@@ -11,7 +11,7 @@ export default async function SchoolStudentsPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireRoles(["bgh", "pht", "ke_toan"]);
+  const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
   const sp = await searchParams;

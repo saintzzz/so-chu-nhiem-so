@@ -84,7 +84,7 @@ export async function announceActivity(
 ): Promise<{error?: string; registered?: number }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
-  const { supabase, user } = await getContext();
+  const { supabase, user, profile } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
   const { data: actData } = await supabase
@@ -97,6 +97,7 @@ export async function announceActivity(
 
   const { error: annError } = await supabase.from("announcements").insert({
     sender_id: user.id,
+    school_id: profile?.school_id ?? null,
     class_id: activity.class_id,
     student_id: null,
     title: `Thông báo hoạt động: ${activity.title}`,

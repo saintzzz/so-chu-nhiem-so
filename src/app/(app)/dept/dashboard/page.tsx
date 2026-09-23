@@ -11,8 +11,8 @@ import type {
   ClassRoom,
   EmulationScore,
 } from "@/types";
+import { currentPeriodVN } from "@/lib/utils";
 
-const EMULATION_PERIOD = "2026-T9";
 const TEACHER_ROLES = ["gvcn", "gvbm", "to_truong"];
 
 function addDays(isoDate: string, days: number): string {
@@ -24,6 +24,7 @@ function addDays(isoDate: string, days: number): string {
 export default async function DeptDashboardPage() {
   const profile = await requireRoles(["so_gd", "phong_gd", "ubnd", "admin"]);
   const supabase = await createClient();
+  const EMULATION_PERIOD = currentPeriodVN();
 
   // Phạm vi theo cấp: so_gd xem toàn tỉnh; phong_gd xem các UBND/xã con;
   // ubnd chỉ xem trường thuộc đơn vị mình.

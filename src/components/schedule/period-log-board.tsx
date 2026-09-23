@@ -17,6 +17,8 @@ export interface PeriodEntry {
   subject: string;
   teacher: string | null;
   room: string | null;
+  /** Tiết do chính người dùng dạy - chỉ GV này mới được ghi sổ */
+  mine: boolean;
 }
 
 export interface PeriodAbsenceState {
@@ -138,8 +140,9 @@ export function PeriodLogBoard({
   }
 
   async function save(entryId: string) {
+    const entry = entries.find((e) => e.id === entryId);
     const draft = drafts[entryId];
-    if (!draft) return;
+    if (!entry?.mine || !draft) return;
     setSavingId(entryId);
     setError(null);
     const supabase = createClient();
@@ -310,6 +313,7 @@ export function PeriodLogBoard({
     studentId: string,
     delta: number,
   ) {
+    if (!entry.mine) return;
     const supabase = createClient();
     const { error: e } = await supabase.from("conduct_records").insert({
       student_id: studentId,
@@ -460,7 +464,60 @@ export function PeriodLogBoard({
                     )}
                   </button>
 
-                  {open && draft && (
+                  {open && draft && !entry.mine && (
+                    <div className="border-t border-border bg-muted/30 px-4 py-4">
+                      <p className="text-sm text-muted-foreground">
+                        Tiết do {entry.teacher ?? "giáo viên khác"} dạy - chỉ
+                        giáo viên của tiết này mới ghi sổ đầu bài.
+                      </p>
+                      {log ? (
+                        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          <div>
+                            <dt className="text-xs font-medium text-muted-foreground">
+                              Sĩ số có mặt
+                            </dt>
+                            <dd>
+                              {log.present_count ?? "-"} / {roster.size}
+                            </dd>
+                          </div>
+                          {log.lesson_title && (
+                            <div>
+                              <dt className="text-xs font-medium text-muted-foreground">
+                                Tên bài học
+                              </dt>
+                              <dd>{log.lesson_title}</dd>
+                            </div>
+                          )}
+                          {log.lesson_content && (
+                            <div className="sm:col-span-2">
+                              <dt className="text-xs font-medium text-muted-foreground">
+                                Nội dung bài học
+                              </dt>
+                              <dd className="whitespace-pre-wrap">
+                                {log.lesson_content}
+                              </dd>
+                            </div>
+                          )}
+                          {(log.teacher_comment ?? log.note) && (
+                            <div className="sm:col-span-2">
+                              <dt className="text-xs font-medium text-muted-foreground">
+                                Nhận xét của giáo viên
+                              </dt>
+                              <dd className="whitespace-pre-wrap italic">
+                                {log.teacher_comment ?? log.note}
+                              </dd>
+                            </div>
+                          )}
+                        </dl>
+                      ) : (
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Chưa ghi sổ.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {open && draft && entry.mine && (
                     <div className="border-t border-border bg-muted/30 px-4 py-4">
                       <div className="mb-4 flex flex-wrap items-end gap-3">
                         <label className="block">

@@ -6,7 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell, CalendarDays } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
-import { fmtDateVN } from "@/lib/utils";
+import { currentSchoolYearVN, fmtDateVN } from "@/lib/utils";
 import type {
   Announcement,
   AttendanceRecord,
@@ -266,7 +266,7 @@ export default async function StudentPortalPage() {
                 {student.full_name}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Lớp {classroom?.name ?? "-"} - Năm học 2026-2027 · Mã HS:{" "}
+                Lớp {classroom?.name ?? "-"} - Năm học {currentSchoolYearVN()} · Mã HS:{" "}
                 {student.code}
               </p>
               <div className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">

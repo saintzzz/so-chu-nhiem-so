@@ -21,10 +21,10 @@ import {
   formatDate as formatDateVN,
   formatDateOnly,
   todayVN,
+  currentPeriodVN,
 } from "@/lib/utils";
 
-const TODAY = "2026-09-18";
-const EMULATION_PERIOD = "2026-T9";
+
 
 interface ClassRow {
   id: string;
@@ -72,6 +72,12 @@ function formatDate(iso: string | null): string {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -85,6 +91,8 @@ export default async function DashboardPage({
   const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
   const sp = await searchParams;
+  const TODAY = todayVN();
+  const EMULATION_PERIOD = currentPeriodVN();
   const dateParam = sp.date && ISO_DATE.test(sp.date) ? sp.date : null;
   const fromParam = sp.from && ISO_DATE.test(sp.from) ? sp.from : null;
   const toParam = sp.to && ISO_DATE.test(sp.to) ? sp.to : null;
@@ -167,7 +175,7 @@ export default async function DashboardPage({
     : formatDateOnly(attDate, { day: "numeric", month: "numeric" });
 
   // All remaining queries only depend on studentIds/classId/profile - run in one batch.
-  const since30 = "2026-08-19";
+  const since30 = addDaysIso(TODAY, -30);
   const [
     { data: todayAttRaw },
     { count: attTotal },
@@ -356,7 +364,7 @@ export default async function DashboardPage({
   const tasks = allTasks.filter(
     (t) => t.class_id === null || t.class_id === classId,
   );
-  const upcomingLimit = "2026-10-02";
+  const upcomingLimit = addDaysIso(TODAY, 14);
   const upcomingTasks = tasks.filter(
     (t) => t.due_date !== null && t.due_date <= upcomingLimit,
   );
@@ -561,7 +569,7 @@ export default async function DashboardPage({
         <StatCard
           label="Thông báo chưa đọc"
           value={unreadCount ?? 0}
-          href="/parents/inbox"
+          href="/notifications"
           tone={(unreadCount ?? 0) > 0 ? "primary" : "default"}
         />
         <StatCard

@@ -5,7 +5,6 @@
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, mkdirSync } from "fs";
-import { join } from "path";
 
 const BASE = "https://so-chu-nhiem-so-theta.vercel.app";
 const SHOTS = new URL("../docs/qa/screenshots-full/", import.meta.url).pathname;
@@ -157,17 +156,40 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
   let allowOk = 0, denyOk = 0;
   const fails = [];
   for (const [route, roles] of Object.entries(MATRIX)) {
-    const res = await ctx.request.get(`${BASE}${route}`, { maxRedirects: 20 }).catch(() => null);
-    if (!res) { fails.push(`${route}:no-response`); continue; }
-    const finalPath = new URL(res.url()).pathname;
+    const fetchRoute = async () => {
+      const res = await ctx.request.get(`${BASE}${route}`, { maxRedirects: 0 }).catch(() => null);
+      if (!res) return null;
+      const body = await res.text();
+      // 2 dang redirect: HTTP 30x (portal) hoac meta refresh trong HTML (app group)
+      const loc = res.headers()["location"];
+      const redirMatch = body.match(/__next-page-redirect[^>]*url=([^"&]+)/);
+      const finalPath = loc
+        ? new URL(loc, BASE).pathname
+        : redirMatch
+          ? new URL(decodeURIComponent(redirMatch[1]), BASE).pathname
+          : new URL(res.url()).pathname;
+      return { res, finalPath };
+    };
+    let r = await fetchRoute();
+    // Session co the roi ve /login do refresh-token rotation - login lai roi thu lai (toi da 2 lan)
+    for (let attempt = 0; r && r.finalPath === "/login" && attempt < 2; attempt++) {
+      await ctx.clearCookies();
+      await p.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+      await p.fill("#email", email);
+      await p.fill("input[type=password]", "demo1234");
+      await p.click("button[type=submit]");
+      await p.waitForTimeout(5000);
+      r = await fetchRoute();
+    }
+    if (!r) { fails.push(`${route}:no-response`); continue; }
+    const { res, finalPath } = r;
     const expected = roles.includes(role);
     if (expected) {
-      const ok = res.ok() && (finalPath === route || finalPath === ALIASES[route]);
-      ok ? allowOk++ : fails.push(`${route}:expected-allow,got->${finalPath}(${res.status()})`);
+      const ok = (res.ok() && finalPath === route) || (finalPath === ALIASES[route]);
+      if (ok) allowOk++; else fails.push(`${route}:expected-allow,redirect->${finalPath}`);
     } else {
-      // denied: phai redirect ve role home, khong duoc o lai route
-      const ok = res.ok() && finalPath === ROLE_HOME[role];
-      ok ? denyOk++ : fails.push(`${route}:expected-deny->${ROLE_HOME[role]},got->${finalPath}(${res.status()})`);
+      const ok = finalPath === ROLE_HOME[role];
+      if (ok) denyOk++; else fails.push(`${route}:expected-deny->${ROLE_HOME[role]},got->${finalPath}`);
     }
   }
   const total = Object.keys(MATRIX).length;
@@ -269,9 +291,14 @@ const MARK = `FULL-${Date.now()}`;
       await natInput.fill(natId);
       await natInput.locator("xpath=following-sibling::button[1]").click();
       await p.waitForTimeout(2500);
-      const { data: h2 } = await db.from("student_record_history").select("id")
-        .eq("student_id", stu2.id).eq("field", "national_id").eq("new_value", natId).limit(1);
-      check("W05b", "NationalID qua server action -> history", (h2?.length ?? 0) === 1, `hist=${h2?.length}`);
+      // Verify theo new_value (random unique) - row click co the la HS khac stu2.
+      // History PHAI ton tai: neu student update ma khong co history = bypass server action.
+      const { data: h2 } = await db.from("student_record_history").select("id,student_id")
+        .eq("field", "national_id").eq("new_value", natId).limit(1);
+      const { data: stu3 } = await db.from("students").select("id").eq("national_id", natId).limit(1);
+      check("W05b", "NationalID qua server action -> history",
+        (h2?.length ?? 0) === 1 && (stu3?.length ?? 0) === 1,
+        `hist=${h2?.length} stu=${stu3?.length}`);
     } else check("W05b", "NationalID field", false, "no input");
   }
 
@@ -370,6 +397,149 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
   await p.goto(`${BASE}/portal/student/hoc-ba`);
   await settle(p, 1500);
   check("W23", "Hoc ba HS", /học bạ|điểm|hạnh kiểm/i.test(await p.locator("body").innerText()), "");
+  await ctx.close();
+}
+
+// === PHAN 3: WRITE FLOWS bo sung (period-log, lesson-plan, signoff, meeting, portal) ===
+
+// W24: GVCN luu so dau bai -> period_logs
+{
+  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  await p.goto(`${BASE}/schedule/period-log`);
+  await settle(p, 2000);
+  const entryBtn = p.locator('button[aria-expanded]:has-text("Tiết")').first();
+  if ((await entryBtn.count()) > 0) {
+    await entryBtn.click();
+    await p.waitForTimeout(1200);
+    const titleInput = p.locator('input[placeholder*="Bài 5"], input[placeholder*="bài"]').first();
+    if ((await titleInput.count()) > 0) {
+      await titleInput.fill(`Bai ${MARK}`);
+      await p.locator('button:has-text("Lưu sổ đầu bài")').first().click();
+      await p.waitForTimeout(2500);
+      const { data: pl } = await db.from("period_logs").select("id")
+        .eq("lesson_title", `Bai ${MARK}`).limit(1);
+      check("W24", "Luu so dau bai -> period_logs", (pl?.length ?? 0) === 1, `rows=${pl?.length}`);
+    } else check("W24", "Luu so dau bai", false, "no title input");
+  } else check("W24", "Luu so dau bai", false, "no timetable entry");
+
+  // W25: GVCN nop giao an -> lesson_plans
+  await p.goto(`${BASE}/academics/lesson-plans`);
+  await settle(p, 1500);
+  const clsSel = p.locator("select").first();
+  const subSel = p.locator("select").nth(1);
+  if ((await clsSel.count()) > 0) {
+    const clsOpts = await clsSel.locator("option").all();
+    const clsVal = await clsOpts[1]?.getAttribute("value");
+    const subOpts = await subSel.locator("option").all();
+    const subVal = await subOpts[1]?.getAttribute("value");
+    if (clsVal && subVal) {
+      await clsSel.selectOption(clsVal);
+      await subSel.selectOption(subVal);
+      await p.locator('input[placeholder*="Phương trình"], label:has-text("Tên bài dạy") input').first().fill(`GA ${MARK}`);
+      await p.locator("textarea").first().fill(`Noi dung ${MARK}`);
+      await p.locator('button:has-text("Nộp giáo án")').click();
+      await p.waitForTimeout(3000);
+      const { data: lp } = await db.from("lesson_plans").select("id,status")
+        .eq("title", `GA ${MARK}`).limit(1);
+      check("W25", "Nop giao an -> lesson_plans", (lp?.length ?? 0) === 1,
+        `rows=${lp?.length} status=${lp?.[0]?.status}`);
+    } else check("W25", "Nop giao an", false, `cls=${clsVal} sub=${subVal}`);
+  } else check("W25", "Nop giao an", false, "no form");
+  await ctx.close();
+}
+
+// W26: Signoff state machine - GVCN nop (pending->submitted), BGH ky (submitted->signed)
+{
+  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  // Tim signoff pending cua cac lop gvcn chu nhiem
+  const myClassIds = myClasses.map((c) => c.id);
+  const { data: pending } = await db.from("register_signoffs").select("id,status")
+    .in("class_id", myClassIds).eq("status", "pending");
+  await p.goto(`${BASE}/register/signoff`);
+  await settle(p, 1500);
+  if (pending?.length) {
+    const nopBtn = p.locator('button:has-text("Nộp sổ")').first();
+    if ((await nopBtn.count()) > 0) {
+      await nopBtn.click();
+      await p.waitForTimeout(2500);
+      // Nut dau tien co the thuoc lop khac trong so lop CN - check pending giam di
+      const { data: stillPending } = await db.from("register_signoffs").select("id")
+        .in("class_id", myClassIds).eq("status", "pending");
+      check("W26a", "GVCN nop so -> submitted", (stillPending?.length ?? 0) < pending.length,
+        `pending ${pending.length} -> ${stillPending?.length}`);
+    } else check("W26a", "GVCN nop so", false, "no submit btn");
+  } else check("W26a", "GVCN nop so", true, "khong co pending (da nop het)");
+  await ctx.close();
+}
+{
+  const { ctx, p } = await loginCtx("bgh@demo.scn");
+  // BGH tao dot ky: chap nhan insert moi HOAC thong bao da ton tai (idempotent)
+  await p.goto(`${BASE}/register/signoff`);
+  await settle(p, 1500);
+  const createBtn = p.locator('button:has-text("Tạo đợt ký")');
+  if ((await createBtn.count()) > 0) {
+    const { count: before } = await db.from("register_signoffs").select("id", { count: "exact", head: true });
+    await createBtn.click();
+    await p.waitForTimeout(2500);
+    const { count: after } = await db.from("register_signoffs").select("id", { count: "exact", head: true });
+    const msg = await p.locator("body").innerText();
+    check("W26b", "BGH tao dot ky (insert hoac idempotent)",
+      (after ?? 0) > (before ?? 0) || /đã tồn tại/.test(msg),
+      `before=${before} after=${after}`);
+  } else check("W26b", "BGH tao dot ky", false, "no button");
+
+  // BGH ky duyet 1 dot submitted (nut dau tien co the la row khac - check count giam)
+  const { data: submitted } = await db.from("register_signoffs").select("id")
+    .eq("status", "submitted");
+  if (submitted?.length) {
+    const signBtn = p.locator('button:has-text("Ký duyệt")').first();
+    if ((await signBtn.count()) > 0) {
+      await signBtn.click();
+      await p.waitForTimeout(2500);
+      const { data: stillSub } = await db.from("register_signoffs").select("id")
+        .eq("status", "submitted");
+      check("W26c", "BGH ky duyet -> signed", (stillSub?.length ?? 0) < submitted.length,
+        `submitted ${submitted.length} -> ${stillSub?.length}`);
+    } else check("W26c", "BGH ky duyet", false, "no sign btn");
+  } else check("W26c", "BGH ky duyet", true, "khong co submitted cho duyet");
+  await ctx.close();
+}
+
+// W27: To truong tao buoi sinh hoat -> dept_meetings
+{
+  const { ctx, p } = await loginCtx("totruong@demo.scn");
+  await p.goto(`${BASE}/team/meetings`);
+  await settle(p, 1500);
+  const titleIn = p.locator("#title");
+  if ((await titleIn.count()) > 0) {
+    await titleIn.fill(`Sinh hoat ${MARK}`);
+    await p.locator("#meeting_date").fill(today);
+    await p.locator("#content").fill(`Bien ban ${MARK}`);
+    await p.locator('button[type=submit]:has-text("Tạo buổi sinh hoạt")').click();
+    await p.waitForTimeout(3000);
+    const { data: mt } = await db.from("dept_meetings").select("id")
+      .eq("title", `Sinh hoat ${MARK}`).limit(1);
+    check("W27", "Tao buoi sinh hoat -> dept_meetings", (mt?.length ?? 0) === 1, `rows=${mt?.length}`);
+  } else check("W27", "Tao buoi sinh hoat", false, "no form");
+  await ctx.close();
+}
+
+// W28: PH dat lich hen -> appointments
+{
+  const { ctx, p } = await loginCtx("phuhuynh@demo.scn");
+  await p.goto(`${BASE}/portal/parent`);
+  await settle(p, 2000);
+  const dtInput = p.locator('input[type="datetime-local"]');
+  if ((await dtInput.count()) > 0) {
+    await dtInput.fill(`${today}T15:30`);
+    await p.locator('input[placeholder*="Mục đích"]').fill(`Hen ${MARK}`);
+    await p.locator('button:has-text("Gửi yêu cầu")').click();
+    await p.waitForTimeout(3000);
+    const { data: ap } = await db.from("appointments").select("id,status")
+      .ilike("purpose", `%${MARK}%`).limit(1);
+    check("W28", "PH dat lich hen -> appointments", (ap?.length ?? 0) === 1,
+      `rows=${ap?.length} status=${ap?.[0]?.status}`);
+  } else check("W28", "PH dat lich hen", false, "no form (teacherId missing?)");
   await ctx.close();
 }
 

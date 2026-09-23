@@ -51,3 +51,8 @@ create policy es_staff_del on emulation_scores for delete using (
     ))
   )
 );
+
+-- 3. Cho phep status 'submitted' (flow GVCN nop -> BGH ky)
+alter table register_signoffs drop constraint register_signoffs_status_check;
+alter table register_signoffs add constraint register_signoffs_status_check
+  check (status = any (array['pending','submitted','signed','locked','rejected']));

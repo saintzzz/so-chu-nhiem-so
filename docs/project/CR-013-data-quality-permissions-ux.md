@@ -29,3 +29,35 @@ Date: 2026-10-12 · Reporter: user · Priority: high (12 findings)
 ## Estimate
 
 ~1 ngày: 12 fixes nhỏ-vừa + seed data + E2E re-verify.
+
+## Implementation result (2026-10-12)
+
+| # | Trang thai | Ghi chu |
+|---|---|---|
+| 1 | Done | 366 HS backfill address; card dashboard render breakdown |
+| 2 | Done | `?praise=1` persist qua chips doi lop; chip HS: `+N diem - ly do` |
+| 3 | Done | AiInsightCard strip markdown emphasis |
+| 4 | Done | PlanActions inline tren hang da co plan |
+| 5 | Done | Compose preview so PH co email |
+| 6 | Done | /safety/bgh -> bgh+pht; bo nav GVCN; verify redirect |
+| 7 | Done | Dropzone + AiExtract file input (mo san section) |
+| 8 | Done | submitted_by/at + flow 2 buoc; fix CHECK constraint them 'submitted'; scope chi lop CN |
+| 9 | Done | Seed qua UI: appointments 1->3, exams 1->4, equipment 2->5, KPI 2->4, conduct_evaluations 5->32, messages 6->7 |
+| 10 | Done | .xlsx 2 sheet (Tong hop + Chuyen can chi tiet 230 rows); fix month range ${period}-31 |
+| 11 | Done | /api/ai/report-analysis + nut "Phan tich"; khong auto-generate |
+| 12 | Done | UI readonly cot lop ngoai CN + RLS siets: gvcn chi lop gvcn_id=self |
+
+### Bug phat hien them khi verify
+
+- `register_signoffs_status_check` thieu 'submitted' -> update 400. Da alter constraint + migration.
+- Signoff/lock-records/export dung `getAccessibleClasses` (CN + lop day) -> GVCN thay nut nop cho lop nguoi khac. Scope lai `gvcn_id = self`.
+
+### Verify production (Playwright + DB)
+
+- 28 checks, 27 PASS dau tien; fail con lai do selector test (link `?to=` thay `?parent=`) va CHECK constraint - da fix va verify lai.
+- Signoff E2E: GVCN nop -> status submitted + submitted_by; BGH ky -> signed + signed_by (verify DB).
+- Export: download `so-chu-nhiem-6A1-2026-09.xlsx`, sheet Chuyen can 230 rows du lieu that.
+- Emulation: GVCN 8 input/33 readonly; BGH 36 input; RLS chan ghi lop ngoai CN.
+- Messages: GVCN -> PH qua UI, row + notification insert.
+
+Commits: c642d04, 40de2e9, 6e0ad05.

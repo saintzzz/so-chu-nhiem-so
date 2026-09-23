@@ -3,7 +3,6 @@
 // Nguong (AGENTS.md): server render < 1000ms, dieu huong/tuong tac < 3000ms.
 // Chay: node scripts/qa-perf.mjs
 import { chromium } from "playwright";
-import { readFileSync } from "fs";
 
 const BASE = process.env.QA_BASE || "https://so-chu-nhiem-so-theta.vercel.app";
 const TTFB_LIMIT = 1000;

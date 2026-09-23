@@ -45,6 +45,7 @@ export function RosterClient({
   const [links, setLinks] = useState(initialLinks);
   const [linkStudent, setLinkStudent] = useState("");
   const [linkParent, setLinkParent] = useState("");
+  const [parentQuery, setParentQuery] = useState("");
   const [newParentName, setNewParentName] = useState("");
   const [newParentPhone, setNewParentPhone] = useState("");
   const [newParentEmail, setNewParentEmail] = useState("");
@@ -136,6 +137,21 @@ export function RosterClient({
       });
     }
     setBusy(false);
+  }
+
+  async function searchParents(q: string) {
+    setParentQuery(q);
+    if (q.trim().length < 2) return;
+    const { data } = await supabase
+      .from("parents")
+      .select("id,full_name,phone,email,relationship")
+      .or(`full_name.ilike.%${q.trim()}%,phone.ilike.%${q.trim()}%`)
+      .limit(20);
+    if (!data?.length) return;
+    setParents((prev) => {
+      const seen = new Set(prev.map((p) => p.id));
+      return [...prev, ...data.filter((p) => !seen.has(p.id))];
+    });
   }
 
   async function linkParentToStudent() {
@@ -466,6 +482,12 @@ export function RosterClient({
             <label className="text-xs font-medium text-muted-foreground">
               Phụ huynh có sẵn
             </label>
+            <input
+              value={parentQuery}
+              onChange={(e) => searchParents(e.target.value)}
+              placeholder="Tìm PH theo tên hoặc SĐT (PH lớp khác)..."
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            />
             <select
               value={linkParent}
               onChange={(e) => setLinkParent(e.target.value)}

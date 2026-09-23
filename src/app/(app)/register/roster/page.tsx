@@ -79,10 +79,13 @@ export default async function RosterPage({
     parent_id: string;
   }[];
 
-  const { data: parentsData } = await supabase
-    .from("parents")
-    .select("id,full_name,phone,email,relationship")
-    .order("full_name");
+  const linkedParentIds = [...new Set(parentLinks.map((l) => l.parent_id))];
+  const { data: parentsData } = linkedParentIds.length
+    ? await supabase
+        .from("parents")
+        .select("id,full_name,phone,email,relationship")
+        .in("id", linkedParentIds)
+    : { data: [] };
   const parents = (parentsData ?? []) as {
     id: string;
     full_name: string;

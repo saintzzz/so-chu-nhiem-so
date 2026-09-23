@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { ClassChipLabel } from "@/components/class-chip-label";
 
 export interface ClassChipItem {
   id: string;
@@ -38,7 +39,7 @@ export function ClassChips({
               : "border-border bg-card text-foreground hover:bg-muted",
           )}
         >
-          {c.name}
+          <ClassChipLabel name={c.name} />
         </Link>
       ))}
     </div>

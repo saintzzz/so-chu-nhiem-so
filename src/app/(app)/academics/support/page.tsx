@@ -164,6 +164,7 @@ export default async function SupportPage({
       </div>
 
       <SupportPlanBoard
+        key={classId ?? "all"}
         meId={profile.id}
         rows={weak.map(
           (w): WeakPair => {

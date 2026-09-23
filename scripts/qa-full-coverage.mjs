@@ -303,6 +303,31 @@ const MARK = `FULL-${Date.now()}`;
     } else check("W05b", "NationalID field", false, "no input");
   }
 
+  // W32: Doi lop tren /register/roster -> danh sach HS + to PHAI doi (regression stale state)
+  if (myClasses.length >= 2) {
+    const [cA, cB] = myClasses;
+    const rosterBody = async () =>
+      (await p.locator("main table, [role=main] table").first().innerText().catch(() => "")) ||
+      (await p.locator("main").first().innerText());
+    await p.goto(`${BASE}/register/roster?class=${cA.id}`);
+    await settle(p, 1800);
+    const bodyA = await rosterBody();
+    const urlA = p.url();
+    // Click chip lop B (khong di qua goto - bat dung navigation that)
+    await p.locator(`a[href*="/register/roster?class=${cB.id}"]`).first().click();
+    await settle(p, 1800);
+    const bodyB = await rosterBody();
+    const urlB = p.url();
+    // DB truth: ten HS dau tien cua lop B
+    const { data: stuB } = await db.from("students").select("full_name")
+      .eq("class_id", cB.id).eq("status", "active").order("full_name").limit(1);
+    const changed = bodyA !== bodyB && bodyB.includes(cB.name);
+    const hasStuB = !stuB?.length || stuB.some((s) => bodyB.includes(s.full_name.split(" ").pop()));
+    check("W32", "Roster doi lop -> data doi theo",
+      urlB.includes(cB.id) && !urlA.includes(cB.id) && changed && hasStuB,
+      `url=${urlB.includes(cB.id)} diff=${bodyA !== bodyB} cls=${bodyB.includes(cB.name)} stu=${hasStuB}`);
+  } else check("W32", "Roster doi lop", false, `chi co ${myClasses.length} lop`);
+
   // W06-W12 render+content checks (nang cap: check element cu the, khong chi length)
   const renderChecks = [
     ["W06", "/schedule/period-log", /tiết|sổ đầu bài|Chưa ghi/i, "So dau bai"],

@@ -114,7 +114,7 @@ export default async function ConductRecordsPage({
         <StatCard label="Vi phạm" value={viPham} tone="error" />
       </div>
 
-      <ConductRecordForm students={students} meId={profile.id} />
+      <ConductRecordForm key={classId ?? "all"} students={students} meId={profile.id} />
 
       <DataTable
         columns={["Ngày", "Học sinh", "Loại", "Nội dung", "Điểm"]}

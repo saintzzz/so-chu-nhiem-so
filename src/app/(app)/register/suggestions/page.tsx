@@ -51,7 +51,7 @@ export default async function SuggestionsPage({
         description={`Lớp ${cls.name} · Các công việc được hệ thống đề xuất từ lịch năm học và dữ liệu lớp.`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/suggestions" />
-      <SuggestionsClient classId={cls.id} tasks={tasks} />
+      <SuggestionsClient key={cls.id} classId={cls.id} tasks={tasks} />
     </>
   );
 }

@@ -51,7 +51,7 @@ export default async function SeatingHistoryPage({
         description={`Lớp ${cls.name} · ${charts.length} phiên bản đã lưu`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/seating-history" />
-      <SeatingHistoryClient classId={cls.id} charts={charts} />
+      <SeatingHistoryClient key={cls.id} classId={cls.id} charts={charts} />
     </>
   );
 }

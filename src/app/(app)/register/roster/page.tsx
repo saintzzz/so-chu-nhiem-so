@@ -100,6 +100,7 @@ export default async function RosterPage({
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/roster" />
       <RosterClient
+        key={cls.id}
         classId={cls.id}
         students={students}
         groups={groups}

@@ -51,7 +51,7 @@ export default async function PlansPage({
         description={`Lớp ${cls.name} · Kế hoạch công tác chủ nhiệm theo tháng và tổng kết tuần.`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/plans" />
-      <PlansClient classId={cls.id} tasks={tasks} />
+      <PlansClient key={cls.id} classId={cls.id} tasks={tasks} />
     </>
   );
 }

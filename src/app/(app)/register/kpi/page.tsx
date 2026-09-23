@@ -50,7 +50,7 @@ export default async function KpiPage({
         description={`Lớp ${cls.name} · Chỉ tiêu chất lượng theo kỳ (chuyên cần, tỉ lệ khá, vi phạm).`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/kpi" />
-      <KpiClient classId={cls.id} kpis={kpis} />
+      <KpiClient key={cls.id} classId={cls.id} kpis={kpis} />
     </>
   );
 }

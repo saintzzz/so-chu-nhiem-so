@@ -77,13 +77,24 @@ export default async function AuditPage({
   const supabase = await createClient();
 
   // Classes the viewer is allowed to see - drives student/class filters.
+  // Runs in parallel with the staff list - the two are independent.
   let classQuery = supabase.from("classes").select("*").order("name");
   if (profile.role === "gvcn") {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  const staffQuery = profile.school_id
+    ? supabase
+        .from("profiles")
+        .select("id,full_name")
+        .eq("school_id", profile.school_id)
+        .order("full_name")
+    : null;
+  const [{ data: classData }, { data: staffData }] = await Promise.all([
+    classQuery,
+    staffQuery ?? Promise.resolve({ data: [] }),
+  ]);
   const classes = (classData ?? []) as ClassRoom[];
   const classIds = classes.map((c) => c.id);
   const classNameById = new Map(classes.map((c) => [c.id, c.name]));
@@ -107,14 +118,6 @@ export default async function AuditPage({
       ? sp.student
       : undefined;
 
-  // Staff list for the actor filter (school-scoped).
-  const { data: staffData } = profile.school_id
-    ? await supabase
-        .from("profiles")
-        .select("id,full_name")
-        .eq("school_id", profile.school_id)
-        .order("full_name")
-    : { data: [] };
   const staff = (staffData ?? []) as Pick<Profile, "id" | "full_name">[];
   const staffById = new Map(staff.map((s) => [s.id, s.full_name]));
   const selectedActor =

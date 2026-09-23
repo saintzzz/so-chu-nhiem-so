@@ -37,57 +37,58 @@ export default async function TeacherChatPage({
     .order("full_name");
   const teachers = (teacherData ?? []) as ProfileRow[];
 
+  const peerId =
+    typeof sp.to === "string" && teachers.some((t) => t.id === sp.to)
+      ? sp.to
+      : (teachers[0]?.id ?? "");
+  const peer = teachers.find((t) => t.id === peerId);
   const teacherIds = teachers.map((t) => t.id);
-  const teacherSubjectNames = new Map<string, string[]>();
-  if (peerRole === "gvbm") {
-    const [{ data: tsData }, { data: subjData }] = teacherIds.length
-      ? await Promise.all([
+
+  const detailQuery =
+    peerRole === "gvbm" && teacherIds.length
+      ? Promise.all([
           supabase
             .from("teacher_subjects")
             .select("teacher_id,subject_id")
             .in("teacher_id", teacherIds),
           supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
         ])
-      : [{ data: [] }, { data: [] }];
-    const teacherSubjects = (tsData ?? []) as TeacherSubjectRow[];
-    const subjects = (subjData ?? []) as SubjectRow[];
-    const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
-    for (const ts of teacherSubjects) {
-      const arr = teacherSubjectNames.get(ts.teacher_id) ?? [];
-      const name = subjectName.get(ts.subject_id);
-      if (name) arr.push(name);
-      teacherSubjectNames.set(ts.teacher_id, arr);
-    }
-  } else {
-    const { data: classData } = teacherIds.length
-      ? await supabase
-          .from("classes")
-          .select("name,gvcn_id")
-          .in("gvcn_id", teacherIds)
-      : { data: [] };
-    for (const c of (classData ?? []) as { name: string; gvcn_id: string }[]) {
-      const arr = teacherSubjectNames.get(c.gvcn_id) ?? [];
-      arr.push(c.name);
-      teacherSubjectNames.set(c.gvcn_id, arr);
-    }
-  }
-
-  const peerId =
-    typeof sp.to === "string" && teachers.some((t) => t.id === sp.to)
-      ? sp.to
-      : (teachers[0]?.id ?? "");
-  const peer = teachers.find((t) => t.id === peerId);
-
-  const { data: msgData } = peerId
-    ? await supabase
+      : peerRole === "gvcn" && teacherIds.length
+        ? supabase.from("classes").select("name,gvcn_id").in("gvcn_id", teacherIds)
+        : Promise.resolve(null);
+  const msgQuery = peerId
+    ? supabase
         .from("messages")
         .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
         .or(
           `and(sender_id.eq.${profile.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${profile.id})`,
         )
         .order("created_at")
-    : { data: [] };
+    : Promise.resolve({ data: [] });
+
+  const [detail, { data: msgData }] = await Promise.all([detailQuery, msgQuery]);
   const messages = (msgData ?? []) as ChatMessage[];
+
+  const teacherSubjectNames = new Map<string, string[]>();
+  if (peerRole === "gvbm" && detail) {
+    const [tsRes, subjRes] = detail as [
+      { data: TeacherSubjectRow[] | null },
+      { data: SubjectRow[] | null },
+    ];
+    const subjectName = new Map((subjRes.data ?? []).map((s) => [s.id, s.name]));
+    for (const ts of tsRes.data ?? []) {
+      const arr = teacherSubjectNames.get(ts.teacher_id) ?? [];
+      const name = subjectName.get(ts.subject_id);
+      if (name) arr.push(name);
+      teacherSubjectNames.set(ts.teacher_id, arr);
+    }
+  } else if (detail && "data" in detail) {
+    for (const c of (detail.data ?? []) as { name: string; gvcn_id: string }[]) {
+      const arr = teacherSubjectNames.get(c.gvcn_id) ?? [];
+      arr.push(c.name);
+      teacherSubjectNames.set(c.gvcn_id, arr);
+    }
+  }
 
   return (
     <div className="space-y-4">

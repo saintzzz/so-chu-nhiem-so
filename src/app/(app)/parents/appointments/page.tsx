@@ -28,21 +28,16 @@ export default async function AppointmentsPage() {
     ),
   ];
 
-  const { data: parentData } = parentIds.length
-    ? await supabase
-        .from("parents")
-        .select("id,full_name")
-        .in("id", parentIds)
-    : { data: [] };
+  const [{ data: parentData }, { data: studentData }] = await Promise.all([
+    parentIds.length
+      ? supabase.from("parents").select("id,full_name").in("id", parentIds)
+      : Promise.resolve({ data: [] }),
+    studentIds.length
+      ? supabase.from("students").select("id,full_name").in("id", studentIds)
+      : Promise.resolve({ data: [] }),
+  ]);
   const parents = (parentData ?? []) as Pick<Parent, "id" | "full_name">[];
   const parentName = new Map(parents.map((p) => [p.id, p.full_name]));
-
-  const { data: studentData } = studentIds.length
-    ? await supabase
-        .from("students")
-        .select("id,full_name")
-        .in("id", studentIds)
-    : { data: [] };
   const students = (studentData ?? []) as Pick<Student, "id" | "full_name">[];
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));
 

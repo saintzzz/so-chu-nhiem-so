@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số
 
-Phiên bản: 1.0 · Ngày: 21/09/2026
+Phiên bản: 1.1 · Ngày: 23/09/2026
 Địa chỉ hệ thống: https://so-chu-nhiem-so-theta.vercel.app
 
 Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
@@ -16,6 +16,10 @@ Môi trường demo có sẵn danh sách vai trò trong ô "Đăng nhập với 
 ![Màn hình đăng nhập](images/01-login.png)
 
 Sau đăng nhập, hệ thống tự chuyển đến trang chủ theo vai trò. Thanh bên trái là menu chức năng được phân quyền riêng cho vai trò của bạn. Góc trên phải: tìm nhanh (Ctrl+K), thông báo, tài khoản, đăng xuất.
+
+### Thông báo
+
+Biểu tượng chuông mở trang **Thông báo** (`/notifications`) - tập trung mọi sự kiện liên quan đến bạn: tin nhắn mới, lịch hẹn, kết quả ký duyệt sổ, giáo án được duyệt/trả về, sự cố mới... Mỗi mục có link nhảy thẳng tới màn hình liên quan; bấm vào để đánh dấu đã đọc, hoặc **Đánh dấu tất cả đã đọc**.
 
 ---
 
@@ -36,7 +40,8 @@ Menu **Chuyên cần → Điểm danh hàng ngày**.
 1. Chọn lớp (nếu chủ nhiệm nhiều lớp).
 2. Chọn ngày bằng ô ngày hoặc nút ‹ › để xem/sửa điểm danh ngày cũ - bấm **Xem** để tải dữ liệu ngày đã chọn.
 3. Đánh dấu trạng thái từng em: Có mặt / Nghỉ có phép / Nghỉ không phép / Đi muộn.
-4. Bấm **Xác nhận chuyên cần** để lưu.
+4. Với em vắng/đi muộn, cột **Ghi chú** hiện ô nhập lý do (VD: "ốm, PH đã báo") - ghi chú lưu cùng điểm danh và hiển thị lại ở sổ vắng/muộn.
+5. Bấm **Xác nhận chuyên cần** để lưu.
 
 6 thẻ tổng ở trên cập nhật theo ngày đang xem: Sĩ số, Có mặt, Vắng, Nghỉ có phép, Nghỉ không phép, Đi muộn. Nút **Tải template / Import Excel** hỗ trợ nhập điểm danh hàng loạt.
 
@@ -56,7 +61,7 @@ Menu **Chuyên cần → Điểm danh hàng ngày**.
 
 Menu **Học tập → Nhập / đồng bộ điểm**.
 
-1. Chọn **Lớp** + **Môn học** + **Học kỳ** (I/II).
+1. Chọn **Lớp** + **Môn học** + **Học kỳ** (I/II). GVCN thấy lớp chủ nhiệm **và** các lớp mình đang dạy; GVBM chỉ thấy đúng lớp/môn được phân công trong thời khóa biểu - không nhập được điểm lớp/môn người khác dạy.
 2. Bảng điểm gồm các cột: **Miệng, 15 phút, 1 tiết** (hệ số 1 - số cột tùy ý), **ĐĐGgk** (hệ số 2), **ĐĐGck** (hệ số 3).
 3. Thêm cột đánh giá thường xuyên: chọn loại ở ô kế nút **Thêm cột điểm** → bấm để thêm. Xóa cột bằng dấu × trên tiêu đề cột.
 4. Nhập điểm từng ô (0-10). Cột **ĐTBm** tự tính theo công thức Thông tư 22: `(Tổng ĐGTX + 2×ĐĐGgk + 3×ĐĐGck) / (số ĐGTX + 5)`.
@@ -80,7 +85,9 @@ Menu **Thời khóa biểu & Sổ đầu bài → Thời khóa biểu**. Hai ch�
 
 Menu **Thời khóa biểu & Sổ đầu bài → Sổ đầu bài**. Chọn ngày → danh sách tiết trong ngày hiện dạng thu gọn (tiết, môn, lớp, GV, sĩ số, chip vắng/muộn, trạng thái đã ghi).
 
-Bấm vào tiết để mở form ghi:
+**Phân quyền ghi:** chỉ giáo viên được phân công tiết đó mới mở được form nhập. Tiết của giáo viên khác (kể cả lớp mình chủ nhiệm) chỉ xem được ở chế độ đọc - đúng nguyên tắc "ai dạy tiết đó người đó ghi sổ".
+
+Bấm vào tiết của mình để mở form ghi:
 
 1. **Sĩ số có mặt** - tự tính từ đánh dấu vắng/muộn.
 2. **Tên bài học** - VD: "Bài 12 - Phép nhân phân số".
@@ -139,6 +146,17 @@ Menu **Rèn luyện → Nhận xét & vi phạm/khen thưởng**: chọn HS, lo�
 ![Kế hoạch tháng](images/19-plans.png)
 ![Xuất sổ](images/20-export.png)
 
+### 2.12 Nộp sổ chủ nhiệm cho BGH ký duyệt
+
+Menu **Sổ chủ nhiệm → Ký duyệt sổ**. Cuối kỳ, BGH mở "đợt ký" cho từng lớp:
+
+1. Sổ của lớp mình ở trạng thái **Chờ GVCN nộp** → bấm **Nộp sổ** (hoặc **Nộp tất cả** khi chủ nhiệm nhiều lớp).
+2. Trạng thái chuyển **Chờ BGH duyệt** - BGH nhận thông báo.
+3. Nếu BGH **từ chối**, sổ về trạng thái **Bị từ chối** kèm lý do - sửa lại dữ liệu rồi bấm **Nộp lại**.
+4. Khi BGH ký xong, trạng thái **Đã ký** - sổ khóa, chỉ BGH mở lại được.
+
+Mọi chuyển trạng thái đều gửi thông báo cho bên kia và ghi audit log.
+
 ---
 
 ## 3. Giáo viên bộ môn (GVBM)
@@ -166,7 +184,7 @@ Menu **Rèn luyện → Nhận xét & vi phạm/khen thưởng**: chọn HS, lo�
 
 ## 5. Ban Giám Hiệu (BGH) / Phó Hiệu trưởng (PHT)
 
-PHT có chức năng tương tự BGH nhưng chỉ trong phạm vi cơ sở/phân hiệu phụ trách.
+PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC, nhân sự) nhưng **không** ký duyệt sổ chủ nhiệm, không phân công năm học, không quản trị tài khoản - 3 quyền đó chỉ thuộc BGH.
 
 - **Dashboard cấp trường**: chuyên cần, điểm, sự cố, cảnh báo toàn trường.
 - **Trung tâm phê duyệt**: duyệt kế hoạch hoạt động giáo dục và các đơn chờ.
@@ -174,13 +192,26 @@ PHT có chức năng tương tự BGH nhưng chỉ trong phạm vi cơ sở/phâ
 - **Radar cảnh báo sớm**: danh sách cảnh báo theo mức → **AI đề xuất** can thiệp → Tiếp nhận → Đóng cảnh báo.
 - **Trợ lý điều hành (AI)**: chat hỏi đáp trên số liệu thật của trường.
 - **Thời khóa biểu**: xem mọi lớp + **Tải template / Import Excel** để xếp TKB hàng loạt (định dạng ô `Môn|GV|Phòng`).
-- **Điều động dạy thay**, **Nhân sự**, **Phân công năm học**, **Đánh giá TT15**, **Ký duyệt sổ chủ nhiệm**, **Duyệt & khóa sổ học bạ**, **Sự cố toàn trường** (đánh dấu đã báo cáo).
+- **Ký duyệt sổ chủ nhiệm**: **Tạo đợt ký** mở kỳ ký cho tất cả lớp → với từng sổ GVCN đã nộp: **Ký duyệt** hoặc **Từ chối** (bắt buộc nhập lý do - GVCN nhận thông báo kèm lý do để sửa và nộp lại). Nhiều sổ chờ: **Ký duyệt tất cả**. Chỉ BGH/admin ký được - GVCN không tự ký sổ của mình.
+- **Phân công năm học** (`school/assignments`): chỉ BGH/admin phân công GVCN và lớp.
+- **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ**, **Sự cố toàn trường** (đánh dấu đã báo cáo).
 
 ![Dashboard BGH](images/21-bgh-dashboard.png)
 ![Trung tâm phê duyệt](images/22-bgh-approvals.png)
 ![Radar cảnh báo](images/23-bgh-radar.png)
 ![TKB toàn trường + toolbar import](images/24-bgh-timetable.png)
 ![Trợ lý AI điều hành](images/25-bgh-ai.png)
+
+---
+
+## 5b. Kế toán trường
+
+Kế toán chỉ tiếp cận dữ liệu hành chính - tài chính, **không** xem được hồ sơ học tập/chuyên cần của học sinh:
+
+- **Nhân sự**: danh sách cán bộ, giáo viên trong trường.
+- **Cơ sở vật chất**: quản lý cơ sở/phân hiệu, phòng học.
+- **Thiết bị**: sổ thiết bị, tình trạng, bảo trì.
+- **Báo cáo NQ37**: báo cáo tài chính - cơ sở vật chất theo Nghị quyết 37.
 
 ---
 
@@ -199,11 +230,14 @@ PHT có chức năng tương tự BGH nhưng chỉ trong phạm vi cơ sở/phâ
 
 Portal phụ huynh hiển thị thông tin con mình (hai PH cùng con thấy chung dữ liệu):
 
+- **Nhiều con**: nếu có từ 2 con trở lên học tại trường, đầu trang có **bộ chọn con** - đổi con để xem đúng dữ liệu từng em (điểm, chuyên cần, thông báo lớp của em đó).
 - **Thông báo lớp**: đọc thông báo GVCN gửi.
-- **Tin nhắn**: trả lời tin nhắn GVCN trực tiếp.
-- **Đặt lịch hẹn**: chọn ngày giờ + hình thức + lý do → chờ GVCN xác nhận → trạng thái chuyển "Đã xác nhận".
-- **Đăng ký hoạt động**: các hoạt động giáo dục đã công bố → bấm **Đăng ký** cho con.
-- **Thông tin con**: điểm số, chuyên cần, hạnh kiểm.
+- **Tin nhắn**: **Soạn tin nhắn** gửi thẳng GVCN hoặc **Trả lời** từng tin - cả tin đã gửi và đã nhận đều hiển thị trong cùng một hội thoại.
+- **Đặt lịch hẹn**: chọn ngày giờ + mục đích → chờ GVCN xác nhận → trạng thái chuyển "Đã xác nhận".
+- **Đăng ký hoạt động**: các hoạt động giáo dục đã công bố → bấm **Đăng ký** cho con; đổi ý thì **Báo vắng**.
+- **Thông tin con**: điểm số theo HK1/HK2/cả năm (TT22), chuyên cần, hạnh kiểm.
+
+Mọi thao tác (đặt hẹn, nhắn tin, đăng ký) chỉ áp dụng cho con đã liên kết với tài khoản - hệ thống kiểm tra quyền sở hữu ở server trước khi ghi.
 
 ![Portal phụ huynh](images/30-parent-portal.png)
 

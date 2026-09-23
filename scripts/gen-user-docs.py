@@ -247,11 +247,11 @@ def build_pptx():
     t = txbox(s, Inches(0.5), Inches(0.3), SW - Inches(1), Inches(0.8))
     add_text(t.text_frame, "11 vai trò - phạm vi dữ liệu", size=28, bold=True, color=ACCENT)
     roles = [
-        ("GVCN", "Lớp chủ nhiệm + lịch dạy cá nhân"), ("GVBM", "Điểm các lớp dạy, giáo án"),
-        ("Tổ trưởng", "Duyệt giáo án, đánh giá năng lực"), ("BGH", "Toàn trường: duyệt, TKB, radar, AI"),
-        ("PHT", "Như BGH, giới hạn campus"), ("Kế toán", "Nhân sự, TT15 cơ sở vật chất"),
+        ("GVCN", "Lớp chủ nhiệm + lịch dạy cá nhân"), ("GVBM", "Điểm/sổ đầu bài đúng lớp-môn được phân công"),
+        ("Tổ trưởng", "Duyệt giáo án, đánh giá năng lực"), ("BGH", "Toàn trường: ký sổ, phân công, duyệt, radar"),
+        ("PHT", "Vận hành trường - không ký sổ/phân công"), ("Kế toán", "Nhân sự, CSVC, NQ37 - không xem hồ sơ HS"),
         ("Sở GD&ĐT", "Tổng hợp nhiều trường, quản trị"), ("Phòng GD/UBND", "Dashboard địa bàn"),
-        ("Phụ huynh", "Con mình: tin nhắn, lịch hẹn, đăng ký"), ("Học sinh", "TKB, điểm, hạnh kiểu của mình"),
+        ("Phụ huynh", "Con mình (nhiều con): tin nhắn, lịch hẹn, đăng ký"), ("Học sinh", "TKB, điểm, hạnh kiểu của mình"),
     ]
     tb = s.shapes.add_table(5, 4, Inches(0.6), Inches(1.3), SW - Inches(1.2), Inches(5.2)).table
     for i, (role, scope) in enumerate(roles):
@@ -264,26 +264,27 @@ def build_pptx():
                     run.font.size = PPt(14)
 
     content_slide(prs, "Chuyên cần - điểm danh số", [
-        "4 trạng thái/em: Có mặt, Vắng CP, Vắng KP, Đi muộn + thao tác nhanh",
+        "4 trạng thái/em: Có mặt, Vắng CP, Vắng KP, Đi muộn + ghi chú lý do ngay trên dòng",
         "Chọn ngày bất kỳ để xem lại / sửa điểm danh ngày cũ",
         "Sổ vắng-muộn và lịch sử theo khoảng ngày (from - to)",
         "Ma trận HS x ngày phát hiện vắng liên tục",
         "Thông báo phụ huynh tự động (email + in-app)",
         "Đồng bộ 2 chiều với sổ đầu bài tiết học",
-    ], img="03-attendance-daily.png", img_caption="Điểm danh hàng ngày - 6 thẻ tổng + chọn ngày")
+    ], img="03-attendance-daily.png", img_caption="Điểm danh hàng ngày - 6 thẻ tổng + ghi chú vắng")
 
     content_slide(prs, "Sổ điểm giáo viên - chuẩn TT22", [
         "Cột điểm động: Miệng / 15 phút / 1 tiết (hệ số 1), Giữa kỳ (x2), Cuối kỳ (x3)",
         "Thêm/xóa cột tự do - mỗi GV tự cấu trúc sổ điểm của mình",
+        "GV chỉ ghi điểm lớp + môn mình được phân công (RLS kiểm tra ở DB)",
+        "Lưu điểm nguyên tử qua transaction - không mất dữ liệu khi lỗi giữa chừng",
         "ĐTBm tự tính đúng hệ số TT22, hiển thị HK1 / HK2 / cả năm",
-        "Import/export Excel, tải template mẫu",
-        "Môn đánh giá bằng nhận xét hiển thị Đạt / Chưa đạt",
+        "Import/export Excel, tải template mẫu; môn nhận xét hiển thị Đạt / Chưa đạt",
     ], img="07-grades.png", img_caption="Sổ điểm cột động theo Thông tư 22")
 
     content_slide(prs, "Thời khóa biểu & Sổ đầu bài", [
         "2 chế độ: lịch cá nhân (mọi GV) + theo lớp (GVCN xem lớp CN, BGH toàn trường)",
         "Ô tiết cá nhân: lớp - môn - phòng; slot xung đột hiển thị đủ và cảnh báo",
-        "Sổ đầu bài tách 3 trường: tên bài / nội dung / nhận xét GV",
+        "Sổ đầu bài: chỉ GV được phân công tiết đó mới ghi - tiết người khác chỉ đọc",
         "Điểm danh theo tiết đồng bộ sang chuyên cần ngày",
         "Cộng/trừ điểm rèn luyện ngay trong sổ đầu bài",
         "BGH import TKB hàng loạt từ Excel",
@@ -309,16 +310,18 @@ def build_pptx():
         "Trung tâm phê duyệt: kế hoạch HĐ, giáo án, đánh giá - một nơi xử lý",
         "Radar cảnh báo sớm: lớp/HS rủi ro theo chuyên cần + điểm + sự cố",
         "Soạn + import TKB toàn trường, xem theo lớp",
-        "Ký duyệt sổ chủ nhiệm, khóa sổ theo đợt",
+        "Ký sổ chủ nhiệm: tạo đợt ký - duyệt/từ chối kèm lý do - ký hàng loạt; GVCN không tự ký",
+        "Chỉ BGH phân công GVCN & lớp năm học",
         "Trợ lý AI điều hành hỏi-đáp trên dữ liệu thật",
     ], img="23-bgh-radar.png", img_caption="Radar cảnh báo sớm toàn trường")
 
     content_slide(prs, "Phụ huynh & Học sinh", [
-        "Phụ huynh: thông báo lớp, nhắn tin 2 chiều với GVCN",
+        "Phụ huynh nhiều con: bộ chọn con trên đầu portal, dữ liệu tách theo từng em",
+        "Nhắn tin 2 chiều với GVCN: soạn mới + trả lời, thấy cả tin đã gửi",
         "Đặt lịch hẹn trực tuyến - GVCN xác nhận",
-        "Đăng ký hoạt động giáo dục cho con",
+        "Đăng ký / báo vắng hoạt động giáo dục cho con",
         "Học sinh: TKB, điểm số, hạnh kiểu, thông báo",
-        "Portal riêng, không cần quyền vào hệ thống nội bộ",
+        "Mọi thao tác kiểm tra quyền sở hữu con ở server - không ghi được hồ sơ em khác",
     ], img="30-parent-portal.png", img_caption="Portal phụ huynh")
 
     content_slide(prs, "AI hỗ trợ - 3 tuyến dự phòng", [
@@ -330,9 +333,9 @@ def build_pptx():
 
     content_slide(prs, "Báo cáo & bảo mật", [
         "Xuất sổ chủ nhiệm, báo cáo Sở/Phòng (CSV/Excel), sổ cá nhân GV",
-        "RBAC ở 3 tầng: UI - route guard - Postgres RLS theo trường/quan hệ",
+        "RBAC 3 tầng: UI - route guard - Postgres RLS theo vai trò + quan hệ (lớp CN, tiết dạy, con mình)",
         "Audit log mọi hành động quan trọng, trang xem cho BGH",
-        "Notification in-app cho mọi hành động ảnh hưởng người khác",
+        "Trang Thông báo chung cho mọi vai trò - chuông trên topbar, đánh dấu đã đọc, link nhảy tới màn hình liên quan",
         "Responsive mobile, sắp xếp tên theo quy tắc Việt Nam",
     ], img="20-export.png", img_caption="Xuất sổ & báo cáo")
 

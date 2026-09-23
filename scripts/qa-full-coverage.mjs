@@ -408,20 +408,23 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
   const { ctx, p } = await loginCtx("gvcn@demo.scn");
   await p.goto(`${BASE}/schedule/period-log`);
   await settle(p, 2000);
-  const entryBtn = p.locator('button[aria-expanded]:has-text("Tiết")').first();
-  if ((await entryBtn.count()) > 0) {
-    await entryBtn.click();
-    await p.waitForTimeout(1200);
-    const titleInput = p.locator('input[placeholder*="Bài 5"], input[placeholder*="bài"]').first();
-    if ((await titleInput.count()) > 0) {
-      await titleInput.fill(`Bai ${MARK}`);
-      await p.locator('button:has-text("Lưu sổ đầu bài")').first().click();
-      await p.waitForTimeout(2500);
-      const { data: pl } = await db.from("period_logs").select("id")
-        .eq("lesson_title", `Bai ${MARK}`).limit(1);
-      check("W24", "Luu so dau bai -> period_logs", (pl?.length ?? 0) === 1, `rows=${pl?.length}`);
-    } else check("W24", "Luu so dau bai", false, "no title input");
-  } else check("W24", "Luu so dau bai", false, "no timetable entry");
+  // CR-016: chi tiet cua minh moi co form nhap - duyet tung row tim tiet own
+  const entryBtns = p.locator('button[aria-expanded]:has-text("Tiết")');
+  let titleInput = null;
+  for (let i = 0; i < Math.min(await entryBtns.count(), 8); i++) {
+    await entryBtns.nth(i).click();
+    await p.waitForTimeout(900);
+    const ti = p.locator('input[placeholder*="Bài 5"], input[placeholder*="bài"]').first();
+    if ((await ti.count()) > 0) { titleInput = ti; break; }
+  }
+  if (titleInput) {
+    await titleInput.fill(`Bai ${MARK}`);
+    await p.locator('button:has-text("Lưu sổ đầu bài")').first().click();
+    await p.waitForTimeout(2500);
+    const { data: pl } = await db.from("period_logs").select("id")
+      .eq("lesson_title", `Bai ${MARK}`).limit(1);
+    check("W24", "Luu so dau bai -> period_logs", (pl?.length ?? 0) === 1, `rows=${pl?.length}`);
+  } else check("W24", "Luu so dau bai", false, "no editable entry (tat ca tiet nguoi khac / khong co TKB)");
 
   // W25: GVCN nop giao an -> lesson_plans
   await p.goto(`${BASE}/academics/lesson-plans`);
@@ -438,12 +441,18 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
       await subSel.selectOption(subVal);
       await p.locator('input[placeholder*="Phương trình"], label:has-text("Tên bài dạy") input').first().fill(`GA ${MARK}`);
       await p.locator("textarea").first().fill(`Noi dung ${MARK}`);
-      await p.locator('button:has-text("Nộp giáo án")').click();
-      await p.waitForTimeout(3000);
-      const { data: lp } = await db.from("lesson_plans").select("id,status")
-        .eq("title", `GA ${MARK}`).limit(1);
-      check("W25", "Nop giao an -> lesson_plans", (lp?.length ?? 0) === 1,
-        `rows=${lp?.length} status=${lp?.[0]?.status}`);
+      const nopBtn = p.locator('button:has-text("Nộp giáo án")');
+      if (await nopBtn.isDisabled()) {
+        check("W25", "Nop giao an", false, "submit disabled - form chua du field");
+      } else {
+        await nopBtn.click();
+        // Doi server action xong (feedback text) thay vi sleep co dinh
+        await p.waitForSelector('p:has-text("Đã nộp giáo án"), p[class*="error"]', { timeout: 15000 }).catch(() => null);
+        const { data: lp } = await db.from("lesson_plans").select("id,status")
+          .eq("title", `GA ${MARK}`).limit(1);
+        check("W25", "Nop giao an -> lesson_plans", (lp?.length ?? 0) === 1,
+          `rows=${lp?.length} status=${lp?.[0]?.status}`);
+      }
     } else check("W25", "Nop giao an", false, `cls=${clsVal} sub=${subVal}`);
   } else check("W25", "Nop giao an", false, "no form");
   await ctx.close();
@@ -548,7 +557,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
 {
   const { ctx, p } = await loginCtx("totruong@demo.scn");
   const { data: lp } = await db.from("lesson_plans").select("id,title,status")
-    .eq("status", "submitted").limit(1);
+    .eq("status", "submitted");
   await p.goto(`${BASE}/team/lesson-plans`);
   await settle(p, 1500);
   if (lp?.length) {
@@ -560,9 +569,12 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
       const confirmBtn = p.locator('button:has-text("Duyệt")').first();
       if ((await confirmBtn.count()) > 0) await confirmBtn.click();
       await p.waitForTimeout(2500);
-      const { data: after } = await db.from("lesson_plans").select("status").eq("id", lp[0].id).single();
+      // UI duyet row dau tien trong bang - kiem bat ky plan nao chuyen sang team_approved
+      const ids = lp.map((x) => x.id);
+      const { data: after } = await db.from("lesson_plans").select("id,status").in("id", ids);
+      const approved = (after ?? []).filter((x) => x.status === "team_approved").length;
       check("W29", "To truong duyet giao an -> team_approved",
-        after?.status === "team_approved", `status=${after?.status}`);
+        approved >= 1, `moved=${approved}/${ids.length}`);
     } else check("W29", "To truong duyet giao an", false, "no approve btn");
   } else check("W29", "To truong duyet giao an", true, "khong co submitted");
   await ctx.close();
@@ -572,17 +584,19 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/r
 {
   const { ctx, p } = await loginCtx("bgh@demo.scn");
   const { data: lp } = await db.from("lesson_plans").select("id,status")
-    .eq("status", "team_approved").limit(1);
+    .eq("status", "team_approved");
   if (lp?.length) {
     // BGH review o route nao? tim page co LessonPlanBoard mode=bgh
     await p.goto(`${BASE}/school/approvals`);
     await settle(p, 1500);
-    const approveBtn = p.locator('button:has-text("Duyệt")').first();
+    const approveBtn = p.locator('button[title="Duyệt"]').first();
     if ((await approveBtn.count()) > 0) {
       await approveBtn.click();
       await p.waitForTimeout(2500);
-      const { data: after } = await db.from("lesson_plans").select("status").eq("id", lp[0].id).single();
-      check("W30", "BGH duyet giao an -> approved", after?.status === "approved", `status=${after?.status}`);
+      const ids = lp.map((x) => x.id);
+      const { data: after } = await db.from("lesson_plans").select("id,status").in("id", ids);
+      const approved = (after ?? []).filter((x) => x.status === "approved").length;
+      check("W30", "BGH duyet giao an -> approved", approved >= 1, `moved=${approved}/${ids.length}`);
     } else check("W30", "BGH duyet giao an", false, "no approve btn at /school/approvals");
   } else check("W30", "BGH duyet giao an", true, "khong co team_approved");
   await ctx.close();

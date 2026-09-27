@@ -1,5 +1,5 @@
 /**
- * Tạo tài khoản demo cho vai trò mới: pht, ke_toan, phong_gd, ubnd.
+ * Tạo tài khoản demo cho vai trò mới: pht, ke_toan, ubnd.
  * Usage: node scripts/seed-new-roles.mjs
  */
 import { createClient } from "@supabase/supabase-js";
@@ -44,7 +44,6 @@ const orgByType = Object.fromEntries(orgs.map((o) => [o.type, o.id]));
 const users = [
   ["pht@demo.scn", "pht", "Trần Thị Phó Hiệu", SID, CAMPUS_PH, null],
   ["ketoan@demo.scn", "ke_toan", "Nguyễn Thị Kế Toán", SID, null, null],
-  ["phonggd@demo.scn", "phong_gd", "Lê Lãnh Đạo Phòng", null, null, orgByType.phong],
   ["ubnd@demo.scn", "ubnd", "Phạm Cán Bộ UBND", null, null, orgByType.ubnd],
 ];
 

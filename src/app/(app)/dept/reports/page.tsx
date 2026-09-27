@@ -12,7 +12,7 @@ function addDays(isoDate: string, days: number): string {
 }
 
 export default async function DeptReportsPage() {
-  const profile = await requireRoles(["so_gd", "phong_gd", "ubnd", "admin"]);
+  const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
 
   const { data: orgData } = await supabase
@@ -26,14 +26,7 @@ export default async function DeptReportsPage() {
   }[];
 
   let scopedOrgIds: Set<string> | null = null;
-  if (profile.role === "phong_gd" && profile.org_unit_id) {
-    scopedOrgIds = new Set(
-      orgs
-        .filter((o) => o.parent_id === profile.org_unit_id)
-        .map((o) => o.id)
-        .concat(profile.org_unit_id),
-    );
-  } else if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (profile.role === "ubnd" && profile.org_unit_id) {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 

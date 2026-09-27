@@ -6,7 +6,6 @@ export type Role =
   | "pht"
   | "ke_toan"
   | "so_gd"
-  | "phong_gd"
   | "ubnd"
   | "phu_huynh"
   | "hoc_sinh"

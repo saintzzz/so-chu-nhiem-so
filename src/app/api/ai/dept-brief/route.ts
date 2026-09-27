@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (
     !profile ||
-    !["so_gd", "phong_gd", "ubnd", "admin"].includes(profile.role)
+    !["so_gd", "ubnd", "admin"].includes(profile.role)
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     profile,
     kind: "dept-brief",
     system:
-      "Bạn là trợ lý phân tích cho cán bộ quản lý giáo dục (Sở/Phòng GD&ĐT, UBND). Viết báo cáo ngắn gọn, khách quan, theo số liệu. Không emoji.",
+      "Bạn là trợ lý phân tích cho cán bộ quản lý giáo dục (Sở GD&ĐT, UBND cấp xã). Viết báo cáo ngắn gọn, khách quan, theo số liệu. Không emoji.",
     prompt: `Viết bản tin tổng hợp cho cán bộ quản lý giáo dục từ số liệu các trường (JSON): ${JSON.stringify(perSchool)}.
 
 Viết 4-6 nhận xét: tổng quan quy mô, trường có chuyên cần tốt/kém nhất (nêu tên + %), trường cần hỗ trợ, 1-2 đề xuất hành động cho cấp quản lý. Mỗi nhận xét 1 dòng, không đánh số.`,

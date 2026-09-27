@@ -28,7 +28,6 @@ const ROLES = {
   phuhuynh: "phuhuynh@demo.scn",
   hocsinh: "hocsinh@demo.scn",
   sogd: "sogd@demo.scn",
-  phonggd: "phonggd@demo.scn",
   ubnd: "ubnd@demo.scn",
 };
 
@@ -91,7 +90,6 @@ const SMOKE = {
   phuhuynh: ["/portal/parent"],
   hocsinh: ["/portal/student","/portal/student/hoc-ba"],
   sogd: ["/dept/dashboard","/dept/wards","/dept/reports","/dept/facilities","/dept/data","/dept/users"],
-  phonggd: ["/dept/dashboard","/dept/wards","/dept/reports","/dept/facilities"],
   ubnd: ["/dept/dashboard","/dept/wards","/dept/reports","/dept/facilities"],
 };
 
@@ -117,7 +115,6 @@ const DENY = [
   ["hocsinh", "/dashboard"], ["hocsinh", "/register/audit"], ["phuhuynh", "/school/users"],
   ["gvcn", "/school/users"], ["gvcn", "/dept/dashboard"], ["pht", "/register/roster"],
   ["totruong", "/academics/lesson-plans"], ["hocsinh", "/academics/support"],
-  ["phonggd", "/dept/data"], ["phonggd", "/dept/users"],
   ["ubnd", "/dept/data"], ["ubnd", "/dept/users"],
   ["ketoan", "/register/roster"], ["ubnd", "/school/dashboard"], ["totruong", "/register/audit"],
 ];

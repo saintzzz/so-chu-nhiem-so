@@ -244,18 +244,6 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
-  phong_gd: [
-    {
-      label: "Quản trị",
-      children: [
-        { label: "Dashboard Phòng Giáo dục", href: "/dept/dashboard" },
-        { label: "Đơn vị hành chính", href: "/dept/wards" },
-        { label: "Báo cáo tổng hợp", href: "/dept/reports" },
-        { label: "Cơ sở vật chất", href: "/dept/facilities" },
-      ],
-    },
-    { label: "Hồ sơ cá nhân", href: "/profile" },
-  ],
   ubnd: [
     {
       label: "Quản trị",
@@ -303,7 +291,6 @@ export const ROLE_LABELS: Record<Role, string> = {
   pht: "Phó Hiệu trưởng (cơ sở)",
   ke_toan: "Kế toán",
   so_gd: "Quản trị viên Sở Giáo dục và Đào tạo",
-  phong_gd: "Phòng Giáo dục và Đào tạo",
   ubnd: "Cán bộ giáo dục UBND",
   phu_huynh: "Phụ huynh",
   hoc_sinh: "Học sinh",

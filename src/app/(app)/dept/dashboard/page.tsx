@@ -22,12 +22,11 @@ function addDays(isoDate: string, days: number): string {
 }
 
 export default async function DeptDashboardPage() {
-  const profile = await requireRoles(["so_gd", "phong_gd", "ubnd", "admin"]);
+  const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
   const EMULATION_PERIOD = currentPeriodVN();
 
-  // Phạm vi theo cấp: so_gd xem toàn tỉnh; phong_gd xem các UBND/xã con;
-  // ubnd chỉ xem trường thuộc đơn vị mình.
+  // Phạm vi theo cấp: so_gd xem toàn tỉnh; ubnd chỉ xem trường thuộc đơn vị mình.
   const { data: orgData } = await supabase
     .from("org_units")
     .select("id,type,name,parent_id");
@@ -39,14 +38,7 @@ export default async function DeptDashboardPage() {
   }[];
 
   let scopedOrgIds: Set<string> | null = null;
-  if (profile.role === "phong_gd" && profile.org_unit_id) {
-    scopedOrgIds = new Set(
-      orgs
-        .filter((o) => o.parent_id === profile.org_unit_id)
-        .map((o) => o.id)
-        .concat(profile.org_unit_id),
-    );
-  } else if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (profile.role === "ubnd" && profile.org_unit_id) {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
@@ -256,41 +248,17 @@ export default async function DeptDashboardPage() {
       </h2>
       <DataTable columns={["Cấp", "Đơn vị", "Trực thuộc", "Số trường"]}>
         {orgs
-          .filter(
-            (o) =>
-              !scopedOrgIds ||
-              scopedOrgIds.has(o.id) ||
-              (profile.role === "phong_gd" &&
-                o.id === profile.org_unit_id),
-          )
+          .filter((o) => !scopedOrgIds || scopedOrgIds.has(o.id))
           .map((o) => {
             const schoolCount = allSchools.filter(
-              (s) =>
-                s.org_unit_id === o.id ||
-                (o.type === "phong" &&
-                  s.org_unit_id &&
-                  orgs.find(
-                    (x) => x.id === s.org_unit_id && x.parent_id === o.id,
-                  )),
+              (s) => s.org_unit_id === o.id,
             ).length;
             return (
               <tr key={o.id}>
                 <td>
                   <StatusBadge
-                    label={
-                      o.type === "so"
-                        ? "Sở GD&ĐT"
-                        : o.type === "phong"
-                          ? "Phòng GD&ĐT"
-                          : "UBND"
-                    }
-                    tone={
-                      o.type === "so"
-                        ? "primary"
-                        : o.type === "phong"
-                          ? "warning"
-                          : "muted"
-                    }
+                    label={o.type === "so" ? "Sở GD&ĐT" : "UBND"}
+                    tone={o.type === "so" ? "primary" : "muted"}
                   />
                 </td>
                 <td className="font-medium">{o.name}</td>

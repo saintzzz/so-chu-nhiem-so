@@ -215,9 +215,9 @@ Kế toán chỉ tiếp cận dữ liệu hành chính - tài chính, **không**
 
 ---
 
-## 6. Sở GD&ĐT / Phòng GD&ĐT / UBND
+## 6. Sở GD&ĐT / UBND cấp xã
 
-- **Dashboard cấp Sở/Phòng/địa bàn**: tổng hợp các trường - quy mô, tỷ lệ chuyên cần, sự cố, cảnh báo; nút **AI bản tin** tổng hợp.
+- **Dashboard cấp Sở/địa bàn UBND xã**: tổng hợp các trường - quy mô, tỷ lệ chuyên cần, sự cố, cảnh báo; nút **AI bản tin** tổng hợp. (Theo chính quyền địa phương 2 cấp - Phòng GD&ĐT cấp huyện đã bãi bỏ từ 1/7/2025.)
 - **Quản trị người dùng** (Sở): tài khoản các trường.
 - **Quản trị dữ liệu** (Sở): kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/phụ huynh, liên kết mồ côi.
 

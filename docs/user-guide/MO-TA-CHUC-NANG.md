@@ -25,7 +25,7 @@ Phiên bản: 1.0 · Ngày: 21/09/2026 · Môi trường: https://so-chu-nhiem-s
 | Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
 | Kế toán | ketoan@demo.scn | Nhân sự, đánh giá cơ sở vật chất TT15 |
 | Sở GD&ĐT | sogd@demo.scn | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
-| Phòng GD&ĐT / UBND | phonggd@demo.scn, ubnd@demo.scn | Dashboard địa bàn (read-only) |
+| UBND cấp xã | ubnd@demo.scn | Dashboard địa bàn (read-only) |
 | Phụ huynh | phuhuynh@demo.scn | Con mình: thông báo, tin nhắn, lịch hẹn, đăng ký hoạt động |
 | Học sinh | hocsinh@demo.scn | Bản thân: thời khóa biểu, điểm, hạnh kiểm, thông báo |
 

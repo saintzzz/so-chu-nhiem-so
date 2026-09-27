@@ -105,17 +105,17 @@ const MATRIX = {
   "/team/meetings": ["to_truong"],
   "/team/review": ["to_truong"],
   "/team/teachers": ["to_truong"],
-  "/dept/dashboard": ["so_gd", "phong_gd", "ubnd"],
+  "/dept/dashboard": ["so_gd", "ubnd"],
   "/dept/data": ["so_gd"],
-  "/dept/facilities": ["so_gd", "phong_gd", "ubnd"],
-  "/dept/reports": ["so_gd", "phong_gd", "ubnd"],
+  "/dept/facilities": ["so_gd", "ubnd"],
+  "/dept/reports": ["so_gd", "ubnd"],
   "/dept/users": ["so_gd"],
-  "/dept/wards": ["so_gd", "phong_gd", "ubnd"],
+  "/dept/wards": ["so_gd", "ubnd"],
   "/portal/parent": ["phu_huynh"],
   "/portal/student": ["hoc_sinh"],
   "/portal/student/hoc-ba": ["hoc_sinh"],
-  "/profile": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "phong_gd", "ubnd"],
-  "/notifications": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "phong_gd", "ubnd"],
+  "/profile": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "ubnd"],
+  "/notifications": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "ubnd"],
 };
 // Route alias hop le (redirect duoc cho phep)
 const ALIASES = { "/records/history": "/register/audit" };
@@ -123,13 +123,13 @@ const ALIASES = { "/records/history": "/register/audit" };
 const ROLE_EMAIL = {
   gvcn: "gvcn@demo.scn", gvbm: "gvbm@demo.scn", to_truong: "totruong@demo.scn",
   bgh: "bgh@demo.scn", pht: "pht@demo.scn", ke_toan: "ketoan@demo.scn",
-  so_gd: "sogd@demo.scn", phong_gd: "phonggd@demo.scn", ubnd: "ubnd@demo.scn",
+  so_gd: "sogd@demo.scn", ubnd: "ubnd@demo.scn",
   phu_huynh: "phuhuynh@demo.scn", hoc_sinh: "hocsinh@demo.scn",
 };
 const ROLE_HOME = {
   gvcn: "/dashboard", gvbm: "/academics/grades", to_truong: "/team/home",
   bgh: "/school/dashboard", pht: "/school/dashboard", ke_toan: "/school/staff",
-  so_gd: "/dept/dashboard", phong_gd: "/dept/dashboard", ubnd: "/dept/dashboard",
+  so_gd: "/dept/dashboard", ubnd: "/dept/dashboard",
   phu_huynh: "/portal/parent", hoc_sinh: "/portal/student",
 };
 
@@ -402,7 +402,7 @@ const MARK = `FULL-${Date.now()}`;
   check("W21", "Ke toan equipment", /thiết bị|tài sản|cơ sở/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
 }
-for (const [role, route] of [["so_gd", "/dept/dashboard"], ["phong_gd", "/dept/reports"], ["ubnd", "/dept/facilities"]]) {
+for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facilities"]]) {
   const { ctx, p } = await loginCtx(ROLE_EMAIL[role]);
   await p.goto(`${BASE}${route}`);
   await settle(p, 1200);

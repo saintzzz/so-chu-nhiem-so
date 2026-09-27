@@ -245,12 +245,12 @@ def build_pptx():
     # Roles table
     s = prs.slides.add_slide(prs.slide_layouts[6])
     t = txbox(s, Inches(0.5), Inches(0.3), SW - Inches(1), Inches(0.8))
-    add_text(t.text_frame, "11 vai trò - phạm vi dữ liệu", size=28, bold=True, color=ACCENT)
+    add_text(t.text_frame, "10 vai trò - phạm vi dữ liệu", size=28, bold=True, color=ACCENT)
     roles = [
         ("GVCN", "Lớp chủ nhiệm + lịch dạy cá nhân"), ("GVBM", "Điểm/sổ đầu bài đúng lớp-môn được phân công"),
         ("Tổ trưởng", "Duyệt giáo án, đánh giá năng lực"), ("BGH", "Toàn trường: ký sổ, phân công, duyệt, radar"),
         ("PHT", "Vận hành trường - không ký sổ/phân công"), ("Kế toán", "Nhân sự, CSVC, NQ37 - không xem hồ sơ HS"),
-        ("Sở GD&ĐT", "Tổng hợp nhiều trường, quản trị"), ("Phòng GD/UBND", "Dashboard địa bàn"),
+        ("Sở GD&ĐT", "Tổng hợp nhiều trường, quản trị"), ("UBND cấp xã", "Dashboard địa bàn"),
         ("Phụ huynh", "Con mình (nhiều con): tin nhắn, lịch hẹn, đăng ký"), ("Học sinh", "TKB, điểm, hạnh kiểu của mình"),
     ]
     tb = s.shapes.add_table(5, 4, Inches(0.6), Inches(1.3), SW - Inches(1.2), Inches(5.2)).table

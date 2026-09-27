@@ -11,7 +11,6 @@ export const ROLE_HOME: Record<Role, string> = {
   pht: "/school/dashboard",
   ke_toan: "/school/staff",
   so_gd: "/dept/dashboard",
-  phong_gd: "/dept/dashboard",
   ubnd: "/dept/dashboard",
   phu_huynh: "/portal/parent",
   hoc_sinh: "/portal/student",
@@ -26,7 +25,6 @@ export const STAFF_ROLES: Role[] = [
   "pht",
   "ke_toan",
   "so_gd",
-  "phong_gd",
   "ubnd",
   "admin",
 ];

@@ -5,7 +5,7 @@ Nguồn pháp lý:
 - **TT 32/2020/TT-BGDĐT** - Điều lệ trường THCS, THPT và trường phổ thông có nhiều cấp học (Điều 11-16, 27-38, 44)
 - **TT 28/2009/TT-BGDĐT** (sửa bởi TT 15/2017) - Chế độ làm việc GV phổ thông, nhiệm vụ GVCN (Điều 4)
 - **TT 22/2021/TT-BGDĐT** - Đánh giá kết quả học tập và rèn luyện của HS THCS/THPT
-- **TT 12/2020/TT-BGDĐT** (nay là TT 15/2025 + TT 45/2026) - Chức năng Sở/Phòng GD&ĐT
+- **NĐ 142/2025/NĐ-CP + TT 13,15/2025/TT-BGDĐT** - Chính quyền địa phương 2 cấp: Sở GD&ĐT (cấp tỉnh) + UBND cấp xã (Phòng VHXH). Phòng GD&ĐT cấp huyện đã bãi bỏ (CR-017)
 
 ## 1. Vai trò app → vai trò thực tế
 
@@ -18,7 +18,6 @@ Nguồn pháp lý:
 | `pht` | Phó hiệu trưởng phụ trách | Điều 11 Điều lệ | Tách riêng khỏi `bgh` - quản lý vận hành, không ký duyệt sổ |
 | `ke_toan` | Kế toán / cán bộ tài chính trường | Điều 15 Điều lệ (tổ văn phòng) | Quản lý tài sản, thiết bị, nhân sự hành chính - không tiếp cận hồ sơ học tập HS |
 | `so_gd` | Cán bộ Sở GD&ĐT | TT 12/2020, 15/2025 | Cơ quan quản lý nhà nước cấp tỉnh |
-| `phong_gd` | Cán bộ Phòng GD&ĐT | TT 12/2020, 15/2025 | Cơ quan quản lý nhà nước cấp huyện |
 | `ubnd` | Lãnh đạo UBND | Luật Tổ chức chính quyền địa phương | Giám sát, nhận báo cáo - không can thiệp nghiệp vụ trường |
 | `phu_huynh` | Cha mẹ HS / Ban đại diện CMHS | Điều 44 Điều lệ | |
 | `hoc_sinh` | Học sinh | Điều 34-38 Điều lệ | |
@@ -91,7 +90,7 @@ Nguồn pháp lý:
 | Báo cáo tài chính theo NQ37 | `school/nq37` | CRUD |
 | **Không** tiếp cận hồ sơ/dữ liệu học tập HS | `school/students`, `records/*`, `academics/*` | Deny (theo CR-016) |
 
-### Sở/Phòng GD&ĐT + UBND (TT 12/2020, TT 15/2025)
+### Sở GD&ĐT + UBND cấp xã (NĐ 142/2025, TT 13&15/2025 - chính quyền 2 cấp)
 
 | Nhiệm vụ pháp lý | Phân hệ app | Quyền |
 |---|---|---|
@@ -145,7 +144,7 @@ Nguồn pháp lý:
 | `school/staff`, `school/campuses`, `school/equipment`, `school/nq37` | bgh, pht, ke_toan |
 | `school/*` (còn lại) | bgh, pht |
 | `dept/users`, `dept/data` | so_gd |
-| `dept/*` (còn lại) | so_gd, phong_gd, ubnd |
+| `dept/*` (còn lại) | so_gd, ubnd |
 | `portal/parent` | phu_huynh |
 | `portal/student`, `portal/student/hoc-ba` | hoc_sinh |
 | `profile`, `notifications` | mọi role trong trường (trừ phu_huynh, hoc_sinh) |

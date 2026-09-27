@@ -11,7 +11,7 @@ const ORG_TYPE: Record<string, string> = {
 };
 
 export default async function DeptWardsPage() {
-  const profile = await requireRoles(["so_gd", "phong_gd", "ubnd", "admin"]);
+  const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
 
   const { data: orgData } = await supabase
@@ -26,13 +26,9 @@ export default async function DeptWardsPage() {
   }[];
   const orgName = new Map(orgs.map((o) => [o.id, o.name]));
 
-  // Phạm vi: so_gd thấy tất cả đơn vị con; phong_gd thấy đơn vị con + chính mình; ubnd chỉ mình.
+  // Phạm vi: so_gd thấy tất cả đơn vị con; ubnd chỉ mình.
   let visible: typeof orgs;
-  if (profile.role === "phong_gd" && profile.org_unit_id) {
-    visible = orgs.filter(
-      (o) => o.parent_id === profile.org_unit_id || o.id === profile.org_unit_id,
-    );
-  } else if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (profile.role === "ubnd" && profile.org_unit_id) {
     visible = orgs.filter((o) => o.id === profile.org_unit_id);
   } else {
     visible = orgs;
@@ -71,7 +67,7 @@ export default async function DeptWardsPage() {
               <td>
                 <StatusBadge
                   label={ORG_TYPE[o.type] ?? o.type}
-                  tone={o.type === "so" ? "primary" : o.type === "phong" ? "success" : "muted"}
+                  tone={o.type === "so" ? "primary" : "muted"}
                 />
               </td>
               <td className="text-muted-foreground">

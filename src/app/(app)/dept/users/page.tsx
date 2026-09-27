@@ -11,7 +11,6 @@ import type { Profile, Role, School } from "@/types";
 const ROLE_TONES: Record<Role, "primary" | "success" | "warning" | "muted"> = {
   admin: "primary",
   so_gd: "primary",
-  phong_gd: "primary",
   ubnd: "primary",
   bgh: "warning",
   pht: "warning",

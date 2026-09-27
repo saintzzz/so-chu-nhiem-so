@@ -35,7 +35,7 @@ const DEMO_GROUPS: {
     label: "Cấp quản lý",
     accounts: [
       { role: "Sở Giáo dục và Đào tạo", email: "sogd@demo.scn" },
-      { role: "Phòng Giáo dục và Đào tạo", email: "phonggd@demo.scn" },
+
       { role: "UBND địa bàn", email: "ubnd@demo.scn" },
     ],
   },

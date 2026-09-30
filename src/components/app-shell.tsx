@@ -35,7 +35,15 @@ export function AppShell({
               <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
                 <GraduationCap className="size-4" />
               </span>
-              <span className="text-sm font-semibold">Sổ Chủ Nhiệm Số</span>
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold leading-tight">Sổ Chủ Nhiệm Số</span>
+                <a
+                  href="https://vieschool.com"
+                  className="text-[10px] leading-tight text-muted-foreground hover:text-primary hover:underline"
+                >
+                  sản phẩm của VieSchool
+                </a>
+              </span>
             </div>
           )}
           <button
@@ -67,7 +75,15 @@ export function AppShell({
                 <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <GraduationCap className="size-4" />
                 </span>
-                <span className="text-sm font-semibold">Sổ Chủ Nhiệm Số</span>
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold leading-tight">Sổ Chủ Nhiệm Số</span>
+                  <a
+                    href="https://vieschool.com"
+                    className="text-[10px] leading-tight text-muted-foreground hover:text-primary hover:underline"
+                  >
+                    sản phẩm của VieSchool
+                  </a>
+                </span>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}

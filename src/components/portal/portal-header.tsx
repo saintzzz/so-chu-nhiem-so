@@ -29,7 +29,7 @@ export function PortalHeader({
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">Sổ Chủ Nhiệm Số</p>
           <p className="truncate text-xs text-muted-foreground">
-            {title} · {userName}
+            {title} - {userName}
           </p>
         </div>
         <button

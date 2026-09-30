@@ -14,8 +14,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sổ Chủ Nhiệm Số",
-  description: "Nền tảng số hóa công tác chủ nhiệm cho trường học",
+  title: "Sổ Chủ Nhiệm Số - VieSchool",
+  description: "Nền tảng số hóa công tác chủ nhiệm cho trường học - sản phẩm của VieSchool",
 };
 
 export default function RootLayout({

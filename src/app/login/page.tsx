@@ -17,8 +17,15 @@ export default async function LoginPage() {
           <span className="text-xl font-semibold">Sổ Chủ Nhiệm Số</span>
         </div>
         <h1 className="text-center text-lg font-semibold">Đăng nhập hệ thống</h1>
-        <p className="mt-1 mb-6 text-center text-sm text-muted-foreground">
+        <p className="mt-1 text-center text-sm text-muted-foreground">
           Nền tảng số hóa công tác chủ nhiệm cho trường học
+        </p>
+        <p className="mt-0.5 mb-6 text-center text-xs text-muted-foreground">
+          Sản phẩm của{" "}
+          <a href="https://vieschool.com" className="font-medium text-primary hover:underline">
+            VieSchool
+          </a>{" "}
+          - hệ sinh thái số cho trường học Việt Nam
         </p>
         <LoginForm />
       </div>

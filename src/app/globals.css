@@ -6,22 +6,22 @@
 
 /* Design tokens extracted from mockup-so-chu-nhiem.vercel.app */
 :root {
-  --color-bg: #fffff5;
-  --color-surface: #ffffff;
-  --color-border-token: #e7e2d6;
-  --color-text: #1a2233;
-  --color-text-muted: #6b7280;
-  --color-primary-token: #1e3a5f;
-  --color-primary-hover: #16283f;
-  --color-accent-token: #b91c1c;
-  --color-success: #059669;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
-  --color-success-bg: #ecfdf5;
-  --color-warning-bg: #fffbeb;
-  --color-error-bg: #fef2f2;
-  --color-accent-bg: #fef2f2;
-  --primary-bg: #eaf0f7;
+  --color-bg: #0b1224;
+  --color-surface: #121b33;
+  --color-border-token: #2a3a5e;
+  --color-text: #f4f6fb;
+  --color-text-muted: #9ba6c4;
+  --color-primary-token: #f2c957;
+  --color-primary-hover: #e0b63f;
+  --color-accent-token: #f2c957;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-success-bg: rgba(52, 211, 153, 0.15);
+  --color-warning-bg: rgba(251, 191, 36, 0.15);
+  --color-error-bg: rgba(248, 113, 113, 0.15);
+  --color-accent-bg: rgba(242, 201, 87, 0.15);
+  --primary-bg: #1a2547;
   --color-primary-bg: var(--primary-bg);
 
   --font-display: "Figtree", system-ui, sans-serif;
@@ -37,45 +37,45 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  --shadow-sm-token: 0 1px 2px rgba(26, 34, 51, 0.06);
-  --shadow-md-token: 0 4px 12px rgba(26, 34, 51, 0.08);
-  --shadow-lg-token: 0 12px 32px rgba(26, 34, 51, 0.12);
+  --shadow-sm-token: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md-token: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg-token: 0 12px 32px rgba(0, 0, 0, 0.5);
 
   /* shadcn semantic mapping */
-  --background: #fffff5;
-  --foreground: #1a2233;
-  --card: #ffffff;
-  --card-foreground: #1a2233;
-  --popover: #ffffff;
-  --popover-foreground: #1a2233;
-  --primary: #1e3a5f;
-  --primary-foreground: #ffffff;
-  --secondary: #eaf0f7;
-  --secondary-foreground: #1e3a5f;
-  --muted: #f6f4ec;
-  --muted-foreground: #6b7280;
-  --accent: #eaf0f7;
-  --accent-foreground: #1a2233;
-  --destructive: #dc2626;
-  --border: #e7e2d6;
-  --input: #e7e2d6;
-  --ring: #1e3a5f;
+  --background: #0b1224;
+  --foreground: #f4f6fb;
+  --card: #121b33;
+  --card-foreground: #f4f6fb;
+  --popover: #121b33;
+  --popover-foreground: #f4f6fb;
+  --primary: #f2c957;
+  --primary-foreground: #0b1224;
+  --secondary: #1a2547;
+  --secondary-foreground: #d6dcea;
+  --muted: #161f38;
+  --muted-foreground: #9ba6c4;
+  --accent: #1a2547;
+  --accent-foreground: #f4f6fb;
+  --destructive: #f87171;
+  --border: #2a3a5e;
+  --input: #2a3a5e;
+  --ring: #f2c957;
   --radius: 0.5rem;
 
-  --chart-1: #1e3a5f;
-  --chart-2: #059669;
-  --chart-3: #d97706;
-  --chart-4: #b91c1c;
-  --chart-5: #6b7280;
+  --chart-1: #f2c957;
+  --chart-2: #34d399;
+  --chart-3: #60a5fa;
+  --chart-4: #fb7185;
+  --chart-5: #9ba6c4;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1a2233;
-  --sidebar-primary: #1e3a5f;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f6f4ec;
-  --sidebar-accent-foreground: #1a2233;
-  --sidebar-border: #e7e2d6;
-  --sidebar-ring: #1e3a5f;
+  --sidebar: #121b33;
+  --sidebar-foreground: #f4f6fb;
+  --sidebar-primary: #f2c957;
+  --sidebar-primary-foreground: #0b1224;
+  --sidebar-accent: #1a2547;
+  --sidebar-accent-foreground: #f4f6fb;
+  --sidebar-border: #2a3a5e;
+  --sidebar-ring: #f2c957;
 }
 
 @theme inline {
@@ -113,12 +113,12 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-success: #059669;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
-  --color-success-bg: #ecfdf5;
-  --color-warning-bg: #fffbeb;
-  --color-error-bg: #fef2f2;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-success-bg: rgba(52, 211, 153, 0.15);
+  --color-warning-bg: rgba(251, 191, 36, 0.15);
+  --color-error-bg: rgba(248, 113, 113, 0.15);
   --color-primary-bg: var(--primary-bg);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -146,18 +146,18 @@ body {
 .theme-fluent {
   --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-sans);
-  --background: #faf9f8;
-  --primary: #0f6cbd;
-  --primary-foreground: #ffffff;
-  --primary-bg: #ebf3fc;
-  --secondary: #f5f3f1;
-  --secondary-foreground: #0f6cbd;
-  --accent: #ebf3fc;
-  --accent-foreground: #0f6cbd;
-  --muted: #f5f3f1;
-  --border: #e1dfdd;
-  --input: #d1d1d1;
-  --ring: #0f6cbd;
+  --background: #0b1224;
+  --primary: #f2c957;
+  --primary-foreground: #0b1224;
+  --primary-bg: rgba(242, 201, 87, 0.14);
+  --secondary: #1a2547;
+  --secondary-foreground: #f2c957;
+  --accent: #1a2547;
+  --accent-foreground: #f2c957;
+  --muted: #161f38;
+  --border: #2a3a5e;
+  --input: #3a4a70;
+  --ring: #f2c957;
   --radius: 0.25rem;
   --shadow-sm-token: 0 0.3px 0.9px rgba(0, 0, 0, 0.11), 0 1.6px 3.6px rgba(0, 0, 0, 0.13);
   --shadow-md-token: 0 0.6px 1.8px rgba(0, 0, 0, 0.11), 0 3.2px 7.2px rgba(0, 0, 0, 0.13);
@@ -176,7 +176,7 @@ body {
   --font-heading: var(--font-sans);
   --background: #fdf8fd;
   --primary: #6750a4;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #0b1224;
   --primary-bg: #eaddff;
   --secondary: #e8def8;
   --secondary-foreground: #4a4458;
@@ -204,7 +204,7 @@ body {
   --font-heading: var(--font-sans);
   --background: #f5f5f7;
   --primary: #007aff;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #0b1224;
   --primary-bg: #e5f1ff;
   --secondary: #e8e8ed;
   --secondary-foreground: #1d1d1f;
@@ -234,14 +234,14 @@ body {
   transition: background-color 0.1s ease-out;
 }
 .theme-fluent tbody tr:hover {
-  background-color: #f5f3f1;
+  background-color: #161f38;
 }
 .theme-fluent thead th {
   text-transform: none;
   letter-spacing: normal;
   font-weight: 600;
   font-size: 0.75rem;
-  color: #424242;
+  color: #9ba6c4;
 }
 .theme-fluent td {
   padding-top: 0.375rem;
@@ -251,8 +251,8 @@ body {
 .theme-fluent select,
 .theme-fluent textarea {
   border-radius: 4px;
-  border-color: #d1d1d1;
-  box-shadow: inset 0 -1px 0 #8a8886;
+  border-color: #2a3a5e;
+  box-shadow: inset 0 -1px 0 #3a4a70;
 }
 .theme-fluent input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,
 .theme-fluent select:focus,
@@ -266,8 +266,8 @@ body {
 /* Fluent CommandBar: toolbars become a surfaced strip with a subtle
    bottom divider — matches Microsoft 365 admin consoles. */
 .theme-fluent [data-slot="toolbar"] {
-  background-color: #ffffff;
-  border: 1px solid #e1dfdd;
+  background-color: #121b33;
+  border: 1px solid #2a3a5e;
   border-radius: 4px;
   padding: 0.5rem 0.75rem;
   box-shadow: 0 0.3px 0.9px rgba(0, 0, 0, 0.06);

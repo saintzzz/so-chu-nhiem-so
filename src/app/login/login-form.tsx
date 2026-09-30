@@ -5,46 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
-const DEMO_GROUPS: {
-  label: string;
-  accounts: { role: string; email: string }[];
-}[] = [
-  {
-    label: "Trường THCS",
-    accounts: [
-      { role: "Giáo viên chủ nhiệm", email: "gvcn@demo.scn" },
-      { role: "Giáo viên bộ môn", email: "gvbm@demo.scn" },
-      { role: "Tổ trưởng chuyên môn", email: "totruong@demo.scn" },
-      { role: "Ban Giám Hiệu", email: "bgh@demo.scn" },
-      { role: "Phó hiệu trưởng", email: "pht@demo.scn" },
-      { role: "Kế toán", email: "ketoan@demo.scn" },
-      { role: "Phụ huynh", email: "phuhuynh@demo.scn" },
-      { role: "Học sinh", email: "hocsinh@demo.scn" },
-    ],
-  },
-  {
-    label: "Trường tiểu học",
-    accounts: [
-      { role: "Giáo viên chủ nhiệm", email: "gvcn-th@demo.scn" },
-      { role: "Ban Giám Hiệu", email: "bgh-th@demo.scn" },
-      { role: "Phụ huynh", email: "phuhuynh-th@demo.scn" },
-      { role: "Học sinh", email: "hocsinh-th@demo.scn" },
-    ],
-  },
-  {
-    label: "Cấp quản lý",
-    accounts: [
-      { role: "Sở Giáo dục và Đào tạo", email: "sogd@demo.scn" },
-
-      { role: "UBND địa bàn", email: "ubnd@demo.scn" },
-    ],
-  },
-];
-
 export function LoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("gvcn@demo.scn");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -81,6 +45,7 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+          placeholder="vd: gvcn@demo.scn"
           autoComplete="username"
           required
         />
@@ -101,33 +66,6 @@ export function LoginForm() {
           autoComplete="current-password"
           required
         />
-      </div>
-      <div>
-        <label
-          htmlFor="demo-role"
-          className="mb-1.5 block text-sm font-medium"
-        >
-          Đăng nhập với vai trò (demo)
-        </label>
-        <select
-          id="demo-role"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-        >
-          {DEMO_GROUPS.map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.accounts.map((a) => (
-                <option key={a.email} value={a.email}>
-                  {a.role}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Tài khoản demo - mật khẩu mặc định: demo1234
-        </p>
       </div>
       {error && (
         <p className="rounded-lg bg-error-bg px-3 py-2 text-sm text-error">

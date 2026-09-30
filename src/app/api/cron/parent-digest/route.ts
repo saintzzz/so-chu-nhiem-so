@@ -76,9 +76,7 @@ async function run(req: NextRequest) {
     late: "đi muộn",
   };
 
-  let sent = 0;
-  let skipped = 0;
-  let lastError: string | undefined;
+  const jobs: { email: string; text: string }[] = [];
   for (const p of parents) {
     if (!p.email?.trim()) continue;
     const kids = childrenOf.get(p.id) ?? [];
@@ -135,15 +133,23 @@ async function run(req: NextRequest) {
       "Xem chi tiết và trao đổi với giáo viên tại cổng phụ huynh của nhà trường.",
       "Trân trọng.",
     ].join("\n");
+    jobs.push({ email: p.email, text });
+  }
 
-    const r = await sendEmail({
-      to: [p.email],
-      subject: `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(new Date().toISOString().slice(0, 10))}`,
-      text,
-    });
-    if (r.skipped) skipped++;
-    else sent += r.sent;
-    if (r.error) lastError = r.error;
+  let sent = 0;
+  let skipped = 0;
+  let lastError: string | undefined;
+  const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(new Date().toISOString().slice(0, 10))}`;
+  const CONCURRENCY = 10;
+  for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+    const results = await Promise.all(
+      jobs.slice(i, i + CONCURRENCY).map((j) => sendEmail({ to: [j.email], subject, text: j.text })),
+    );
+    for (const r of results) {
+      if (r.skipped) skipped++;
+      else sent += r.sent;
+      if (r.error) lastError = r.error;
+    }
   }
 
   return NextResponse.json({ sent, skipped, parents: parents.length, error: lastError });
@@ -151,3 +157,4 @@ async function run(req: NextRequest) {
 
 export const GET = run;
 export const POST = run;
+export const maxDuration = 300;

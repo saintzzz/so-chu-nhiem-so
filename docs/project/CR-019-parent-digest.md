@@ -27,5 +27,8 @@
 
 ## Follow-ups
 
-- Khi RESEND_API_KEY co tren production, digest se gui that - nen test bang 1 PH that truoc khi bat rong rai.
-- Co the mo rong: dinh kem link portal, cho PH tat digest trong settings.
+- DONE: RESEND_API_KEY (send-only key `scn-parent-digest`) + EMAIL_FROM=`So Chu Nhiem So <no-reply@aal.vn>` da set tren production; domain `aal.vn` verified tren Resend.
+- Route gui batch 10 email song song + nghi 1.1s giua batch (Resend gioi han 10 req/s); `maxDuration = 300`.
+- Prod invoke tra `{sent:30,...,error:429}` truoc khi throttle; sau throttle job se het trong ~40s cho 365 PH.
+- Email demo `@demo.scn` bounce/failed la dung - dia chi gia; PH that se nhan duoc.
+- Co the mo rong: dinh kem link portal, cho PH tat digest trong settings, log delivery vao bang rieng.

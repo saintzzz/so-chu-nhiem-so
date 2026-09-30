@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { GraduationCap, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ChangePasswordButton } from "@/components/change-password";
 
 export function PortalHeader({
   title,
@@ -32,14 +33,17 @@ export function PortalHeader({
             {title} - {userName}
           </p>
         </div>
-        <button
-          onClick={logout}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-          aria-label="Đăng xuất"
-        >
-          <LogOut className="size-4" />
-          <span className="hidden sm:inline">Đăng xuất</span>
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <ChangePasswordButton />
+          <button
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+            aria-label="Đăng xuất"
+          >
+            <LogOut className="size-4" />
+            <span className="hidden sm:inline">Đăng xuất</span>
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { NAV, ROLE_LABELS } from "@/lib/nav";
 import type { Profile } from "@/types";
 import { CommandPalette } from "@/components/command-palette";
+import { ChangePasswordButton } from "@/components/change-password";
 
 function breadcrumb(pathname: string, role: Profile["role"]) {
   for (const s of NAV[role] ?? []) {
@@ -100,6 +101,7 @@ export function Topbar({
         >
           {initials}
         </span>
+        <ChangePasswordButton compact />
         <button
           onClick={logout}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"

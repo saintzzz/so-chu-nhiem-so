@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { fmtDateVN } from "@/lib/utils";
@@ -14,9 +15,11 @@ async function run(req: NextRequest) {
   if (!secret) {
     return NextResponse.json({ error: "cron disabled" }, { status: 503 });
   }
+  const match = (v: string | null | undefined) =>
+    v?.length === secret.length && timingSafeEqual(Buffer.from(v), Buffer.from(secret));
   const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   const q = req.nextUrl.searchParams.get("secret");
-  if (bearer !== secret && q !== secret) {
+  if (!match(bearer) && !match(q)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

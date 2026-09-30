@@ -2,7 +2,8 @@
 
 Nguồn pháp lý:
 
-- **TT 32/2020/TT-BGDĐT** - Điều lệ trường THCS, THPT và trường phổ thông có nhiều cấp học (Điều 11-16, 27-38, 44)
+- **TT 15/2026/TT-BGDĐT** (eff. 10/5/2026) - Điều lệ trường TH, THCS, THPT và trường PT có nhiều cấp học; thay thế TT 28/2020 + TT 32/2020 (đã hết hiệu lực)
+- ~~TT 32/2020/TT-BGDĐT~~ - Điều lệ trường THCS, THPT (hết hiệu lực từ 10/5/2026, giữ để đối chiếu lịch sử)
 - **TT 28/2009/TT-BGDĐT** (sửa bởi TT 15/2017) - Chế độ làm việc GV phổ thông, nhiệm vụ GVCN (Điều 4)
 - **TT 22/2021/TT-BGDĐT** - Đánh giá kết quả học tập và rèn luyện của HS THCS/THPT
 - **NĐ 142/2025/NĐ-CP + TT 13,15/2025/TT-BGDĐT** - Chính quyền địa phương 2 cấp: Sở GD&ĐT (cấp tỉnh) + UBND cấp xã (Phòng VHXH). Phòng GD&ĐT cấp huyện đã bãi bỏ (CR-017)

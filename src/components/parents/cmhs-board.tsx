@@ -206,7 +206,8 @@ export function CmhsBoard({
       </div>
       <p className="text-xs text-muted-foreground">
         {ROLE_LABEL.truong_ban}: đại diện chính thức của tập thể cha mẹ học
-        sinh lớp, phối hợp với GVCN và nhà trường theo Điều 44 TT 32/2020.
+        sinh lớp, phối hợp với GVCN và nhà trường theo Điều lệ trường
+        (Thông tư 15/2026).
       </p>
     </div>
   );

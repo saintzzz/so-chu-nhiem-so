@@ -1,8 +1,9 @@
 # Checklist nghiệp vụ - Sổ Chủ Nhiệm Số
 
 Đối chiếu: đối thủ (vnEdu/VNPT, SMAS/Viettel, eNetViet) + quy định hiện hành
-(TT 32/2020 Điều lệ trường, TT 22/2021 đánh giá HS, TT 28/2009 chế độ GV,
-TT 12/2020 Sở/Phòng GD&ĐT). Cập nhật: 2026-09-19.
+(TT 15/2026 Điều lệ trường thay TT 32/2020 từ 10/5/2026, TT 22/2021 đánh giá
+HS - sắp sửa bởi dự thảo CV 4582/2026, TT 28/2009 chế độ GV, chính quyền
+2 cấp theo NĐ 142/2025). Cập nhật: 2026-09-30.
 
 ## A. Quy định đánh giá (TT 22/2021) - COMPLIANCE
 

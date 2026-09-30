@@ -142,6 +142,7 @@ async function run(req: NextRequest) {
   const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(new Date().toISOString().slice(0, 10))}`;
   const CONCURRENCY = 10;
   for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 1100));
     const results = await Promise.all(
       jobs.slice(i, i + CONCURRENCY).map((j) => sendEmail({ to: [j.email], subject, text: j.text })),
     );

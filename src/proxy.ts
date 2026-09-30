@@ -32,7 +32,9 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
-  const isPublicApi = pathname === "/api/ai/devin-callback";
+  // Public API: devin-callback co callback_token rieng, cron routes co CRON_SECRET.
+  const isPublicApi =
+    pathname === "/api/ai/devin-callback" || pathname.startsWith("/api/cron/");
 
   if (!user && !isLogin && !isPublicApi) {
     const url = request.nextUrl.clone();

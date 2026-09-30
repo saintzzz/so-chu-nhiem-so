@@ -1,0 +1,17 @@
+-- Weekly parent digest cron (CR-019).
+-- Da apply tren production: cron.schedule('scn-parent-digest', '0 0 * * 1', ...)
+-- Thu 2 00:00 UTC = 07:00 sang gio VN.
+-- Route /api/cron/parent-digest yeu cau Authorization: Bearer <CRON_SECRET>
+-- (CRON_SECRET la Vercel env sensitive, khong commit vao day).
+--
+-- De reproduce: doi <CRON_SECRET> thanh gia tri that roi chay:
+-- select cron.schedule(
+--   'scn-parent-digest',
+--   '0 0 * * 1',
+--   $$select net.http_post(
+--       url := 'https://sochunhiem.vieschool.com/api/cron/parent-digest',
+--       headers := jsonb_build_object(
+--         'Authorization', 'Bearer ' || '<CRON_SECRET>',
+--         'Content-Type', 'application/json')
+--   )$$
+-- );

@@ -76,8 +76,20 @@ async function run(req: NextRequest) {
     late: "đi muộn",
   };
 
-  const jobs: { email: string; text: string }[] = [];
+  const retryRun = req.nextUrl.searchParams.get("retry");
+  let retryParents: Set<string> | null = null;
+  if (retryRun) {
+    const { data: prev } = await supabase
+      .from("digest_deliveries")
+      .select("parent_id")
+      .eq("run_id", retryRun)
+      .in("status", ["failed", "skipped"]);
+    retryParents = new Set((prev ?? []).map((r) => r.parent_id as string));
+  }
+
+  const jobs: { parentId: string; email: string; text: string }[] = [];
   for (const p of parents) {
+    if (retryParents && !retryParents.has(p.id)) continue;
     if (!p.email?.trim()) continue;
     const kids = childrenOf.get(p.id) ?? [];
     if (!kids.length) continue;
@@ -133,27 +145,54 @@ async function run(req: NextRequest) {
       "Xem chi tiết và trao đổi với giáo viên tại cổng phụ huynh của nhà trường.",
       "Trân trọng.",
     ].join("\n");
-    jobs.push({ email: p.email, text });
+    jobs.push({ parentId: p.id, email: p.email, text });
   }
 
+  const runId = crypto.randomUUID();
+  const weekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  })();
   let sent = 0;
   let skipped = 0;
+  let failed = 0;
   let lastError: string | undefined;
   const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(new Date().toISOString().slice(0, 10))}`;
   const CONCURRENCY = 10;
   for (let i = 0; i < jobs.length; i += CONCURRENCY) {
     if (i > 0) await new Promise((r) => setTimeout(r, 1100));
+    const batch = jobs.slice(i, i + CONCURRENCY);
     const results = await Promise.all(
-      jobs.slice(i, i + CONCURRENCY).map((j) => sendEmail({ to: [j.email], subject, text: j.text })),
+      batch.map((j) => sendEmail({ to: [j.email], subject, text: j.text })),
     );
-    for (const r of results) {
+    const deliveries = batch.map((j, k) => {
+      const r = results[k];
+      const status = r.skipped ? "skipped" : r.error ? "failed" : "sent";
       if (r.skipped) skipped++;
+      else if (r.error) failed++;
       else sent += r.sent;
       if (r.error) lastError = r.error;
-    }
+      return {
+        run_id: runId,
+        parent_id: j.parentId,
+        email: j.email,
+        week_start: weekStart,
+        status,
+        error: r.error?.slice(0, 500) ?? null,
+      };
+    });
+    await supabase.from("digest_deliveries").insert(deliveries);
   }
 
-  return NextResponse.json({ sent, skipped, parents: parents.length, error: lastError });
+  return NextResponse.json({
+    run_id: runId,
+    sent,
+    failed,
+    skipped,
+    parents: retryParents ? retryParents.size : parents.length,
+    error: lastError,
+  });
 }
 
 export const GET = run;

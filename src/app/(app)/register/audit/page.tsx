@@ -70,7 +70,8 @@ export default async function AuditPage({
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
   const sp = await searchParams;
-  const type = sp.type === "records" ? "records" : "audit";
+  const type =
+    sp.type === "records" ? "records" : sp.type === "digest" ? "digest" : "audit";
   const page = Math.max(1, Number(sp.page) || 1);
   const from = sp.from && DATE_RE.test(sp.from) ? sp.from : undefined;
   const to = sp.to && DATE_RE.test(sp.to) ? sp.to : undefined;
@@ -184,6 +185,35 @@ export default async function AuditPage({
     }
   }
 
+  // ----- digest tab -----
+  interface DigestRow {
+    id: string;
+    run_id: string;
+    email: string;
+    week_start: string;
+    status: string;
+    error: string | null;
+    attempts: number;
+    created_at: string;
+  }
+  let digests: DigestRow[] = [];
+  let digestCount = 0;
+  if (type === "digest") {
+    let query = supabase
+      .from("digest_deliveries")
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false });
+    if (from) query = query.gte("created_at", `${from}T00:00:00`);
+    if (to) query = query.lte("created_at", `${to}T23:59:59`);
+    if (q) query = query.or(`email.ilike.%${q}%,status.ilike.%${q}%`);
+    const { data, count } = await query.range(
+      (page - 1) * PAGE_SIZE,
+      page * PAGE_SIZE - 1,
+    );
+    digests = (data ?? []) as DigestRow[];
+    digestCount = count ?? digests.length;
+  }
+
   const changerIds = [
     ...new Set(history.map((h) => h.changed_by).filter(Boolean)),
   ] as string[];
@@ -198,7 +228,8 @@ export default async function AuditPage({
     if (!staffById.has(p.id)) staffById.set(p.id, p.full_name);
   }
 
-  const total = type === "audit" ? auditCount : recordCount;
+  const total =
+    type === "audit" ? auditCount : type === "digest" ? digestCount : recordCount;
 
   return (
     <>
@@ -214,6 +245,7 @@ export default async function AuditPage({
           [
             ["audit", "Nhật ký thao tác"],
             ["records", "Lịch sử cập nhật hồ sơ"],
+            ["digest", "Email digest"],
           ] as const
         ).map(([t, label]) => (
           <Link prefetch={false}
@@ -271,21 +303,23 @@ export default async function AuditPage({
             </select>
           </label>
         )}
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-xs text-muted-foreground">Người thao tác</span>
-          <select
-            name="actor"
-            defaultValue={selectedActor ?? ""}
-            className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-          >
-            <option value="">Tất cả</option>
-            {staff.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.full_name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {type !== "digest" && (
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs text-muted-foreground">Người thao tác</span>
+            <select
+              name="actor"
+              defaultValue={selectedActor ?? ""}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            >
+              <option value="">Tất cả</option>
+              {staff.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted-foreground">Từ ngày</span>
           <input
@@ -308,9 +342,9 @@ export default async function AuditPage({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted-foreground">
-            {type === "audit" ? "Hành động / đối tượng" : "Trường dữ liệu"}
+            {type === "records" ? "Trường dữ liệu" : type === "digest" ? "Email / trạng thái" : "Hành động / đối tượng"}
           </span>
-          {type === "audit" ? (
+          {type === "records" ? (
             <input
               type="text"
               name="q"
@@ -347,7 +381,53 @@ export default async function AuditPage({
         </a>
       </form>
 
-      {type === "audit" ? (
+      {type === "digest" ? (
+        <DataTable
+          columns={[
+            "Thời điểm",
+            "Tuần",
+            "Email phụ huynh",
+            "Trạng thái",
+            "Run",
+            "Lỗi",
+          ]}
+          footer={
+            <Pagination
+              total={total}
+              page={page}
+              pageSize={PAGE_SIZE}
+              href={(p) => qs(sp, { page: String(p) })}
+            />
+          }
+        >
+          {digests.map((d) => (
+            <tr key={d.id}>
+              <td className="whitespace-nowrap text-muted-foreground">
+                {formatDateTime(d.created_at)}
+              </td>
+              <td className="text-muted-foreground">{d.week_start}</td>
+              <td className="font-medium">{d.email}</td>
+              <td>
+                <StatusBadge
+                  label={d.status}
+                  tone={d.status === "sent" ? "success" : d.status === "skipped" ? "muted" : "error"}
+                />
+              </td>
+              <td className="text-xs text-muted-foreground">{d.run_id.slice(0, 8)}…</td>
+              <td className="max-w-xs truncate text-xs text-muted-foreground">
+                {d.error ?? "-"}
+              </td>
+            </tr>
+          ))}
+          {digests.length === 0 && (
+            <tr>
+              <td colSpan={6} className="text-center text-muted-foreground">
+                Chưa có lượt gửi digest nào.
+              </td>
+            </tr>
+          )}
+        </DataTable>
+      ) : type === "audit" ? (
         <DataTable
           columns={[
             "Thời điểm",

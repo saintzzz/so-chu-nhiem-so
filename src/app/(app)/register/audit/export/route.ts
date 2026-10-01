@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const sp = req.nextUrl.searchParams;
-  const type = sp.get("type") === "records" ? "records" : "audit";
+  const type =
+    sp.get("type") === "records"
+      ? "records"
+      : sp.get("type") === "digest"
+        ? "digest"
+        : "audit";
   const from = sp.get("from");
   const to = sp.get("to");
   const actor = sp.get("actor");
@@ -38,6 +43,18 @@ export async function GET(req: NextRequest) {
     const { data } = await query;
     rows = (data ?? []) as Record<string, unknown>[];
     header = ["created_at", "actor_id", "action", "entity", "entity_id", "payload"];
+  } else if (type === "digest") {
+    let query = supabase
+      .from("digest_deliveries")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(LIMIT);
+    if (from && DATE_RE.test(from)) query = query.gte("created_at", `${from}T00:00:00`);
+    if (to && DATE_RE.test(to)) query = query.lte("created_at", `${to}T23:59:59`);
+    if (q) query = query.or(`email.ilike.%${q}%,status.ilike.%${q}%`);
+    const { data } = await query;
+    rows = (data ?? []) as Record<string, unknown>[];
+    header = ["created_at", "week_start", "email", "status", "run_id", "attempts", "error"];
   } else {
     let classQuery = supabase.from("classes").select("id");
     if (profile.role === "gvcn") classQuery = classQuery.eq("gvcn_id", profile.id);

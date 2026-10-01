@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
@@ -764,6 +765,11 @@ export function GradesEditor({
         setError(saveErr.message);
         return;
       }
+      logAudit(supabase, {
+        action: "grades.save",
+        entity: "grades",
+        payload: { subject_id: subjectId, term, rows: rows.length },
+      });
       setSaved(true);
       router.refresh();
     });

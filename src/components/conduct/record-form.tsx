@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
@@ -77,6 +78,12 @@ export function ConductRecordForm({
         setError(err.message);
         return;
       }
+      logAudit(supabase, {
+        action: "conduct.record.create",
+        entity: "conduct_records",
+        entityId: studentId,
+        payload: { type, points: pts, date },
+      });
       setContent("");
       setPoints("0");
       setSaved(true);

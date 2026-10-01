@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { useAiJob } from "@/hooks/use-ai-job";
 import { AiProgress } from "@/components/ai/ai-progress";
 import { DataTable } from "@/components/data-table";
@@ -273,6 +274,11 @@ export function ConductEvaluationEditor({
         setError(err.message);
         return;
       }
+      logAudit(supabase, {
+        action: "conduct.evaluation.save",
+        entity: "conduct_evaluations",
+        payload: { term, students: rows.length },
+      });
       setSaved(true);
       router.refresh();
     });

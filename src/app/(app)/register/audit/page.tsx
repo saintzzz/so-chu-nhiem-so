@@ -339,6 +339,12 @@ export default async function AuditPage({
         >
           Lọc
         </button>
+        <a
+          href={qs(sp, { page: undefined }).replace("/register/audit", "/register/audit/export")}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
+        >
+          Xuất CSV
+        </a>
       </form>
 
       {type === "audit" ? (

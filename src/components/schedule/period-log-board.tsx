@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Minus, Plus, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { cn, sortByVietnameseName } from "@/lib/utils";
@@ -298,6 +299,12 @@ export function PeriodLogBoard({
         }
       }
 
+      logAudit(supabase, {
+        action: "period_log.save",
+        entity: "period_logs",
+        entityId: logId,
+        payload: { timetable_entry_id: entryId, date, absences: rows.length },
+      });
       setOpenId(null);
       router.refresh();
     } catch (e) {
@@ -330,6 +337,12 @@ export function PeriodLogBoard({
       setError(e.message);
       return;
     }
+    logAudit(supabase, {
+      action: "conduct.quick_points",
+      entity: "conduct_records",
+      entityId: studentId,
+      payload: { delta, date, period: entry.subject },
+    });
     // positive_points duoc trigger trg_sync_positive_points dong bo tu conduct_records
     setError(null);
     setDrafts((d) => {

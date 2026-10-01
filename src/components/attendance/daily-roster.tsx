@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { logAudit } from "@/lib/audit";
 import { ATT_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
@@ -205,6 +206,11 @@ export function DailyRoster({
       setFeedback({ ok: false, text: `Lưu thất bại: ${error.message}` });
       return;
     }
+    logAudit(supabase, {
+      action: "attendance.confirm",
+      entity: "attendance_records",
+      payload: { date, students: rows.length },
+    });
     setDirty(false);
     setFeedback({
       ok: true,

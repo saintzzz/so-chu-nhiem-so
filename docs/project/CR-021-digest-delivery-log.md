@@ -12,7 +12,8 @@
 2. **`/api/cron/parent-digest`**:
    - Moi run sinh `run_id`, ghi 1 row/parent vao `digest_deliveries`.
    - `?retry=<run_id>`: chi gui lai cho parent co status `failed|skipped` trong run do (tang `attempts`).
-   - Response tra `run_id`, `sent`, `failed`, `skipped`.
+   - Idempotent theo tuan: parent da `sent` cho `week_start` bi bo qua o run sau - cron chay lai khong spam.
+   - Response tra `run_id`, `sent`, `failed`, `skipped`, `parents` (= so parent thuc xu ly).
 3. **`/register/audit`** them tab "Email digest" - BGH/GVCN xem delivery theo tuan, trang thai, loi.
 
 ## Impact assessment
@@ -24,10 +25,13 @@
 
 ~0.5 ngay.
 
-## Verification
+## Verification (dev :3112, 2026-10-01)
 
-- Migration applied tren Supabase; typecheck/lint/consistency xanh.
-- Dev run ghi rows; retry run chi gui lai lo hang loi.
+- Run 1: `{sent:0, skipped:365, parents:365}` -> 365 rows `digest_deliveries` (skipped vi dev khong co RESEND_API_KEY).
+- Retry `?retry=<run_id>`: 365 rows moi, `attempts=2`.
+- Idempotent: chen 1 row `sent` cho 1 parent -> run thuong chi xu ly 364.
+- Response `parents` = so parent thuc xu ly (khong phai tong so).
+- Test rows da cleanup. Typecheck/lint/consistency xanh.
 
 ## Follow-ups
 

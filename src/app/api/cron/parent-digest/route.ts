@@ -76,20 +76,39 @@ async function run(req: NextRequest) {
     late: "đi muộn",
   };
 
+  const runId = crypto.randomUUID();
+  const weekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  })();
+
+  // CR-021: idempotent - ph da gui thanh cong tuan nay khong gui lai.
+  // ?retry=<run_id> chi gui lai cho ph failed/skipped cua run do, tang attempts.
   const retryRun = req.nextUrl.searchParams.get("retry");
   let retryParents: Set<string> | null = null;
+  const prevAttempts = new Map<string, number>();
+  let sentThisWeek = new Set<string>();
   if (retryRun) {
     const { data: prev } = await supabase
       .from("digest_deliveries")
-      .select("parent_id")
+      .select("parent_id, attempts")
       .eq("run_id", retryRun)
       .in("status", ["failed", "skipped"]);
     retryParents = new Set((prev ?? []).map((r) => r.parent_id as string));
+    for (const r of prev ?? []) prevAttempts.set(r.parent_id as string, r.attempts as number);
+  } else {
+    const { data: done } = await supabase
+      .from("digest_deliveries")
+      .select("parent_id")
+      .eq("week_start", weekStart)
+      .eq("status", "sent");
+    sentThisWeek = new Set((done ?? []).map((r) => r.parent_id as string));
   }
 
   const jobs: { parentId: string; email: string; text: string }[] = [];
   for (const p of parents) {
-    if (retryParents && !retryParents.has(p.id)) continue;
+    if (retryParents ? !retryParents.has(p.id) : sentThisWeek.has(p.id)) continue;
     if (!p.email?.trim()) continue;
     const kids = childrenOf.get(p.id) ?? [];
     if (!kids.length) continue;
@@ -148,12 +167,6 @@ async function run(req: NextRequest) {
     jobs.push({ parentId: p.id, email: p.email, text });
   }
 
-  const runId = crypto.randomUUID();
-  const weekStart = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return d.toISOString().slice(0, 10);
-  })();
   let sent = 0;
   let skipped = 0;
   let failed = 0;
@@ -180,6 +193,7 @@ async function run(req: NextRequest) {
         week_start: weekStart,
         status,
         error: r.error?.slice(0, 500) ?? null,
+        attempts: (prevAttempts.get(j.parentId) ?? 0) + 1,
       };
     });
     await supabase.from("digest_deliveries").insert(deliveries);
@@ -190,7 +204,7 @@ async function run(req: NextRequest) {
     sent,
     failed,
     skipped,
-    parents: retryParents ? retryParents.size : parents.length,
+    parents: jobs.length,
     error: lastError,
   });
 }

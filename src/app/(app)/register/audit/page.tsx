@@ -352,6 +352,14 @@ export default async function AuditPage({
               placeholder="Ví dụ: seating, grades…"
               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             />
+          ) : type === "digest" ? (
+            <input
+              type="text"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="Email hoặc sent/failed/skipped"
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            />
           ) : (
             <select
               name="q"

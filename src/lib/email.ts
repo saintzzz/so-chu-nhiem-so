@@ -39,41 +39,49 @@ let cachedConfig: EmailConfig | null = null;
 
 // Single source of truth: email config lives in Supabase Vault so every
 // VieSchool product on this project reads the same provider/key/from.
-// Env vars override when set (local dev); the vault is the production path -
+// An explicit EMAIL_PROVIDER env forces the env path (local dev override);
+// otherwise vault wins so production always follows the shared config -
 // no Vercel env changes needed to rotate providers.
 async function getEmailConfig(): Promise<EmailConfig> {
   const envProvider = (process.env.EMAIL_PROVIDER ?? "").toLowerCase();
-  const envKey =
-    envProvider === "resend"
-      ? process.env.RESEND_API_KEY
-      : process.env.BREVO_API_KEY || process.env.RESEND_API_KEY;
-  if (envKey) {
+  if (envProvider) {
     return {
-      provider: envProvider || (process.env.BREVO_API_KEY ? "brevo" : "resend"),
-      key: envKey,
+      provider: envProvider,
+      key:
+        envProvider === "resend"
+          ? process.env.RESEND_API_KEY
+          : process.env.BREVO_API_KEY,
       from: process.env.EMAIL_FROM ?? "VieSchool <no-reply@vieschool.com>",
     };
   }
-  if (cachedConfig) return cachedConfig;
-  try {
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const { data } = await createAdminClient().rpc("get_email_config");
-    const cfg = data as
-      | { provider?: string; api_key?: string; from?: string }
-      | null;
-    cachedConfig = {
-      provider: (cfg?.provider ?? "brevo").toLowerCase(),
-      key: cfg?.api_key ?? undefined,
-      from: cfg?.from ?? "VieSchool <no-reply@vieschool.com>",
-    };
-  } catch {
-    cachedConfig = {
-      provider: "brevo",
-      key: undefined,
-      from: "VieSchool <no-reply@vieschool.com>",
-    };
+  if (!cachedConfig) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const { data } = await createAdminClient().rpc("get_email_config");
+      const cfg = data as
+        | { provider?: string; api_key?: string; from?: string }
+        | null;
+      cachedConfig = {
+        provider: (cfg?.provider ?? "brevo").toLowerCase(),
+        key: cfg?.api_key ?? undefined,
+        from: cfg?.from ?? "VieSchool <no-reply@vieschool.com>",
+      };
+    } catch {
+      cachedConfig = {
+        provider: "brevo",
+        key: undefined,
+        from: "VieSchool <no-reply@vieschool.com>",
+      };
+    }
   }
-  return cachedConfig;
+  if (cachedConfig.key) return cachedConfig;
+  // Vault unreachable/unconfigured - last-resort env keys.
+  const key = process.env.BREVO_API_KEY ?? process.env.RESEND_API_KEY;
+  return {
+    provider: process.env.BREVO_API_KEY ? "brevo" : "resend",
+    key,
+    from: process.env.EMAIL_FROM ?? cachedConfig.from,
+  };
 }
 
 export async function sendEmail(input: {

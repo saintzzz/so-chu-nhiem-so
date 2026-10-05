@@ -59,3 +59,12 @@ tach khoi Resend chung voi AAL). `sendEmail` gio doc provider tu env:
 - `BREVO_API_KEY` primary, `RESEND_API_KEY` fallback
 - `EMAIL_FROM` van dung - brevo parse 'Name <addr>' thanh sender{name,email}
 - Typecheck + consistency xanh. Vercel env can set tay (token het han).
+
+## Addendum 2 (05/10/2026) - vault config, khong can Vercel env
+
+`sendEmail` gio doc email config theo thu tu: env vars (dev) ->
+`public.get_email_config()` RPC doc vault secrets (email_provider /
+email_api_key / email_from). Config tap trung mot noi cho moi san pham
+VieSchool tren cung project - rotate provider chi sua vault.
+Domain vieschool.com da verify trong Brevo (DNS records them qua
+Cloudflare dashboard). Sender: VieSchool <no-reply@vieschool.com>.

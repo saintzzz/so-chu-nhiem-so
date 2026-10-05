@@ -30,7 +30,11 @@ async function run(req: NextRequest) {
 
   const [{ data: parents }, { data: links }, { data: students }] =
     await Promise.all([
-      supabase.from("parents").select("id, full_name, email").not("email", "is", null),
+      supabase
+        .from("parents")
+        .select("id, full_name, email")
+        .not("email", "is", null)
+        .not("email", "ilike", "%@demo.scn"),
       supabase.from("parent_students").select("parent_id, student_id"),
       supabase.from("students").select("id, full_name, class_id, classes(name)"),
     ]);

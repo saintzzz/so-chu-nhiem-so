@@ -6,6 +6,12 @@
 
 const RESEND_URL = "https://api.resend.com/emails";
 
+// Demo/seeded parent accounts use @demo.scn addresses that cannot receive
+// mail. Sending to them burns the daily Resend quota and produces bounce
+// events that hurt sender reputation - block them centrally for every
+// caller (digest cron, announcements).
+const DEMO_EMAIL_RE = /@demo\.scn$/i;
+
 export interface EmailResult {
   sent: number;
   skipped?: boolean;
@@ -18,8 +24,8 @@ export async function sendEmail(input: {
   text: string;
 }): Promise<EmailResult> {
   const key = process.env.RESEND_API_KEY;
-  const to = [...new Set(input.to.filter(Boolean))];
-  if (!to.length) return { sent: 0 };
+  const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
+  if (!to.length) return { sent: 0, skipped: true };
   if (!key) return { sent: 0, skipped: true };
 
   const from =

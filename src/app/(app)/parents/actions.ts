@@ -59,7 +59,8 @@ export async function sendAnnouncement(input: {
         .from("parents")
         .select("email")
         .in("id", parentIds)
-        .not("email", "is", null);
+        .not("email", "is", null)
+        .not("email", "ilike", "%@demo.scn");
       const emails = ((parentRows ?? []) as { email: string | null }[])
         .map((p) => p.email)
         .filter((e): e is string => Boolean(e));

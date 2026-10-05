@@ -50,3 +50,12 @@ Du lieu DB: 369 parents co email, 364 la demo, chi 1 dia chi that.
   chan dung mien @demo.scn).
 - Nen tach RESEND_API_KEY rieng cho SCN neu volume tang - hien tai
   chia key voi AAL Fast Track + English Arena (da tach sang Brevo).
+
+## Addendum (05/10/2026) - Brevo provider support
+
+User quyet: tat ca san pham VieSchool dung chung Brevo key (300/ngay,
+tach khoi Resend chung voi AAL). `sendEmail` gio doc provider tu env:
+- `EMAIL_PROVIDER=brevo|resend` (default: brevo neu co BREVO_API_KEY)
+- `BREVO_API_KEY` primary, `RESEND_API_KEY` fallback
+- `EMAIL_FROM` van dung - brevo parse 'Name <addr>' thanh sender{name,email}
+- Typecheck + consistency xanh. Vercel env can set tay (token het han).

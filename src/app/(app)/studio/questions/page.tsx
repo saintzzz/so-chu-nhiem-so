@@ -4,6 +4,7 @@ import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Question, Subject } from "@/types/tvc";
 import { QuestionBank } from "@/components/tvc/question-bank";
+import { subjectNameToCode } from "@/lib/tvc/subject-code";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,27 @@ export default async function StudioQuestionsPage() {
         .range(0, 99),
     ]);
   const qs = firstRows ?? [];
+
+  // CR-032: mon cua to chuyen mon -> to truong loc "Mon cua to toi"
+  let deptSubjectCodes: string[] = [];
+  if (profile.department_id) {
+    const { data: dept } = await supabase
+      .from("departments")
+      .select("subject_ids")
+      .eq("id", profile.department_id)
+      .single();
+    const sids = (dept?.subject_ids as string[] | null) ?? [];
+    if (sids.length) {
+      const { data: subs2 } = await supabase
+        .from("subjects")
+        .select("name")
+        .in("id", sids);
+      deptSubjectCodes = (subs2 ?? [])
+        .map((s) => subjectNameToCode(s.name))
+        .filter((c): c is string => !!c);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -41,6 +63,7 @@ export default async function StudioQuestionsPage() {
         isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
         isAdmin={["bgh", "admin"].includes(profile.role)}
         schoolId={profile.school_id ?? undefined}
+        deptSubjectCodes={deptSubjectCodes}
       />
     </div>
   );

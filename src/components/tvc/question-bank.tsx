@@ -88,6 +88,7 @@ export function QuestionBank({
   isReviewer,
   isAdmin,
   schoolId,
+  deptSubjectCodes = [],
 }: {
   initial: Question[];
   subjects: Subject[];
@@ -96,12 +97,17 @@ export function QuestionBank({
   isReviewer?: boolean;
   isAdmin?: boolean;
   schoolId?: string;
+  deptSubjectCodes?: string[];
 }) {
   const [questions, setQuestions] = useState(initial);
   const [loadingMore, setLoadingMore] = useState(initial.length < (total ?? 0));
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState({ subject: "", qtype: "", level: "", review: "", q: "", scope: "all" });
+  const [filter, setFilter] = useState({
+    subject: "", qtype: "", level: "", review: "", q: "",
+    // to truong mac dinh loc theo mon cua to (khong chan cung - van xem duoc "Ca truong")
+    scope: isReviewer && deptSubjectCodes.length ? "mydept" : "all",
+  });
   const [standards, setStandards] = useState<CurriculumStandard[]>([]);
   const [form, setForm] = useState({
     stem: "",
@@ -203,9 +209,11 @@ export function QuestionBank({
           (!filter.level || q.level === filter.level) &&
           (!filter.review || (q.review_state ?? "unreviewed") === filter.review) &&
           (filter.scope !== "mine" || q.owner_id === meId) &&
+          (filter.scope !== "mydept" ||
+            (q.subject_code != null && deptSubjectCodes.includes(q.subject_code))) &&
           (!filter.q || q.stem.toLowerCase().includes(filter.q.toLowerCase())),
       ),
-    [questions, filter, meId],
+    [questions, filter, meId, deptSubjectCodes],
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -684,6 +692,9 @@ export function QuestionBank({
         >
           <option value="all">Cả trường</option>
           <option value="mine">Của tôi</option>
+          {deptSubjectCodes.length > 0 && (
+            <option value="mydept">Môn của tổ tôi</option>
+          )}
         </select>
         <select
           className="rounded-lg border bg-card px-3 py-2 text-sm"

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 
 export async function assignClassCampus(
   classId: string,
@@ -462,6 +463,9 @@ export async function createStaffAccount(input: {
   role: string;
   campusId?: string | null;
   departmentId?: string | null;
+  staffCode?: string;
+  employmentType?: string;
+  qualification?: string;
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
   if (deny) return { error: deny };
@@ -473,6 +477,8 @@ export async function createStaffAccount(input: {
   if ((input.password ?? "").length < 8)
     return { error: "Mật khẩu tối thiểu 8 ký tự." };
   if (!input.fullName.trim()) return { error: "Chưa nhập họ tên." };
+  if (input.employmentType && !EMPLOYMENT_TYPES.includes(input.employmentType))
+    return { error: "Loại hợp đồng không hợp lệ." };
 
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const admin = createAdminClient();
@@ -488,12 +494,15 @@ export async function createStaffAccount(input: {
   });
   if (error) return { error: error.message.includes("already") ? "Email đã tồn tại." : "Không tạo được tài khoản." };
   const supabase = await createClient();
-  if (data.user && (input.campusId || input.departmentId)) {
+  if (data.user) {
     await supabase
       .from("profiles")
       .update({
         campus_id: input.campusId ?? null,
         department_id: input.departmentId ?? null,
+        staff_code: input.staffCode?.trim() || null,
+        employment_type: input.employmentType || null,
+        qualification: input.qualification?.trim() || null,
       })
       .eq("id", data.user.id)
       .eq("school_id", profile.school_id);
@@ -597,5 +606,130 @@ export async function setItemAcl(input: {
     { onConflict: "table_name,item_id,user_id" },
   );
   if (error) return { error: error.message };
+  return {};
+}
+
+// ---------- CR-032: ho so GV day du + mon phu trach + to gan mon ----------
+
+export interface StaffProfileInput {
+  role?: string;
+  campusId?: string | null;
+  departmentId?: string | null;
+  staffCode?: string | null;
+  employmentType?: string | null;
+  qualification?: string | null;
+  concurrentRoles?: string[];
+}
+
+const EMPLOYMENT_TYPES = ["bien_che", "hop_dong", "thinh_giang"];
+
+export async function updateStaffProfile(
+  profileId: string,
+  input: StaffProfileInput,
+): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const updates: Record<string, unknown> = {};
+  if (input.role) {
+    if (!STAFF_ROLES.includes(input.role)) return { error: "Vai trò không hợp lệ." };
+    updates.role = input.role;
+  }
+  if (input.campusId !== undefined) updates.campus_id = input.campusId;
+  if (input.departmentId !== undefined) updates.department_id = input.departmentId;
+  if (input.staffCode !== undefined)
+    updates.staff_code = input.staffCode?.trim() || null;
+  if (input.employmentType !== undefined) {
+    if (input.employmentType && !EMPLOYMENT_TYPES.includes(input.employmentType))
+      return { error: "Loại hợp đồng không hợp lệ." };
+    updates.employment_type = input.employmentType || null;
+  }
+  if (input.qualification !== undefined)
+    updates.qualification = input.qualification?.trim() || null;
+  if (input.concurrentRoles !== undefined)
+    updates.concurrent_roles = input.concurrentRoles;
+  if (!Object.keys(updates).length) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", profileId)
+    .eq("school_id", profile.school_id)
+    .select("id");
+  if (error || !data?.length)
+    return { error: "Không cập nhật được hồ sơ." };
+  logAudit(supabase, {
+    action: "school.staff_profile_update",
+    entity: "profiles",
+    entityId: profileId,
+    payload: { keys: Object.keys(updates) },
+  });
+  revalidatePath("/school/users");
+  return {};
+}
+
+export async function setTeacherSubjects(
+  teacherId: string,
+  subjectIds: string[],
+): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin", "to_truong"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const supabase = await createClient();
+  // chi giao cho GV cung truong
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", teacherId)
+    .eq("school_id", profile.school_id)
+    .single();
+  if (!target) return { error: "Không tìm thấy giáo viên." };
+  const { error: del } = await supabase
+    .from("teacher_subjects")
+    .delete()
+    .eq("teacher_id", teacherId);
+  if (del) return { error: del.message };
+  if (subjectIds.length) {
+    const { error: ins } = await supabase
+      .from("teacher_subjects")
+      .insert(subjectIds.map((subject_id) => ({ teacher_id: teacherId, subject_id })));
+    if (ins) return { error: ins.message };
+  }
+  logAudit(supabase, {
+    action: "school.teacher_subjects",
+    entity: "profiles",
+    entityId: teacherId,
+    payload: { subjects: subjectIds.length },
+  });
+  revalidatePath("/school/users");
+  return {};
+}
+
+export async function updateDepartmentSubjects(
+  deptId: string,
+  subjectIds: string[],
+): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("departments")
+    .update({ subject_ids: subjectIds })
+    .eq("id", deptId)
+    .eq("school_id", profile.school_id)
+    .select("id");
+  if (error || !data?.length) return { error: "Không cập nhật được tổ." };
+  logAudit(supabase, {
+    action: "school.department_subjects",
+    entity: "departments",
+    entityId: deptId,
+    payload: { subjects: subjectIds.length },
+  });
+  revalidatePath("/school/users");
   return {};
 }

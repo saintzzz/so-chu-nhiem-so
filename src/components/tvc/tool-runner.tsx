@@ -21,13 +21,21 @@ interface MatrixPayload {
 const inputCls =
   "mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring";
 
-export function ToolRunner({ tool }: { tool: ToolClientDef }) {
+export function ToolRunner({
+  tool,
+  defaultSubject,
+}: {
+  tool: ToolClientDef;
+  defaultSubject?: string;
+}) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
     tool.fields.forEach((f) => {
       if (f.default != null) v[f.key] = String(f.default);
     });
+    // CR-032: GVBM vao tool thi mon mac dinh = mon phu trach
+    if (defaultSubject && !v.subject) v.subject = defaultSubject;
     return v;
   });
   const [coValues, setCoValues] = useState<Record<string, string>>({});

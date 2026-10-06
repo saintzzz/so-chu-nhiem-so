@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { UsersBoard } from "@/components/school/users-board";
 import { FeatureMatrix } from "@/components/school/feature-permissions";
@@ -14,6 +15,7 @@ interface Department {
 
 export default async function SchoolUsersPage() {
   const profile = await requireRoles(["bgh", "admin"]);
+  await requireFeature("school.users");
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 

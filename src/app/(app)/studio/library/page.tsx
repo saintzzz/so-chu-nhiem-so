@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Material } from "@/types/tvc";
+import { subjectNameToCode } from "@/lib/tvc/subject-code";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { FolderOpen } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -53,6 +54,32 @@ export default async function StudioLibraryPage({
     : { data: [] };
   const pendingReview = (pendingData as Partial<Material>[]) ?? [];
 
+  // CR-033: to truong uu tien mon cua to minh truoc, mon khac xep sau
+  let deptSubjectCodes: string[] = [];
+  if (profile.role === "to_truong" && profile.department_id) {
+    const { data: dept } = await supabase
+      .from("departments")
+      .select("subject_ids")
+      .eq("id", profile.department_id)
+      .single();
+    const sids = (dept?.subject_ids as string[] | null) ?? [];
+    if (sids.length) {
+      const { data: ds } = await supabase
+        .from("subjects")
+        .select("name")
+        .in("id", sids);
+      deptSubjectCodes = (ds ?? [])
+        .map((s) => subjectNameToCode(s.name))
+        .filter((c): c is string => !!c);
+    }
+  }
+  const pendingMine = deptSubjectCodes.length
+    ? pendingReview.filter((m) => m.subject_code && deptSubjectCodes.includes(m.subject_code))
+    : pendingReview;
+  const pendingOther = deptSubjectCodes.length
+    ? pendingReview.filter((m) => !m.subject_code || !deptSubjectCodes.includes(m.subject_code))
+    : [];
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -85,41 +112,63 @@ export default async function StudioLibraryPage({
 
       {pendingReview.length > 0 && (
         <div className="mt-6">
-          <h2 className="mb-2 text-sm font-semibold">
-            Chờ duyệt của trường ({pendingReview.length})
-          </h2>
-          <div className="overflow-hidden rounded-xl border border-amber-500/40 bg-card shadow-sm">
-            <table className="w-full text-sm">
-              <tbody className="divide-y">
-                {pendingReview.map((m) => (
-                  <tr key={m.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/studio/library/${m.id}`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {m.title}
-                      </Link>
-                      {m.tool_code && (
-                        <span className="ml-2 font-mono text-xs text-muted-foreground">
-                          {m.tool_code}
-                        </span>
-                      )}
-                    </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                      {TYPE_LABEL[m.type ?? ""] ?? m.type}
-                    </td>
-                    <td className="px-4 py-3">
-                      <MaterialStatusBadge status={m.status!} />
-                    </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                      {formatDate(m.updated_at!)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {[
+            {
+              list: pendingMine,
+              label: deptSubjectCodes.length
+                ? `Chờ duyệt - môn của tổ tôi (${pendingMine.length})`
+                : `Chờ duyệt của trường (${pendingMine.length})`,
+              tone: "border-amber-500/40",
+            },
+            {
+              list: pendingOther,
+              label: `Chờ duyệt - môn khác (${pendingOther.length})`,
+              tone: "border-border",
+            },
+          ]
+            .filter((g) => g.list.length > 0)
+            .map((g) => (
+              <div key={g.label} className="mb-4">
+                <h2 className="mb-2 text-sm font-semibold">{g.label}</h2>
+                <div
+                  className={`overflow-hidden rounded-xl border ${g.tone} bg-card shadow-sm`}
+                >
+                  <table className="w-full text-sm">
+                    <tbody className="divide-y">
+                      {g.list.map((m) => (
+                        <tr key={m.id} className="hover:bg-muted/40">
+                          <td className="px-4 py-3">
+                            <Link
+                              href={`/studio/library/${m.id}`}
+                              className="font-medium hover:text-primary"
+                            >
+                              {m.title}
+                            </Link>
+                            {m.tool_code && (
+                              <span className="ml-2 font-mono text-xs text-muted-foreground">
+                                {m.tool_code}
+                              </span>
+                            )}
+                          </td>
+                          <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+                            {TYPE_LABEL[m.type ?? ""] ?? m.type}
+                          </td>
+                          <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+                            {m.subject_code ?? "-"} {m.grade ? `/ ${m.grade}` : ""}
+                          </td>
+                          <td className="px-4 py-3">
+                            <MaterialStatusBadge status={m.status!} />
+                          </td>
+                          <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                            {formatDate(m.updated_at!)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
         </div>
       )}
 

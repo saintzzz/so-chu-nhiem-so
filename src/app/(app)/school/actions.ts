@@ -547,6 +547,11 @@ export async function setFeatureGrant(input: {
     );
     if (error) return { error: error.message };
   }
+  logAudit(supabase, {
+    action: "school.feature_grant",
+    entity: "feature_grants",
+    payload: { feature: input.feature, role: input.role, userId: input.userId, effect: input.effect },
+  });
   revalidatePath("/school/users");
   return {};
 }
@@ -592,6 +597,12 @@ export async function setItemAcl(input: {
       .eq("table_name", input.table)
       .eq("item_id", input.itemId)
       .eq("user_id", target.id);
+    logAudit(supabase, {
+      action: "school.item_acl_remove",
+      entity: "item_acl",
+      entityId: input.itemId,
+      payload: { table: input.table, userId: target.id },
+    });
     return {};
   }
   const { error } = await supabase.from("item_acl").upsert(
@@ -606,6 +617,12 @@ export async function setItemAcl(input: {
     { onConflict: "table_name,item_id,user_id" },
   );
   if (error) return { error: error.message };
+  logAudit(supabase, {
+    action: "school.item_acl_deny",
+    entity: "item_acl",
+    entityId: input.itemId,
+    payload: { table: input.table, userId: target.id },
+  });
   return {};
 }
 
@@ -732,4 +749,28 @@ export async function updateDepartmentSubjects(
   });
   revalidatePath("/school/users");
   return {};
+}
+
+export async function listItemAcl(input: {
+  table: "questions" | "materials" | "khbd_templates" | "curriculum_standards";
+  itemId: string;
+}): Promise<{ emails: string[] } | { error: string }> {
+  const deny = await checkActionRole(["bgh", "admin"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from("item_acl")
+    .select("user_id")
+    .eq("school_id", profile.school_id)
+    .eq("table_name", input.table)
+    .eq("item_id", input.itemId)
+    .eq("effect", "deny");
+  if (!rows?.length) return { emails: [] };
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .in("id", rows.map((r) => r.user_id));
+  return { emails: (profs ?? []).map((p) => p.email).filter(Boolean) as string[] };
 }

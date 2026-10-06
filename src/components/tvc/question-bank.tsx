@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CurriculumStandard, QReviewState, Question, Subject } from "@/types/tvc";
 import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, listQuestionsChunk, setQuestionReviewState, bulkSetQuestionReviewState } from "@/lib/tvc/actions";
-import { setItemAcl } from "@/app/(app)/school/actions";
+import { setItemAcl, listItemAcl } from "@/app/(app)/school/actions";
 import { LEVEL_LABEL, QTYPE_LABEL } from "@/lib/tvc/types";
 import { MathText } from "@/components/tvc/math-text";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
@@ -100,7 +100,7 @@ export function QuestionBank({
   deptSubjectCodes?: string[];
 }) {
   const [questions, setQuestions] = useState(initial);
-  const [loadingMore, setLoadingMore] = useState(initial.length < (total ?? 0));
+  const [loadingMore, setLoadingMore] = useState(total === undefined || initial.length < total);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState({
@@ -124,6 +124,7 @@ export function QuestionBank({
   });
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
+  const [editingSpec, setEditingSpec] = useState<number | null>(null);
   const [pending, start] = useTransition();
   // AI import từ ảnh/PDF
   const [aiRows, setAiRows] = useState<AiRow[] | null>(null);
@@ -133,13 +134,12 @@ export function QuestionBank({
   // Trang dau da co san tu server - tai dan cac chunk con lai o background
   // de filter/tim kiem van hoat dong tren toan bo ngan hang.
   useEffect(() => {
-    const want = total ?? initial.length;
-    if (initial.length >= want) return;
+    // Khong co total (bo count exact) - tai den khi chunk ngan thi dung.
     let cancelled = false;
     (async () => {
       let offset = initial.length;
       const acc: Question[] = [];
-      while (offset < want) {
+      while (true) {
         const r = await listQuestionsChunk(offset);
         if (cancelled) return;
         if ("error" in r || !r.rows?.length) break;
@@ -163,6 +163,8 @@ export function QuestionBank({
   // dap an/loi giai lazy-load khi expand - list khong ship 2 cot nang nay
   const [details, setDetails] = useState<Record<string, { answer: Record<string, unknown>; solution: string | null; context: string | null; media?: { kind: "figure" | "image"; spec?: Record<string, unknown>; path?: string; alt?: string }[] }>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
+  // CR-033: danh sach ACL hien co tren cau hoi (admin xem dang an voi ai)
+  const [aclList, setAclList] = useState<Record<string, string[]>>({});
   const toggleExpand = (q: Question) => {
     setExpandedId((p) => (p === q.id ? null : q.id));
     if (expandedId === q.id || details[q.id]) return;
@@ -171,6 +173,11 @@ export function QuestionBank({
       if (!("error" in r)) setDetails((p) => ({ ...p, [q.id]: { answer: r.answer, solution: r.solution, context: r.context ?? null, media: r.media } }));
       setLoadingDetail((p) => (p === q.id ? null : p));
     });
+    if (isAdmin && aclList[q.id] === undefined) {
+      listItemAcl({ table: "questions", itemId: q.id }).then((r) => {
+        if ("emails" in r) setAclList((p) => ({ ...p, [q.id]: r.emails }));
+      });
+    }
   };
   const stemRef = useRef<HTMLTextAreaElement>(null);
   const aiJob = useTvcAiJob();
@@ -961,8 +968,41 @@ export function QuestionBank({
                       >
                         ×
                       </button>
+                      {m.kind === "figure" && (
+                        <button
+                          type="button"
+                          className="absolute -bottom-2 left-1 rounded border bg-card px-1 text-[10px]"
+                          onClick={() => setEditingSpec(editingSpec === i ? null : i)}
+                        >
+                          sửa
+                        </button>
+                      )}
                     </div>
                   ))}
+                </div>
+              )}
+              {editingSpec !== null && form.media[editingSpec]?.kind === "figure" && (
+                <div className="mt-2">
+                  <p className="mb-1 text-xs text-muted-foreground">
+                    Tham số hình (JSON) - vd tam giác: {`{"sides":[5,4,6],"labels":["A","B","C"],"mark_angle":"B"}`}
+                  </p>
+                  <AutoGrowTextarea
+                    className="w-full rounded-lg border bg-background px-2 py-1 font-mono text-xs outline-none focus:border-ring"
+                    defaultValue={JSON.stringify(form.media[editingSpec].spec)}
+                    onBlur={(e) => {
+                      try {
+                        const spec = JSON.parse(e.target.value);
+                        setForm((f) => ({
+                          ...f,
+                          media: f.media.map((x, j) =>
+                            j === editingSpec ? { ...x, spec } : x,
+                          ),
+                        }));
+                      } catch {
+                        setError("Tham số hình không phải JSON hợp lệ.");
+                      }
+                    }}
+                  />
                 </div>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1336,25 +1376,32 @@ export function QuestionBank({
                               start(async () => {
                                 const r = await setItemAcl({ table: "questions", itemId: q.id, userEmail: email, deny: true });
                                 if (r.error) alert(r.error);
+                                else setAclList((p) => ({ ...p, [q.id]: [...(p[q.id] ?? []), email] }));
                               });
                             }}
                           >
                             Giới hạn với GV
                           </button>
-                          <button
-                            className="rounded-lg border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
-                            disabled={pending}
-                            onClick={() => {
-                              const email = window.prompt("Email cần GỠ giới hạn:");
-                              if (!email) return;
-                              start(async () => {
-                                const r = await setItemAcl({ table: "questions", itemId: q.id, userEmail: email, deny: false });
-                                if (r.error) alert(r.error);
-                              });
-                            }}
-                          >
-                            Gỡ giới hạn
-                          </button>
+                          {(aclList[q.id] ?? []).map((em) => (
+                            <span
+                              key={em}
+                              className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 px-2 py-0.5 text-xs text-amber-400"
+                            >
+                              ẩn: {em}
+                              <button
+                                className="hover:text-foreground"
+                                disabled={pending}
+                                onClick={() =>
+                                  start(async () => {
+                                    await setItemAcl({ table: "questions", itemId: q.id, userEmail: em, deny: false });
+                                    setAclList((p) => ({ ...p, [q.id]: (p[q.id] ?? []).filter((x) => x !== em) }));
+                                  })
+                                }
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
                         </>
                       )}
                     </div>
@@ -1367,6 +1414,23 @@ export function QuestionBank({
                           <div className="mb-2 rounded-lg border border-info/30 bg-info-bg p-2">
                             <span className="font-medium text-muted-foreground">Ngữ cảnh: </span>
                             <MathText text={details[q.id].context!} className="whitespace-pre-line" />
+                            {q.subject_code === "tieng_anh" && "speechSynthesis" in window && (
+                              <button
+                                type="button"
+                                className="mt-1.5 rounded border border-info/40 px-2 py-0.5 text-xs text-info hover:bg-info/10"
+                                onClick={() => {
+                                  const utt = new SpeechSynthesisUtterance(
+                                    details[q.id].context!.replace(/\$[^$]*\$/g, ""),
+                                  );
+                                  utt.lang = "en-US";
+                                  utt.rate = 0.9;
+                                  window.speechSynthesis.cancel();
+                                  window.speechSynthesis.speak(utt);
+                                }}
+                              >
+                                ▶ Nghe thử (TTS trình duyệt - giám thị đọc lại khi in đề)
+                              </button>
+                            )}
                           </div>
                         )}
                         {(details[q.id].media ?? []).length > 0 && (

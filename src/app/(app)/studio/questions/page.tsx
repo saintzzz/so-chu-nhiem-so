@@ -12,20 +12,18 @@ export default async function StudioQuestionsPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
   await requireFeature("studio");
   const supabase = await createClient();
-  const [{ data: subs }, { count: qCount }, { data: firstRows }] =
-    await Promise.all([
-      supabase.from("tvc_subjects").select("*").order("code"),
-      supabase
-        .from("tvc_questions")
-        .select("*", { count: "exact", head: true }),
-      supabase
-        .from("tvc_questions")
-        .select(
-          "id, owner_id, code, stem, qtype, level, points, standard_ids, subject_code, grade, source, review_state, created_at",
-        )
-        .order("created_at", { ascending: false })
-        .range(0, 99),
-    ]);
+  // CR-033: khong count exact (cham tren bank lon) - client tu load
+  // het chunk va biet tong that sau khi tai xong.
+  const [{ data: subs }, { data: firstRows }] = await Promise.all([
+    supabase.from("tvc_subjects").select("*").order("code"),
+    supabase
+      .from("tvc_questions")
+      .select(
+        "id, owner_id, code, stem, qtype, level, points, standard_ids, subject_code, grade, source, review_state, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .range(0, 99),
+  ]);
   const qs = firstRows ?? [];
 
   // CR-032: mon cua to chuyen mon -> to truong loc "Mon cua to toi"
@@ -58,7 +56,7 @@ export default async function StudioQuestionsPage() {
       <QuestionBank
         initial={qs as unknown as Question[]}
         subjects={(subs as Subject[]) ?? []}
-        total={qCount ?? qs.length}
+        total={undefined}
         meId={profile.id}
         isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
         isAdmin={["bgh", "admin"].includes(profile.role)}

@@ -149,8 +149,30 @@ export function UsersBoard({
     });
   }
 
+  const roleCount = new Map<string, number>();
+  const empCount = new Map<string, number>();
+  for (const u of users) {
+    roleCount.set(u.role, (roleCount.get(u.role) ?? 0) + 1);
+    empCount.set(u.employment_type ?? "chua_khai_bao", (empCount.get(u.employment_type ?? "chua_khai_bao") ?? 0) + 1);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Thong ke nhan su nhanh (CR-033) */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {Object.entries(ROLE_LABELS)
+          .filter(([r]) => roleCount.get(r))
+          .map(([r, l]) => (
+            <span key={r} className="rounded-full border bg-card px-2.5 py-1">
+              {l}: <b>{roleCount.get(r)}</b>
+            </span>
+          ))}
+        {[...empCount.entries()].map(([k, n]) => (
+          <span key={k} className="rounded-full border bg-muted/50 px-2.5 py-1 text-muted-foreground">
+            {k === "chua_khai_bao" ? "Chưa khai báo" : EMPLOYMENT_LABEL[k] ?? k}: <b>{n}</b>
+          </span>
+        ))}
+      </div>
       <div>
         <button
           className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"

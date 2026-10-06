@@ -23,7 +23,18 @@ export default async function StudioMaterialPage({
     .eq("id", id)
     .single();
   const material = data as Material | null;
-  if (!material || material.author_id !== profile.id) notFound();
+  if (!material) notFound();
+  // RLS da loc: chi doc duoc cua minh / hoc lieu xuat ban / cung truong (staff)
+
+  const isReviewer = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const { data: revs } =
+    material.author_id === profile.id || isReviewer
+      ? await supabase
+          .from("tvc_reviews")
+          .select("layer, status, notes, created_at")
+          .eq("material_id", id)
+          .order("created_at")
+      : { data: [] };
 
   const { data: stds } = material.standard_ids?.length
     ? await supabase
@@ -57,7 +68,12 @@ export default async function StudioMaterialPage({
           ))}
         </div>
       )}
-      <MaterialActions material={material} />
+      <MaterialActions
+        material={material}
+        meId={profile.id}
+        myRole={profile.role}
+        reviews={revs ?? []}
+      />
     </div>
   );
 }

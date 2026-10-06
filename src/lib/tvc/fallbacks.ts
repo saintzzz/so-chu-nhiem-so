@@ -784,3 +784,62 @@ export function fbDialogue(input: Input, ctx: ToolContext): DocContent {
     ],
   };
 }
+
+// ---------- DC-06: Bai trinh chieu (slide) ----------
+// Moi section = 1 slide. Gioi han noi dung/slide de khong tran khung.
+export function fbSlides(input: Input, ctx: ToolContext): DocContent {
+  const topic = input.lesson || ctx.standards[0]?.lesson_ref || "Bài học";
+  const n = Math.min(Math.max(Number(input.slides) || 8, 6), 16);
+  const slide = (t: string, items: string[]): DocSection => ({
+    title: t,
+    blocks: [{ kind: "list", items }],
+  });
+  const all: DocSection[] = [
+    {
+      title: topic,
+      blocks: [
+        { kind: "para", text: `Môn: ${subjectName(ctx)} - Lớp ${ctx.grade ?? "?"}` },
+        { kind: "para", text: "Giáo viên: ................................................" },
+      ],
+    },
+    slide("MỤC TIÊU BÀI HỌC", [
+      `Kiến thức: ${stdDesc(ctx)}.`,
+      "Năng lực: tự chủ và tự học, giao tiếp và hợp tác, giải quyết vấn đề.",
+      "Phẩm chất: trách nhiệm, chăm chỉ, trung thực.",
+    ]),
+    slide("KHỞI ĐỘNG", [
+      "Trò chơi/câu hỏi mở đầu liên quan bài học (2-3 phút).",
+      "Học sinh nêu điều đã biết, điều muốn tìm hiểu.",
+      "Giáo viên dẫn dắt vào bài mới.",
+    ]),
+    slide("KHÁM PHÁ - NỘI DUNG CHÍNH", [
+      `Nội dung trọng tâm: ${stdDesc(ctx)}.`,
+      "Ví dụ minh họa 1: (giáo viên điền theo SGK/vật liệu của trường).",
+      "Học sinh thảo luận nhóm đôi - báo cáo kết quả.",
+    ]),
+    slide("LUYỆN TẬP", [
+      "Bài tập 1: củng cố mức nhận biết (trắc nghiệm/trả lời nhanh).",
+      "Bài tập 2: mức thông hiểu (vận dụng vào tình huống quen thuộc).",
+      "Bài tập 3: mức vận dụng (bài tập mở/liên hệ thực tiễn).",
+    ]),
+    slide("VẬN DỤNG - MỞ RỘNG", [
+      "Tình huống thực tiễn gần gũi với học sinh địa phương.",
+      "Sản phẩm: trình bày/poster/sơ đồ tư duy (tùy môn).",
+      "Đánh giá nhanh theo rubric 3 mức.",
+    ]),
+    slide("TỔNG KẾT - DẶN DÒ", [
+      "Chốt kiến thức: 3 ý chính của bài.",
+      "Bài về nhà: ................................................",
+      "Chuẩn bị bài sau: ........................................",
+    ]),
+  ];
+  return {
+    title: `BÀI TRÌNH CHIẾU - ${topic.toUpperCase()}`,
+    meta: [
+      ["Môn học", subjectName(ctx)],
+      ["Khối lớp", ctx.grade ? `Lớp ${ctx.grade}` : "-"],
+      ["Số slide", String(n)],
+    ],
+    sections: all.slice(0, n),
+  };
+}

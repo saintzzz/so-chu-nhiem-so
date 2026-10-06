@@ -90,6 +90,7 @@ export async function saveMaterial(input: SaveMaterialInput) {
     .from("tvc_materials")
     .insert({
       author_id: profile.id,
+      school_id: profile.school_id ?? null,
       type: input.type,
       tool_code: input.toolCode,
       title: input.title,
@@ -149,6 +150,42 @@ export async function deleteMaterial(id: string) {
     .select("id");
   if (error || !data?.length) return { error: "Không xóa được." };
   await audit("material.delete", "material", id);
+  revalidatePath("/studio/library");
+  return { ok: true };
+}
+
+// ---------- Kiem duyet hoc lieu cap truong (CR-029) ----------
+
+export async function submitMaterialReview(id: string) {
+  const err = await checkActionRole([...TOOL_ROLES]);
+  if (err) return { error: err };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("scn_submit_material_review", { mid: id });
+  if (error) return { error: "Không gửi duyệt được." };
+  if (data?.error) return { error: data.error as string };
+  await audit("material.submit_review", "material", id);
+  revalidatePath(`/studio/library/${id}`);
+  revalidatePath("/studio/library");
+  return { ok: true };
+}
+
+export async function reviewMaterial(
+  id: string,
+  decision: "approve" | "reject",
+  note = "",
+) {
+  const err = await checkActionRole(["to_truong", "bgh", "admin"]);
+  if (err) return { error: err };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("scn_review_material", {
+    mid: id,
+    decision,
+    note,
+  });
+  if (error) return { error: "Không cập nhật được." };
+  if (data?.error) return { error: data.error as string };
+  await audit("material.review", "material", id, { decision });
+  revalidatePath(`/studio/library/${id}`);
   revalidatePath("/studio/library");
   return { ok: true };
 }

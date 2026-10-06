@@ -61,6 +61,7 @@ export type MaterialType =
   | "dialogue"
   | "formula_set"
   | "variants"
+  | "slides"
   | "other";
 
 export interface Material {

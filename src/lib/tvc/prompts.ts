@@ -70,6 +70,15 @@ Mỗi phần 2-3 câu hỏi/nhiệm vụ cụ thể (không chung chung), có c�
 Appendix: đáp án/hướng dẫn chấm chi tiết từng câu (phần dành cho giáo viên).`,
   }),
 
+  "DC-06": (input, ctx) => ({
+    system: SYS_BASE,
+    prompt: `${base(ctx)}
+Thiết kế BÀI TRÌNH CHIẾU (slide) cho bài "${input.lesson || "theo YCCĐ trên"}", ${input.slides || 8} slide.
+Mỗi section = 1 slide: tiêu đề slide ngắn gọn + 3-5 bullet nội dung trình chiếu (KHÔNG viết đoạn văn dài, mỗi bullet tối đa 15 từ).
+Cấu trúc bám tiến trình KHBD: mở đầu (slide bìa + mục tiêu), khởi động, khám phá (có thể 2-3 slide), luyện tập, vận dụng, tổng kết.
+Nội dung bám YCCĐ đã chọn, phù hợp lứa tuổi học sinh lớp ${ctx.grade ?? ""}. Có gợi ý hình ảnh/minh họa dạng [Gợi ý hình: ...] ở bullet riêng khi cần.`,
+  }),
+
   "T-01": (input, ctx) => ({
     system: SYS_BASE,
     prompt: `${base(ctx)}

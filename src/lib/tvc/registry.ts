@@ -125,6 +125,27 @@ export const TOOLS: ToolDef[] = [
     fallback: fb.fbWorksheet,
   },
   {
+    code: "DC-06",
+    name: "Bài trình chiếu",
+    description: "Sinh slide theo tiến trình KHBD, xuất .pptx chuẩn PowerPoint",
+    group: "core",
+    materialType: "slides",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "standard_ids", label: "Bài học / YCCĐ", type: "standard", required: true },
+      { key: "lesson", label: "Tên bài", type: "text" },
+      { key: "slides", label: "Số slide", type: "select", default: "8", options: [
+        { value: "6", label: "6 slide" },
+        { value: "8", label: "8 slide" },
+        { value: "12", label: "12 slide" },
+        { value: "16", label: "16 slide" },
+      ]},
+    ],
+    buildPrompt: PROMPTS["DC-06"],
+    fallback: fb.fbSlides,
+  },
+  {
     code: "T-01",
     name: "Sinh biến thể bài toán",
     description: "Từ 1 bài gốc sinh 10-50 biến thể giữ nguyên cấu trúc",

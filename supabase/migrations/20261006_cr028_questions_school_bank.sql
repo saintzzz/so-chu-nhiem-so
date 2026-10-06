@@ -1,6 +1,7 @@
 -- CR-028: ngan hang cau hoi cap truong (thay per-owner) + index scale
--- Doc: GV cung truong thay nhau. Ghi noi dung: owner + to_truong/bgh/admin
--- cung truong. Xoa: owner + to_truong/bgh/admin cung truong.
+-- Doc: owner + staff cung truong. Ghi/sua/xoa: owner hoac to_truong/bgh/admin
+-- cung truong. Dung my_role()/my_school_id() (security definer) - KHONG subquery
+-- profiles truc tiep trong policy (RLS chain -> seq scan -> timeout).
 
 alter table tvc.questions
   add column if not exists school_id uuid references public.schools(id);
@@ -19,24 +20,37 @@ create index if not exists questions_pick_idx on tvc.questions(subject_code, gra
 drop policy if exists tvc_q_owner on tvc.questions;
 
 create policy tvc_q_read on tvc.questions for select
-  using (auth.uid() is not null and (owner_id = auth.uid() or school_id = my_school_id()));
+  using (
+    auth.uid() is not null
+    and (owner_id = auth.uid()
+        or (school_id = my_school_id() and my_role() in ('gvcn','gvbm','to_truong','bgh','admin')))
+  );
 
 create policy tvc_q_insert on tvc.questions for insert
-  with check (owner_id = auth.uid() and (school_id is null or school_id = my_school_id()));
+  with check (
+    owner_id = auth.uid()
+    and my_role() in ('gvcn','gvbm','to_truong','bgh','admin')
+    and (school_id is null or school_id = my_school_id())
+  );
 
--- Sua (noi dung + duyet): owner hoac to_truong/bgh/admin cung truong
 create policy tvc_q_update on tvc.questions for update
   using (
     owner_id = auth.uid()
-    or (school_id = my_school_id() and (select role from public.profiles where id = auth.uid()) in ('to_truong','bgh','admin'))
+    or (school_id = my_school_id() and my_role() in ('to_truong','bgh','admin'))
   )
   with check (
     owner_id = auth.uid()
-    or (school_id = my_school_id() and (select role from public.profiles where id = auth.uid()) in ('to_truong','bgh','admin'))
+    or (school_id = my_school_id() and my_role() in ('to_truong','bgh','admin'))
   );
 
 create policy tvc_q_delete on tvc.questions for delete
   using (
     owner_id = auth.uid()
-    or (school_id = my_school_id() and (select role from public.profiles where id = auth.uid()) in ('to_truong','bgh','admin'))
+    or (school_id = my_school_id() and my_role() in ('to_truong','bgh','admin'))
   );
+
+-- View public phai recreate de nhan cot moi (select * chi expand luc tao view)
+create or replace view public.tvc_questions
+with (security_invoker = true) as
+select * from tvc.questions;
+notify pgrst, 'reload schema';

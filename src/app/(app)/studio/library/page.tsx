@@ -38,6 +38,19 @@ export default async function StudioLibraryPage({
   const { data } = await q.limit(100);
   const materials = (data as Partial<Material>[]) ?? [];
 
+  // Reviewer xem hoc lieu truong dang cho duyet
+  const isReviewer = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const { data: pendingData } = isReviewer
+    ? await supabase
+        .from("tvc_materials")
+        .select("id, title, type, tool_code, subject_code, grade, status, updated_at")
+        .neq("author_id", profile.id)
+        .in("status", ["in_review", "totruong_ok"])
+        .order("updated_at", { ascending: false })
+        .limit(50)
+    : { data: [] };
+  const pendingReview = (pendingData as Partial<Material>[]) ?? [];
+
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
@@ -67,6 +80,46 @@ export default async function StudioLibraryPage({
           </Link>
         ))}
       </div>
+
+      {pendingReview.length > 0 && (
+        <div className="mt-6">
+          <h2 className="mb-2 text-sm font-semibold">
+            Chờ duyệt của trường ({pendingReview.length})
+          </h2>
+          <div className="overflow-hidden rounded-xl border border-amber-500/40 bg-card shadow-sm">
+            <table className="w-full text-sm">
+              <tbody className="divide-y">
+                {pendingReview.map((m) => (
+                  <tr key={m.id} className="hover:bg-muted/40">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/studio/library/${m.id}`}
+                        className="font-medium hover:text-primary"
+                      >
+                        {m.title}
+                      </Link>
+                      {m.tool_code && (
+                        <span className="ml-2 font-mono text-xs text-muted-foreground">
+                          {m.tool_code}
+                        </span>
+                      )}
+                    </td>
+                    <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+                      {TYPE_LABEL[m.type ?? ""] ?? m.type}
+                    </td>
+                    <td className="px-4 py-3">
+                      <MaterialStatusBadge status={m.status!} />
+                    </td>
+                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                      {formatDate(m.updated_at!)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {materials.length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed bg-card p-12 text-center">

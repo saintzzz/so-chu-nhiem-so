@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { docToDocx } from "@/lib/tvc/docx";
+import { docToPptx } from "@/lib/tvc/pptx";
 import type { DocContent, Material } from "@/types/tvc";
 
 export async function GET(
@@ -9,7 +10,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const fmt = req.nextUrl.searchParams.get("fmt") ?? "docx";
-  if (fmt !== "docx") {
+  if (fmt !== "docx" && fmt !== "pptx") {
     return NextResponse.json(
       { error: "Định dạng chưa hỗ trợ." },
       { status: 400 },
@@ -52,18 +53,25 @@ export async function GET(
     .eq("id", material.author_id)
     .single();
 
-  const buf = await docToDocx(
-    material.content as DocContent,
-    author?.full_name ?? "giáo viên",
-  );
+  const isPptx = fmt === "pptx";
+  const buf = isPptx
+    ? await docToPptx(
+        material.content as DocContent,
+        author?.full_name ?? "giáo viên",
+      )
+    : await docToDocx(
+        material.content as DocContent,
+        author?.full_name ?? "giáo viên",
+      );
   const filename = encodeURIComponent(
-    `${material.title.replace(/[^\p{L}\p{N} -]/gu, "").slice(0, 60)}.docx`,
+    `${material.title.replace(/[^\p{L}\p{N} -]/gu, "").slice(0, 60)}.${fmt}`,
   );
 
   return new NextResponse(new Uint8Array(buf), {
     headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "Content-Type": isPptx
+        ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
     },
   });

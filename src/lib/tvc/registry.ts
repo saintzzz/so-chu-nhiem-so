@@ -45,6 +45,13 @@ export const TOOLS: ToolDef[] = [
       { key: "subject", label: "Môn học", type: "subject", required: true },
       { key: "grade", label: "Khối lớp", type: "grade", required: true },
       { key: "standard_ids", label: "Phạm vi YCCĐ (chọn nhiều)", type: "standard", required: true },
+      { key: "term", label: "Đợt kiểm tra", type: "select", default: "gk2", options: [
+        { value: "gk1", label: "Giữa học kì I" },
+        { value: "ck1", label: "Cuối học kì I" },
+        { value: "gk2", label: "Giữa học kì II" },
+        { value: "ck2", label: "Cuối học kì II" },
+        { value: "tx", label: "Kiểm tra thường xuyên" },
+      ]},
       { key: "duration", label: "Thời gian làm bài", type: "select", default: "45", options: [
         { value: "15", label: "15 phút" },
         { value: "45", label: "45 phút" },
@@ -75,6 +82,10 @@ export const TOOLS: ToolDef[] = [
       { key: "tf_score", label: "Chấm phần Đúng-Sai", type: "select", default: "linear", options: [
         { value: "linear", label: "Tuyến tính 0,25đ/ý (định kỳ)" },
         { value: "progressive", label: "Lũy tiến 0,1-0,25-0,5-1đ (QĐ 764)" },
+      ]},
+      { key: "approved_only", label: "Câu hỏi vào đề", type: "select", default: "no", options: [
+        { value: "no", label: "Tất cả (ghi rõ câu chưa duyệt trong phụ lục)" },
+        { value: "yes", label: "Chỉ câu đã duyệt (khuyến nghị khi ra đề thật)" },
       ]},
       { key: "shuffle", label: "Sinh mã đề hoán vị", type: "select", default: "no", options: [
         { value: "no", label: "1 mã đề" },

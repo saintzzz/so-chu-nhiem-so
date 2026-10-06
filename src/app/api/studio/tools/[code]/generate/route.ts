@@ -200,7 +200,8 @@ function buildExamDoc(
   return {
     title: `${th ? "KIỂM TRA ĐỊNH KÌ" : "ĐỀ KIỂM TRA"}${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${(matrix.title || `${opts.subjectName ?? "MÔN"}${matrix.grade ? ` LỚP ${matrix.grade}` : ""}`)
       .toUpperCase()
-      .replace(/^MA TRẬN ĐỀ KIỂM TRA\s*-\s*/, "")
+      .replace(/^MA TRẬN ĐỀ KIỂM TRA\s*/, "")
+      .replace(/^[-\s]+/, "")
       .replace(/^MA TRẬN\s*-\s*/, "")}`,
     meta: [
       ["Môn học", opts.subjectName ?? matrix.subject_code ?? "-"],
@@ -444,6 +445,7 @@ export async function POST(
     const pack = input.pack ?? "full";
     const tfScore = input.tf_score ?? "linear";
 
+    const approvedOnly = input.approved_only === "yes";
     const used = new Set<string>();
     const usedStems = new Set<string>();
     const usable = (x: Question, extraUsed?: Set<string>) =>
@@ -452,6 +454,7 @@ export async function POST(
       !usedStems.has(stemKey(x.stem)) &&
       !hasControl(x.stem) &&
       (x.review_state ?? "unreviewed") !== "flagged" &&
+      (!approvedOnly || x.review_state === "approved") &&
       !referencesMissingContext(x.stem, x.context) &&
       (x.qtype !== "multiple_choice" ||
         ["A", "B", "C", "D"].every((l) =>

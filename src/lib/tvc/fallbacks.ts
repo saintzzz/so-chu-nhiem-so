@@ -328,11 +328,21 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
   const totalCount = cells.reduce((a, c) => a + c.count, 0);
   const totalPts = Math.round(cells.reduce((a, c) => a + c.points, 0) * 100) / 100;
 
+  const TERM_LABEL: Record<string, string> = {
+    gk1: "GIỮA HỌC KÌ I",
+    ck1: "CUỐI HỌC KÌ I",
+    gk2: "GIỮA HỌC KÌ II",
+    ck2: "CUỐI HỌC KÌ II",
+    tx: "THƯỜNG XUYÊN",
+  };
+  const termLabel = TERM_LABEL[input.term ?? ""] ?? "ĐỊNH KÌ";
+
   const doc: DocContent = {
-    title: `MA TRẬN ĐỀ KIỂM TRA - ${subjectName(ctx).toUpperCase()}${ctx.grade ? ` LỚP ${ctx.grade}` : ""}`,
+    title: `MA TRẬN ĐỀ KIỂM TRA ${termLabel} - ${subjectName(ctx).toUpperCase()}${ctx.grade ? ` LỚP ${ctx.grade}` : ""}`,
     meta: [
       ["Môn học", subjectName(ctx)],
       ["Khối lớp", ctx.grade ? `Lớp ${ctx.grade}` : "-"],
+      ["Đợt kiểm tra", termLabel],
       ["Thời gian", `${duration} phút`],
       ["Tổng điểm", `${total} điểm`],
       [
@@ -363,7 +373,11 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
           {
             kind: "note",
             text: th
-              ? `Đề kiểm tra định kỳ tiểu học theo TT 22/2021 (Điều 10): câu hỏi thiết kế theo 4 mức; bài chấm thang 10, không cho điểm 0, không cho điểm thập phân ở điểm tổng bài. Phân bổ: trắc nghiệm ${typeWeight.multiple_choice + typeWeight.true_false_4 + typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ.`
+              ? `Đề kiểm tra định kỳ tiểu học theo TT 22/2021 (Điều 10): câu hỏi thiết kế theo 4 mức; bài chấm thang 10, không cho điểm 0, không cho điểm thập phân ở điểm tổng bài. Phân bổ: trắc nghiệm ${typeWeight.multiple_choice + typeWeight.true_false_4 + typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ.${
+                  (input.term ?? "").startsWith("gk") && (ctx.grade ?? 0) <= 3
+                    ? " Lưu ý: lớp 1-3 TT 22/2021 không bắt buộc kiểm tra giấy giữa kỳ - kiểm tra văn bản hướng dẫn của Sở GDĐT địa phương trước khi dùng."
+                    : ""
+                }`
               : `Phân bổ dạng thức theo CV 7991: trắc nghiệm ${typeWeight.multiple_choice}đ - đúng/sai ${typeWeight.true_false_4}đ - trả lời ngắn ${typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ (thang 10).`,
           },
         ],

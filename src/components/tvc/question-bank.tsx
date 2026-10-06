@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CurriculumStandard, QReviewState, Question, Subject } from "@/types/tvc";
-import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, listQuestionsChunk, setQuestionReviewState } from "@/lib/tvc/actions";
+import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, listQuestionsChunk, setQuestionReviewState, bulkSetQuestionReviewState } from "@/lib/tvc/actions";
 import { LEVEL_LABEL, QTYPE_LABEL } from "@/lib/tvc/types";
 import { MathText } from "@/components/tvc/math-text";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
@@ -180,6 +180,29 @@ export function QuestionBank({
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   // ve trang 1 khi doi bo loc
   const setFilterPaged = (f: typeof filter) => { setFilter(f); setPage(1); };
+
+  // Bulk review (CR-027): chon nhieu cau -> duyet/flag hang loat
+  const [selIds, setSelIds] = useState<Set<string>>(new Set());
+  const toggleSel = (id: string) =>
+    setSelIds((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const bulkReview = (state: "approved" | "flagged" | "unreviewed") => {
+    if (!selIds.size) return;
+    start(async () => {
+      const res = await bulkSetQuestionReviewState([...selIds], state);
+      if ("error" in res) {
+        setError(res.error ?? "Lỗi.");
+        return;
+      }
+      setQuestions((p) => p.map((q) => (selIds.has(q.id) ? { ...q, review_state: state } : q)));
+      setMsg(`Đã cập nhật ${res.count} câu hỏi.`);
+      setSelIds(new Set());
+    });
+  };
 
   const submit = () => {
     setError("");
@@ -946,11 +969,62 @@ export function QuestionBank({
         </div>
       )}
 
+      {/* Bulk bar */}
+      {selIds.size > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
+          <span className="font-medium">Đã chọn {selIds.size} câu</span>
+          <button
+            className="rounded-lg border border-emerald-400/40 px-2.5 py-1 text-xs text-emerald-300 hover:bg-emerald-400/15"
+            disabled={pending}
+            onClick={() => bulkReview("approved")}
+          >
+            Đánh dấu đã duyệt
+          </button>
+          <button
+            className="rounded-lg border border-destructive/40 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/15"
+            disabled={pending}
+            onClick={() => bulkReview("flagged")}
+          >
+            Đánh dấu lỗi
+          </button>
+          <button
+            className="rounded-lg border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+            disabled={pending}
+            onClick={() => bulkReview("unreviewed")}
+          >
+            Về chưa duyệt
+          </button>
+          <button
+            className="ml-auto rounded-lg border px-2.5 py-1 text-xs hover:bg-muted"
+            onClick={() => setSelIds(new Set())}
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      )}
+
       {/* List */}
       <div className="mt-4 overflow-hidden rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
             <tr>
+              <th className="w-8 px-2 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="Chọn tất cả trang"
+                  checked={pageRows.length > 0 && pageRows.every((q) => selIds.has(q.id))}
+                  onChange={(e) =>
+                    setSelIds((p) => {
+                      const n = new Set(p);
+                      for (const q of pageRows) {
+                        if (e.target.checked) n.add(q.id);
+                        else n.delete(q.id);
+                      }
+                      return n;
+                    })
+                  }
+                />
+              </th>
               <th className="hidden px-4 py-3 font-medium lg:table-cell">Mã</th>
               <th className="px-4 py-3 font-medium">Câu hỏi</th>
               <th className="px-4 py-3 font-medium">Dạng</th>
@@ -965,6 +1039,14 @@ export function QuestionBank({
             {pageRows.map((q) => (
               <Fragment key={q.id}>
               <tr className="hover:bg-muted/40">
+                <td className="px-2 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Chọn câu ${q.code ?? q.id}`}
+                    checked={selIds.has(q.id)}
+                    onChange={() => toggleSel(q.id)}
+                  />
+                </td>
                 <td className="hidden whitespace-nowrap px-4 py-3 font-mono text-xs text-muted-foreground lg:table-cell">
                   {q.code ?? "-"}
                 </td>
@@ -1016,7 +1098,7 @@ export function QuestionBank({
               </tr>
               {expandedId === q.id && (
                 <tr className="bg-muted/20">
-                  <td colSpan={8} className="px-4 py-3 text-sm">
+                  <td colSpan={9} className="px-4 py-3 text-sm">
                     <div className="mb-2 flex items-center gap-2">
                       {(q.review_state ?? "unreviewed") !== "approved" && (
                         <button
@@ -1096,7 +1178,7 @@ export function QuestionBank({
             ))}
             {!filtered.length && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   Chưa có câu hỏi nào.
                 </td>
               </tr>

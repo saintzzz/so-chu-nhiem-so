@@ -224,14 +224,18 @@ export function KhbdTemplatesManager({
               <div>
                 <p className="font-medium">
                   {t.name}
-                  {t.is_default && (
-                    <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                      Mặc định
-                    </span>
-                  )}
-                  {!t.school_id && (
+                  {!t.school_id ? (
                     <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">
                       Hệ thống
+                    </span>
+                  ) : (
+                    <span className="ml-2 rounded bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700">
+                      Của trường
+                    </span>
+                  )}
+                  {t.is_default && (
+                    <span className="ml-2 rounded bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                      {t.school_id ? "Mặc định trường" : "Mặc định hệ thống"}
                     </span>
                   )}
                 </p>

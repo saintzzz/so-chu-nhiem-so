@@ -292,6 +292,34 @@ export async function setQuestionReviewState(
   return { ok: true };
 }
 
+export async function bulkSetQuestionReviewState(
+  ids: string[],
+  state: "unreviewed" | "approved" | "flagged",
+) {
+  const err = await checkActionRole([...TOOL_ROLES]);
+  if (err) return { error: err };
+  if (!ids.length) return { error: "Chưa chọn câu hỏi." };
+  if (ids.length > 200) return { error: "Mỗi lần tối đa 200 câu." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tvc_questions")
+    .update({ review_state: state })
+    .in("id", ids)
+    .select("id");
+  if (error) return { error: error.message };
+  const n = data?.length ?? 0;
+  if (!n) return { error: "Không cập nhật được (quyền sở hữu)." };
+  const profile = await getProfile();
+  await supabase.from("tvc_audit_logs").insert({
+    actor_id: profile?.id ?? null,
+    action: `question.bulk_${state}`,
+    entity: "question",
+    entity_id: null,
+    meta: { count: n },
+  });
+  return { ok: true, count: n };
+}
+
 export async function listQuestionsChunk(offset: number) {
   const err = await checkActionRole([...TOOL_ROLES]);
   if (err) return { error: err };
@@ -537,6 +565,15 @@ export async function saveKhbdTemplate(input: {
   await ensureTvcProfile();
 
   const supabase = await createClient();
+  // Chi 1 mac dinh moi truong: dat mac dinh -> bo mac dinh cac mau truong khac
+  if (input.is_default) {
+    await supabase
+      .from("tvc_khbd_templates")
+      .update({ is_default: false })
+      .eq("school_id", profile.school_id)
+      .eq("is_default", true)
+      .neq("id", input.id ?? "00000000-0000-0000-0000-000000000000");
+  }
   const row = {
     name: input.name.trim(),
     activities: acts,

@@ -178,6 +178,21 @@ export interface MatrixResult {
   }[];
 }
 
+// Nhan muc do theo khung: cap TH dung TT 22/2021 (Muc 1-4), THCS/THPT dung CV 7991.
+export function levelLabel(level: string, framework: "tt22" | "cv7991" = "cv7991"): string {
+  if (framework === "tt22") {
+    return (
+      {
+        biet: "Mức 1 (Nhận biết)",
+        hieu: "Mức 2 (Hiểu)",
+        van_dung: "Mức 3 (Vận dụng)",
+        van_dung_cao: "Mức 4 (Vận dụng linh hoạt)",
+      }[level] ?? level
+    );
+  }
+  return LEVEL_LABEL[level] ?? level;
+}
+
 export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
   const stds = ctx.standards.length
     ? ctx.standards
@@ -192,32 +207,40 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
   const duration = Number(input.duration) || 45;
   const nStd = stds.length;
 
-  // Phân bổ theo CV 7991: TN 3.0 - Đ/S 2.0 - TL ngắn 2.0 - Tự luận 3.0 (thang 10)
+  // Cap TH (lop <= 5): de dinh ky theo TT 22/2021 Dieu 10 - 4 muc
+  // (Nhan biet / Hieu / Van dung / Van dung linh hoat), TN + TL thang 10.
+  // Cap THCS/THPT: CV 7991 - TN 3.0 - Đ/S 2.0 - TL ngan 2.0 - Tu luan 3.0.
+  const th = (ctx.grade ?? 6) <= 5;
+  const framework = th ? "tt22" : "cv7991";
   const cells: MatrixCellOut[] = [];
   const spec: MatrixResult["spec"] = [];
   const typeCycle = ["multiple_choice", "true_false_4", "short_answer", "essay"];
-  const typeWeight: Record<string, number> = {
-    multiple_choice: 3,
-    true_false_4: 2,
-    short_answer: 2,
-    essay: 3,
-  };
-  const unit: Record<string, number> = {
-    multiple_choice: 0.25,
-    true_false_4: 0.5,
-    short_answer: 1,
-    essay: 3,
-  };
+  const typeWeight: Record<string, number> = th
+    ? { multiple_choice: 3, true_false_4: 1.5, short_answer: 1, essay: 4.5 }
+    : { multiple_choice: 3, true_false_4: 2, short_answer: 2, essay: 3 };
+  const unit: Record<string, number> = th
+    ? { multiple_choice: 0.5, true_false_4: 1, short_answer: 0.5, essay: 2.5 }
+    : { multiple_choice: 0.25, true_false_4: 0.5, short_answer: 1, essay: 3 };
   // Muc do phan bo theo vong trong moi dang thuc - tranh ma tran don dieu.
-  // CV 7991 dinh ky dung 3 muc Biet-Hieu-Van dung; "Vận dụng cao" chi xuat hien
+  // TH (TT22): 4 muc la chuan chinh thuc (Muc 4 = van_dung_cao).
+  // THCS/THPT (CV 7991): 3 muc Biet-Hieu-Van dung; "Vận dụng cao" chi xuat hien
   // khi nguoi dung bat tuy chon (input.vdc=1) - dung cho de nang cao/BDHSG.
   const useVdc = input.vdc === "1" || input.vdc === "yes";
-  const typeLevelCycle: Record<string, string[]> = {
-    multiple_choice: ["biet", "hieu", "biet", "van_dung"],
-    true_false_4: ["hieu", "biet", "van_dung", "hieu"],
-    short_answer: ["hieu", "van_dung", "hieu", "van_dung"],
-    essay: useVdc ? ["van_dung", "van_dung_cao"] : ["van_dung", "hieu", "van_dung"],
-  };
+  const typeLevelCycle: Record<string, string[]> = th
+    ? {
+        multiple_choice: ["biet", "hieu", "biet", "hieu", "van_dung"],
+        true_false_4: ["biet", "hieu", "van_dung"],
+        short_answer: ["hieu", "van_dung"],
+        essay: ["van_dung", "van_dung_cao"],
+      }
+    : {
+        multiple_choice: ["biet", "hieu", "biet", "van_dung"],
+        true_false_4: ["hieu", "biet", "van_dung", "hieu"],
+        short_answer: ["hieu", "van_dung", "hieu", "van_dung"],
+        essay: useVdc
+          ? ["van_dung", "van_dung_cao"]
+          : ["van_dung", "hieu", "van_dung"],
+      };
   const totalWeight = Object.values(typeWeight).reduce((a, b) => a + b, 0);
 
   stds.forEach((s, si) => {
@@ -243,6 +266,15 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
     });
   });
 
+  // Bu chenh lech do lam tron vao cell cuoi de tong diem dung `total`.
+  const ptsSum = cells.reduce((a, c) => a + c.points, 0);
+  const diff = Math.round((total - ptsSum) * 100) / 100;
+  if (cells.length && Math.abs(diff) >= 0.25) {
+    const last = cells[cells.length - 1];
+    last.points = Math.round((last.points + diff) * 100) / 100;
+    spec[spec.length - 1].points = last.points;
+  }
+
   const totalCount = cells.reduce((a, c) => a + c.count, 0);
   const totalPts = Math.round(cells.reduce((a, c) => a + c.points, 0) * 100) / 100;
 
@@ -253,7 +285,12 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
       ["Khối lớp", ctx.grade ? `Lớp ${ctx.grade}` : "-"],
       ["Thời gian", `${duration} phút`],
       ["Tổng điểm", `${total} điểm`],
-      ["Khung", "CV 7991/BGDĐT-GDTrH: 3 mức độ x 4 dạng thức (3.0 - 2.0 - 2.0 - 3.0)"],
+      [
+        "Khung",
+        th
+          ? "TT 22/2021/TT-BGDĐT Điều 10: 4 mức (Nhận biết - Hiểu - Vận dụng - Vận dụng linh hoạt), TN kết hợp TL"
+          : "CV 7991/BGDĐT-GDTrH: 3 mức độ x 4 dạng thức (3.0 - 2.0 - 2.0 - 3.0)",
+      ],
     ],
     sections: [
       {
@@ -265,7 +302,7 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
             rows: [
               ...cells.map((c) => [
                 c.standard_code,
-                LEVEL_LABEL[c.level] ?? c.level,
+                levelLabel(c.level, framework),
                 QTYPE_LABEL[c.qtype] ?? c.qtype,
                 String(c.count),
                 String(c.points),
@@ -275,7 +312,9 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
           },
           {
             kind: "note",
-            text: `Phân bổ dạng thức theo CV 7991: trắc nghiệm ${typeWeight.multiple_choice}đ - đúng/sai ${typeWeight.true_false_4}đ - trả lời ngắn ${typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ (thang 10).`,
+            text: th
+              ? `Đề kiểm tra định kỳ tiểu học theo TT 22/2021 (Điều 10): câu hỏi thiết kế theo 4 mức; bài chấm thang 10, không cho điểm 0, không cho điểm thập phân ở điểm tổng bài. Phân bổ: trắc nghiệm ${typeWeight.multiple_choice + typeWeight.true_false_4 + typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ.`
+              : `Phân bổ dạng thức theo CV 7991: trắc nghiệm ${typeWeight.multiple_choice}đ - đúng/sai ${typeWeight.true_false_4}đ - trả lời ngắn ${typeWeight.short_answer}đ - tự luận ${typeWeight.essay}đ (thang 10).`,
           },
         ],
       },
@@ -288,7 +327,7 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
             rows: spec.map((s) => [
               s.standard_code,
               s.requirement,
-              LEVEL_LABEL[s.level] ?? s.level,
+              levelLabel(s.level, framework),
               QTYPE_LABEL[s.qtype] ?? s.qtype,
               (s.competencies ?? []).join(", ") || "-",
               String(s.count),

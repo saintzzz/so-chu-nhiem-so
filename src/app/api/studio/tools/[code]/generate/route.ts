@@ -107,13 +107,37 @@ function buildExamDoc(
   const perPts = (p: Picked) =>
     Math.round((p.cell.points / Math.max(p.cell.count, 1)) * 100) / 100;
 
+  // Cap TH (TT 22/2021): PHAN I TRAC NGHIEM (MC + Đ/S + TLN gop chung,
+  // danh so Cau 1..n lien tuc) + PHAN II TU LUAN - dung mau de dinh ky TH.
+  const th = (matrix.grade ?? 6) <= 5;
+  const groups: { qtypes: string[]; title: string; roman: string }[] = th
+    ? [
+        {
+          qtypes: ["multiple_choice", "true_false_4", "short_answer"],
+          title: "PHẦN I. TRẮC NGHIỆM",
+          roman: "I",
+        },
+        { qtypes: ["essay"], title: "PHẦN II. TỰ LUẬN", roman: "II" },
+      ]
+    : PARTS.map((p, i) => ({
+        qtypes: [p.qtype],
+        title: p.title,
+        roman: ["I", "II", "III", "IV"][i],
+      }));
+
   const sections: DocContent["sections"] = [];
   const ansRows: string[][] = [];
-  PARTS.forEach((part, pi) => {
-    const rows = partOf.get(part.qtype) ?? [];
+  groups.forEach((grp) => {
+    const rows = grp.qtypes.flatMap((t) => partOf.get(t) ?? []);
     if (!rows.length) return;
     const pts = rows.reduce((s, p) => s + perPts(p), 0);
     const blocks: DocContent["sections"][0]["blocks"] = [];
+    if (th && grp.roman === "I") {
+      blocks.push({
+        kind: "para",
+        text: "Khoanh vào chữ cái đặt trước câu trả lời đúng hoặc thực hiện theo yêu cầu của từng câu (Đúng ghi Đ, sai ghi S vào ô trống).",
+      });
+    }
     let items: string[] = [];
     let lastCtx: string | null = null;
     const flushList = () => {
@@ -145,14 +169,14 @@ function buildExamDoc(
     });
     flushList();
     sections.push({
-      title: `${part.title} (${Math.round(pts * 100) / 100} điểm)`,
+      title: `${grp.title} (${Math.round(pts * 100) / 100} điểm)`,
       blocks,
     });
     rows.forEach((p, i) => {
-      p.dispLabel = `Phần ${["I", "II", "III", "IV"][pi]} - Câu ${i + 1}`;
+      p.dispLabel = `Phần ${grp.roman} - Câu ${i + 1}`;
       const ans = p.dispCorrect ?? p.q.answer?.correct;
       ansRows.push([
-        ["I", "II", "III", "IV"][pi],
+        grp.roman,
         String(i + 1),
         p.q.code ?? "-",
         typeof ans === "string" ? ans : ans ? JSON.stringify(ans) : "-",
@@ -161,10 +185,11 @@ function buildExamDoc(
     });
   });
 
+  const tfPart = th ? "I" : "II";
   const tfNote =
     opts.tfScore === "progressive"
-      ? "Ghi chú chấm phần II (Đúng/Sai): mỗi câu gồm 4 ý - chấm lũy tiến theo QĐ 764/QĐ-BGDĐT: đúng 1 ý = 0,1đ; 2 ý = 0,25đ; 3 ý = 0,5đ; 4 ý = 1đ."
-      : "Ghi chú chấm phần II (Đúng/Sai): mỗi câu gồm 4 ý - chấm tuyến tính theo số ý đúng: đúng 1 ý = 0,25đ; 2 ý = 0,5đ; 3 ý = 0,75đ; 4 ý = 1đ.";
+      ? `Ghi chú chấm phần ${tfPart} (Đúng/Sai): mỗi câu gồm 4 ý - chấm lũy tiến theo QĐ 764/QĐ-BGDĐT: đúng 1 ý = 0,1đ; 2 ý = 0,25đ; 3 ý = 0,5đ; 4 ý = 1đ.`
+      : `Ghi chú chấm phần ${tfPart} (Đúng/Sai): mỗi câu gồm 4 ý - chấm tuyến tính theo số ý đúng: đúng 1 ý = 0,25đ; 2 ý = 0,5đ; 3 ý = 0,75đ; 4 ý = 1đ.`;
 
   const unr = picked.filter(
     (p) =>
@@ -173,7 +198,10 @@ function buildExamDoc(
   );
 
   return {
-    title: `ĐỀ KIỂM TRA${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${matrix.title.toUpperCase()}`,
+    title: `${th ? "KIỂM TRA ĐỊNH KÌ" : "ĐỀ KIỂM TRA"}${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${(matrix.title || `${opts.subjectName ?? "MÔN"}${matrix.grade ? ` LỚP ${matrix.grade}` : ""}`)
+      .toUpperCase()
+      .replace(/^MA TRẬN ĐỀ KIỂM TRA\s*-\s*/, "")
+      .replace(/^MA TRẬN\s*-\s*/, "")}`,
     meta: [
       ["Môn học", opts.subjectName ?? matrix.subject_code ?? "-"],
       ["Khối lớp", matrix.grade ? `Lớp ${matrix.grade}` : "-"],
@@ -183,6 +211,16 @@ function buildExamDoc(
       ],
       ["Tổng điểm", String(matrix.total_points)],
       ["Số câu", String(picked.length)],
+      ...(th
+        ? ([
+            ["Họ và tên học sinh", "................................................"],
+            ["Lớp", "..........  Mã phách: .........."],
+            [
+              "Điểm - Nhận xét",
+              "(Theo TT 22/2021: thang 10, không cho điểm 0 và điểm thập phân ở điểm tổng bài)",
+            ],
+          ] as [string, string][])
+        : []),
     ],
     sections,
     appendix: [
@@ -238,7 +276,7 @@ function buildExamDoc(
   };
 }
 
-function buildReviewDoc(matrixTitle: string): DocContent {
+function buildReviewDoc(matrixTitle: string, th: boolean): DocContent {
   return {
     title: "BIÊN BẢN PHẢN BIỆN ĐỀ KIỂM TRA",
     meta: [
@@ -255,7 +293,9 @@ function buildReviewDoc(matrixTitle: string): DocContent {
         blocks: [
           {
             kind: "para",
-            text: "Chủ tọa thông qua quy trình phản biện đề kiểm tra; phổ biến các văn bản hướng dẫn liên quan: Công văn số 7991/BGDĐT-GDTrH ngày 17/12/2024 của Bộ Giáo dục và Đào tạo; các hướng dẫn của Sở GD&ĐT và nhà trường.",
+            text: th
+              ? "Chủ tọa thông qua quy trình phản biện đề kiểm tra; phổ biến các văn bản hướng dẫn liên quan: Thông tư 22/2021/TT-BGDĐT về đánh giá học sinh tiểu học (Điều 10 - đánh giá định kì, đề theo 4 mức); các hướng dẫn của Phòng GD&ĐT và nhà trường."
+              : "Chủ tọa thông qua quy trình phản biện đề kiểm tra; phổ biến các văn bản hướng dẫn liên quan: Công văn số 7991/BGDĐT-GDTrH ngày 17/12/2024 của Bộ Giáo dục và Đào tạo; các hướng dẫn của Sở GD&ĐT và nhà trường.",
           },
         ],
       },
@@ -267,8 +307,12 @@ function buildReviewDoc(matrixTitle: string): DocContent {
             items: [
               "Giáo viên ra đề: ................................................",
               "Giáo viên phản biện: ................................................",
-              "Hình thức: trắc nghiệm kết hợp tự luận (70% trắc nghiệm - 30% tự luận).",
-              "Cấu trúc: Phần I - trắc nghiệm nhiều lựa chọn (3,0đ); Phần II - đúng/sai 4 ý (2,0đ); Phần III - trả lời ngắn (2,0đ); Phần IV - tự luận (3,0đ).",
+              th
+                ? "Hình thức: trắc nghiệm kết hợp tự luận (mức 1-4 theo TT 22/2021)."
+                : "Hình thức: trắc nghiệm kết hợp tự luận (70% trắc nghiệm - 30% tự luận).",
+              th
+                ? "Cấu trúc: Phần I - trắc nghiệm (khoanh chữ cái, đúng/sai, điền/trả lời ngắn); Phần II - tự luận."
+                : "Cấu trúc: Phần I - trắc nghiệm nhiều lựa chọn (3,0đ); Phần II - đúng/sai 4 ý (2,0đ); Phần III - trả lời ngắn (2,0đ); Phần IV - tự luận (3,0đ).",
               "Bộ hồ sơ kèm theo: đề chính thức, đề dự phòng, đáp án - hướng dẫn chấm, ma trận - bản đặc tả.",
             ],
           },
@@ -563,7 +607,7 @@ export async function POST(
         { ...matrix, title: matrix.title },
         { variantLabel: "DỰ PHÒNG", tfScore, subjectName },
       );
-      docBBPB = buildReviewDoc(matrix.title);
+      docBBPB = buildReviewDoc(matrix.title, (matrix.grade ?? 6) <= 5);
     }
 
     await supabase.from("tvc_generations").insert({

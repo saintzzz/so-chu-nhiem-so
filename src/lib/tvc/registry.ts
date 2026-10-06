@@ -37,7 +37,7 @@ export const TOOLS: ToolDef[] = [
   {
     code: "DC-02",
     name: "Lập ma trận đề và bản đặc tả",
-    description: "Ma trận 3 mức x 4 dạng thức theo CV 7991, khớp bản đặc tả",
+    description: "Ma trận đề + bản đặc tả; cấp TH theo TT 22/2021 (4 mức), THCS/THPT theo CV 7991",
     group: "core",
     materialType: "matrix",
     fields: [

@@ -1,6 +1,6 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  WidthType, AlignmentType, HeadingLevel, BorderStyle,
+  WidthType, AlignmentType, HeadingLevel, BorderStyle, ImageRun,
 } from "docx";
 import JSZip from "jszip";
 import temml from "temml";
@@ -86,7 +86,59 @@ async function patchMathXml(buf: Buffer, store: MathItem[]): Promise<Buffer> {
   return Buffer.from(await zip.generateAsync({ type: "nodebuffer" }));
 }
 
-function blockToElements(b: DocBlock, store: MathItem[]): (Paragraph | Table)[] {
+// CR-031: media -> PNG. svg raster bang sharp; path fetch tu public bucket.
+async function imageToPng(
+  b: { svg?: string; path?: string },
+): Promise<{ data: Buffer; w: number; h: number } | null> {
+  try {
+    const sharp = (await import("sharp")).default;
+    if (b.svg) {
+      const data = await sharp(Buffer.from(b.svg), { density: 150 })
+        .resize({ width: 420, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      const meta = await sharp(data).metadata();
+      return { data, w: meta.width ?? 320, h: meta.height ?? 240 };
+    }
+    if (b.path) {
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${b.path}`;
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const data = await sharp(Buffer.from(await r.arrayBuffer()))
+        .resize({ width: 480, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      const meta = await sharp(data).metadata();
+      return { data, w: meta.width ?? 480, h: meta.height ?? 320 };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+async function resolveImages(doc: DocContent) {
+  const map = new Map<DocBlock, { data: Buffer; w: number; h: number }>();
+  const jobs: Promise<void>[] = [];
+  for (const sec of [...(doc.sections ?? []), ...(doc.appendix ?? [])]) {
+    for (const b of sec.blocks ?? []) {
+      if (b.kind === "image")
+        jobs.push(
+          imageToPng(b).then((r) => {
+            if (r) map.set(b, r);
+          }),
+        );
+    }
+  }
+  await Promise.all(jobs);
+  return map;
+}
+
+function blockToElements(
+  b: DocBlock,
+  store: MathItem[],
+  images?: Map<DocBlock, { data: Buffer; w: number; h: number }>,
+): (Paragraph | Table)[] {
   switch (b.kind) {
     case "heading": {
       const lvl =
@@ -186,6 +238,32 @@ function blockToElements(b: DocBlock, store: MathItem[]): (Paragraph | Table)[] 
           spacing: { before: 120, after: 120 },
         }),
       ];
+    case "image": {
+      const img = images?.get(b);
+      if (!img) return [];
+      return [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new ImageRun({
+              data: img.data,
+              transformation: { width: img.w, height: img.h },
+              type: "png",
+            }),
+          ],
+          spacing: { before: 100, after: 60 },
+        }),
+        ...(b.caption
+          ? [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: b.caption, italics: true, size: 18 })],
+                spacing: { after: 120 },
+              }),
+            ]
+          : []),
+      ];
+    }
   }
 }
 
@@ -193,6 +271,7 @@ function sectionToElements(
   s: DocSection,
   store: MathItem[],
   isAppendix = false,
+  images?: Map<DocBlock, { data: Buffer; w: number; h: number }>,
 ): (Paragraph | Table)[] {
   return [
     ...(isAppendix
@@ -208,12 +287,13 @@ function sectionToElements(
       heading: HeadingLevel.HEADING_2,
       spacing: { before: 240, after: 100 },
     }),
-    ...s.blocks.flatMap((b) => blockToElements(b, store)),
+    ...s.blocks.flatMap((b) => blockToElements(b, store, images)),
   ];
 }
 
 export async function docToDocx(doc: DocContent, authorName: string): Promise<Buffer> {
   const store: MathItem[] = [];
+  const images = await resolveImages(doc);
   const d = new Document({
     styles: {
       default: {
@@ -242,8 +322,8 @@ export async function docToDocx(doc: DocContent, authorName: string): Promise<Bu
                 spacing: { after: 40 },
               }),
           ),
-          ...doc.sections.map((s) => sectionToElements(s, store)).flat(),
-          ...(doc.appendix ?? []).map((s) => sectionToElements(s, store, true)).flat(),
+          ...doc.sections.map((s) => sectionToElements(s, store, false, images)).flat(),
+          ...(doc.appendix ?? []).map((s) => sectionToElements(s, store, true, images)).flat(),
           new Paragraph({
             children: [
               new TextRun({

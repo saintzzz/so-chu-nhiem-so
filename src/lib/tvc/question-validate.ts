@@ -19,7 +19,14 @@ const TF_ANS_RE = /a\s*[-)]\s*(Đúng|Sai|Đ|S|T|F|True|False)/i;
 // Stem tham chieu tai lieu kem theo (doan doc, hinh, bang...) nhung khong nhung
 // noi dung - loi da gap: cau "the passage"/"doan van sau" khong co doan doc.
 const CTX_REF_RE =
-  /(the\s+(passage|text|reading|dialogue|poem|advert|notice)|đoạn\s+(trích|văn|thơ|sau)\s*(sau|trên|:)|văn bản\s*(sau|trên)|bài đọc|như hình|theo hình|hình (vẽ|bên|sau)|theo (bảng|sơ đồ|đồ thị)|bảng sau|đồ thị sau|sơ đồ sau)/i;
+  /(the\s+(passage|text|reading|dialogue|poem|advert|notice)|đoạn\s+(trích|văn|thơ|sau)\s*(sau|trên|:)|văn bản\s*(sau|trên)|bài đọc|theo (bảng|sơ đồ|đồ thị)|bảng sau|đồ thị sau|sơ đồ sau)/i;
+
+// Stem tham chieu HINH rieng - CR-031: duoc mien neu da co media dinh kem.
+const IMG_REF_RE = /(như hình|theo hình|hình (vẽ|bên|sau|dưới)|ở hình|trong hình|theo tranh|nhìn (hình|tranh))/i;
+
+const FIGURE_KINDS = [
+  "triangle", "rectangle", "circle", "segment", "angle", "clock",
+] as const;
 
 export interface ValidateInput {
   stem: string;
@@ -27,6 +34,7 @@ export interface ValidateInput {
   qtype: string;
   answer: Record<string, unknown>;
   solution?: string | null;
+  media?: { kind: string; spec?: Record<string, unknown>; path?: string }[] | null;
 }
 
 // Cau can context ma khong co: stem tham chieu tai lieu + context rong
@@ -94,8 +102,29 @@ export function validateQuestion(input: ValidateInput): string[] {
   if (input.qtype === "essay" && (input.solution ?? "").trim().length < 20)
     errs.push("Câu tự luận phải có lời giải/hướng dẫn chấm thật (tối thiểu 20 ký tự), không để placeholder.");
 
-  if (referencesMissingContext(stem, input.context))
-    errs.push("Câu tham chiếu đoạn đọc/hình/bảng nhưng chưa có ngữ cảnh kèm theo - nhập vào ô Ngữ cảnh hoặc nhúng trực tiếp vào đề.");
+  // CR-031: validate media dinh kem
+  const media = input.media ?? [];
+  for (const m of media) {
+    if (m.kind === "figure") {
+      const k = m.spec?.kind;
+      if (!k || !FIGURE_KINDS.includes(k as (typeof FIGURE_KINDS)[number]))
+        errs.push(`Hình vẽ tham số không hợp lệ: ${JSON.stringify(m.spec)}`);
+    } else if (m.kind === "image") {
+      if (!m.path || m.path.includes(".."))
+        errs.push("Ảnh đính kèm thiếu đường dẫn storage hợp lệ.");
+    } else {
+      errs.push(`Loại media không hợp lệ: ${m.kind}`);
+    }
+  }
+  if (media.length > 4) errs.push("Mỗi câu tối đa 4 hình/ảnh.");
+
+  // Stem tham chieu hinh: can co media HOAC context mo ta hinh
+  const hasMedia = media.length > 0;
+  if (IMG_REF_RE.test(stem) && !hasMedia && !(input.context ?? "").trim())
+    errs.push("Câu tham chiếu hình/tranh nhưng chưa đính kèm hình - thêm Hình vẽ (SVG) hoặc tải ảnh ở mục Hình ảnh.");
+
+  if (referencesMissingContext(stem, input.context) && !hasMedia)
+    errs.push("Câu tham chiếu đoạn đọc/bảng nhưng chưa có ngữ cảnh kèm theo - nhập vào ô Ngữ cảnh hoặc nhúng trực tiếp vào đề.");
 
   return errs;
 }

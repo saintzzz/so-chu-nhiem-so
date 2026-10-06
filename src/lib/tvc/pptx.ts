@@ -26,7 +26,38 @@ function blockToLines(b: DocBlock): { text: string; bullet: boolean }[] {
       return [{ text: b.text, bullet: false }];
     case "divider":
       return [];
+    case "image":
+      return [];
   }
+}
+
+// CR-031: media -> PNG base64 cho pptx.addImage
+async function imageToPng64(
+  b: { svg?: string; path?: string },
+): Promise<string | null> {
+  try {
+    const sharp = (await import("sharp")).default;
+    if (b.svg) {
+      const buf = await sharp(Buffer.from(b.svg), { density: 150 })
+        .resize({ width: 480, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      return `image/png;base64,${buf.toString("base64")}`;
+    }
+    if (b.path) {
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${b.path}`;
+      const r = await fetch(url);
+      if (!r.ok) return null;
+      const buf = await sharp(Buffer.from(await r.arrayBuffer()))
+        .resize({ width: 480, withoutEnlargement: true })
+        .png()
+        .toBuffer();
+      return `image/png;base64,${buf.toString("base64")}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 export async function docToPptx(doc: DocContent, author: string): Promise<Buffer> {
@@ -78,6 +109,17 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
         valign: "top", lineSpacingMultiple: 1.25,
       },
     );
+    // CR-031: image blocks trong slide
+    const imgBlocks = (sec.blocks ?? []).filter((b) => b.kind === "image");
+    for (let i = 0; i < Math.min(imgBlocks.length, 2); i++) {
+      const b64 = await imageToPng64(imgBlocks[i]);
+      if (b64)
+        s.addImage({
+          data: b64,
+          x: 6.4 + i * 1.6, y: 1.4, w: 2.8, h: 2.1,
+          sizing: { type: "contain", w: 2.8, h: 2.1 },
+        });
+    }
   }
 
   for (const ap of doc.appendix ?? []) {

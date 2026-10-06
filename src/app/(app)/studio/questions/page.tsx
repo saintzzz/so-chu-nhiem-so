@@ -40,6 +40,7 @@ export default async function StudioQuestionsPage() {
         meId={profile.id}
         isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
         isAdmin={["bgh", "admin"].includes(profile.role)}
+        schoolId={profile.school_id ?? undefined}
       />
     </div>
   );

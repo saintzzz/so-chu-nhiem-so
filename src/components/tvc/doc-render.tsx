@@ -65,6 +65,30 @@ function Block({ block }: { block: DocBlock }) {
       return <hr className="my-4 border-t" />;
     case "note":
       return <div className="a4-note"><MathText text={block.text} /></div>;
+    case "image": {
+      // svg inline (figure spec da render) hoac anh storage public
+      const src = block.path
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${block.path}`
+        : undefined;
+      return (
+        <figure className="my-3 text-center">
+          {block.svg ? (
+            <span
+              className="inline-block"
+              dangerouslySetInnerHTML={{ __html: block.svg }}
+            />
+          ) : src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt={block.caption ?? "hình minh họa"} className="mx-auto max-h-56" />
+          ) : null}
+          {block.caption && (
+            <figcaption className="mt-1 text-xs text-muted-foreground">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      );
+    }
   }
 }
 

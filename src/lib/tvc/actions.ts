@@ -277,6 +277,7 @@ export interface SaveQuestionInput {
   standardIds: string[];
   subjectCode?: string;
   grade?: number;
+  media?: { kind: "figure" | "image"; spec?: Record<string, unknown>; path?: string; alt?: string }[];
 }
 
 export async function saveQuestion(input: SaveQuestionInput) {
@@ -302,6 +303,7 @@ export async function saveQuestion(input: SaveQuestionInput) {
         standard_ids: input.standardIds,
         subject_code: input.subjectCode ?? null,
         grade: input.grade ?? null,
+        media: input.media ?? [],
       })
       .eq("id", input.id)
       .select("id");
@@ -327,6 +329,7 @@ export async function saveQuestion(input: SaveQuestionInput) {
     subject_code: input.subjectCode ?? null,
     grade: input.grade ?? null,
     source: "manual",
+    media: input.media ?? [],
   });
   if (error) return { error: "Không lưu được câu hỏi." };
   revalidatePath("/studio/questions");
@@ -417,7 +420,7 @@ export async function getQuestionDetail(id: string) {
   // RLS: doc cau hoi cung truong
   const { data, error } = await supabase
     .from("tvc_questions")
-    .select("answer, solution, context")
+    .select("answer, solution, context, media")
     .eq("id", id)
     .single();
   if (error || !data) return { error: "Không tải được chi tiết câu hỏi." };
@@ -425,6 +428,12 @@ export async function getQuestionDetail(id: string) {
     answer: data.answer as Record<string, unknown>,
     solution: data.solution as string | null,
     context: data.context as string | null,
+    media: (data.media ?? []) as {
+      kind: "figure" | "image";
+      spec?: Record<string, unknown>;
+      path?: string;
+      alt?: string;
+    }[],
   };
 }
 
@@ -460,6 +469,8 @@ export async function importQuestions(rows: SaveQuestionInput[]) {
       subject_code: r.subjectCode ?? null,
       grade: r.grade ?? null,
       source: "imported" as const,
+      media: r.media ?? [],
+      school_id: profile.school_id ?? null,
     })),
   );
   if (error) return { error: "Import thất bại - kiểm tra template." };

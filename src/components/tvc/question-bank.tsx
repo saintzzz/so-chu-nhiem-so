@@ -9,6 +9,25 @@ import { MathText } from "@/components/tvc/math-text";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
 import { Plus, Trash2, Download, Loader2, ScanLine } from "lucide-react";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { createClient } from "@/lib/supabase/client";
+import { renderFigure, type FigureKind } from "@/lib/tvc/figures";
+
+function defaultFigureSpec(kind: FigureKind): Record<string, unknown> {
+  switch (kind) {
+    case "triangle":
+      return { kind, labels: ["A", "B", "C"], sides: ["5 cm", "4 cm", "6 cm"] };
+    case "rectangle":
+      return { kind, labels: ["8 cm", "5 cm"] };
+    case "circle":
+      return { kind, labels: ["O"], radius: "r = 3 cm" };
+    case "segment":
+      return { kind, labels: ["A", "B"], sides: ["7 cm"] };
+    case "angle":
+      return { kind, labels: ["O", "A", "B"], angle: "60°" };
+    case "clock":
+      return { kind, time: "8:30" };
+  }
+}
 
 const LATEX_SNIPPETS: { label: string; tex: string }[] = [
   { label: "a/b", tex: "\\frac{a}{b}" },
@@ -68,6 +87,7 @@ export function QuestionBank({
   meId,
   isReviewer,
   isAdmin,
+  schoolId,
 }: {
   initial: Question[];
   subjects: Subject[];
@@ -75,6 +95,7 @@ export function QuestionBank({
   meId?: string;
   isReviewer?: boolean;
   isAdmin?: boolean;
+  schoolId?: string;
 }) {
   const [questions, setQuestions] = useState(initial);
   const [loadingMore, setLoadingMore] = useState(initial.length < (total ?? 0));
@@ -93,6 +114,7 @@ export function QuestionBank({
     subject: "",
     grade: "",
     standardIds: [] as string[],
+    media: [] as { kind: "figure" | "image"; spec?: Record<string, unknown>; path?: string; alt?: string }[],
   });
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
@@ -133,14 +155,14 @@ export function QuestionBank({
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // dap an/loi giai lazy-load khi expand - list khong ship 2 cot nang nay
-  const [details, setDetails] = useState<Record<string, { answer: Record<string, unknown>; solution: string | null; context: string | null }>>({});
+  const [details, setDetails] = useState<Record<string, { answer: Record<string, unknown>; solution: string | null; context: string | null; media?: { kind: "figure" | "image"; spec?: Record<string, unknown>; path?: string; alt?: string }[] }>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const toggleExpand = (q: Question) => {
     setExpandedId((p) => (p === q.id ? null : q.id));
     if (expandedId === q.id || details[q.id]) return;
     setLoadingDetail(q.id);
     getQuestionDetail(q.id).then((r) => {
-      if (!("error" in r)) setDetails((p) => ({ ...p, [q.id]: { answer: r.answer, solution: r.solution, context: r.context ?? null } }));
+      if (!("error" in r)) setDetails((p) => ({ ...p, [q.id]: { answer: r.answer, solution: r.solution, context: r.context ?? null, media: r.media } }));
       setLoadingDetail((p) => (p === q.id ? null : p));
     });
   };
@@ -237,6 +259,7 @@ export function QuestionBank({
       subject: q.subject_code ?? "",
       grade: q.grade ? String(q.grade) : "",
       standardIds: q.standard_ids ?? [],
+      media: (d?.media ?? []) as typeof form.media,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -259,6 +282,7 @@ export function QuestionBank({
         standardIds: form.standardIds,
         subjectCode: form.subject || std?.subject_code,
         grade: form.grade ? Number(form.grade) : std?.grade,
+        media: form.media,
       });
       if (r.error) return setError(r.error);
       window.location.reload();
@@ -895,6 +919,91 @@ export function QuestionBank({
                 </div>
               )}
             </div>
+
+            {/* Hinh/anh dinh kem (CR-031) */}
+            <div className="sm:col-span-2">
+              <label className="text-sm font-medium">Hình ảnh / Hình vẽ</label>
+              {form.media.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {form.media.map((m, i) => (
+                    <div key={i} className="relative rounded-lg border bg-white p-1">
+                      {m.kind === "figure" ? (
+                        <span
+                          dangerouslySetInnerHTML={{
+                            __html: renderFigure(m.spec as never),
+                          }}
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${m.path}`}
+                          alt={m.alt ?? "hình"}
+                          className="max-h-24"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="absolute -right-2 -top-2 rounded-full bg-destructive px-1.5 text-xs text-white"
+                        onClick={() =>
+                          setForm({ ...form, media: form.media.filter((_, j) => j !== i) })
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs hover:bg-muted">
+                  Tải ảnh lên
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f || !schoolId) return;
+                      const supa = createClient();
+                      const path = `${schoolId}/q-${Date.now()}-${f.name.replace(/[^\w.-]/g, "_")}`;
+                      const { error: up } = await supa.storage
+                        .from("tvc-media")
+                        .upload(path, f, { cacheControl: "3600" });
+                      if (up) return setError("Upload ảnh lỗi: " + up.message);
+                      setForm((prev) => ({
+                        ...prev,
+                        media: [...prev.media, { kind: "image", path, alt: f.name }],
+                      }));
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <select
+                  className="rounded-lg border bg-background px-2 py-1.5 text-xs"
+                  value=""
+                  onChange={(e) => {
+                    const kind = e.target.value as FigureKind;
+                    if (!kind) return;
+                    const spec = defaultFigureSpec(kind);
+                    setForm((prev) => ({
+                      ...prev,
+                      media: [...prev.media, { kind: "figure", spec }],
+                    }));
+                  }}
+                >
+                  <option value="">+ Hình vẽ (SVG tham số)</option>
+                  <option value="triangle">Tam giác</option>
+                  <option value="rectangle">Hình chữ nhật</option>
+                  <option value="circle">Đường tròn</option>
+                  <option value="segment">Đoạn thẳng</option>
+                  <option value="angle">Góc</option>
+                  <option value="clock">Đồng hồ</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Hình vẽ sinh SVG chính xác theo tham số - không dùng ảnh AI cho hình học.
+                </p>
+              </div>
+            </div>
           </div>
           <button
             onClick={submit}
@@ -1247,6 +1356,28 @@ export function QuestionBank({
                           <div className="mb-2 rounded-lg border border-info/30 bg-info-bg p-2">
                             <span className="font-medium text-muted-foreground">Ngữ cảnh: </span>
                             <MathText text={details[q.id].context!} className="whitespace-pre-line" />
+                          </div>
+                        )}
+                        {(details[q.id].media ?? []).length > 0 && (
+                          <div className="mb-2 flex flex-wrap gap-3">
+                            {(details[q.id].media ?? []).map((m, i) =>
+                              m.kind === "figure" ? (
+                                <span
+                                  key={i}
+                                  dangerouslySetInnerHTML={{
+                                    __html: renderFigure(m.spec as never),
+                                  }}
+                                />
+                              ) : (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  key={i}
+                                  src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${m.path}`}
+                                  alt={m.alt ?? "hình"}
+                                  className="max-h-40 rounded border bg-white"
+                                />
+                              ),
+                            )}
                           </div>
                         )}
                         {formatAnswer(details[q.id].answer) && (

@@ -6,6 +6,7 @@ import { generateDoc } from "@/lib/tvc/ai-json";
 import { fallbackToDevin } from "@/lib/devin";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
+import { renderFigure } from "@/lib/tvc/figures";
 import type { ToolContext } from "@/lib/tvc/types";
 import type { CurriculumStandard, DocContent, Question, Subject } from "@/types/tvc";
 
@@ -165,6 +166,22 @@ function buildExamDoc(
         items.push(`Câu ${i + 1}: ${sh.stem}`);
       } else {
         items.push(`Câu ${i + 1}: ${p.q.stem}`);
+      }
+      // CR-031: cau co hinh -> chen image block ngay sau cau
+      const media = (p.q as { media?: { kind: string; spec?: never; path?: string; alt?: string }[] }).media;
+      if (media?.length) {
+        flushList();
+        for (const m of media) {
+          if (m.kind === "figure" && m.spec) {
+            blocks.push({
+              kind: "image",
+              svg: renderFigure(m.spec as never),
+              caption: m.alt,
+            });
+          } else if (m.kind === "image" && m.path) {
+            blocks.push({ kind: "image", path: m.path, caption: m.alt });
+          }
+        }
       }
     });
     flushList();

@@ -107,7 +107,15 @@ export interface Question {
   grade: number | null;
   source: "generated" | "manual" | "imported";
   review_state: QReviewState;
+  media?: MediaItem[];
   created_at: string;
+}
+
+export interface MediaItem {
+  kind: "figure" | "image";
+  spec?: import("@/lib/tvc/figures").FigureSpec; // figure -> SVG deterministic
+  path?: string; // storage path trong bucket tvc-media (<school_id>/...)
+  alt?: string;
 }
 
 export interface MatrixCell {
@@ -185,7 +193,8 @@ export type DocBlock =
   | { kind: "formula"; tex: string }
   | { kind: "kv"; pairs: [string, string][] }
   | { kind: "divider" }
-  | { kind: "note"; text: string };
+  | { kind: "note"; text: string }
+  | { kind: "image"; svg?: string; path?: string; caption?: string };
 
 export interface DocSection {
   title: string;

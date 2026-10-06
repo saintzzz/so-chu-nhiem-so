@@ -64,15 +64,20 @@ export function QuestionBank({
   initial,
   subjects,
   total,
+  meId,
+  isReviewer,
 }: {
   initial: Question[];
   subjects: Subject[];
   total?: number;
+  meId?: string;
+  isReviewer?: boolean;
 }) {
   const [questions, setQuestions] = useState(initial);
   const [loadingMore, setLoadingMore] = useState(initial.length < (total ?? 0));
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState({ subject: "", qtype: "", level: "", review: "", q: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState({ subject: "", qtype: "", level: "", review: "", q: "", scope: "all" });
   const [standards, setStandards] = useState<CurriculumStandard[]>([]);
   const [form, setForm] = useState({
     stem: "",
@@ -172,9 +177,10 @@ export function QuestionBank({
           (!filter.qtype || q.qtype === filter.qtype) &&
           (!filter.level || q.level === filter.level) &&
           (!filter.review || (q.review_state ?? "unreviewed") === filter.review) &&
+          (filter.scope !== "mine" || q.owner_id === meId) &&
           (!filter.q || q.stem.toLowerCase().includes(filter.q.toLowerCase())),
       ),
-    [questions, filter],
+    [questions, filter, meId],
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -204,6 +210,34 @@ export function QuestionBank({
     });
   };
 
+  const startEdit = async (q: Question) => {
+    setError("");
+    let d = details[q.id];
+    if (!d) {
+      setLoadingDetail(q.id);
+      const r = await getQuestionDetail(q.id);
+      setLoadingDetail(null);
+      if ("error" in r) return setError(r.error ?? "Lỗi.");
+      d = r;
+      setDetails((p) => ({ ...p, [q.id]: r }));
+    }
+    setEditingId(q.id);
+    setShowForm(true);
+    setForm({
+      stem: q.stem,
+      context: d?.context ?? "",
+      qtype: q.qtype,
+      level: q.level,
+      points: String(q.points),
+      answer: typeof d?.answer?.correct === "string" ? d.answer.correct : "",
+      solution: d?.solution ?? "",
+      subject: q.subject_code ?? "",
+      grade: q.grade ? String(q.grade) : "",
+      standardIds: q.standard_ids ?? [],
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const submit = () => {
     setError("");
     if (!form.stem.trim()) return setError("Chưa nhập nội dung câu hỏi.");
@@ -211,6 +245,7 @@ export function QuestionBank({
     const std = standards.find((s) => s.id === form.standardIds[0]);
     start(async () => {
       const r = await saveQuestion({
+        id: editingId ?? undefined,
         stem: form.stem,
         context: form.context || undefined,
         qtype: form.qtype,
@@ -616,6 +651,15 @@ export function QuestionBank({
         </select>
         <select
           className="rounded-lg border bg-card px-3 py-2 text-sm"
+          value={filter.scope}
+          onChange={(e) => setFilterPaged({ ...filter, scope: e.target.value })}
+          title="Ngân hàng chung của trường - GV đóng góp, tổ trưởng/BGH duyệt"
+        >
+          <option value="all">Cả trường</option>
+          <option value="mine">Của tôi</option>
+        </select>
+        <select
+          className="rounded-lg border bg-card px-3 py-2 text-sm"
           value={filter.review}
           onChange={(e) => setFilterPaged({ ...filter, review: e.target.value })}
         >
@@ -651,7 +695,7 @@ export function QuestionBank({
             />
           </label>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => { setShowForm(!showForm); if (showForm) setEditingId(null); }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
           >
             <Plus className="h-4 w-4" /> Thêm câu hỏi
@@ -676,7 +720,7 @@ export function QuestionBank({
       {/* Add form */}
       {showForm && (
         <div className="mt-4 rounded-xl border bg-card p-5 shadow-sm">
-          <h3 className="font-semibold">Câu hỏi mới</h3>
+          <h3 className="font-semibold">{editingId ? "Sửa câu hỏi" : "Câu hỏi mới"}</h3>
           <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="md:col-span-3">
               <label className="text-sm font-medium">Nội dung câu hỏi *</label>
@@ -1071,6 +1115,11 @@ export function QuestionBank({
                 </td>
                 <td className="hidden px-4 py-3 text-xs text-muted-foreground lg:table-cell">
                   {q.source === "imported" ? "Import" : q.source === "generated" ? "Sinh tự động" : "Tự soạn"}
+                  {meId && (
+                    <span className="block opacity-70">
+                      {q.owner_id === meId ? "Của tôi" : "Đồng nghiệp"}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -1082,25 +1131,36 @@ export function QuestionBank({
                   </button>
                 </td>
                 <td className="px-4 py-3">
-                  <button
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={pending}
-                    onClick={() =>
-                      start(async () => {
-                        await deleteQuestion(q.id);
-                        setQuestions((p) => p.filter((x) => x.id !== q.id));
-                      })
-                    }
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {(q.owner_id === meId || isReviewer) && (
+                    <button
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={pending}
+                      onClick={() =>
+                        start(async () => {
+                          await deleteQuestion(q.id);
+                          setQuestions((p) => p.filter((x) => x.id !== q.id));
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
               {expandedId === q.id && (
                 <tr className="bg-muted/20">
                   <td colSpan={9} className="px-4 py-3 text-sm">
                     <div className="mb-2 flex items-center gap-2">
-                      {(q.review_state ?? "unreviewed") !== "approved" && (
+                      {(q.owner_id === meId || isReviewer) && (
+                        <button
+                          className="rounded-lg border border-primary/40 px-2.5 py-1 text-xs text-primary hover:bg-primary/10"
+                          disabled={pending}
+                          onClick={() => startEdit(q)}
+                        >
+                          Sửa câu hỏi
+                        </button>
+                      )}
+                      {(q.review_state ?? "unreviewed") !== "approved" && (q.owner_id === meId || isReviewer) && (
                         <button
                           className="rounded-lg border border-emerald-400/40 px-2.5 py-1 text-xs text-emerald-300 hover:bg-emerald-400/15"
                           disabled={pending}
@@ -1114,7 +1174,7 @@ export function QuestionBank({
                           Đánh dấu đã duyệt
                         </button>
                       )}
-                      {(q.review_state ?? "unreviewed") !== "flagged" && (
+                      {(q.review_state ?? "unreviewed") !== "flagged" && (q.owner_id === meId || isReviewer) && (
                         <button
                           className="rounded-lg border border-destructive/40 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/15"
                           disabled={pending}
@@ -1128,7 +1188,7 @@ export function QuestionBank({
                           Đánh dấu lỗi (chặn khỏi đề)
                         </button>
                       )}
-                      {(q.review_state ?? "unreviewed") !== "unreviewed" && (
+                      {(q.review_state ?? "unreviewed") !== "unreviewed" && (q.owner_id === meId || isReviewer) && (
                         <button
                           className="rounded-lg border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
                           disabled={pending}

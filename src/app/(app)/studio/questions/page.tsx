@@ -7,7 +7,7 @@ import { QuestionBank } from "@/components/tvc/question-bank";
 export const dynamic = "force-dynamic";
 
 export default async function StudioQuestionsPage() {
-  await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
   const supabase = await createClient();
   const [{ data: subs }, { count: qCount }, { data: firstRows }] =
     await Promise.all([
@@ -29,12 +29,14 @@ export default async function StudioQuestionsPage() {
       <PageHeader
         section="Công cụ số giáo viên"
         title="Ngân hàng câu hỏi"
-        description="Kho câu hỏi cá nhân - mỗi câu gắn mã yêu cầu cần đạt, dùng để sinh đề theo ma trận (DC-03)"
+        description="Ngân hàng câu hỏi chung của trường - GV đóng góp, tổ trưởng/BGH duyệt; dùng để sinh đề theo ma trận (DC-03)"
       />
       <QuestionBank
         initial={qs as unknown as Question[]}
         subjects={(subs as Subject[]) ?? []}
         total={qCount ?? qs.length}
+        meId={profile.id}
+        isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
       />
     </div>
   );

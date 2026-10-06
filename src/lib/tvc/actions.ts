@@ -213,6 +213,7 @@ async function allocateQuestionCodes(
 }
 
 export interface SaveQuestionInput {
+  id?: string;
   stem: string;
   context?: string;
   qtype: string;
@@ -233,9 +234,34 @@ export async function saveQuestion(input: SaveQuestionInput) {
   const profile = (await getProfile())!;
   const supabase = await createClient();
   await ensureTvcProfile();
+  // Cap nhat: RLS cho phep owner hoac to_truong/bgh/admin cung truong.
+  if (input.id) {
+    const { data, error } = await supabase
+      .from("tvc_questions")
+      .update({
+        stem: input.stem,
+        context: input.context?.trim() || null,
+        qtype: input.qtype,
+        level: input.level,
+        points: input.points,
+        answer: input.answer,
+        solution: input.solution ?? null,
+        standard_ids: input.standardIds,
+        subject_code: input.subjectCode ?? null,
+        grade: input.grade ?? null,
+      })
+      .eq("id", input.id)
+      .select("id");
+    if (error || !data?.length)
+      return { error: "Không lưu được (quyền: chủ sở hữu hoặc tổ trưởng/BGH cùng trường)." };
+    await audit("questions.update", "questions", input.id, {});
+    revalidatePath("/studio/questions");
+    return { ok: true };
+  }
   const [code] = await allocateQuestionCodes(supabase, profile.id, [input]);
   const { error } = await supabase.from("tvc_questions").insert({
     owner_id: profile.id,
+    school_id: profile.school_id ?? null,
     code,
     stem: input.stem,
     context: input.context?.trim() || null,
@@ -257,13 +283,12 @@ export async function saveQuestion(input: SaveQuestionInput) {
 export async function deleteQuestion(id: string) {
   const err = await checkActionRole([...TOOL_ROLES]);
   if (err) return { error: err };
-  const profile = (await getProfile())!;
   const supabase = await createClient();
+  // RLS: owner hoac to_truong/bgh/admin cung truong
   const { data, error } = await supabase
     .from("tvc_questions")
     .delete()
     .eq("id", id)
-    .eq("owner_id", profile.id)
     .select("id");
   if (error || !data?.length) return { error: "Không xóa được." };
   revalidatePath("/studio/questions");
@@ -279,13 +304,12 @@ export async function setQuestionReviewState(
 ) {
   const err = await checkActionRole([...TOOL_ROLES]);
   if (err) return { error: err };
-  const profile = (await getProfile())!;
   const supabase = await createClient();
+  // RLS: owner tu duyet cau minh; to_truong/bgh/admin duyet cau cung truong
   const { data, error } = await supabase
     .from("tvc_questions")
     .update({ review_state: state })
     .eq("id", id)
-    .eq("owner_id", profile.id)
     .select("id");
   if (error || !data?.length) return { error: "Không cập nhật được trạng thái." };
   await audit("questions.review", "questions", id, { state });
@@ -336,13 +360,12 @@ export async function listQuestionsChunk(offset: number) {
 export async function getQuestionDetail(id: string) {
   const err = await checkActionRole([...TOOL_ROLES]);
   if (err) return { error: err };
-  const profile = (await getProfile())!;
   const supabase = await createClient();
+  // RLS: doc cau hoi cung truong
   const { data, error } = await supabase
     .from("tvc_questions")
     .select("answer, solution, context")
     .eq("id", id)
-    .eq("owner_id", profile.id)
     .single();
   if (error || !data) return { error: "Không tải được chi tiết câu hỏi." };
   return {

@@ -464,10 +464,10 @@ export async function POST(
       cell: MatrixCell,
       extraQtype: boolean,
     ): Promise<Question[]> => {
+      // Bank cap truong (CR-028): RLS tra cau cua minh + cau cung truong
       let q = supabase
         .from("tvc_questions")
         .select("*")
-        .eq("owner_id", user.id)
         .contains("standard_ids", [cell.standard_id])
         .limit(Math.max(cell.count * 8, 24));
       if (!extraQtype) q = q.eq("qtype", cell.qtype);

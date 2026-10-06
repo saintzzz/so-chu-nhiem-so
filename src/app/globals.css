@@ -406,3 +406,37 @@ body {
     transform: translateX(-100%);
   }
 }
+
+/* A4 preview sheet - module studio (CR-023) */
+.a4-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 794px;
+  margin: 0 auto;
+  padding: 56px 60px;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.08),
+    0 8px 24px rgba(15, 23, 42, 0.06);
+  border-radius: 4px;
+  min-height: 600px;
+  color: #0f172a;
+}
+.a4-sheet h1 { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 0.5rem; }
+.a4-sheet h2 { font-size: 1.15rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+.a4-sheet h3 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.375rem; }
+.a4-sheet p { margin: 0.375rem 0; line-height: 1.65; }
+.a4-sheet table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.9rem; }
+.a4-sheet th, .a4-sheet td { border: 1px solid #94a3b8; padding: 6px 8px; text-align: left; vertical-align: top; }
+.a4-sheet th { background: #f1f5f9; font-weight: 600; }
+.a4-sheet ul, .a4-sheet ol { margin: 0.375rem 0 0.375rem 1.5rem; line-height: 1.65; }
+.a4-sheet ul { list-style: disc; }
+.a4-sheet ol { list-style: decimal; }
+.a4-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 24px; font-size: 0.9rem; margin: 0.75rem 0; }
+.a4-note { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 8px 12px; font-size: 0.875rem; margin: 0.5rem 0; }
+
+@media print {
+  body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .a4-sheet { box-shadow: none; max-width: none; padding: 0; }
+  @page { size: A4; margin: 20mm 18mm; }
+}

@@ -48,6 +48,8 @@ interface GenerateOptions {
   system?: string;
   maxTokens?: number;
   temperature?: number;
+  /** File đính kèm (ảnh/PDF base64) - hiện chỉ Gemini hỗ trợ. */
+  inline?: { data: string; mimeType: string };
 }
 
 export type AiErrorKind = "no_key" | "quota" | "error";
@@ -86,7 +88,24 @@ async function callGemini(
         ...(opts.system
           ? { system_instruction: { parts: [{ text: opts.system }] } }
           : {}),
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              ...(opts.inline
+                ? [
+                    {
+                      inline_data: {
+                        mime_type: opts.inline.mimeType,
+                        data: opts.inline.data,
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          },
+        ],
         generationConfig: {
           maxOutputTokens: opts.maxTokens ?? 2048,
           temperature: opts.temperature ?? 0.7,

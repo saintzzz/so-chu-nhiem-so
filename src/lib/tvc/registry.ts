@@ -1,0 +1,217 @@
+import type { ToolDef } from "./types";
+import * as fb from "./fallbacks";
+import { PROMPTS, buildGenericPrompt } from "./prompts";
+
+const cefrOpts = [
+  { value: "A1", label: "Bậc 1 - A1" },
+  { value: "A2", label: "Bậc 2 - A2" },
+  { value: "B1", label: "Bậc 3 - B1" },
+  { value: "B2", label: "Bậc 4 - B2" },
+];
+
+export const TOOLS: ToolDef[] = [
+  {
+    code: "DC-01",
+    name: "Biên soạn kế hoạch bài dạy",
+    description: "KHBH đầy đủ theo khung 4 hoạt động, bám YCCĐ",
+    group: "core",
+    materialType: "lesson_plan",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "standard_ids", label: "Bài học / YCCĐ", type: "standard", required: true },
+      { key: "lesson", label: "Tên bài dạy", type: "text", placeholder: "VD: Phép cộng các số nguyên" },
+      { key: "duration", label: "Thời lượng", type: "select", default: "1 tiết", options: [
+        { value: "1 tiết", label: "1 tiết (45')" },
+        { value: "2 tiết", label: "2 tiết" },
+        { value: "3 tiết", label: "3 tiết" },
+      ]},
+    ],
+    coDraftFields: [
+      { key: "class_context", label: "Đặc điểm lớp học", type: "textarea", placeholder: "VD: lớp đông, nhiều HS yếu phần tính toán" },
+      { key: "note", label: "Điểm nhấn sư phạm", type: "textarea", placeholder: "VD: muốn nhấn hoạt động nhóm, bối cảnh địa phương" },
+    ],
+    buildPrompt: PROMPTS["DC-01"],
+    fallback: fb.fbLessonPlan,
+  },
+  {
+    code: "DC-02",
+    name: "Lập ma trận đề và bản đặc tả",
+    description: "Ma trận 3 mức x 4 dạng thức theo CV 7991, khớp bản đặc tả",
+    group: "core",
+    materialType: "matrix",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "standard_ids", label: "Phạm vi YCCĐ (chọn nhiều)", type: "standard", required: true },
+      { key: "duration", label: "Thời gian làm bài", type: "select", default: "45", options: [
+        { value: "15", label: "15 phút" },
+        { value: "45", label: "45 phút" },
+        { value: "60", label: "60 phút" },
+        { value: "90", label: "90 phút" },
+      ]},
+      { key: "total_points", label: "Tổng điểm", type: "number", default: 10 },
+      { key: "vdc", label: "Mức độ Vận dụng cao", type: "select", default: "no", options: [
+        { value: "no", label: "Không (chuẩn CV 7991 - 3 mức)" },
+        { value: "1", label: "Có (đề nâng cao/bồi dưỡng)" },
+      ]},
+    ],
+    buildPrompt: buildGenericPrompt("Lập ma trận đề", "Sinh ma trận theo CV 7991."),
+    fallback: (input, ctx) => fb.fbMatrix(input, ctx).doc,
+  },
+  {
+    code: "DC-03",
+    name: "Sinh đề kiểm tra từ ma trận",
+    description: "Rút câu hỏi từ ngân hàng khớp ma trận, kèm đáp án",
+    group: "core",
+    materialType: "exam",
+    fields: [
+      { key: "matrix_id", label: "Chọn ma trận đã lưu", type: "select", required: true },
+      { key: "pack", label: "Bộ hồ sơ đề", type: "select", default: "full", options: [
+        { value: "full", label: "Đầy đủ (đề CT + đề dự phòng + đáp án + biên bản phản biện)" },
+        { value: "simple", label: "Chỉ đề + đáp án" },
+      ]},
+      { key: "tf_score", label: "Chấm phần Đúng-Sai", type: "select", default: "linear", options: [
+        { value: "linear", label: "Tuyến tính 0,25đ/ý (định kỳ)" },
+        { value: "progressive", label: "Lũy tiến 0,1-0,25-0,5-1đ (QĐ 764)" },
+      ]},
+      { key: "shuffle", label: "Sinh mã đề hoán vị", type: "select", default: "no", options: [
+        { value: "no", label: "1 mã đề" },
+        { value: "yes", label: "2 mã đề (hoán vị câu hỏi)" },
+      ]},
+    ],
+    buildPrompt: buildGenericPrompt("Sinh đề kiểm tra", ""),
+    fallback: () => ({ title: "ĐỀ KIỂM TRA", sections: [] }),
+  },
+  {
+    code: "DC-04",
+    name: "Ngân hàng câu hỏi",
+    description: "Kho câu hỏi cá nhân gắn YCCĐ, lọc đa chiều",
+    group: "core",
+    materialType: "question_set",
+    href: "/studio/questions",
+    fields: [],
+    buildPrompt: buildGenericPrompt("Ngân hàng câu hỏi", ""),
+    fallback: () => ({ title: "NGÂN HÀNG CÂU HỎI", sections: [] }),
+  },
+  {
+    code: "DC-05",
+    name: "Tạo phiếu học tập",
+    description: "Phiếu học tập bố cục in, đáp án tách riêng, phân hoá",
+    group: "core",
+    materialType: "worksheet",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "standard_ids", label: "Bài học / YCCĐ", type: "standard", required: true },
+      { key: "lesson", label: "Tên bài", type: "text" },
+    ],
+    coDraftFields: [
+      { key: "class_context", label: "Đặc điểm lớp", type: "textarea" },
+    ],
+    buildPrompt: PROMPTS["DC-05"],
+    fallback: fb.fbWorksheet,
+  },
+  {
+    code: "T-01",
+    name: "Sinh biến thể bài toán",
+    description: "Từ 1 bài gốc sinh 10-50 biến thể giữ nguyên cấu trúc",
+    group: "toan",
+    materialType: "variants",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true, default: "toan" },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "problem", label: "Bài toán gốc", type: "textarea", required: true, placeholder: "VD: Tính: 25 + 36 - 14" },
+      { key: "count", label: "Số biến thể", type: "select", default: "10", options: [
+        { value: "10", label: "10 biến thể" },
+        { value: "20", label: "20 biến thể" },
+        { value: "30", label: "30 biến thể" },
+      ]},
+    ],
+    buildPrompt: PROMPTS["T-01"],
+    fallback: fb.fbVariants,
+  },
+  {
+    code: "T-02",
+    name: "Soạn thảo công thức và ký hiệu",
+    description: "Bàn phím ký hiệu toán + preview KaTeX + chèn/xuất",
+    group: "toan",
+    materialType: "formula_set",
+    fields: [
+      { key: "formula", label: "Công thức (LaTeX)", type: "textarea", required: true, placeholder: "VD: x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}" },
+    ],
+    buildPrompt: buildGenericPrompt("Công thức", ""),
+    fallback: fb.fbFormula,
+  },
+  {
+    code: "V-01",
+    name: "Kho ngữ liệu ngoài sách giáo khoa",
+    description: "Văn bản đã thẩm định, rõ nguồn quyền tác giả",
+    group: "van",
+    materialType: "reading",
+    href: "/studio/literature",
+    fields: [],
+    buildPrompt: buildGenericPrompt("Kho ngữ liệu", ""),
+    fallback: () => ({ title: "KHO NGỮ LIỆU", sections: [] }),
+  },
+  {
+    code: "V-02",
+    name: "Sinh câu hỏi đọc hiểu",
+    description: "Bộ câu hỏi 3 mức độ đủ 4 dạng thức từ văn bản",
+    group: "van",
+    materialType: "question_set",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true, default: "ngu_van" },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "text", label: "Văn bản", type: "textarea", required: true, placeholder: "Dán văn bản cần ra câu hỏi (lấy từ Kho ngữ liệu V-01 hoặc tự soạn)" },
+    ],
+    buildPrompt: PROMPTS["V-02"],
+    fallback: fb.fbReadingQuestions,
+  },
+  {
+    code: "A-01",
+    name: "Sinh bài đọc theo cấp độ",
+    description: "Bài đọc nguyên gốc kiểm soát theo Khung 6 bậc",
+    group: "anh",
+    materialType: "reading",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true, default: "tieng_anh" },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "cefr", label: "Cấp độ (Khung 6 bậc)", type: "select", required: true, default: "A2", options: cefrOpts },
+      { key: "topic", label: "Chủ đề", type: "text", placeholder: "VD: school life, environment" },
+    ],
+    buildPrompt: PROMPTS["A-01"],
+    fallback: fb.fbEnglishReading,
+  },
+  {
+    code: "A-02",
+    name: "Sinh bài tập từ vựng đa dạng thức",
+    description: "Nhiều dạng bài từ 1 danh sách từ: điền khuyết, nối, ô chữ...",
+    group: "anh",
+    materialType: "vocab_set",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true, default: "tieng_anh" },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "words", label: "Danh sách từ (mỗi từ 1 dòng)", type: "words", required: true, placeholder: "apple\nschool\nfriend" },
+    ],
+    buildPrompt: PROMPTS["A-02"],
+    fallback: fb.fbVocab,
+  },
+  {
+    code: "A-03",
+    name: "Sinh hội thoại và bài luyện nghe",
+    description: "Hội thoại kèm audio giọng đọc tự nhiên + bài tập nghe",
+    group: "anh",
+    materialType: "dialogue",
+    fields: [
+      { key: "subject", label: "Môn học", type: "subject", required: true, default: "tieng_anh" },
+      { key: "grade", label: "Khối lớp", type: "grade", required: true },
+      { key: "cefr", label: "Cấp độ", type: "select", required: true, default: "A2", options: cefrOpts },
+      { key: "topic", label: "Chủ đề hội thoại", type: "text", placeholder: "VD: at the market" },
+    ],
+    buildPrompt: PROMPTS["A-03"],
+    fallback: fb.fbDialogue,
+  },
+];
+
+export const TOOL_MAP = new Map(TOOLS.map((t) => [t.code, t]));

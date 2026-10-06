@@ -1,6 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, type TextareaHTMLAttributes } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  type Ref,
+  type TextareaHTMLAttributes,
+} from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,8 +18,12 @@ export function AutoGrowTextarea({
   className,
   value,
   bare = false,
+  ref: externalRef,
   ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement> & { bare?: boolean }) {
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  bare?: boolean;
+  ref?: Ref<HTMLTextAreaElement>;
+}) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -26,7 +35,11 @@ export function AutoGrowTextarea({
 
   return (
     <textarea
-      ref={ref}
+      ref={(el) => {
+        ref.current = el;
+        if (typeof externalRef === "function") externalRef(el);
+        else if (externalRef) externalRef.current = el;
+      }}
       rows={1}
       value={value}
       className={cn(

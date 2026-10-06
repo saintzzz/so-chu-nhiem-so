@@ -1,0 +1,37 @@
+import { PageHeader } from "@/components/page-header";
+import { requireRoles } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import type { CurriculumStandard, Subject } from "@/types/tvc";
+import { StandardsManager } from "@/components/tvc/standards-manager";
+
+export const dynamic = "force-dynamic";
+
+export default async function StudioYccdPage() {
+  const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  const supabase = await createClient();
+  const [{ data: stds }, { data: subs }] = await Promise.all([
+    supabase
+      .from("tvc_curriculum_standards")
+      .select("id, code, subject_code, grade, strand, lesson_ref, description, competencies, school_id, status")
+      .order("grade")
+      .order("code")
+      .limit(1000),
+    supabase.from("tvc_subjects").select("*").order("code"),
+  ]);
+
+  const canManage = ["to_truong", "bgh", "admin"].includes(profile.role);
+  return (
+    <div className="mx-auto max-w-6xl">
+      <PageHeader
+        section="Công cụ số giáo viên"
+        title="Yêu cầu cần đạt của trường"
+        description="YCCĐ hệ thống (không sửa được) + YCCĐ riêng của trường - tổ trưởng/BGH thêm, sửa, xoá"
+      />
+      <StandardsManager
+        standards={(stds as CurriculumStandard[]) ?? []}
+        subjects={(subs as Subject[]) ?? []}
+        canManage={canManage}
+      />
+    </div>
+  );
+}

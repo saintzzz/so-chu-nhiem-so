@@ -53,6 +53,15 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
+      label: "Công cụ soạn học liệu",
+      children: [
+        { label: "Tất cả công cụ", href: "/studio" },
+        { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
+        { label: "Thư viện của tôi", href: "/studio/library" },
+        { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+      ],
+    },
+    {
       label: "Phụ huynh & hoạt động",
       children: [
         { label: "Soạn & gửi thông báo", href: "/parents/compose" },
@@ -118,6 +127,15 @@ export const NAV: Record<Role, NavSection[]> = {
       ],
     },
     {
+      label: "Công cụ soạn học liệu",
+      children: [
+        { label: "Tất cả công cụ", href: "/studio" },
+        { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
+        { label: "Thư viện của tôi", href: "/studio/library" },
+        { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+      ],
+    },
+    {
       label: "Năng lực giáo viên",
       children: [
         { label: "Tự đánh giá & kế hoạch", href: "/competency/self-assessment" },
@@ -143,6 +161,15 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài", href: "/schedule/period-log" },
         { label: "Lịch thi", href: "/academics/exams" },
+      ],
+    },
+    {
+      label: "Công cụ soạn học liệu",
+      children: [
+        { label: "Tất cả công cụ", href: "/studio" },
+        { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
+        { label: "Thư viện của tôi", href: "/studio/library" },
+        { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
       ],
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },
@@ -193,6 +220,15 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
+      ],
+    },
+    {
+      label: "Công cụ soạn học liệu",
+      children: [
+        { label: "Tất cả công cụ", href: "/studio" },
+        { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
+        { label: "Thư viện của tôi", href: "/studio/library" },
+        { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
       ],
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },

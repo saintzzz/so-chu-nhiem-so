@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { TOOLS } from "@/lib/tvc/registry";
 import { GROUP_LABEL, GROUP_COLOR } from "@/lib/tvc/types";
@@ -31,6 +32,7 @@ const GROUPS: ToolGroup[] = ["core", "toan", "van", "anh"];
 
 export default async function StudioPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const supabase = await createClient();
   const { count } = await supabase
     .from("tvc_materials")

@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { KhbdTemplatesManager } from "@/components/tvc/khbd-templates-manager";
 
@@ -13,6 +14,7 @@ export default async function StudioKhbdTemplatesPage() {
     "bgh",
     "admin",
   ]);
+  await requireFeature("studio");
   const supabase = await createClient();
   const { data: tpls } = await supabase
     .from("tvc_khbd_templates")

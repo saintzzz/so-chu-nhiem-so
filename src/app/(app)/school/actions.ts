@@ -450,3 +450,152 @@ export async function updateMyProfile(input: {
   revalidatePath("/profile");
   return {};
 }
+
+/* ---------- CR-030: tao account + phan quyen chuc nang + ACL du lieu ---------- */
+
+const STAFF_ROLES = ["gvcn", "gvbm", "to_truong", "pht", "ke_toan", "bgh"];
+
+export async function createStaffAccount(input: {
+  email: string;
+  password: string;
+  fullName: string;
+  role: string;
+  campusId?: string | null;
+  departmentId?: string | null;
+}): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  if (!STAFF_ROLES.includes(input.role)) return { error: "Vai trò không hợp lệ." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))
+    return { error: "Email không hợp lệ." };
+  if ((input.password ?? "").length < 8)
+    return { error: "Mật khẩu tối thiểu 8 ký tự." };
+  if (!input.fullName.trim()) return { error: "Chưa nhập họ tên." };
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const { data, error } = await admin.auth.admin.createUser({
+    email: input.email.trim().toLowerCase(),
+    password: input.password,
+    email_confirm: true,
+    user_metadata: {
+      role: input.role,
+      school_id: profile.school_id,
+      full_name: input.fullName.trim(),
+    },
+  });
+  if (error) return { error: error.message.includes("already") ? "Email đã tồn tại." : "Không tạo được tài khoản." };
+  const supabase = await createClient();
+  if (data.user && (input.campusId || input.departmentId)) {
+    await supabase
+      .from("profiles")
+      .update({
+        campus_id: input.campusId ?? null,
+        department_id: input.departmentId ?? null,
+      })
+      .eq("id", data.user.id)
+      .eq("school_id", profile.school_id);
+  }
+  revalidatePath("/school/users");
+  return {};
+}
+
+export async function setFeatureGrant(input: {
+  feature: string;
+  role?: string;
+  userId?: string;
+  effect: "allow" | "deny" | null; // null = xoa override, ve mac dinh
+}): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin"]);
+  if (deny) return { error: deny };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const supabase = await createClient();
+  if (!input.feature) return { error: "Thiếu chức năng." };
+  if (!input.role && !input.userId) return { error: "Chọn vai trò hoặc người dùng." };
+
+  if (input.effect === null) {
+    await supabase
+      .from("feature_grants")
+      .delete()
+      .eq("school_id", profile.school_id)
+      .eq("feature", input.feature)
+      .is("role", input.role ?? null)
+      .is("user_id", input.userId ?? null);
+  } else {
+    const { error } = await supabase.from("feature_grants").upsert(
+      {
+        school_id: profile.school_id,
+        role: input.role ?? null,
+        user_id: input.userId ?? null,
+        feature: input.feature,
+        effect: input.effect,
+        created_by: profile.id,
+      },
+      { onConflict: input.userId ? "school_id,user_id,feature" : "school_id,role,feature" },
+    );
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/school/users");
+  return {};
+}
+
+export async function listFeatureGrants(): Promise<{
+  grants: { id: string; feature: string; role: string | null; user_id: string | null; effect: "allow" | "deny" }[];
+} | { error: string }> {
+  const deny = await checkActionRole(["bgh", "to_truong", "admin"]);
+  if (deny) return { error: deny };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("feature_grants")
+    .select("id, feature, role, user_id, effect");
+  if (error) return { error: error.message };
+  return { grants: data ?? [] };
+}
+
+// An/hien 1 muc du lieu voi user cu the (VD: an cau hoi X voi GV A)
+export async function setItemAcl(input: {
+  table: "questions" | "materials" | "khbd_templates" | "curriculum_standards";
+  itemId: string;
+  userEmail: string;
+  deny: boolean; // false = bo gioi han
+}): Promise<{ error?: string }> {
+  const denyErr = await checkActionRole(["bgh", "admin"]);
+  if (denyErr) return { error: denyErr };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", input.userEmail.trim().toLowerCase())
+    .eq("school_id", profile.school_id)
+    .single();
+  if (!target) return { error: "Không tìm thấy tài khoản trong trường." };
+
+  if (!input.deny) {
+    await supabase
+      .from("item_acl")
+      .delete()
+      .eq("school_id", profile.school_id)
+      .eq("table_name", input.table)
+      .eq("item_id", input.itemId)
+      .eq("user_id", target.id);
+    return {};
+  }
+  const { error } = await supabase.from("item_acl").upsert(
+    {
+      school_id: profile.school_id,
+      table_name: input.table,
+      item_id: input.itemId,
+      user_id: target.id,
+      effect: "deny",
+      created_by: profile.id,
+    },
+    { onConflict: "table_name,item_id,user_id" },
+  );
+  if (error) return { error: error.message };
+  return {};
+}

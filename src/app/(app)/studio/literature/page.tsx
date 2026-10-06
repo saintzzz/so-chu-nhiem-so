@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { LiteratureText } from "@/types/tvc";
 import { Copy } from "lucide-react";
@@ -16,6 +17,7 @@ export default async function StudioLiteraturePage({
   searchParams: Promise<{ type?: string; q?: string }>;
 }) {
   await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const { type, q } = await searchParams;
   const supabase = await createClient();
 

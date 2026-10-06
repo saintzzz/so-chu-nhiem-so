@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Question, Subject } from "@/types/tvc";
 import { QuestionBank } from "@/components/tvc/question-bank";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StudioQuestionsPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const supabase = await createClient();
   const [{ data: subs }, { count: qCount }, { data: firstRows }] =
     await Promise.all([
@@ -37,6 +39,7 @@ export default async function StudioQuestionsPage() {
         total={qCount ?? qs.length}
         meId={profile.id}
         isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
+        isAdmin={["bgh", "admin"].includes(profile.role)}
       />
     </div>
   );

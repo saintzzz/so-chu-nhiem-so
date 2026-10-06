@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Material } from "@/types/tvc";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
@@ -26,6 +27,7 @@ export default async function StudioLibraryPage({
   searchParams: Promise<{ type?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const { type } = await searchParams;
   const supabase = await createClient();
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { TOOL_MAP } from "@/lib/tvc/registry";
 import { toClientTool } from "@/lib/tvc/types";
 import { ToolRunner } from "@/components/tvc/tool-runner";
@@ -12,6 +13,7 @@ export default async function ToolPage({
   params: Promise<{ code: string }>;
 }) {
   await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const { code } = await params;
   const tool = TOOL_MAP.get(code);
   if (!tool) notFound();

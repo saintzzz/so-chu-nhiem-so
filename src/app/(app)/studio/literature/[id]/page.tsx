@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { LiteratureText } from "@/types/tvc";
 import { ArrowLeft } from "lucide-react";
@@ -14,6 +15,7 @@ export default async function StudioLiteratureDetail({
   searchParams: Promise<{ use?: string }>;
 }) {
   await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const { id } = await params;
   const { use } = await searchParams;
   const supabase = await createClient();

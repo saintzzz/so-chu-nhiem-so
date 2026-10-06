@@ -184,6 +184,22 @@ export async function reviewMaterial(
   });
   if (error) return { error: "Không cập nhật được." };
   if (data?.error) return { error: data.error as string };
+  // Thong bao ket qua duyet cho tac gia
+  const { data: mat } = await supabase
+    .from("tvc_materials")
+    .select("author_id, title")
+    .eq("id", id)
+    .single();
+  if (mat?.author_id) {
+    await supabase.from("notifications").insert({
+      profile_id: mat.author_id,
+      type: "material_review",
+      title:
+        decision === "approve" ? "Học liệu được duyệt" : "Học liệu bị trả về",
+      body: `"${mat.title}" - ${decision === "approve" ? "đã qua bước duyệt" : "cần chỉnh sửa"}${note ? `: ${note}` : ""}`,
+      link: `/studio/library/${id}`,
+    });
+  }
   await audit("material.review", "material", id, { decision });
   revalidatePath(`/studio/library/${id}`);
   revalidatePath("/studio/library");

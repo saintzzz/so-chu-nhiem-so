@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CurriculumStandard, QReviewState, Question, Subject } from "@/types/tvc";
 import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, listQuestionsChunk, setQuestionReviewState, bulkSetQuestionReviewState } from "@/lib/tvc/actions";
+import { setItemAcl } from "@/app/(app)/school/actions";
 import { LEVEL_LABEL, QTYPE_LABEL } from "@/lib/tvc/types";
 import { MathText } from "@/components/tvc/math-text";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
@@ -66,12 +67,14 @@ export function QuestionBank({
   total,
   meId,
   isReviewer,
+  isAdmin,
 }: {
   initial: Question[];
   subjects: Subject[];
   total?: number;
   meId?: string;
   isReviewer?: boolean;
+  isAdmin?: boolean;
 }) {
   const [questions, setQuestions] = useState(initial);
   const [loadingMore, setLoadingMore] = useState(initial.length < (total ?? 0));
@@ -1201,6 +1204,38 @@ export function QuestionBank({
                         >
                           Về chưa duyệt
                         </button>
+                      )}
+                      {isAdmin && (
+                        <>
+                          <button
+                            className="rounded-lg border border-amber-500/40 px-2.5 py-1 text-xs text-amber-400 hover:bg-amber-500/10"
+                            disabled={pending}
+                            onClick={() => {
+                              const email = window.prompt("Email giáo viên cần ẨN câu này (cùng trường):");
+                              if (!email) return;
+                              start(async () => {
+                                const r = await setItemAcl({ table: "questions", itemId: q.id, userEmail: email, deny: true });
+                                if (r.error) alert(r.error);
+                              });
+                            }}
+                          >
+                            Giới hạn với GV
+                          </button>
+                          <button
+                            className="rounded-lg border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted"
+                            disabled={pending}
+                            onClick={() => {
+                              const email = window.prompt("Email cần GỠ giới hạn:");
+                              if (!email) return;
+                              start(async () => {
+                                const r = await setItemAcl({ table: "questions", itemId: q.id, userEmail: email, deny: false });
+                                if (r.error) alert(r.error);
+                              });
+                            }}
+                          >
+                            Gỡ giới hạn
+                          </button>
+                        </>
                       )}
                     </div>
                     {loadingDetail === q.id && !details[q.id] && (

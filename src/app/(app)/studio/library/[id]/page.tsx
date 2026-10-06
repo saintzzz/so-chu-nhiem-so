@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { Material } from "@/types/tvc";
 import { MaterialActions } from "@/components/tvc/material-actions";
@@ -15,6 +16,7 @@ export default async function StudioMaterialPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase

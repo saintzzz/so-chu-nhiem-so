@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { CurriculumStandard, Subject } from "@/types/tvc";
 import { StandardsManager } from "@/components/tvc/standards-manager";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function StudioYccdPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  await requireFeature("studio");
   const supabase = await createClient();
   const [{ data: stds }, { data: subs }] = await Promise.all([
     supabase

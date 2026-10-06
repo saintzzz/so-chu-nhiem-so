@@ -26,6 +26,7 @@ export const TOOLS: ToolDef[] = [
         { value: "2 tiết", label: "2 tiết" },
         { value: "3 tiết", label: "3 tiết" },
       ]},
+      { key: "khbd_template", label: "Biểu mẫu KHBD", type: "select" },
     ],
     coDraftFields: [
       { key: "class_context", label: "Đặc điểm lớp học", type: "textarea", placeholder: "VD: lớp đông, nhiều HS yếu phần tính toán" },

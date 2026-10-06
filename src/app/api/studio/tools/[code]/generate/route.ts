@@ -415,6 +415,16 @@ export async function POST(
 
   const ctx: ToolContext = { subject, grade, standards };
 
+  // DC-01 (CR-026): nap bieu mau KHBD theo truong vao ctx.extra
+  if (code === "DC-01" && input.khbd_template) {
+    const { data: tpl } = await supabase
+      .from("tvc_khbd_templates")
+      .select("name, activities, include_review, include_signoff")
+      .eq("id", input.khbd_template)
+      .single();
+    if (tpl) ctx.extra = { khbdTemplate: tpl };
+  }
+
   // DC-03: sinh đề từ ngân hàng câu hỏi theo ma trận đã chọn
   if (code === "DC-03") {
     const matrixId = input.matrix_id;

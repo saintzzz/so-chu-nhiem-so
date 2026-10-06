@@ -75,5 +75,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: data ?? [] });
   }
 
+  if (kind === "khbd_templates") {
+    const { data } = await supabase
+      .from("tvc_khbd_templates")
+      .select("id, name, activities, include_review, include_signoff, is_default, school_id")
+      .order("is_default", { ascending: false })
+      .order("name");
+    return NextResponse.json({ data: data ?? [] });
+  }
+
   return NextResponse.json({ error: "kind không hợp lệ." }, { status: 400 });
 }

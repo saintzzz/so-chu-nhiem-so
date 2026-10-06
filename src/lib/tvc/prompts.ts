@@ -49,11 +49,15 @@ export const PROMPTS: Record<
   "DC-01": (input, ctx) => ({
     system: SYS_BASE,
     prompt: `${base(ctx)}
-Hãy biên soạn KẾ HOẠCH BÀI DẠY cho bài "${input.lesson || "theo YCCĐ trên"}" theo khung 4 hoạt động:
+Hãy biên soạn KẾ HOẠCH BÀI DẠY cho bài "${input.lesson || "theo YCCĐ trên"}" theo biểu mẫu: ${
+      (ctx.extra?.khbdTemplate as { name?: string; activities?: { name: string; minutes?: number; hint?: string }[]; include_review?: boolean; include_signoff?: boolean } | undefined)
+        ?.activities?.map((a) => a.name)
+        .join(" - ") || "Khởi động - Khám phá - Luyện tập - Vận dụng"
+    }.
 1. Mục tiêu (kiến thức bám YCCĐ, năng lực chung + đặc thù, phẩm chất)
 2. Thiết bị dạy học và học liệu
-3. Tiến trình: Hoạt động Khởi động - Khám phá - Luyện tập - Vận dụng, mỗi hoạt động gồm mục tiêu + các bước tổ chức cụ thể có vai trò GV/HS rõ ràng
-4. Phụ lục: bảng dự kiến sản phẩm và phương án đánh giá từng hoạt động
+3. Tiến trình: đúng tên các hoạt động của biểu mẫu trên, mỗi hoạt động gồm mục tiêu + các bước tổ chức cụ thể có vai trò GV/HS rõ ràng
+4. Phụ lục: bảng dự kiến sản phẩm và phương án đánh giá từng hoạt động; cuối giáo án có mục "ĐIỀU CHỈNH SAU BÀI DẠY" để trống và bảng ký duyệt tổ trưởng/người soạn.
 Thời lượng: ${input.duration || "1 tiết"}. ${input.note ? `Yêu cầu thêm: ${input.note}` : ""}
 Viết đầy đủ, thực tế, dùng được ngay - không viết khung trống.`,
   }),

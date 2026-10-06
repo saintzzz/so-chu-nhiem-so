@@ -36,6 +36,7 @@ export function ToolRunner({ tool }: { tool: ToolClientDef }) {
   const [grades, setGrades] = useState<number[]>([]);
   const [standards, setStandards] = useState<CurriculumStandard[]>([]);
   const [matrixOptions, setMatrixOptions] = useState<{ id: string; title: string }[]>([]);
+  const [tplOptions, setTplOptions] = useState<{ id: string; name: string }[]>([]);
   const [selectedStd, setSelectedStd] = useState<string[]>([]);
   const [doc, setDoc] = useState<DocContent | null>(null);
   const [docTabs, setDocTabs] = useState<{ label: string; doc: DocContent }[] | null>(null);
@@ -60,6 +61,16 @@ export function ToolRunner({ tool }: { tool: ToolClientDef }) {
       fetch("/api/studio/context?kind=matrices")
         .then((r) => r.json())
         .then((d) => setMatrixOptions(d.data ?? []));
+    }
+    if (tool.code === "DC-01") {
+      fetch("/api/studio/context?kind=khbd_templates")
+        .then((r) => r.json())
+        .then((d) => {
+          const list = (d.data ?? []) as { id: string; name: string }[];
+          setTplOptions(list);
+          const def = list.find((t) => (t as { is_default?: boolean }).is_default);
+          if (def) setValues((v) => ({ khbd_template: def.id, ...v }));
+        });
     }
   }, [tool.code]);
 
@@ -278,7 +289,9 @@ export function ToolRunner({ tool }: { tool: ToolClientDef }) {
         const opts =
           f.key === "matrix_id"
             ? matrixOptions.map((m) => ({ value: m.id, label: m.title }))
-            : f.options ?? [];
+            : f.key === "khbd_template"
+              ? tplOptions.map((t) => ({ value: t.id, label: t.name }))
+              : (f.options ?? []);
         return (
           <select
             className={inputCls}

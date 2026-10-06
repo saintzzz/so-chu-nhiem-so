@@ -29,9 +29,50 @@ const stdDesc = (ctx: ToolContext) =>
 const subjectName = (ctx: ToolContext) => ctx.subject?.name ?? "môn học";
 
 // ---------- DC-01: Kế hoạch bài dạy ----------
+interface KhbdTpl {
+  name: string;
+  activities: { name: string; minutes?: number; hint?: string }[];
+  include_review: boolean;
+  include_signoff: boolean;
+}
+const DEFAULT_KHBD: KhbdTpl = {
+  name: "Khung 4 hoạt động (tham khảo Phụ lục IV - CV 5512)",
+  activities: [
+    { name: "Khởi động", minutes: 5, hint: "Tạo tâm thế, kết nối kiến thức cũ với bài học mới." },
+    { name: "Khám phá", minutes: 20, hint: "" },
+    { name: "Luyện tập", minutes: 12, hint: "Củng cố, vận dụng kiến thức vừa học vào bài tập cụ thể." },
+    { name: "Vận dụng", minutes: 8, hint: "Vận dụng kiến thức vào tình huống thực tiễn, phát triển năng lực." },
+  ],
+  include_review: true,
+  include_signoff: true,
+};
+const KHBD_STEPS: Record<string, string[]> = {
+  "Khởi động": [
+    "Giáo viên nêu câu hỏi/tình huống mở đầu liên quan trực tiếp đến nội dung bài.",
+    "Học sinh suy nghĩ, trả lời theo ý kiến cá nhân.",
+    "Giáo viên dẫn dắt vào bài mới.",
+  ],
+  "Khám phá": [
+    "Học sinh đọc thông tin, quan sát ví dụ/tình huống do giáo viên chuẩn bị.",
+    "Thảo luận nhóm đôi/nhóm 4 theo nhiệm vụ trong phiếu học tập.",
+    "Đại diện nhóm trình bày, nhóm khác nhận xét bổ sung.",
+    "Giáo viên chốt kiến thức trọng tâm, ghi bảng.",
+  ],
+  "Luyện tập": [
+    "Học sinh làm bài tập cá nhân mức Biết - Hiểu.",
+    "Đổi bài chấm chéo theo đáp án giáo viên cung cấp.",
+    "Giáo viên chữa lỗi sai phổ biến trước lớp.",
+  ],
+  "Vận dụng": [
+    "Giáo viên giao nhiệm vụ vận dụng gắn bối cảnh thực tế.",
+    "Học sinh thực hiện, trình bày sản phẩm.",
+    "Giáo viên nhận xét, dặn dò chuẩn bị bài sau.",
+  ],
+};
 export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
   const stds = stdList(ctx);
   const title = input.lesson || ctx.standards[0]?.lesson_ref || "Bài dạy";
+  const tpl = (ctx.extra?.khbdTemplate as KhbdTpl | undefined) ?? DEFAULT_KHBD;
   const act = (name: string, goal: string, steps: string[]): DocSection => ({
     title: `Hoạt động ${name}`,
     blocks: [
@@ -46,6 +87,7 @@ export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
       ["Môn học", subjectName(ctx)],
       ["Khối lớp", ctx.grade ? `Lớp ${ctx.grade}` : "-"],
       ["Thời lượng", input.duration || "1 tiết"],
+      ["Biểu mẫu", tpl.name],
       [
         "Yêu cầu cần đạt",
         stds
@@ -91,43 +133,51 @@ export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
         title: "III. TIẾN TRÌNH DẠY HỌC",
         blocks: [],
       },
-      act(
-        "1. Khởi động (5 phút)",
-        "Tạo tâm thế, kết nối kiến thức cũ với bài học mới.",
-        [
-          "Giáo viên nêu câu hỏi/tình huống mở đầu liên quan trực tiếp đến nội dung bài.",
-          "Học sinh suy nghĩ, trả lời theo ý kiến cá nhân.",
-          "Giáo viên dẫn dắt vào bài mới.",
-        ],
+      ...tpl.activities.map((a, i) =>
+        act(
+          `${i + 1}. ${a.name}${a.minutes ? ` (${a.minutes} phút)` : ""}`,
+          a.hint ||
+            (a.name === "Khám phá"
+              ? `Hình thành kiến thức mới: ${stdDesc(ctx)}.`
+              : "Thực hiện nhiệm vụ học tập của hoạt động."),
+          KHBD_STEPS[a.name] ?? [
+            "Giáo viên tổ chức hoạt động theo nhiệm vụ đã thiết kế.",
+            "Học sinh thực hiện cá nhân/nhóm, trình bày kết quả.",
+            "Giáo viên nhận xét, chốt ý chính.",
+          ],
+        ),
       ),
-      act(
-        "2. Khám phá (20 phút)",
-        `Hình thành kiến thức mới: ${stdDesc(ctx)}.`,
-        [
-          "Học sinh đọc thông tin, quan sát ví dụ/tình huống do giáo viên chuẩn bị.",
-          "Thảo luận nhóm đôi/nhóm 4 theo nhiệm vụ trong phiếu học tập.",
-          "Đại diện nhóm trình bày, nhóm khác nhận xét bổ sung.",
-          "Giáo viên chốt kiến thức trọng tâm, ghi bảng.",
-        ],
-      ),
-      act(
-        "3. Luyện tập (12 phút)",
-        "Củng cố, vận dụng kiến thức vừa học vào bài tập cụ thể.",
-        [
-          "Học sinh làm bài tập cá nhân mức Biết - Hiểu.",
-          "Đổi bài chấm chéo theo đáp án giáo viên cung cấp.",
-          "Giáo viên chữa lỗi sai phổ biến trước lớp.",
-        ],
-      ),
-      act(
-        "4. Vận dụng (8 phút)",
-        "Vận dụng kiến thức vào tình huống thực tiễn, phát triển năng lực.",
-        [
-          "Giáo viên giao nhiệm vụ vận dụng gắn bối cảnh thực tế.",
-          "Học sinh thực hiện, trình bày sản phẩm.",
-          "Giáo viên nhận xét, dặn dò chuẩn bị bài sau.",
-        ],
-      ),
+      ...(tpl.include_review
+        ? [
+            {
+              title: "IV. ĐIỀU CHỈNH SAU BÀI DẠY",
+              blocks: [
+                {
+                  kind: "para",
+                  text: ".........................................................................................................................................................................",
+                },
+                {
+                  kind: "para",
+                  text: ".........................................................................................................................................................................",
+                },
+              ],
+            } as DocSection,
+          ]
+        : []),
+      ...(tpl.include_signoff
+        ? [
+            {
+              title: "KÝ DUYỆT",
+              blocks: [
+                {
+                  kind: "table",
+                  header: ["TỔ TRƯỞNG KIỂM TRA", "NGƯỜI SOẠN"],
+                  rows: [["(Ký và ghi rõ họ tên)", "(Ký và ghi rõ họ tên)"]],
+                },
+              ],
+            } as DocSection,
+          ]
+        : []),
     ],
     appendix: [
       {

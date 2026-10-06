@@ -505,3 +505,82 @@ export async function toggleStandardStatus(id: string, active: boolean) {
   revalidatePath("/studio/yccd");
   return { ok: true };
 }
+
+// ---------- CR-026: Biểu mẫu KHBD theo trường ----------
+export interface KhbdActivityInput {
+  name: string;
+  minutes?: number;
+  hint?: string;
+}
+
+export async function saveKhbdTemplate(input: {
+  id?: string;
+  name: string;
+  activities: KhbdActivityInput[];
+  include_review: boolean;
+  include_signoff: boolean;
+  is_default?: boolean;
+}) {
+  const err = await checkActionRole([...STD_ADMIN_ROLES]);
+  if (err) return { error: err };
+  const profile = (await getProfile())!;
+  if (!profile.school_id) return { error: "Tài khoản chưa gắn trường." };
+  const acts = (input.activities ?? [])
+    .map((a) => ({
+      name: String(a.name ?? "").trim(),
+      minutes: Number(a.minutes) || undefined,
+      hint: String(a.hint ?? "").trim() || undefined,
+    }))
+    .filter((a) => a.name);
+  if (!input.name.trim()) return { error: "Chưa nhập tên biểu mẫu." };
+  if (!acts.length) return { error: "Biểu mẫu cần ít nhất 1 hoạt động." };
+  await ensureTvcProfile();
+
+  const supabase = await createClient();
+  const row = {
+    name: input.name.trim(),
+    activities: acts,
+    include_review: input.include_review,
+    include_signoff: input.include_signoff,
+    is_default: !!input.is_default,
+    school_id: profile.school_id,
+  };
+  const q = input.id
+    ? supabase
+        .from("tvc_khbd_templates")
+        .update(row)
+        .eq("id", input.id)
+        .eq("school_id", profile.school_id)
+        .select("id")
+    : supabase
+        .from("tvc_khbd_templates")
+        .insert({ ...row, created_by: profile.id })
+        .select("id");
+  const { data, error } = await q;
+  if (error || !data?.length)
+    return { error: error?.message ?? "Không lưu được biểu mẫu." };
+  await audit(
+    input.id ? "khbd_template.update" : "khbd_template.create",
+    "khbd_templates",
+    data[0].id,
+  );
+  revalidatePath("/studio/mau-khbd");
+  return { ok: true, id: data[0].id };
+}
+
+export async function deleteKhbdTemplate(id: string) {
+  const err = await checkActionRole([...STD_ADMIN_ROLES]);
+  if (err) return { error: err };
+  const profile = (await getProfile())!;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tvc_khbd_templates")
+    .delete()
+    .eq("id", id)
+    .eq("school_id", profile.school_id ?? "")
+    .select("id");
+  if (error || !data?.length) return { error: "Không xóa được." };
+  await audit("khbd_template.delete", "khbd_templates", id);
+  revalidatePath("/studio/mau-khbd");
+  return { ok: true };
+}

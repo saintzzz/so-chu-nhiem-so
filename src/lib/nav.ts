@@ -59,6 +59,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
         { label: "Thư viện của tôi", href: "/studio/library" },
         { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+        { label: "Biểu mẫu kế hoạch bài dạy", href: "/studio/mau-khbd" },
       ],
     },
     {
@@ -133,6 +134,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
         { label: "Thư viện của tôi", href: "/studio/library" },
         { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+        { label: "Biểu mẫu kế hoạch bài dạy", href: "/studio/mau-khbd" },
       ],
     },
     {
@@ -170,6 +172,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
         { label: "Thư viện của tôi", href: "/studio/library" },
         { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+        { label: "Biểu mẫu kế hoạch bài dạy", href: "/studio/mau-khbd" },
       ],
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },
@@ -229,6 +232,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
         { label: "Thư viện của tôi", href: "/studio/library" },
         { label: "Yêu cầu cần đạt của trường", href: "/studio/yccd" },
+        { label: "Biểu mẫu kế hoạch bài dạy", href: "/studio/mau-khbd" },
       ],
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },

@@ -35,7 +35,10 @@ export async function createIncident(input: {
     reported_to_bgh: false,
     occurred_at: input.occurredAt || new Date().toISOString(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[safety] insert incidents:", error.message);
+    return { error: "Không ghi được sự cố - vui lòng thử lại." };
+  }
   // Chỉ báo lãnh đạo cùng trường; PHT chỉ nhận nếu sự cố thuộc cơ sở mình phụ trách.
   const { data: leaderProfiles } = await supabase
     .from("profiles")
@@ -98,7 +101,10 @@ export async function toggleReportedToBgh(
     .from("incidents")
     .update({ reported_to_bgh: reported })
     .eq("id", incidentId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[safety] update reported_to_bgh:", error.message);
+    return { error: "Không cập nhật được trạng thái báo BGH - vui lòng thử lại." };
+  }
   revalidatePath("/safety/bgh");
   return {};
 }
@@ -143,7 +149,10 @@ export async function followupIncident(
       ...(description !== undefined ? { description } : {}),
     })
     .eq("id", incidentId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[safety] followup incident:", error.message);
+    return { error: "Không cập nhật được theo dõi sự cố - vui lòng thử lại." };
+  }
   revalidatePath("/safety/followup");
   revalidatePath("/safety/archive");
   revalidatePath("/safety/bgh");

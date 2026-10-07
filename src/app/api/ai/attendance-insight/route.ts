@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 const WEEKDAY = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
@@ -25,11 +26,20 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const { data: cls } = await supabase
+  // R7 re-review: moi query nguon deu phai check error - lookup loi la 500,
+  // khong duoc nuot thanh du lieu rong.
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,school_id")
     .eq("id", classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[ai/attendance-insight] classes:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return NextResponse.json(
       { error: "Lớp không thuộc trường của bạn." },
@@ -37,28 +47,49 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("id,full_name,code")
     .eq("class_id", classId)
     .eq("status", "active");
+  if (stuErr) {
+    console.error("[ai/attendance-insight] students:", stuErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const students = (studentData ?? []) as { id: string; full_name: string; code: string | null }[];
   const ids = students.map((s) => s.id);
   if (!ids.length) {
     return NextResponse.json({ result: { lines: ["Lớp chưa có học sinh."] } });
   }
 
-  const { data: attData } = await supabase
-    .from("attendance_records")
-    .select("student_id,date,status")
-    .in("student_id", ids)
-    .in("status", ["unexcused", "excused", "late"])
-    .limit(20000);
-  const rows = (attData ?? []) as {
+  // R7-02: phan trang het - cat ngam o 1000 rows se lam sai pattern.
+  const attRes = await fetchAllRows<{
     student_id: string;
     date: string;
     status: string;
-  }[];
+  }>((f, t) =>
+    supabase
+      .from("attendance_records")
+      .select("student_id,date,status")
+      .in("student_id", ids)
+      .in("status", ["unexcused", "excused", "late"])
+      .order("id")
+      .range(f, t),
+  );
+  if (attRes.error || attRes.truncated) {
+    console.error(
+      "[ai/attendance-insight] attendance:",
+      attRes.error ?? "truncated",
+    );
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
+  const rows = attRes.rows;
 
   // Pattern theo HS: ngày trong tuần hay vắng, chuỗi liên tiếp
   const perStudent = new Map<string, { dow: number[]; statuses: Record<string, number> }>();

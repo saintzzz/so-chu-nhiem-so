@@ -47,7 +47,10 @@ export async function saveDailyReport(input: {
     },
     { onConflict: "class_id,date" },
   );
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[daily-report] upsert daily_reports:", error.message);
+    return { error: "Không lưu được báo cáo ngày - vui lòng thử lại." };
+  }
 
   if (input.submit) {
     const { data: leaders } = await supabase

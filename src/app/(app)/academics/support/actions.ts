@@ -32,7 +32,10 @@ export async function createSupportPlans(
     .select("id,class_id,classes!inner(id,school_id,gvcn_id)")
     .in("id", studentIds)
     .eq("status", "active");
-  if (stErr) return { created: 0, error: stErr.message };
+  if (stErr) {
+    console.error("[support] list students:", stErr.message);
+    return { created: 0, error: "Không tải được danh sách học sinh - vui lòng thử lại." };
+  }
 
   const allowed = new Map<string, string>();
   for (const s of (stData ?? []) as {
@@ -92,7 +95,10 @@ export async function createSupportPlans(
   }
 
   const { error: insErr } = await supabase.from("support_plans").insert(rows);
-  if (insErr) return { created: 0, error: insErr.message };
+  if (insErr) {
+    console.error("[support] insert support_plans:", insErr.message);
+    return { created: 0, error: "Không tạo được kế hoạch phụ đạo - vui lòng thử lại." };
+  }
 
   logAudit(supabase, {
     action: "support_plans.create",

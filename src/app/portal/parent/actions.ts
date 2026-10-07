@@ -59,7 +59,10 @@ export async function bookAppointment(input: {
     purpose: input.purpose.trim(),
     status: "proposed",
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[portal/parent] insert appointments:", error.message);
+    return { error: "Không đặt được lịch hẹn - vui lòng thử lại." };
+  }
   await supabase.from("notifications").insert({
     profile_id: input.teacherId,
     type: "appointment",
@@ -133,7 +136,10 @@ export async function replyToTeacher(input: {
     student_id: input.studentId,
     content: input.content.trim(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[portal/parent] insert messages:", error.message);
+    return { error: "Không gửi được tin nhắn - vui lòng thử lại." };
+  }
   await supabase.from("notifications").insert({
     profile_id: input.recipientId,
     type: "message",
@@ -177,7 +183,13 @@ export async function registerActivity(input: {
         student_id: input.studentId,
         status: "registered",
       });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error(
+      "[portal/parent] register activity_attendance:",
+      error.message,
+    );
+    return { error: "Không đăng ký được hoạt động - vui lòng thử lại." };
+  }
   logAudit(supabase, {
     action: "Phụ huynh đăng ký hoạt động",
     entity: "activity_attendance",
@@ -206,7 +218,10 @@ export async function reportActivityAbsence(input: {
     .eq("activity_id", input.activityId)
     .eq("student_id", input.studentId)
     .eq("status", "registered");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[portal/parent] report activity absence:", error.message);
+    return { error: "Không báo vắng được - vui lòng thử lại." };
+  }
   logAudit(supabase, {
     action: "Phụ huynh báo vắng hoạt động",
     entity: "activity_attendance",

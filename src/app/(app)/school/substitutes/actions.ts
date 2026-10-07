@@ -29,6 +29,17 @@ export async function createSubstituteRequest(input: {
     return { error: "Lớp không thuộc trường của bạn." };
   }
 
+  // R7-01: GV duoc de xuat day thay phai cung truong + role GV - truoc day
+  // input.substituteTeacherId duoc insert khong kiem tra.
+  if (input.substituteTeacherId) {
+    const chk = await validateSubTeacher(
+      supabase,
+      input.substituteTeacherId,
+      profile.school_id ?? "",
+    );
+    if (chk.error) return { error: chk.error };
+  }
+
   const { error } = await supabase.from("substitute_requests").insert({
     school_id: profile.school_id,
     class_id: input.classId,
@@ -41,7 +52,10 @@ export async function createSubstituteRequest(input: {
     status: "pending",
     requested_by: profile.id,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[substitutes] insert substitute_requests:", error.message);
+    return { error: "Không tạo được yêu cầu điều động - vui lòng thử lại." };
+  }
 
   // Thông báo cho GV được đề xuất dạy thay
   const targets = new Set<string>();
@@ -83,6 +97,40 @@ function subNotificationLink(role: string | undefined, date: string): string {
     : "/school/substitutes";
 }
 
+/**
+ * R7-01: GV day thay phai (1) ton tai, (2) cung truong, (3) co role GV
+ * (gvcn/gvbm/to_truong - cung danh sach picker o page.tsx). Chan gan
+ * BGH/PHT/ke toan lam "GV day thay". RLS scn_subr_refs_in_school chan o DB,
+ * check som de tra loi ro rang.
+ */
+async function validateSubTeacher(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  teacherId: string,
+  schoolId: string,
+): Promise<{
+  teacher: { id: string; role: string } | null;
+  error: string | null;
+}> {
+  const { data: teacher } = await supabase
+    .from("profiles")
+    .select("id,role")
+    .eq("id", teacherId)
+    .eq("school_id", schoolId)
+    .maybeSingle();
+  if (!teacher) {
+    return { teacher: null, error: "Giáo viên không thuộc trường của bạn." };
+  }
+  // Cung danh sach role voi picker o page.tsx - khong gan ke toan/nhan vien
+  // khac lam GV day thay.
+  if (!TEACHER_LINK_ROLES.has((teacher as { role: string }).role)) {
+    return {
+      teacher: null,
+      error: "Người được phân công phải là giáo viên.",
+    };
+  }
+  return { teacher: teacher as { id: string; role: string }, error: null };
+}
+
 export async function decideSubstituteRequest(
   requestId: string,
   approve: boolean,
@@ -112,6 +160,17 @@ export async function decideSubstituteRequest(
     period: number;
   };
 
+  // R7-01: BGH gan GV ngay luc duyet cung phai qua role check - truoc day
+  // substituteTeacherId duoc ghi thang vao update khong kiem tra.
+  if (approve && substituteTeacherId) {
+    const chk = await validateSubTeacher(
+      supabase,
+      substituteTeacherId,
+      profile.school_id ?? "",
+    );
+    if (chk.error) return { error: chk.error };
+  }
+
   const { data: updated, error } = await supabase
     .from("substitute_requests")
     .update({
@@ -127,7 +186,10 @@ export async function decideSubstituteRequest(
     .eq("id", requestId)
     .eq("status", "pending")
     .select("id");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[substitutes] decide substitute_requests:", error.message);
+    return { error: "Không cập nhật được yêu cầu - vui lòng thử lại." };
+  }
   if (updated?.length !== 1) return { error: "Yêu cầu đã được xử lý. Vui lòng tải lại trang." };
 
   const targets = new Set([r.requested_by, r.absent_teacher_id]);
@@ -190,20 +252,17 @@ export async function assignSubstitute(
     return { error: "Yêu cầu không tồn tại." };
   }
 
-  // GV duoc phan cong phai thuoc cung truong (RLS scn_subr_refs_in_school
+  // GV duoc phan cong phai cung truong + role GV (RLS scn_subr_refs_in_school
   // cung chan, check som de bao loi ro rang).
-  const { data: teacher } = await supabase
-    .from("profiles")
-    .select("id,role")
-    .eq("id", teacherId)
-    .eq("school_id", profile.school_id)
-    .maybeSingle();
-  if (!teacher) return { error: "Giáo viên không thuộc trường của bạn." };
-  // Cung danh sach role voi picker o page.tsx - khong gan ke toan/nhan vien
-  // khac lam GV day thay.
-  if (!TEACHER_LINK_ROLES.has((teacher as { role: string }).role)) {
-    return { error: "Người được phân công phải là giáo viên." };
+  const chk = await validateSubTeacher(
+    supabase,
+    teacherId,
+    profile.school_id ?? "",
+  );
+  if (chk.error || !chk.teacher) {
+    return { error: chk.error ?? "Người được phân công phải là giáo viên." };
   }
+  const teacher = chk.teacher;
 
   const { data: updated, error } = await supabase
     .from("substitute_requests")
@@ -216,7 +275,12 @@ export async function assignSubstitute(
     .eq("status", "approved")
     .is("substitute_teacher_id", null)
     .select("id");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[substitutes] assign substitute_requests:", error.message);
+    return {
+      error: "Không phân công được giáo viên dạy thay - vui lòng thử lại.",
+    };
+  }
   if (updated?.length !== 1) {
     return {
       error:
@@ -230,10 +294,7 @@ export async function assignSubstitute(
     type: "substitute",
     title: "Bạn được phân công dạy thay",
     body: `Ngày ${req.date} tiết ${req.period}`,
-    link: subNotificationLink(
-      (teacher as { role: string }).role,
-      req.date as string,
-    ),
+    link: subNotificationLink(teacher.role, req.date as string),
   });
   revalidatePath("/school/substitutes");
   return {};

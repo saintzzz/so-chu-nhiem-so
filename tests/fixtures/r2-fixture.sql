@@ -1,5 +1,6 @@
 -- Fixture: schema toi thieu mo phong production de chay
--- supabase/migrations/20261105_r2_security_fixes.sql tren Postgres thuong
+-- supabase/migrations/20261105_r2_security_fixes.sql +
+-- 20261107_r7_substitute_role.sql tren Postgres thuong
 -- (khong co Supabase). auth.uid() doc GUC app.uid; set role appuser de RLS
 -- co hieu luc (owner/superuser bypass RLS).
 create schema if not exists auth;

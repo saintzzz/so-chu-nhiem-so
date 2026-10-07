@@ -300,8 +300,10 @@ async function insertQuestionsWithCodes(
         }),
       );
     if (!error) return {};
-    if (error.code !== "23505" && !error.message.includes("uq_tvc_questions_owner_code"))
-      return { error: error.message };
+    if (error.code !== "23505" && !error.message.includes("uq_tvc_questions_owner_code")) {
+      console.error("[tvc] insert tvc_questions:", error.message);
+      return { error: "Không lưu được câu hỏi - vui lòng thử lại." };
+    }
   }
   return { error: "Trùng mã câu hỏi khi lưu - vui lòng thử lại." };
 }
@@ -432,7 +434,10 @@ export async function bulkSetQuestionReviewState(
     .update({ review_state: state })
     .in("id", ids)
     .select("id");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[tvc] bulk update review_state:", error.message);
+    return { error: "Không cập nhật được trạng thái câu hỏi - vui lòng thử lại." };
+  }
   const n = data?.length ?? 0;
   if (!n) return { error: "Không cập nhật được (quyền sở hữu)." };
   const profile = await getProfile();
@@ -621,12 +626,14 @@ export async function saveStandard(input: SaveStandardInput) {
         .select("id")
     : supabase.from("tvc_curriculum_standards").insert(row).select("id");
   const { data, error } = await q;
-  if (error)
+  if (error) {
+    console.error("[tvc] save curriculum_standards:", error.message);
     return {
       error: error.message.includes("duplicate")
         ? "Mã YCCĐ đã tồn tại."
         : "Không lưu được YCCĐ.",
     };
+  }
   if (input.id && !data?.length) return { error: "Không tìm thấy YCCĐ của trường." };
   await audit("standards.save", "curriculum_standards", code, {
     school: profile.school_id,
@@ -728,8 +735,10 @@ export async function saveKhbdTemplate(input: {
         .insert({ ...row, created_by: profile.id })
         .select("id");
   const { data, error } = await q;
-  if (error || !data?.length)
-    return { error: error?.message ?? "Không lưu được biểu mẫu." };
+  if (error || !data?.length) {
+    console.error("[tvc] save khbd_templates:", error?.message ?? "0 rows");
+    return { error: "Không lưu được biểu mẫu - vui lòng thử lại." };
+  }
   await audit(
     input.id ? "khbd_template.update" : "khbd_template.create",
     "khbd_templates",

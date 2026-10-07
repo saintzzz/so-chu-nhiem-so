@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { semesterAverage } from "@/lib/tt22";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /**
  * AI nhận xét kết quả học tập của lớp - dùng cho /academics/analysis.
@@ -27,11 +28,20 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const { data: cls } = await supabase
+  // R7 re-review: moi query nguon deu phai check error - lookup loi la 500,
+  // khong duoc nuot thanh du lieu rong roi tra ket qua AI tu du lieu thieu.
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,school_id")
     .eq("id", classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[ai/class-analysis] classes:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return NextResponse.json(
       { error: "Lớp không thuộc trường của bạn." },
@@ -39,35 +49,57 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("id,code,full_name")
     .eq("class_id", classId)
     .eq("status", "active");
+  if (stuErr) {
+    console.error("[ai/class-analysis] students:", stuErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const students = (studentData ?? []) as { id: string; code: string; full_name: string }[];
   const ids = students.map((s) => s.id);
   if (!ids.length) {
     return NextResponse.json({ result: { lines: ["Lớp chưa có học sinh."] } });
   }
 
-  const [{ data: gradeData }, { data: subjectData }] = await Promise.all([
-    supabase
-      .from("grades")
-      .select("student_id,subject_id,assessment_type,score")
-      .in("student_id", ids)
-      .eq("term", term)
-      .limit(20000),
+  // R7-02: PostgREST cat ngam ~1000 rows - phan trang het qua fetchAllRows,
+  // loi/truncated tra 500 thay vi phan tich tren du lieu thieu.
+  const [gradeRes, { data: subjectData, error: subErr }] = await Promise.all([
+    fetchAllRows<{
+      student_id: string;
+      subject_id: string;
+      assessment_type: string;
+      score: number | null;
+    }>((f, t) =>
+      supabase
+        .from("grades")
+        .select("student_id,subject_id,assessment_type,score")
+        .in("student_id", ids)
+        .eq("term", term)
+        .order("id")
+        .range(f, t),
+    ),
     supabase
       .from("subjects")
       .select("id,name")
       .eq("school_id", profile.school_id ?? ""),
   ]);
-  const grades = (gradeData ?? []) as {
-    student_id: string;
-    subject_id: string;
-    assessment_type: string;
-    score: number | null;
-  }[];
+  if (gradeRes.error || gradeRes.truncated || subErr) {
+    console.error(
+      "[ai/class-analysis] sources:",
+      gradeRes.error ?? (gradeRes.truncated ? "grades truncated" : subErr?.message),
+    );
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
+  const grades = gradeRes.rows;
   const subjectName = new Map(
     ((subjectData ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]),
   );

@@ -45,7 +45,10 @@ export async function submitLessonPlan(input: {
     file_name: input.fileName ?? null,
     status: "submitted",
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[lesson-plans] insert lesson_plans:", error.message);
+    return { error: "Không nộp được giáo án - vui lòng thử lại." };
+  }
 
   // Thông báo tổ trưởng cùng trường
   const { data: heads } = await supabase
@@ -76,8 +79,10 @@ export async function lessonPlanFileUrl(
   const { data, error } = await supabase.storage
     .from("lesson-plans")
     .createSignedUrl(filePath, 3600);
-  if (error || !data?.signedUrl)
-    return { error: error?.message ?? "Không tạo được liên kết file." };
+  if (error || !data?.signedUrl) {
+    console.error("[lesson-plans] createSignedUrl:", error?.message ?? "no url");
+    return { error: "Không tạo được liên kết file - vui lòng thử lại." };
+  }
   return { url: data.signedUrl };
 }
 
@@ -112,7 +117,10 @@ export async function teamReviewLessonPlan(
       updated_at: new Date().toISOString(),
     })
     .eq("id", planId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[lesson-plans] team review update:", error.message);
+    return { error: "Không cập nhật được giáo án - vui lòng thử lại." };
+  }
 
   if (approve) {
     // Chuyển BGH duyệt cuối + báo GV
@@ -176,7 +184,10 @@ export async function bghDecideLessonPlan(
       updated_at: new Date().toISOString(),
     })
     .eq("id", planId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[lesson-plans] bgh decide update:", error.message);
+    return { error: "Không cập nhật được giáo án - vui lòng thử lại." };
+  }
 
   await supabase.from("notifications").insert({
     profile_id: plan.teacher_id,

@@ -21,6 +21,10 @@ const MIGRATION = readFileSync(
   join(ROOT, "supabase/migrations/20261105_r2_security_fixes.sql"),
   "utf8",
 );
+const MIGRATION_R7 = readFileSync(
+  join(ROOT, "supabase/migrations/20261107_r7_substitute_role.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -92,9 +96,11 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   }
   assert.ok(ready, "postgres container khong san sang sau 60s");
 
-  // 1) fixture, 2) migration verbatim, 3) grant execute cho appuser
+  // 1) fixture, 2) migration verbatim theo thu tu thoi gian (R7 OR REPLACE
+  // scn_subr_refs_in_school cua R2), 3) grant execute cho appuser
   psql(FIXTURE);
   psql(MIGRATION);
+  psql(MIGRATION_R7);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -177,6 +183,23 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
       `insert into substitute_requests(school_id, class_id, period, date, absent_teacher_id, requested_by)
        values ('${ID.schoolA}','${ID.classB}',2,current_date,'${ID.tA}','${ID.tA}')`,
       "van forge duoc request cho lop truong B");
+  });
+
+  // ---------- R7-01: substitute_teacher_id phai co role GV ----------
+  await t.test("subr_ins: substitute_teacher_id la BGH bi chan (role check)", () => {
+    denied(ID.tA,
+      `insert into substitute_requests(school_id, class_id, subject_id, period, date, absent_teacher_id, substitute_teacher_id, requested_by)
+       values ('${ID.schoolA}','${ID.classA}','${ID.subjA}',6,current_date,'${ID.tA}','${ID.bghA}','${ID.tA}')`,
+      "bgh van gan duoc lam GV day thay - role check chua hieu luc");
+  });
+
+  await t.test("subr_ins: gvbm lam substitute van hop le (positive control)", () => {
+    asUser(ID.tA,
+      `insert into substitute_requests(school_id, class_id, subject_id, period, date, absent_teacher_id, substitute_teacher_id, requested_by)
+       values ('${ID.schoolA}','${ID.classA}','${ID.subjA}',7,current_date,'${ID.tA}','${ID.subA}','${ID.tA}')`);
+    const out = psql(
+      `select status from substitute_requests where requested_by='${ID.tA}' and period=7 limit 1`).trim();
+    assert.equal(out, "pending");
   });
 
   // ---------- subr_upd + trigger: status transition ----------

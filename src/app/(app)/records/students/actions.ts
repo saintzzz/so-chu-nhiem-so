@@ -94,7 +94,10 @@ export async function updateStudentRecord(
     .from("students")
     .update(changed)
     .eq("id", studentId);
-  if (upErr) return { updated: 0, error: upErr.message };
+  if (upErr) {
+    console.error("[records] update students:", upErr.message);
+    return { updated: 0, error: "Không cập nhật được hồ sơ học sinh - vui lòng thử lại." };
+  }
 
   // Lich su tung truong - tab "Lich su cap nhat ho so" doc bang nay.
   // R2-08: khong duoc nuot loi - neu ghi history that bai thi bao ro de
@@ -121,7 +124,7 @@ export async function updateStudentRecord(
     });
     return {
       updated: Object.keys(changed).length,
-      error: `Hồ sơ đã lưu nhưng không ghi được lịch sử thay đổi: ${histErr.message}`,
+      error: "Hồ sơ đã lưu nhưng không ghi được lịch sử thay đổi - vui lòng thử lại.",
     };
   }
 

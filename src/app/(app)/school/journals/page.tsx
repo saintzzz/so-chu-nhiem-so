@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fmtDateVN } from "@/lib/utils";
 
 export default async function SchoolJournalsPage({
@@ -39,20 +40,28 @@ export default async function SchoolJournalsPage({
   const classOf = new Map(classes.map((c) => [c.id, c.name]));
 
   // period_logs -> timetable_entries (class_id) -> teacher/subject
-  const { data: ttRaw } = classIds.length
-    ? await supabase
-        .from("timetable_entries")
-        .select("id,class_id,subject_id,teacher_id,weekday,period")
-        .in("class_id", classIds)
-    : { data: [] };
-  const entries = (ttRaw ?? []) as {
-    id: string;
-    class_id: string;
-    subject_id: string;
-    teacher_id: string;
-    weekday: number;
-    period: number;
-  }[];
+  // R7-03: TKB toan truong co the vuot 1000 rows - phan trang qua
+  // fetchAllRows; loi/truncated hien notice thay vi map thieu tiet.
+  const ttRes = classIds.length
+    ? await fetchAllRows<{
+        id: string;
+        class_id: string;
+        subject_id: string;
+        teacher_id: string | null;
+        weekday: number;
+        period: number;
+      }>((f, t) =>
+        supabase
+          .from("timetable_entries")
+          .select("id,class_id,subject_id,teacher_id,weekday,period")
+          .in("class_id", classIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as never[], error: null, truncated: false };
+  const errors: string[] = [];
+  if (ttRes.error || ttRes.truncated) errors.push("timetable");
+  const entries = ttRes.rows;
   const entryIds = entries.map((e) => e.id);
   const entryOf = new Map(entries.map((e) => [e.id, e]));
 
@@ -125,6 +134,12 @@ export default async function SchoolJournalsPage({
           </a>
         )}
       </form>
+      {errors.length > 0 && (
+        <p className="mb-4 rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu thời khóa biểu - sổ đầu bài có thể thiếu tiết.
+          Vui lòng thử lại sau.
+        </p>
+      )}
       <DataTable
         columns={["Ngày", "Lớp", "Tiết", "Môn", "Giáo viên", "Nội dung tiết học"]}
         footer={<span>{logs.length} bản ghi gần nhất</span>}

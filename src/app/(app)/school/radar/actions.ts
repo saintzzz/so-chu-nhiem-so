@@ -50,7 +50,10 @@ export async function refreshRadarWarnings(): Promise<{
     .map((c) => ({ ...c, school_id: profile.school_id }));
   if (fresh.length) {
     const { error } = await supabase.from("early_warnings").insert(fresh);
-    if (error) return { error: error.message };
+    if (error) {
+      console.error("[radar] insert early_warnings:", error.message);
+      return { error: "Không lưu được cảnh báo - vui lòng thử lại." };
+    }
   }
   revalidatePath("/school/radar");
   return { inserted: fresh.length };
@@ -83,7 +86,10 @@ export async function updateWarningStatus(
       acknowledged_at: new Date().toISOString(),
     })
     .eq("id", warningId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[radar] update early_warnings:", error.message);
+    return { error: "Không cập nhật được cảnh báo - vui lòng thử lại." };
+  }
 
   // Báo cho GVCN của lớp biết BGH đã tiếp nhận/xử lý
   if (w.class_id) {

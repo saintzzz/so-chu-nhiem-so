@@ -6,7 +6,7 @@
 // E2E role flows) can staging - khong chay probe ghi len production.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -188,8 +188,9 @@ test("R3-01: assignSubstitute co guard + bat zero-row + notify", () => {
   assert.match(body[0], /decided_by: profile\.id/);
   assert.match(body[0], /notifications/);
   // R3-re-review: chi gan profile co role GV (gvcn/gvbm/to_truong), khong gan
-  // ke toan/nhan vien khac lam GV day thay.
-  assert.match(body[0], /TEACHER_LINK_ROLES\.has/,
+  // ke toan/nhan vien khac lam GV day thay. R7-01: check nam trong shared
+  // helper validateSubTeacher (create/decide/assign dung chung).
+  assert.match(body[0], /validateSubTeacher\(|TEACHER_LINK_ROLES\.has/,
     "assignSubstitute phai kiem role GV truoc khi gan");
   // UI: approved + chua co GV hien control phan cong
   const board = read("src/components/school/substitute-board.tsx");
@@ -697,4 +698,504 @@ test("R6-04: report page kiem error/truncated truoc khi render stats", () => {
   }
   assert.match(page, /errors\.length > 0/,
     "nguon loi phai hien notice thay vi stats + narrative 'Chua ghi nhan vi pham'");
+});
+
+// --- R7-01: substitute_teacher role validation (shared helper + RLS) ------
+test("R7-01: validateSubTeacher dung chung o create/decide/assign", () => {
+  const act = read("src/app/(app)/school/substitutes/actions.ts");
+  assert.match(act, /async function validateSubTeacher\(/,
+    "thieu shared helper validateSubTeacher");
+  const calls = (act.match(/await validateSubTeacher\(/g) ?? []).length;
+  assert.ok(calls >= 3,
+    `can >=3 call site (create+decide+assign), thay ${calls}`);
+  // Helper phai kiem cung school + role GV
+  const fn = act.match(/validateSubTeacher[\s\S]*?return \{ teacher: teacher/);
+  assert.ok(fn, "khong tim thay than helper");
+  assert.match(fn[0], /\.eq\("school_id", schoolId\)/);
+  assert.match(fn[0], /TEACHER_LINK_ROLES\.has/,
+    "helper phai chan role khong phai GV (bgh/pht/ke_toan)");
+  // assignSubstitute khong con inline check trung lap (dung helper).
+  const assign = act.match(/assignSubstitute[\s\S]*?revalidatePath/);
+  assert.ok(assign);
+  assert.match(assign[0], /validateSubTeacher\(/);
+});
+
+test("R7-01: migration 20261107 bat role GV cho substitute_teacher_id", () => {
+  const mig = read("supabase/migrations/20261107_r7_substitute_role.sql");
+  const fn = mig.match(/scn_subr_refs_in_school[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu scn_subr_refs_in_school trong migration R7");
+  assert.match(fn[0],
+    /p\.role = any\(array\['gvbm','gvcn','to_truong'\]\)/,
+    "sub check phai bat role GV - bgh/pht van gan duoc truoc day");
+  // Cac dieu kien khac giu nguyen nhu ban R2.
+  assert.match(fn[0], /scn_pht_allows_campus\(c\.campus_id\)/);
+  assert.match(fn[0], /sj\.id = subid and sj\.school_id = school/);
+  assert.match(fn[0], /p\.id = absent and p\.school_id = school/);
+  assert.match(fn[0], /sub is null or exists/,
+    "sub NULL (chua phan cong) van phai hop le");
+});
+
+// --- R7-02: AI routes khong cat ngam du lieu nguon -------------------------
+test("R7-02: 3 AI routes fetchAllRows + tra 500 khi nguon loi", () => {
+  for (const f of [
+    "src/app/api/ai/class-analysis/route.ts",
+    "src/app/api/ai/comments/route.ts",
+    "src/app/api/ai/attendance-insight/route.ts",
+  ]) {
+    const src = read(f);
+    assert.match(src, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/,
+      `${f} chua import fetchAllRows`);
+    assert.ok(!/\.limit\(\d+\)/.test(src),
+      `${f} con .limit() cap ngam tren query nguon`);
+    assert.match(src, /Không tải đủ dữ liệu nguồn/,
+      `${f} thieu nhan loi co dinh`);
+    assert.match(src, /status: 500/, `${f} khong tra 500`);
+    // Loi VA truncated deu phai lam dung request.
+    assert.match(src, /\.error \|\| \w+\.truncated/,
+      `${f} chi check error ma quen truncated`);
+  }
+  // R7 re-review: lookup query (classes/students/subjects) cung phai check
+  // error - roster loi la 500, khong duoc nuot thanh "lop chua co HS".
+  for (const f of [
+    "src/app/api/ai/class-analysis/route.ts",
+    "src/app/api/ai/attendance-insight/route.ts",
+  ]) {
+    const src = read(f);
+    assert.match(src, /error: clsErr/, `${f} classes lookup chua check error`);
+    assert.match(src, /if \(clsErr\)/, `${f} thieu guard clsErr -> 500`);
+    assert.match(src, /error: stuErr/, `${f} students lookup chua check error`);
+    assert.match(src, /if \(stuErr\)/, `${f} thieu guard stuErr -> 500`);
+  }
+  const ca = read("src/app/api/ai/class-analysis/route.ts");
+  assert.match(ca, /error: subErr/, "class-analysis subjects lookup chua check error");
+  assert.match(ca, /\|\| subErr\)/, "class-analysis thieu guard subErr -> 500");
+  const comments = read("src/app/api/ai/comments/route.ts");
+  assert.match(comments, /error: stuErr/, "comments students lookup chua check error");
+  assert.match(comments, /if \(stuErr\)/, "comments thieu guard stuErr -> 500");
+  assert.match(comments, /error: subErr/, "comments subjects lookup chua check error");
+  assert.match(comments, /if \(subErr\)/, "comments thieu guard subErr -> 500");
+  // comments: 8 query nguon (dau vao AI prompt) deu phai phan trang.
+  const fetches = (comments.match(/fetchAllRows</g) ?? []).length;
+  assert.ok(fetches >= 8, `comments can >=8 fetchAllRows, thay ${fetches}`);
+  // incidents giu thu tu occurred_at desc + tie-break on dinh.
+  const inc = comments.match(/incidents[\s\S]*?\.range\(f, t\)/);
+  assert.ok(inc, "incidents query khong phan trang");
+  assert.match(inc[0], /\.order\("occurred_at", \{ ascending: false \}\)/);
+  assert.match(inc[0], /\.order\("id"\)/,
+    "incidents can tie-break id cho range paging on dinh");
+});
+
+// --- R7-03: school pages phan trang timetable ------------------------------
+test("R7-03: substitutes/journals page fetchAllRows cho timetable_entries", () => {
+  const sub = read("src/app/(app)/school/substitutes/page.tsx");
+  assert.match(sub, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  const tt = sub.match(/from\("timetable_entries"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(tt, "substitutes page van fetch timetable khong phan trang");
+  assert.match(tt[0], /\.in\("class_id"/,
+    "timetable phai scope theo class_ids cua truong (truoc day lay tat ca)");
+  assert.match(tt[0], /\.order\("id"\)/);
+  assert.ok(!/from\("timetable_entries"\)\s*\.select\("\*"\)\s*[\n\r\s]*[),]/.test(sub),
+    "con query timetable unscoped/unpaginated");
+  // teacher_subjects cung phan trang (composite key khong co id).
+  const ts = sub.match(/from\("teacher_subjects"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(ts, "teacher_subjects van khong phan trang");
+  assert.match(ts[0], /\.order\("teacher_id"\)[\s\S]*?\.order\("subject_id"\)/,
+    "teacher_subjects can order composite on dinh");
+  assert.match(sub, /errors\.length > 0/,
+    "loi/truncated phai hien notice thay vi render goi y thieu");
+
+  const jr = read("src/app/(app)/school/journals/page.tsx");
+  assert.match(jr, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  const jtt = jr.match(/from\("timetable_entries"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(jtt, "journals page van fetch timetable khong phan trang");
+  assert.match(jtt[0], /\.in\("class_id", classIds\)/);
+  assert.match(jtt[0], /\.order\("id"\)/);
+  assert.match(jr, /errors\.length > 0/);
+});
+
+// --- R7-04: khong echo raw error.message ra client (AST scanner) -----------
+// Scanner AST (TypeScript compiler API) - khong dung regex vi bo sot:
+//   return { ...{ ok: false }, error: e.message }     (spread long nhau)
+//   return { error: e.message.trim() }                (call tren .message)
+// Round 2 bo sung (lead review):
+//   - binding table 1 cap trong function scope: catch(e), const x = res.error,
+//     const x = e.message, const { error } = ...  => x error-typed;
+//     `return { error: e }` / `error: e.toString()` / `JSON.stringify(e)` /
+//     `String(dbErr)` / `${e}` deu flag. Call binh thuong (featErr('x')) va
+//     param kieu string (fail(error: string)) KHONG phai raw.
+//   - traversal: ConditionalExpression arms, spread cua call result
+//     (...Object.assign({}, {error: e.message})), `*.json(ident)` va
+//     `return ident` resolve ve const initializer cung scope; arrow body dang
+//     `(x) => ({...})` cung la return.
+//   - exemption DUY NHAT: conditional ma CA HAI nhanh la string literal
+//     (ke ca long nhau) - test ben trong chi inspect (.includes/.startsWith/
+//     .endsWith/...). `.match/.replace/.slice/.trim` khong phai exemption.
+const { createRequire } = await import("node:module");
+const ts = createRequire(import.meta.url)("typescript");
+
+const ERRISH_IDENT = /^(e|err|error|exc|ex|exception)$/i;
+
+function scanSourceForRawErrorEchoes(sourceText) {
+  const sf = ts.createSourceFile(
+    "scan.ts", sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS,
+  );
+  const hits = [];
+  const scopeCache = new Map(); // function/sourceFile node -> Map<name,{init,raw}>
+
+  const unwrap = (e) => {
+    while (
+      ts.isParenthesizedExpression(e) ||
+      ts.isAsExpression(e) ||
+      ts.isNonNullExpression(e) ||
+      ts.isAwaitExpression(e) ||
+      e.kind === ts.SyntaxKind.TypeAssertionExpression
+    ) e = e.expression;
+    return e;
+  };
+
+  // Binding `x = res.error` / `x = res.error.code` / `x = res.error?.slice()`
+  // => x mang gia tri error-typed (khac voi doc `chk.error` inline trong
+  // payload - do la nhan co dinh theo convention nen khong flag).
+  const bindingIsErrorProp = (init) => {
+    let e = unwrap(init);
+    while (
+      ts.isPropertyAccessExpression(e) ||
+      ts.isElementAccessExpression(e) ||
+      ts.isCallExpression(e)
+    ) {
+      if (ts.isPropertyAccessExpression(e) && e.name.text === "error") {
+        return true;
+      }
+      e = unwrap(e.expression);
+    }
+    return false;
+  };
+
+  // Nhanh tra ve co chac chan la string literal co dinh khong (ke ca
+  // conditional long nhau va chuoi ?? toan literal).
+  const isFixedString = (e) => {
+    e = unwrap(e);
+    if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) {
+      return true;
+    }
+    if (ts.isConditionalExpression(e)) {
+      return isFixedString(e.whenTrue) && isFixedString(e.whenFalse);
+    }
+    if (
+      ts.isBinaryExpression(e) &&
+      e.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+    ) {
+      return isFixedString(e.left) && isFixedString(e.right);
+    }
+    return false;
+  };
+
+  const enclosingScopeNode = (node) => {
+    let p = node.parent;
+    while (p) {
+      if (ts.isFunctionLike(p)) return p;
+      p = p.parent;
+    }
+    return sf; // top-level: dung source file lam scope
+  };
+
+  // Expr co chua raw error (exception/.message/.error binding) khong.
+  // Conditional co ca 2 nhanh la string co dinh = inspection hop le -> bo qua
+  // ca test (includes/startsWith/... nam trong test khong leak).
+  const containsRaw = (expr, scope, depth = 0) => {
+    if (!expr || depth > 30 || ts.isFunctionLike(expr)) return false;
+    expr = unwrap(expr);
+    if (ts.isIdentifier(expr)) {
+      const b = scope.get(expr.text);
+      if (b) return b.raw;
+      return ERRISH_IDENT.test(expr.text); // catch/untyped param errorish
+    }
+    if (ts.isConditionalExpression(expr)) {
+      if (isFixedString(expr.whenTrue) && isFixedString(expr.whenFalse)) {
+        return false; // nhan co dinh - test chi inspect
+      }
+      return (
+        containsRaw(expr.condition, scope, depth + 1) ||
+        containsRaw(expr.whenTrue, scope, depth + 1) ||
+        containsRaw(expr.whenFalse, scope, depth + 1)
+      );
+    }
+    if (ts.isPropertyAccessExpression(expr)) {
+      if (expr.name.text === "message") {
+        return true; // .message/.message.trim()/.match()/... la raw text
+      }
+      // Chi base moi la value use - name (`.error`) khong phai identifier loi.
+      return containsRaw(expr.expression, scope, depth + 1);
+    }
+    let found = false;
+    ts.forEachChild(expr, (n) => {
+      if (found || ts.isFunctionLike(n)) return; // khong di vao nested fn
+      if (containsRaw(n, scope, depth + 1)) found = true;
+    });
+    return found;
+  };
+
+  // Binding table 1 cap trong scope: var decl, destructure { error },
+  // catch param, function param.
+  const buildScope = (scopeNode) => {
+    if (scopeCache.has(scopeNode)) return scopeCache.get(scopeNode);
+    const scope = new Map();
+    scopeCache.set(scopeNode, scope);
+    for (const p of scopeNode.parameters ?? []) {
+      if (!ts.isIdentifier(p.name)) continue;
+      const isLabelParam = !!p.type && /\bstring\b/.test(p.type.getText(sf));
+      scope.set(p.name.text, {
+        init: null,
+        raw: !isLabelParam && ERRISH_IDENT.test(p.name.text),
+      });
+    }
+    const visit = (n) => {
+      if (n !== scopeNode && ts.isFunctionLike(n)) return; // scope rieng
+      if (ts.isVariableDeclaration(n)) {
+        if (ts.isIdentifier(n.name)) {
+          const init = n.initializer ?? null;
+          scope.set(n.name.text, {
+            init,
+            // catch (e) - variableDeclaration cua CatchClause cung la
+            // VariableDeclaration node, phai check parent truoc.
+            raw:
+              ts.isCatchClause(n.parent) ||
+              (init
+                ? bindingIsErrorProp(init) || containsRaw(init, scope)
+                : false),
+          });
+        } else if (ts.isObjectBindingPattern(n.name)) {
+          for (const el of n.name.elements) {
+            if (!ts.isIdentifier(el.name)) continue;
+            const prop =
+              el.propertyName && ts.isIdentifier(el.propertyName)
+                ? el.propertyName.text
+                : el.name.text;
+            // destructure `{ error }`/`{ error: x }` = error-typed value
+            scope.set(el.name.text, { init: null, raw: prop === "error" });
+          }
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    ts.forEachChild(scopeNode, visit);
+    return scope;
+  };
+
+  // Thu thap moi object literal co the la payload tra ve: object literal,
+  // conditional arms, identifier -> const initializer (1 cap), call args
+  // (Object.assign, *.json(body), ...), spread cua cac dang tren.
+  const collectPayloads = (expr, scope, out, depth = 0, seen = new Set()) => {
+    if (!expr || depth > 10 || seen.has(expr)) return;
+    seen.add(expr);
+    expr = unwrap(expr);
+    if (ts.isObjectLiteralExpression(expr)) { out.push(expr); return; }
+    if (ts.isConditionalExpression(expr)) {
+      collectPayloads(expr.whenTrue, scope, out, depth + 1, seen);
+      collectPayloads(expr.whenFalse, scope, out, depth + 1, seen);
+      return;
+    }
+    if (ts.isIdentifier(expr)) {
+      const b = scope.get(expr.text);
+      if (b && b.init) collectPayloads(b.init, scope, out, depth + 1, seen);
+      return;
+    }
+    if (ts.isCallExpression(expr)) {
+      for (const a of expr.arguments) {
+        collectPayloads(a, scope, out, depth + 1, seen);
+      }
+    }
+  };
+
+  // Quet object literal o moi do sau: `error` prop raw + nested object
+  // (property initializer, spread, spread-of-call, alias).
+  const inspectObject = (obj, scope, context, depth = 0) => {
+    if (depth > 10) return;
+    for (const prop of obj.properties) {
+      if (ts.isPropertyAssignment(prop)) {
+        if (
+          (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name)) &&
+          prop.name.text === "error" &&
+          containsRaw(prop.initializer, scope)
+        ) {
+          hits.push(`${context}: error = ${prop.initializer.getText(sf)}`);
+        }
+        const nested = [];
+        collectPayloads(prop.initializer, scope, nested);
+        for (const o of nested) inspectObject(o, scope, context, depth + 1);
+      } else if (ts.isShorthandPropertyAssignment(prop)) {
+        if (
+          prop.name.text === "error" &&
+          containsRaw(prop.name, scope)
+        ) {
+          hits.push(`${context}: error = ${prop.name.getText(sf)}`);
+        }
+      } else if (ts.isSpreadAssignment(prop)) {
+        const nested = [];
+        collectPayloads(prop.expression, scope, nested);
+        for (const o of nested) inspectObject(o, scope, context, depth + 1);
+      }
+    }
+  };
+
+  const checkPayloadExpr = (expr, context) => {
+    const scope = buildScope(enclosingScopeNode(expr));
+    const objs = [];
+    collectPayloads(expr, scope, objs);
+    for (const o of objs) inspectObject(o, scope, context);
+  };
+
+  const visit = (node) => {
+    if (ts.isReturnStatement(node) && node.expression) {
+      checkPayloadExpr(node.expression, "return");
+    } else if (ts.isArrowFunction(node) && !ts.isBlock(node.body)) {
+      checkPayloadExpr(node.body, "return"); // (x) => ({...})
+    } else if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "json"
+    ) {
+      const scope = buildScope(enclosingScopeNode(node));
+      for (const a of node.arguments) {
+        const objs = [];
+        collectPayloads(a, scope, objs);
+        for (const o of objs) inspectObject(o, scope, "json");
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return hits;
+}
+
+// Unit test cho chinh scanner truoc - phai bat duoc cac dang echo da biet
+// va KHONG flag inspection hop le.
+test("R7-04 scanner: bat moi dang echo, bo qua inspection hop le", () => {
+  const bad = [
+    // --- cac dang da biet tu round 1 ---
+    ["plain echo", "function f(e){ return { error: e.message }; }"],
+    ["trim echo", "function f(e){ return { error: e.message.trim() }; }"],
+    ["nested spread echo",
+      "function f(e){ return { ...{ok:false}, error: e.message }; }"],
+    ["template echo",
+      "function f(e){ return { error: `loi ${e.message}` }; }"],
+    ["optional-chain echo",
+      "function f(e){ return { error: e?.message ?? 'x' }; }"],
+    ["String(e) echo", "function f(e){ return { error: String(e) }; }"],
+    ["instanceof leak",
+      "function f(e){ return { error: e instanceof Error ? e.message : 'x' }; }"],
+    ["nested object echo",
+      "function f(e){ return { data: { error: e.message } }; }"],
+    ["json() echo",
+      "NextResponse.json({ error: e.message }, { status: 500 });"],
+    // --- (a) error object serialization ---
+    ["catch obj passthrough",
+      "function f(){ try{}catch(e){ return { error: e }; } }"],
+    ["toString passthrough",
+      "function f(){ try{}catch(e){ return { error: e.toString() }; } }"],
+    ["JSON.stringify passthrough",
+      "function f(){ try{}catch(e){ return { error: JSON.stringify(e) }; } }"],
+    ["String(dbErr) bound",
+      "function f(res){ const dbErr = res.error; return { error: String(dbErr) }; }"],
+    ["bound .error ident",
+      "function f(res){ const e = res.error; return { error: e }; }"],
+    ["bound .message alias",
+      "function f(){ try{}catch(e){ const x = e.message; return { error: x }; } }"],
+    ["template raw object",
+      "function f(){ try{}catch(e){ return { error: `loi ${e}` }; } }"],
+    ["destructured { error }",
+      "async function f(db){ const { error } = await db.del(); return { error }; }"],
+    // --- (b) traversal gaps ---
+    ["conditional arm object",
+      "function f(c){ try{}catch(e){ return c ? { error: e.message } : { error: 'x' }; } }"],
+    ["spread of call result",
+      "function f(e){ return { ...Object.assign({}, { error: e.message }) }; }"],
+    ["json() alias",
+      "function f(e){ const body = { error: e.message }; return Response.json(body); }"],
+    ["return alias",
+      "function f(e){ const body = { error: e.message }; return body; }"],
+    ["arrow body echo",
+      "const f = (e) => ({ error: e.message });"],
+    // --- (c) predicate exemption that khong duoc nham ---
+    ["match echo", "function f(e){ return { error: e.message.match(/.*/) }; }"],
+    ["replace echo",
+      "function f(e){ return { error: e.message.replace('a','b') }; }"],
+    ["slice echo", "function f(e){ return { error: e.message.slice(0, 10) }; }"],
+    ["bare includes bool",
+      "function f(e){ return { error: e.message.includes('dup') }; }"],
+    ["conditional raw branch",
+      "function f(c,e){ return { error: c ? e.message : 'Không lưu được.' }; }"],
+  ];
+  for (const [name, src] of bad) {
+    const hits = scanSourceForRawErrorEchoes(src);
+    assert.ok(hits.length >= 1, `scanner bo sot dang: ${name}`);
+  }
+  const ok = [
+    ["fixed label", "function f(){ return { error: 'Không lưu được.' }; }"],
+    ["includes -> label",
+      `function f(error){ return { error: error.message.includes('dup')
+        ? 'Trùng mã.' : 'Không lưu được.' }; }`],
+    ["startsWith nested cond -> labels",
+      `function f(e){ return { error: e.message.includes('a')
+        ? (e.message.startsWith('b') ? 'Lỗi B.' : 'Lỗi A.') : 'Không lưu được.' }; }`],
+    ["deny string passthrough", "function f(deny){ return { error: deny }; }"],
+    ["typed string param shorthand",
+      "function f(error: string){ return { error }; }"],
+    ["bound call label (featErr)",
+      "async function f(){ const err = await featErr('studio'); return { error: err }; }"],
+    ["helper label spread",
+      "function f(chk){ return { error: chk.error ?? 'GV không hợp lệ.' }; }"],
+    ["logAudit payload khong phai return",
+      `function f(e){ logAudit(supabase, { payload: { error: e.message } });
+        return { error: 'Không lưu được.' }; }`],
+    ["json() fixed label",
+      "NextResponse.json({ error: 'Không tải đủ dữ liệu nguồn.' }, { status: 500 });"],
+    ["json() alias fixed label",
+      "function f(){ const body = { error: 'Không lưu được.' }; return Response.json(body); }"],
+    ["conditional test inspect",
+      "function f(e){ return { error: e.message ? 'Có lỗi xảy ra.' : 'Không rõ.' }; }"],
+  ];
+  for (const [name, src] of ok) {
+    const hits = scanSourceForRawErrorEchoes(src);
+    assert.deepEqual(hits, [], `scanner flag nham dang hop le: ${name}`);
+  }
+});
+
+test("R7-04: khong con raw-error echo trong actions/routes (AST recursive)", () => {
+  // Quet toan bo actions.ts/route.ts duoi src/app + actions.ts duoi src/lib.
+  const files = [];
+  const walk = (dir, keep) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, keep);
+      else if (e.isFile() && keep(e.name)) files.push(p);
+    }
+  };
+  walk(join(ROOT, "src/app"), (n) => n === "actions.ts" || n === "route.ts");
+  walk(join(ROOT, "src/lib"), (n) => n === "actions.ts");
+
+  const hits = [];
+  for (const f of files) {
+    for (const h of scanSourceForRawErrorEchoes(readFileSync(f, "utf8"))) {
+      hits.push(`${f.replace(`${ROOT}/`, "")}: ${h}`);
+    }
+  }
+  assert.deepEqual(hits, [],
+    `con raw-error echo ve client (dung console.error + nhan co dinh):\n${hits.join("\n")}`);
+  assert.ok(files.length >= 40,
+    `scanner chi thay ${files.length} file - co ve sai duong dan`);
+});
+
+test("R7-04: 3 file R7 goc phai co console.error server-side", () => {
+  for (const f of [
+    "src/app/portal/parent/actions.ts",
+    "src/app/(app)/school/substitutes/actions.ts",
+    "src/app/(app)/school/radar/actions.ts",
+  ]) {
+    const src = read(f);
+    assert.ok(!/return \{ error: [^}]*\.message/.test(src),
+      `${f} con tra raw error.message cho client`);
+    assert.match(src, /console\.error\(/,
+      `${f} thieu console.error server-side cho DB error`);
+  }
 });

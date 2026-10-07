@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent, semesterAverage } from "@/lib/tt22";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { NLPC_ATTRIBUTES } from "@/lib/nlpc";
 
 interface StudentInput {
@@ -48,11 +49,20 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
   const codes = students.map((s) => s.code);
-  const { data: studentRows } = await supabase
+  // R7 re-review: roster lookup loi la 500 - khong duoc nuot thanh ids rong
+  // (ids rong -> ca 8 query nguon bi skip -> viet nhan xet khong co du lieu).
+  const { data: studentRows, error: stuErr } = await supabase
     .from("students")
     .select("id,code")
     .eq("class_id", classId)
     .in("code", codes);
+  if (stuErr) {
+    console.error("[ai/comments] students:", stuErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const idByCode = new Map(
     ((studentRows ?? []) as { id: string; code: string }[]).map((s) => [
       s.code,
@@ -61,76 +71,146 @@ export async function POST(req: Request) {
   );
   const ids = [...idByCode.values()];
 
+  // R7-02: nguon du lieu AI khong duoc cat ngam o 1000 rows - fetchAllRows
+  // doc het bang; bat ky query loi/truncated nao cung tra 500 thay vi viet
+  // nhan xet tren du lieu thieu.
+  const emptyRes = { rows: [] as never[], error: null, truncated: false };
   const [violRes, gradeRes, attRes, incRes, compRes, actRes, counselRes, nlpcRes] =
     ids.length
       ? await Promise.all([
-          supabase
-            .from("conduct_records")
-            .select("student_id,type")
-            .in("student_id", ids)
-            .limit(5000),
-          supabase
-            .from("grades")
-            .select("student_id,subject_id,term,assessment_type,score")
-            .in("student_id", ids)
-            .limit(20000),
-          supabase
-            .from("attendance_records")
-            .select("student_id,status")
-            .in("student_id", ids)
-            .limit(10000),
-          supabase
-            .from("incidents")
-            .select("student_id,type,severity,status,occurred_at")
-            .in("student_id", ids)
-            .order("occurred_at", { ascending: false })
-            .limit(5000),
-          supabase
-            .from("competency_evaluations")
-            .select("student_id,attribute_code,level")
-            .in("student_id", ids)
-            .limit(10000),
-          supabase
-            .from("activity_attendance")
-            .select("student_id,status")
-            .in("student_id", ids)
-            .limit(10000),
-          supabase
-            .from("counseling_cases")
-            .select("student_id,status")
-            .in("student_id", ids)
-            .in("status", ["new", "assessing", "counseling"])
-            .limit(2000),
-          supabase
-            .from("nlpc_comments")
-            .select("student_id,comment,created_at")
-            .in("student_id", ids)
-            .order("created_at", { ascending: false })
-            .limit(2000),
+          fetchAllRows<{ student_id: string; type: string }>((f, t) =>
+            supabase
+              .from("conduct_records")
+              .select("student_id,type")
+              .in("student_id", ids)
+              .order("id")
+              .range(f, t),
+          ),
+          fetchAllRows<{
+            student_id: string;
+            subject_id: string;
+            term: string;
+            assessment_type: string;
+            score: number | null;
+          }>((f, t) =>
+            supabase
+              .from("grades")
+              .select("student_id,subject_id,term,assessment_type,score")
+              .in("student_id", ids)
+              .order("id")
+              .range(f, t),
+          ),
+          fetchAllRows<{ student_id: string; status: string }>((f, t) =>
+            supabase
+              .from("attendance_records")
+              .select("student_id,status")
+              .in("student_id", ids)
+              .order("id")
+              .range(f, t),
+          ),
+          // Giu order occurred_at desc (inc.gan_nhat = loai moi nhat),
+          // them id lam tie-break on dinh cho range paging.
+          fetchAllRows<{
+            student_id: string;
+            type: string;
+            severity: string;
+            status: string;
+          }>((f, t) =>
+            supabase
+              .from("incidents")
+              .select("student_id,type,severity,status,occurred_at")
+              .in("student_id", ids)
+              .order("occurred_at", { ascending: false })
+              .order("id")
+              .range(f, t),
+          ),
+          fetchAllRows<{
+            student_id: string;
+            attribute_code: string;
+            level: string;
+          }>((f, t) =>
+            supabase
+              .from("competency_evaluations")
+              .select("student_id,attribute_code,level")
+              .in("student_id", ids)
+              .order("id")
+              .range(f, t),
+          ),
+          // activity_attendance khong co cot id - order composite on dinh.
+          fetchAllRows<{
+            activity_id: string;
+            student_id: string;
+            status: string;
+          }>((f, t) =>
+            supabase
+              .from("activity_attendance")
+              .select("activity_id,student_id,status")
+              .in("student_id", ids)
+              .order("activity_id")
+              .order("student_id")
+              .range(f, t),
+          ),
+          fetchAllRows<{ student_id: string; status: string }>((f, t) =>
+            supabase
+              .from("counseling_cases")
+              .select("student_id,status")
+              .in("student_id", ids)
+              .in("status", ["new", "assessing", "counseling"])
+              .order("id")
+              .range(f, t),
+          ),
+          // nlpc_comments khong co cot id - giu created_at desc (comment
+          // moi nhat thang) + tie-break (student_id, grp) on dinh.
+          fetchAllRows<{ student_id: string; comment: string | null }>(
+            (f, t) =>
+              supabase
+                .from("nlpc_comments")
+                .select("student_id,comment,created_at")
+                .in("student_id", ids)
+                .order("created_at", { ascending: false })
+                .order("student_id")
+                .order("grp")
+                .range(f, t),
+          ),
         ])
-      : [
-          { data: [] },
-          { data: [] },
-          { data: [] },
-          { data: [] },
-          { data: [] },
-          { data: [] },
-          { data: [] },
-          { data: [] },
-        ];
+      : [emptyRes, emptyRes, emptyRes, emptyRes, emptyRes, emptyRes, emptyRes, emptyRes];
+
+  const srcErrors: string[] = [];
+  for (const [name, r] of [
+    ["conduct_records", violRes],
+    ["grades", gradeRes],
+    ["attendance_records", attRes],
+    ["incidents", incRes],
+    ["competency_evaluations", compRes],
+    ["activity_attendance", actRes],
+    ["counseling_cases", counselRes],
+    ["nlpc_comments", nlpcRes],
+  ] as const) {
+    if (r.error || r.truncated) {
+      srcErrors.push(`${name}: ${r.error ?? "truncated"}`);
+    }
+  }
+  if (srcErrors.length) {
+    console.error("[ai/comments] source queries:", srcErrors.join("; "));
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
 
   // Subject names for weakest/strongest-subject hints (id lookup only)
-  const gradeRows = (gradeRes.data ?? []) as {
-    student_id: string;
-    subject_id: string;
-    term: string;
-    assessment_type: string;
-    score: number | null;
-  }[];
+  const gradeRows = gradeRes.rows;
   const subjectIds = [...new Set(gradeRows.map((g) => g.subject_id))];
-  const { data: subjectRows } = subjectIds.length
+  const { data: subjectRows, error: subErr } = subjectIds.length
     ? await supabase.from("subjects").select("id,name").in("id", subjectIds)
-    : { data: [] };
+    : { data: [], error: null };
+  if (subErr) {
+    console.error("[ai/comments] subjects:", subErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const subjectName = new Map(
     ((subjectRows ?? []) as { id: string; name: string }[]).map((s) => [
       s.id,
@@ -163,29 +243,15 @@ export async function POST(req: Request) {
   }
 
   const violById = new Map<string, { vi_pham: number; khen_thuong: number }>();
-  for (const r of (violRes.data ?? []) as {
-    student_id: string;
-    type: string;
-  }[]) {
+  for (const r of violRes.rows) {
     const v = violById.get(r.student_id) ?? { vi_pham: 0, khen_thuong: 0 };
     if (r.type === "vi_pham") v.vi_pham += 1;
     else v.khen_thuong += 1;
     violById.set(r.student_id, v);
   }
-  const scoreById = averageByStudent(
-    (gradeRes.data ?? []) as {
-      student_id: string;
-      subject_id: string;
-      term: string;
-      assessment_type: string;
-      score: number | null;
-    }[],
-  );
+  const scoreById = averageByStudent(gradeRes.rows);
   const attById = new Map<string, { total: number; absent: number }>();
-  for (const a of (attRes.data ?? []) as {
-    student_id: string;
-    status: string;
-  }[]) {
+  for (const a of attRes.rows) {
     const s = attById.get(a.student_id) ?? { total: 0, absent: 0 };
     s.total += 1;
     if (a.status === "excused" || a.status === "unexcused") s.absent += 1;
@@ -197,12 +263,7 @@ export async function POST(req: Request) {
     string,
     { tong: number; nghiem_trong: number; chua_xong: number; gan_nhat: string }
   >();
-  for (const i of (incRes.data ?? []) as {
-    student_id: string;
-    type: string;
-    severity: string;
-    status: string;
-  }[]) {
+  for (const i of incRes.rows) {
     const cur =
       incById.get(i.student_id) ?? {
         tong: 0,
@@ -225,11 +286,7 @@ export async function POST(req: Request) {
     string,
     { T: number; H: number; C: number; yeu: string[] }
   >();
-  for (const c of (compRes.data ?? []) as {
-    student_id: string;
-    attribute_code: string;
-    level: string;
-  }[]) {
+  for (const c of compRes.rows) {
     const cur = compById.get(c.student_id) ?? { T: 0, H: 0, C: 0, yeu: [] };
     if (c.level === "T") cur.T += 1;
     else if (c.level === "H") cur.H += 1;
@@ -243,10 +300,7 @@ export async function POST(req: Request) {
 
   // Hoạt động giáo dục: tỷ lệ tham gia
   const actById = new Map<string, { total: number; joined: number }>();
-  for (const a of (actRes.data ?? []) as {
-    student_id: string;
-    status: string;
-  }[]) {
+  for (const a of actRes.rows) {
     const cur = actById.get(a.student_id) ?? { total: 0, joined: 0 };
     cur.total += 1;
     if (a.status === "present") cur.joined += 1;
@@ -255,18 +309,13 @@ export async function POST(req: Request) {
 
   // Tư vấn đang mở (chỉ đếm - không đưa chi tiết nhạy cảm vào prompt)
   const counselById = new Map<string, number>();
-  for (const c of (counselRes.data ?? []) as {
-    student_id: string;
-  }[]) {
+  for (const c of counselRes.rows) {
     counselById.set(c.student_id, (counselById.get(c.student_id) ?? 0) + 1);
   }
 
   // Nhận xét NLPC gần nhất (đã rút gọn - giữ ngữ cảnh cho AI)
   const nlpcById = new Map<string, string>();
-  for (const n of (nlpcRes.data ?? []) as {
-    student_id: string;
-    comment: string | null;
-  }[]) {
+  for (const n of nlpcRes.rows) {
     if (!nlpcById.has(n.student_id) && n.comment?.trim()) {
       nlpcById.set(n.student_id, n.comment.trim().slice(0, 160));
     }

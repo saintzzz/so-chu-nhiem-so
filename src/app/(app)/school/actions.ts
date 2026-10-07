@@ -38,7 +38,10 @@ export async function assignClassCampus(
     .from("classes")
     .update({ campus_id: campusId })
     .eq("id", classId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] assign class campus:", error.message);
+    return { error: "Không gán được cơ sở cho lớp - vui lòng thử lại." };
+  }
   revalidatePath("/school/campuses");
   return {};
 }
@@ -63,7 +66,10 @@ export async function createCampus(input: {
     distance_km: input.distanceKm,
     address: input.address.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert campuses:", error.message);
+    return { error: "Không tạo được cơ sở - vui lòng thử lại." };
+  }
   revalidatePath("/school/campuses");
   return {};
 }
@@ -102,7 +108,10 @@ export async function addSupportStaff(input: {
     qualification: input.qualification.trim() || null,
     standardized: input.standardized,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert support_staff:", error.message);
+    return { error: "Không thêm được nhân viên - vui lòng thử lại." };
+  }
   revalidatePath("/school/staff");
   revalidatePath("/school/nq37");
   return {};
@@ -122,7 +131,10 @@ export async function toggleStaffStandardized(
     .update({ standardized })
     .eq("id", staffId)
     .eq("school_id", profile.school_id ?? "");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] update support_staff:", error.message);
+    return { error: "Không cập nhật được nhân viên - vui lòng thử lại." };
+  }
   revalidatePath("/school/staff");
   revalidatePath("/school/nq37");
   return {};
@@ -154,7 +166,10 @@ export async function saveTt15Evaluation(input: {
     rating,
     status: input.submit ? "submitted" : "draft",
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert tt15_evaluations:", error.message);
+    return { error: "Không lưu được đánh giá TT15 - vui lòng thử lại." };
+  }
   revalidatePath("/school/tt15");
   return {};
 }
@@ -185,7 +200,10 @@ export async function addEquipment(input: {
     condition: input.condition,
     note: input.note.trim() || null,
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert equipment:", error.message);
+    return { error: "Không thêm được thiết bị - vui lòng thử lại." };
+  }
   revalidatePath("/school/equipment");
   return {};
 }
@@ -204,7 +222,10 @@ export async function updateEquipmentCondition(
     .update({ condition })
     .eq("id", id)
     .eq("school_id", profile.school_id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] update equipment condition:", error.message);
+    return { error: "Không cập nhật được tình trạng thiết bị - vui lòng thử lại." };
+  }
   revalidatePath("/school/equipment");
   return {};
 }
@@ -220,7 +241,10 @@ export async function deleteEquipment(id: string): Promise<{ error?: string }> {
     .delete()
     .eq("id", id)
     .eq("school_id", profile.school_id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] delete equipment:", error.message);
+    return { error: "Không xóa được thiết bị - vui lòng thử lại." };
+  }
   revalidatePath("/school/equipment");
   return {};
 }
@@ -247,7 +271,10 @@ export async function addSchoolKpi(input: {
     note: input.note.trim() || null,
     status: "dang_thuc_hien",
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert school_kpis:", error.message);
+    return { error: "Không thêm được chỉ tiêu - vui lòng thử lại." };
+  }
   revalidatePath("/school/strategy");
   return {};
 }
@@ -266,7 +293,10 @@ export async function updateSchoolKpi(
     .update(patch)
     .eq("id", id)
     .eq("school_id", profile.school_id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] update school_kpis:", error.message);
+    return { error: "Không cập nhật được chỉ tiêu - vui lòng thử lại." };
+  }
   revalidatePath("/school/strategy");
   return {};
 }
@@ -318,7 +348,10 @@ export async function updateStaffAccount(
     .update(updates)
     .eq("id", profileId)
     .eq("school_id", profile.school_id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] update staff account:", error.message);
+    return { error: "Không cập nhật được tài khoản - vui lòng thử lại." };
+  }
   revalidatePath("/school/users");
   return {};
 }
@@ -340,7 +373,10 @@ export async function postSchoolAnnouncement(input: {
     title: input.title.trim(),
     content: input.content.trim(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] insert announcements:", error.message);
+    return { error: "Không đăng được thông báo - vui lòng thử lại." };
+  }
   revalidatePath("/school/announce");
   return {};
 }
@@ -446,12 +482,15 @@ export async function saveTimetableEntry(input: {
   const { error } = input.id
     ? await supabase.from("timetable_entries").update(row).eq("id", input.id)
     : await supabase.from("timetable_entries").insert(row);
-  if (error)
-    return {
-      error: error.code === "23505"
-        ? "Trùng tiết học (lớp/giáo viên đã có tiết ở khung giờ này)."
-        : error.message,
-    };
+  if (error) {
+    if (error.code === "23505") {
+      return {
+        error: "Trùng tiết học (lớp/giáo viên đã có tiết ở khung giờ này).",
+      };
+    }
+    console.error("[school] save timetable_entries:", error.message);
+    return { error: "Không lưu được tiết học - vui lòng thử lại." };
+  }
   revalidatePath("/schedule/manage");
   return {};
 }
@@ -477,7 +516,10 @@ export async function deleteTimetableEntry(
     .from("timetable_entries")
     .delete()
     .eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] delete timetable_entries:", error.message);
+    return { error: "Không xóa được tiết học - vui lòng thử lại." };
+  }
   revalidatePath("/schedule/manage");
   return {};
 }
@@ -494,7 +536,10 @@ export async function updateMyProfile(input: {
     .from("profiles")
     .update({ phone: input.phone.trim() || null })
     .eq("id", profile.id);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] update my profile:", error.message);
+    return { error: "Không cập nhật được hồ sơ - vui lòng thử lại." };
+  }
   revalidatePath("/profile");
   return {};
 }
@@ -541,7 +586,14 @@ export async function createStaffAccount(input: {
       full_name: input.fullName.trim(),
     },
   });
-  if (error) return { error: error.message.includes("already") ? "Email đã tồn tại." : "Không tạo được tài khoản." };
+  if (error) {
+    console.error("[school] create staff account:", error.message);
+    return {
+      error: error.message.includes("already")
+        ? "Email đã tồn tại."
+        : "Không tạo được tài khoản - vui lòng thử lại.",
+    };
+  }
   if (data.user) {
     // trigger tao profile mac dinh hoc_sinh; set role/truong ro rang qua service role
     const { data: upd, error: pErr } = await admin
@@ -597,7 +649,10 @@ export async function setFeatureGrant(input: {
     q = input.role ? q.eq("role", input.role) : q.is("role", null);
     q = input.userId ? q.eq("user_id", input.userId) : q.is("user_id", null);
     const { error } = await q;
-    if (error) return { error: error.message };
+    if (error) {
+      console.error("[school] delete feature_grants:", error.message);
+      return { error: "Không xóa được phân quyền - vui lòng thử lại." };
+    }
   } else {
     const { error } = await supabase.from("feature_grants").upsert(
       {
@@ -610,7 +665,10 @@ export async function setFeatureGrant(input: {
       },
       { onConflict: input.userId ? "school_id,user_id,feature" : "school_id,role,feature" },
     );
-    if (error) return { error: error.message };
+    if (error) {
+      console.error("[school] upsert feature_grants:", error.message);
+      return { error: "Không lưu được phân quyền - vui lòng thử lại." };
+    }
   }
   logAudit(supabase, {
     action: "school.feature_grant",
@@ -630,7 +688,10 @@ export async function listFeatureGrants(): Promise<{
   const { data, error } = await supabase
     .from("feature_grants")
     .select("id, feature, role, user_id, effect");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] list feature_grants:", error.message);
+    return { error: "Không tải được danh sách phân quyền - vui lòng thử lại." };
+  }
   return { grants: data ?? [] };
 }
 
@@ -681,7 +742,10 @@ export async function setItemAcl(input: {
     },
     { onConflict: "table_name,item_id,user_id" },
   );
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[school] upsert item_acl:", error.message);
+    return { error: "Không lưu được giới hạn dữ liệu - vui lòng thử lại." };
+  }
   logAudit(supabase, {
     action: "school.item_acl_deny",
     entity: "item_acl",
@@ -805,7 +869,8 @@ export async function setTeacherSubjects(
       return { error: "Tổ trưởng chỉ chỉnh môn của GV trong tổ mình." };
     if (error.message.includes("subject not in school"))
       return { error: "Môn học không thuộc trường." };
-    return { error: error.message };
+    console.error("[school] scn_set_teacher_subjects:", error.message);
+    return { error: "Không phân công được môn dạy - vui lòng thử lại." };
   }
   logAudit(supabase, {
     action: "school.teacher_subjects",

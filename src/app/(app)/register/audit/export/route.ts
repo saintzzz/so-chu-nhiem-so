@@ -30,6 +30,19 @@ export async function GET(req: NextRequest) {
   const q = sp.get("q")?.trim() || undefined;
   const supabase = await createClient();
 
+  // R11-03: moi nguon loi hoac bi cat ngam (cap LIMIT) deu tra 422 thay vi
+  // CSV thieu du lieu nhu thanh cong - nguoi dung phai thu hep bo loc.
+  const sourceFailed = (label: string, detail: string) => {
+    console.error(`[audit-export] ${label}: ${detail}`);
+    return NextResponse.json(
+      {
+        error:
+          "Dữ liệu vượt quá giới hạn xuất hoặc tải lỗi - hãy thu hẹp bộ lọc (ngày, lớp, học sinh).",
+      },
+      { status: 422 },
+    );
+  };
+
   let rows: Record<string, unknown>[] = [];
   let header: string[];
 
@@ -51,6 +64,12 @@ export async function GET(req: NextRequest) {
       1000,
       LIMIT,
     );
+    if (res.error || res.truncated) {
+      return sourceFailed(
+        "audit_logs",
+        res.error ?? `truncated at ${LIMIT} rows`,
+      );
+    }
     rows = res.rows;
     header = ["created_at", "actor_id", "action", "entity", "entity_id", "payload"];
   } else if (type === "digest") {
@@ -70,15 +89,24 @@ export async function GET(req: NextRequest) {
       1000,
       LIMIT,
     );
+    if (res.error || res.truncated) {
+      return sourceFailed(
+        "digest_deliveries",
+        res.error ?? `truncated at ${LIMIT} rows`,
+      );
+    }
     rows = res.rows;
     header = ["created_at", "week_start", "email", "status", "run_id", "attempts", "error"];
   } else {
     let classQuery = supabase.from("classes").select("id");
     if (profile.role === "gvcn") classQuery = classQuery.eq("gvcn_id", profile.id);
     else if (profile.school_id) classQuery = classQuery.eq("school_id", profile.school_id);
-    const { data: cls } = await classQuery;
+    const { data: cls, error: clsErr } = await classQuery;
+    if (clsErr) {
+      return sourceFailed("classes", clsErr.message);
+    }
     const classIds = ((cls ?? []) as { id: string }[]).map((c) => c.id);
-    const { rows: sts } = classIds.length
+    const stsRes = classIds.length
       ? await fetchAllRows<{ id: string }>((f, t) =>
           supabase
             .from("students")
@@ -87,8 +115,14 @@ export async function GET(req: NextRequest) {
             .order("id")
             .range(f, t),
         )
-      : { rows: [] as { id: string }[] };
-    const studentIds = sts.map((s) => s.id);
+      : { rows: [] as { id: string }[], error: null, truncated: false };
+    if (stsRes.error || stsRes.truncated) {
+      return sourceFailed(
+        "students",
+        stsRes.error ?? "students fetch truncated",
+      );
+    }
+    const studentIds = stsRes.rows.map((s) => s.id);
     const selStudent = sp.get("student");
     const scope = selStudent && studentIds.includes(selStudent) ? [selStudent] : studentIds;
     if (scope.length) {
@@ -110,6 +144,12 @@ export async function GET(req: NextRequest) {
         1000,
         LIMIT,
       );
+      if (res.error || res.truncated) {
+        return sourceFailed(
+          "student_record_history",
+          res.error ?? `truncated at ${LIMIT} rows`,
+        );
+      }
       rows = res.rows;
     }
     header = ["changed_at", "student_id", "field", "old_value", "new_value", "changed_by"];

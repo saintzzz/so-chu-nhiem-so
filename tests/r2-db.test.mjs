@@ -10,7 +10,8 @@
 // Chay: node --test tests/r2-db.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync, execSync, execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -27,6 +28,10 @@ const MIGRATION_R7 = readFileSync(
 );
 const MIGRATION_R8 = readFileSync(
   join(ROOT, "supabase/migrations/20261108_r8_nlpc_atomic.sql"),
+  "utf8",
+);
+const MIGRATION_R11 = readFileSync(
+  join(ROOT, "supabase/migrations/20261109_r11_atomic_writes.sql"),
   "utf8",
 );
 
@@ -49,6 +54,7 @@ const ID = {
   ttA2: "80000000-0000-0000-0000-00000000000b", // subjA2, period 2 - request NULL-subject
   ttA3: "80000000-0000-0000-0000-00000000000c", // subjA2, period 3 - request exact-subject
   msg1: "90000000-0000-0000-0000-000000000001",
+  incA: "b0000000-0000-0000-0000-000000000001", // incident lop A (R11)
 };
 
 const dockerAvailable = (() => {
@@ -108,6 +114,7 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   psql(MIGRATION);
   psql(MIGRATION_R7);
   psql(MIGRATION_R8);
+  psql(MIGRATION_R11);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -409,6 +416,138 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
         where student_id='${ID.stuA}' and term='hk1'`).trim();
     assert.equal(evals, "pc_trungthuc|T",
       "insert loi nhung delete da commit - khong nguyen tu");
+  });
+
+  // ---------- R11-01: scn_incident_followup atomic append ----------
+  await t.test("scn_incident_followup: 2 lan goi lien tiep giu ca 2 ghi chu", () => {
+    // Mo phong 2 submit theo doi lien tiep - append tren DB thi ca 2 note
+    // phai con (read-modify-write JS cu se mat note dau).
+    asUser(ID.tA,
+      `select scn_incident_followup('${ID.incA}','following','ghi chu mot')`);
+    asUser(ID.tA,
+      `select scn_incident_followup('${ID.incA}','resolved','ghi chu hai')`);
+    const d = psql(`select description from incidents where id='${ID.incA}'`);
+    assert.match(d, /Mo ta ban dau/, "description goc bi ghi de");
+    assert.match(d, /ghi chu mot/, "note 1 bi mat - lost update");
+    assert.match(d, /ghi chu hai/, "note 2 bi mat");
+    assert.match(d, /\[Theo dõi \d{2}\/\d{2}\/\d{4}\]/,
+      "thieu stamp [Theo doi DD/MM/YYYY]");
+    assert.equal(
+      psql(`select status from incidents where id='${ID.incA}'`).trim(),
+      "resolved",
+      "status khong cap nhat theo lan goi cuoi",
+    );
+  });
+
+  await t.test("scn_incident_followup: note rong chi doi status", () => {
+    const before = psql(
+      `select description from incidents where id='${ID.incA}'`);
+    asUser(ID.tA,
+      `select scn_incident_followup('${ID.incA}','archived','   ')`);
+    const after = psql(
+      `select description from incidents where id='${ID.incA}'`);
+    assert.equal(after, before, "note rong khong duoc append vao description");
+    assert.equal(
+      psql(`select status from incidents where id='${ID.incA}'`).trim(),
+      "archived");
+  });
+
+  await t.test("scn_incident_followup: gvcn truong khac bi chan ro rang (RLS)", () => {
+    // INVOKER: UPDATE bi RLS loc ve 0 row -> NOT FOUND raise exception ->
+    // client nhan loi thay vi "thanh cong" gia.
+    denied(ID.tB,
+      `select scn_incident_followup('${ID.incA}','new','xoa ngang')`,
+      "gvcn truong B sua duoc incident truong A - thieu NOT FOUND raise?");
+    const d = psql(`select description from incidents where id='${ID.incA}'`);
+    assert.ok(!/xoa ngang/.test(d), "incident truong A bi sua boi caller khong du quyen");
+    assert.equal(
+      psql(`select status from incidents where id='${ID.incA}'`).trim(),
+      "archived", "status bi doi boi caller khong du quyen");
+  });
+
+  await t.test("scn_incident_followup: incident khong ton tai -> loi, khong silent", () => {
+    denied(ID.tA,
+      `select scn_incident_followup('00000000-0000-0000-0000-000000000099','new','x')`,
+      "id khong ton tai van tra thanh cong");
+  });
+
+  await t.test("scn_incident_followup: 2 session song song giu ca 2 note", async () => {
+    // Lead R11: mo phong 2 submit DONG THOI (2 connection rieng). Vi append
+    // la 1 UPDATE nguyen tu tren DB, ca 2 note phai con sau khi ca 2 commit.
+    const psqlAsync = promisify(execFile);
+    const run = (note) =>
+      psqlAsync("docker", [
+        "exec", "-i", NAME,
+        "psql", "-U", "postgres", "-d", "postgres",
+        "-v", "ON_ERROR_STOP=1", "-qAt", "-c",
+        `set role appuser; set app.uid='${ID.tA}'; ` +
+          `select scn_incident_followup('${ID.incA}','following','${note}')`,
+      ], { encoding: "utf8" });
+    await Promise.all([run("note song song A"), run("note song song B")]);
+    const d = psql(`select description from incidents where id='${ID.incA}'`);
+    assert.match(d, /note song song A/, "note A bi mat - lost update");
+    assert.match(d, /note song song B/, "note B bi mat - lost update");
+  });
+
+  // ---------- R11-02: scn_set_class_role atomic replace/clear ----------
+  await t.test("scn_set_class_role: thay role nguyen tu (cu mat, moi co)", () => {
+    // Fixture seed: stuA dang la lop_truong.
+    asUser(ID.tA,
+      `select scn_set_class_role('${ID.stuA}','lop_pho_hoc_tap')`);
+    const out = psql(
+      `select string_agg(role, ',' order by role) from class_roles
+        where student_id='${ID.stuA}'`).trim();
+    assert.equal(out, "lop_pho_hoc_tap",
+      "role cu khong bi thay the - delete+insert khong atomic");
+  });
+
+  await t.test("scn_set_class_role: caller bi RLS chan -> rollback giu row cu", () => {
+    // tB (gvcn truong B): delete bi RLS loc ve 0 row, insert vi pham WITH
+    // CHECK -> loi + rollback. Row lop_pho_hoc_tap cua stuA phai con nguyen.
+    denied(ID.tB,
+      `select scn_set_class_role('${ID.stuA}','to_truong')`,
+      "gvcn truong B dat duoc chuc danh cho HS truong A");
+    const out = psql(
+      `select string_agg(role, ',' order by role) from class_roles
+        where student_id='${ID.stuA}'`).trim();
+    assert.equal(out, "lop_pho_hoc_tap",
+      "insert loi nhung row cu da mat - khong nguyen tu");
+  });
+
+  await t.test("scn_set_class_role: p_role rong chi xoa (clear)", () => {
+    asUser(ID.tA, `select scn_set_class_role('${ID.stuA}','')`);
+    const n = psql(
+      `select count(*) from class_roles where student_id='${ID.stuA}'`).trim();
+    assert.equal(n, "0", "clear khong xoa het role cu");
+    // Clear boi caller khong du quyen: pre-check school scope raise loi ro
+    // rang (khong silent) va row giu nguyen.
+    asUser(ID.tA, `select scn_set_class_role('${ID.stuA}','lop_truong')`);
+    denied(ID.tB,
+      `select scn_set_class_role('${ID.stuA}','')`,
+      "caller truong khac clear duoc chuc danh - thieu scope check?");
+    const out = psql(
+      `select role from class_roles where student_id='${ID.stuA}'`).trim();
+    assert.equal(out, "lop_truong",
+      "caller khong du quyen van xoa duoc chuc danh");
+  });
+
+  await t.test("scn_set_class_role: insert loi SAU delete thanh cong -> rollback", () => {
+    // Lead R11: buoc delete phai THUC SU xoa row truoc khi insert fail de
+    // chung minh rollback. Constraint test-only ep insert loi (fixture,
+    // khong ton tai trong migration/prod).
+    psql(`alter table class_roles add constraint z_r11_test_fail
+          check (role <> '__test_fail__')`);
+    try {
+      denied(ID.tA,
+        `select scn_set_class_role('${ID.stuA}','__test_fail__')`,
+        "insert loi van tra thanh cong");
+      const out = psql(
+        `select role from class_roles where student_id='${ID.stuA}'`).trim();
+      assert.equal(out, "lop_truong",
+        "insert fail nhung delete da commit - mat role cu, khong atomic");
+    } finally {
+      psql(`alter table class_roles drop constraint z_r11_test_fail`);
+    }
   });
 
   // ---------- R2-10: PHT campus NULL fail-closed ----------

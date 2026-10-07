@@ -1,8 +1,9 @@
 -- Fixture: schema toi thieu mo phong production de chay
 -- supabase/migrations/20261105_r2_security_fixes.sql +
--- 20261107_r7_substitute_role.sql + 20261108_r8_nlpc_atomic.sql tren
--- Postgres thuong (khong co Supabase). auth.uid() doc GUC app.uid;
--- set role appuser de RLS co hieu luc (owner/superuser bypass RLS).
+-- 20261107_r7_substitute_role.sql + 20261108_r8_nlpc_atomic.sql +
+-- 20261109_r11_atomic_writes.sql tren Postgres thuong (khong co Supabase).
+-- auth.uid() doc GUC app.uid; set role appuser de RLS co hieu luc
+-- (owner/superuser bypass RLS).
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid
 language sql stable
@@ -105,6 +106,28 @@ create table nlpc_comments(
   created_at timestamptz default now()
 );
 
+-- R11: incidents (su co an toan) + class_roles (chuc danh ban can su lop).
+-- Cot toi thieu can cho policies + test; unique key class_roles khop prod
+-- (student_id, role) - mot HS mot chuc danh tai mot thoi diem qua RPC.
+create table incidents(
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id),
+  class_id uuid references classes(id),
+  type text,
+  severity text,
+  status text default 'new',
+  description text,
+  recorded_by uuid,
+  reported_to_bgh boolean default false,
+  occurred_at timestamptz,
+  created_at timestamptz default now()
+);
+create table class_roles(
+  student_id uuid references students(id),
+  role text not null,
+  unique (student_id, role)
+);
+
 -- Stub cac helper da co tren production (migration chi replace mot so).
 create or replace function public.my_role() returns text
 language sql stable security definer set search_path = 'public'
@@ -130,6 +153,21 @@ create or replace function public.scn_student_in_my_homeroom(sid uuid) returns b
 language sql stable security definer set search_path = 'public'
 as $$ select exists(select 1 from students s join classes c on c.id = s.class_id
      where s.id = sid and c.gvcn_id = auth.uid()) $$;
+
+-- Stub scope lop cho policies incidents/class_roles (prod defs:
+-- 20260920_rls_school_tenant_scope.sql / 20260922_cr013_signoff_emulation.sql;
+-- ban prod co them campus check qua scn_pht_allows_campus - migration R2
+-- create or replace len ban day du, fixture giu ban don gian de create
+-- policy duoc truoc khi migration chay).
+create or replace function public.scn_class_in_school(cid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from classes c
+     where c.id = cid and c.school_id = (select my_school_id())) $$;
+
+create or replace function public.scn_is_my_homeroom_class(cid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from classes c
+     where c.id = cid and c.gvcn_id = auth.uid()) $$;
 
 -- Stub scope helpers can cho NLPC policies (prod defs: 20260920/20260924) -
 -- migration R2 create or replace len ban co campus/substitute check.
@@ -181,6 +219,8 @@ alter table period_logs enable row level security;
 alter table period_absences enable row level security;
 alter table competency_evaluations enable row level security;
 alter table nlpc_comments enable row level security;
+alter table incidents enable row level security;
+alter table class_roles enable row level security;
 
 create policy msg_own on messages for select
   using (sender_id = auth.uid() or recipient_id = auth.uid());
@@ -229,6 +269,45 @@ create policy nlpc_cmt_upd on nlpc_comments for update
   with check (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
 create policy nlpc_cmt_del on nlpc_comments for delete
   using (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
+
+-- Prod: inc_* verbatim tu 20260925_cr016_role_scope.sql.
+create policy inc_ins on incidents for insert
+  with check (my_role() in ('gvcn','gvbm','to_truong','bgh','pht')
+    and recorded_by = auth.uid());
+create policy inc_upd on incidents for update
+  using (my_role() in ('bgh','pht','admin')
+    or (my_role()='gvcn' and scn_class_in_school(class_id)
+        and scn_is_my_homeroom_class(class_id)))
+  with check (my_role() in ('bgh','pht','admin')
+    or (my_role()='gvcn' and scn_is_my_homeroom_class(class_id)));
+create policy inc_del on incidents for delete
+  using (my_role() in ('bgh','admin') or recorded_by = auth.uid());
+-- Prod co staff select policy tren incidents (khong co trong repo migrations)
+-- - def nay mo phong mo hinh scope 20260920: staff cung truong qua class
+-- hoac chinh nguoi ghi nhan; admin/dept xem tat. Can SELECT-visible thi
+-- UPDATE/DELETE USING moi duoc danh gia tren row.
+create policy inc_staff_read on incidents for select
+  using (is_staff() and (scn_is_dept()
+    or scn_class_in_school(class_id)
+    or recorded_by = auth.uid()));
+
+-- Prod: class_roles_staff_read verbatim tu 20261009_rls_setof_helpers_perf.sql
+-- + cr2_* verbatim tu 20260925_cr016_role_scope.sql.
+create policy class_roles_staff_read on public.class_roles for select using (
+  (select is_staff()) and ((select scn_is_dept())
+    or student_id in (select my_school_student_ids()))
+);
+create policy cr2_ins on class_roles for insert
+  with check ((my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin');
+create policy cr2_upd on class_roles for update
+  using ((my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin')
+  with check ((my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin');
+create policy cr2_del on class_roles for delete
+  using ((my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin');
 
 create role appuser nologin;
 -- Role authenticated ton tai tren Supabase prod - migration grant execute vao
@@ -286,3 +365,9 @@ insert into substitute_requests(id, school_id, class_id, subject_id, period, dat
   -- Round-3: request da duyet nhung CHUA phan cong GV (duyet "phan cong sau")
   -- cho test assignSubstitute.
   ('a0000000-0000-0000-0000-000000000006','10000000-0000-0000-0000-00000000000a','30000000-0000-0000-0000-00000000000a','40000000-0000-0000-0000-00000000000a',5,current_date,'20000000-0000-0000-0000-000000000001',null,'20000000-0000-0000-0000-000000000003','approved','20000000-0000-0000-0000-000000000003',now());
+-- R11: su co lop A do tA ghi nhan (test scn_incident_followup) + chuc danh
+-- BCS ban dau cua HS A (test scn_set_class_role denied-rollback).
+insert into incidents(id, class_id, student_id, type, severity, status, description, recorded_by, occurred_at) values
+  ('b0000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-00000000000a','60000000-0000-0000-0000-00000000000a','fighting','medium','new','Mo ta ban dau','20000000-0000-0000-0000-000000000001',now());
+insert into class_roles(student_id, role) values
+  ('60000000-0000-0000-0000-00000000000a','lop_truong');

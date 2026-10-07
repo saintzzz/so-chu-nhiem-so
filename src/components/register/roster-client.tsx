@@ -288,26 +288,28 @@ export function RosterClient({
 
   async function assignRole(studentId: string, role: string) {
     setBusy(true);
-    if (role === "") {
-      await supabase.from("class_roles").delete().eq("student_id", studentId);
-      setRoles((rs) => rs.filter((r) => r.student_id !== studentId));
+    // R11-02: xoa + insert chuc danh trong 1 transaction phia DB
+    // (rpc scn_set_class_role, SECURITY INVOKER) - role rong = xoa chuc danh.
+    // Loi thi bao ra UI va KHONG doi local state (truoc day nuot loi, UI
+    // hien khac DB).
+    const { error } = await supabase.rpc("scn_set_class_role", {
+      p_student: studentId,
+      p_role: role,
+    });
+    if (error) {
+      console.error("[roster] set class role:", error.message);
+      setMessage("Không cập nhật được chức danh - vui lòng thử lại.");
     } else {
-      await supabase.from("class_roles").delete().eq("student_id", studentId);
-      const { error } = await supabase
-        .from("class_roles")
-        .insert({ student_id: studentId, role });
-      if (!error) {
-        setRoles((rs) => [
-          ...rs.filter((r) => r.student_id !== studentId),
-          { student_id: studentId, role },
-        ]);
-        logAudit(supabase, {
-          action: "Phân chức danh BCS",
-          entity: "class_roles",
-          entityId: studentId,
-          payload: { role },
-        });
-      }
+      setRoles((rs) => [
+        ...rs.filter((r) => r.student_id !== studentId),
+        ...(role ? [{ student_id: studentId, role }] : []),
+      ]);
+      logAudit(supabase, {
+        action: role ? "Phân chức danh BCS" : "Xóa chức danh BCS",
+        entity: "class_roles",
+        entityId: studentId,
+        payload: { role: role || null },
+      });
     }
     setBusy(false);
   }

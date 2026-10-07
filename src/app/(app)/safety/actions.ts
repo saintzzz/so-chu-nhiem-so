@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
-import type { Incident } from "@/types";
 
 export async function createIncident(input: {
   studentId: string | null;
@@ -124,31 +123,15 @@ export async function followupIncident(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  let description: string | undefined;
-  if (input.note.trim()) {
-    const { data: incData } = await supabase
-      .from("incidents")
-      .select("description")
-      .eq("id", incidentId)
-      .single();
-    const incident = (incData ?? null) as Pick<
-      Incident,
-      "description"
-    > | null;
-    const now = new Date();
-    const stamp = `${String(now.getDate()).padStart(2, "0")}/${String(
-      now.getMonth() + 1,
-    ).padStart(2, "0")}/${now.getFullYear()}`;
-    description = `${incident?.description ?? ""}\n\n[Theo dõi ${stamp}] ${input.note.trim()}`;
-  }
-
-  const { error } = await supabase
-    .from("incidents")
-    .update({
-      status: input.status,
-      ...(description !== undefined ? { description } : {}),
-    })
-    .eq("id", incidentId);
+  // R11-01: append ghi chu + doi status trong 1 UPDATE nguyen tu phia DB
+  // (rpc scn_incident_followup, SECURITY INVOKER) - tranh lost update khi 2
+  // GV submit theo doi dong thoi. Stamp ngay duoc tao trong function theo
+  // gio VN. id khong khop/bi RLS chan thi update 0 row (chap nhan duoc).
+  const { error } = await supabase.rpc("scn_incident_followup", {
+    p_incident: incidentId,
+    p_status: input.status,
+    p_note: input.note.trim() || null,
+  });
   if (error) {
     console.error("[safety] followup incident:", error.message);
     return { error: "Không cập nhật được theo dõi sự cố - vui lòng thử lại." };

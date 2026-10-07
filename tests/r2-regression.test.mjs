@@ -1763,3 +1763,108 @@ test("R10: teacher-chat resolve ?to= staff cung truong ngoai peer list", () => {
     "STAFF_CHAT_ROLES lech voi scn_can_message",
   );
 });
+
+// --- R11-01: incident follow-up atomic qua RPC (khong lost update) ---------
+test("R11-01: followupIncident goi rpc scn_incident_followup, bo read-then-write", () => {
+  const act = read("src/app/(app)/safety/actions.ts");
+  const body = act.match(/followupIncident[\s\S]*?revalidatePath\("\/safety\/followup"\)/);
+  assert.ok(body, "khong tim thay than followupIncident");
+  assert.match(body[0], /\.rpc\("scn_incident_followup"/,
+    "phai goi RPC 1 lan thay vi update truc tiep");
+  assert.ok(!/\.select\("description"\)/.test(body[0]),
+    "con doc description roi concat phia JS - lost update con ton tai");
+  assert.ok(!/\.from\("incidents"\)[\s\S]*?\.update\(/.test(body[0]),
+    "con update incidents truc tiep trong followup");
+  assert.match(body[0], /console\.error\(/);
+  // Role check giu nguyen (gvcn lop CN + bgh).
+  assert.match(act, /checkActionRole\(\["gvcn", "bgh"\]\)/);
+});
+
+test("R11-01: migration scn_incident_followup la 1 UPDATE invoker", () => {
+  const mig = read("supabase/migrations/20261109_r11_atomic_writes.sql");
+  const fn = mig.match(
+    /create or replace function public\.scn_incident_followup\(p_incident uuid, p_status text, p_note text\)[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu function scn_incident_followup");
+  assert.ok(!/security definer/i.test(fn[0]),
+    "scn_incident_followup phai SECURITY INVOKER (mac dinh) de RLS ap dung");
+  // Mot UPDATE duy nhat - append concat tren gia tri hien tai trong DB.
+  const updates = fn[0].match(/\bupdate\s+incidents\b/gi) ?? [];
+  assert.equal(updates.length, 1, "function phai gom DUNG 1 UPDATE incidents");
+  assert.match(fn[0], /coalesce\(description, ''\)/,
+    "phai append tren description hien tai, khong ghi de");
+  assert.match(fn[0], /Theo dõi /, "thieu prefix [Theo doi DD/MM/YYYY]");
+  assert.match(fn[0], /Asia\/Ho_Chi_Minh/, "stamp phai theo gio VN");
+  assert.match(fn[0], /btrim\(p_note\)/, "phai trim note trong SQL");
+  assert.match(mig,
+    /grant execute on function public\.scn_incident_followup\(uuid, text, text\) to authenticated/);
+});
+
+// --- R11-02: class role change atomic qua RPC ------------------------------
+test("R11-02: assignRole goi rpc scn_set_class_role, loi hien UI", () => {
+  const src = read("src/components/register/roster-client.tsx");
+  const body = src.match(/assignRole[\s\S]*?setBusy\(false\);\n  \}/);
+  assert.ok(body, "khong tim thay than assignRole");
+  assert.match(body[0], /\.rpc\("scn_set_class_role"/,
+    "phai goi RPC delete+insert nguyen tu");
+  assert.ok(!/\.from\("class_roles"\)/.test(body[0]),
+    "con delete/insert truc tiep class_roles tren client");
+  // Loi rpc phai console.error + bao ra UI (nhan co dinh) va KHONG doi
+  // local state - setRoles chi nam trong nhanh success (else).
+  assert.match(body[0], /console\.error\(/);
+  assert.match(body[0], /if \(error\) \{[\s\S]*?setMessage\([\s\S]*?\}\s*else \{/,
+    "loi rpc phai bao ra UI va khong roi vao nhanh setRoles");
+  assert.match(body[0], /Không cập nhật được chức danh/);
+  // Audit log cho ca 2 chieu: dat role moi va xoa chuc danh.
+  assert.match(body[0], /"Phân chức danh BCS" : "Xóa chức danh BCS"/,
+    "can logAudit ca thao tac xoa chuc danh");
+});
+
+test("R11-02: migration scn_set_class_role delete+insert invoker", () => {
+  const mig = read("supabase/migrations/20261109_r11_atomic_writes.sql");
+  const fn = mig.match(
+    /create or replace function public\.scn_set_class_role\(p_student uuid, p_role text\)[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu function scn_set_class_role");
+  assert.ok(!/security definer/i.test(fn[0]),
+    "scn_set_class_role phai SECURITY INVOKER de RLS ap dung");
+  assert.match(fn[0],
+    /delete from class_roles where student_id = p_student/);
+  assert.match(fn[0],
+    /insert into class_roles \(student_id, role\) values \(p_student, p_role\)/);
+  assert.match(fn[0], /p_role <> ''/, "role rong = clear, khong insert");
+  assert.match(mig,
+    /grant execute on function public\.scn_set_class_role\(uuid, text\) to authenticated/);
+});
+
+// --- R11-03: audit export khong tra CSV thieu du lieu ----------------------
+test("R11-03: export route kiem error/truncated moi nguon + tra 422", () => {
+  const route = read("src/app/(app)/register/audit/export/route.ts");
+  // Moi ket qua fetchAllRows duoc gan ten deu phai check error||truncated.
+  const names = [];
+  for (const m of route.matchAll(
+    /const (\w+)\s*=\s*await fetchAllRows/g)) names.push(m[1]);
+  // records branch: students fetch dung stsRes (co the re-assign tu const).
+  for (const m of route.matchAll(
+    /const (\w+)\s*=\s*classIds\.length[\s\S]*?await fetchAllRows/g)) {
+    names.push(m[1]);
+  }
+  assert.ok(names.length >= 3,
+    `can >=3 fetchAllRows results duoc kiem, thay ${names.join(",")}`);
+  for (const n of names) {
+    assert.ok(
+      new RegExp(`${n}\\.error \\|\\| ${n}\\.truncated`).test(route),
+      `${n} chua kiem error/truncated - CSV se bi cat ngam`);
+  }
+  // classes lookup trong records branch cung phai check error.
+  assert.match(route, /error: clsErr/, "classQuery error van bi bo qua");
+  assert.match(route, /if \(clsErr\)/, "thieu guard clsErr");
+  // Loi/truncated -> 422 nhan co dinh, khong bao gio CSV partial o 200.
+  assert.match(route, /status: 422/);
+  assert.match(route, /Dữ liệu vượt quá giới hạn xuất hoặc tải lỗi/);
+  assert.match(route, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  // CSV thanh cong chi duoc build sau khi moi nguon da qua guard.
+  const csvIdx = route.indexOf('Content-Disposition');
+  const guardIdx = route.lastIndexOf("sourceFailed");
+  assert.ok(csvIdx > 0 && guardIdx < csvIdx,
+    "phan hoi CSV phai sau tat ca guard loi");
+});

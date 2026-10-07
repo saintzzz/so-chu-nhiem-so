@@ -113,6 +113,12 @@ const MATRIX = {
   "/dept/wards": ["so_gd", "ubnd"],
   "/dept/schools": ["so_gd"],
   "/dept/usage": ["so_gd"],
+  "/studio": ["gvcn", "gvbm", "to_truong", "bgh"],
+  "/studio/library": ["gvcn", "gvbm", "to_truong", "bgh"],
+  "/studio/literature": ["gvcn", "gvbm", "to_truong", "bgh"],
+  "/studio/mau-khbd": ["gvcn", "gvbm", "to_truong", "bgh"],
+  "/studio/questions": ["gvcn", "gvbm", "to_truong", "bgh"],
+  "/studio/yccd": ["gvcn", "gvbm", "to_truong", "bgh"],
   "/portal/parent": ["phu_huynh"],
   "/portal/student": ["hoc_sinh"],
   "/portal/student/hoc-ba": ["hoc_sinh"],
@@ -212,7 +218,8 @@ const MARK = `FULL-${Date.now()}`;
 {
   const { ctx, p } = await loginCtx("gvcn@demo.scn");
 
-  // W01: Diem danh -> DB (dung HS rieng cua lop 1 - tranh race voi F01)
+  // W01: Diem danh -> DB. Xoa record cu cua HS hom nay de assert deterministic.
+  await db.from("attendance_records").delete().eq("student_id", anyStu.id).eq("date", today);
   await p.goto(`${BASE}/attendance/daily?class=${myClasses[0].id}&date=${today}`);
   await settle(p, 1500);
   const row = p.locator("tr", { hasText: anyStu.full_name }).first();
@@ -251,7 +258,11 @@ const MARK = `FULL-${Date.now()}`;
   const period = anyEmu?.[0]?.period ?? "2026-T9";
   await p.goto(`${BASE}/emulation/scoring`);
   await settle(p, 1500);
-  const uniqScore = 7; // gia tri it dung de verify
+  // chon gia tri chua ton tai trong ky de assert deterministic
+  const { data: curScores } = await db.from("emulation_scores").select("score")
+    .in("class_id", myClasses.map((c) => c.id)).eq("period", period);
+  const used = new Set((curScores ?? []).map((e) => e.score));
+  const uniqScore = [9, 8, 6, 5, 4, 3, 2, 1, 10].find((v) => !used.has(v)) ?? 7;
   await p.locator('td input[type="number"]').first().fill(String(uniqScore));
   await p.locator('button:has-text("Lưu điểm thi đua")').click();
   await p.waitForTimeout(2500);
@@ -356,14 +367,14 @@ const MARK = `FULL-${Date.now()}`;
   await settle(p, 1500);
   check("W13", "GVBM so dau bai", /tiết|sổ đầu bài/i.test(await p.locator("body").innerText()), "");
 
-  // W14: GVBM grades - chi thay lop minh day (CR-015)
+  // W14: GVBM grades - chi thay lop minh day (CR-015). Strict: khong duoc thay 6A3.
   await p.goto(`${BASE}/academics/grades`);
   await settle(p, 1500);
   const gradeTxt = await p.locator("body").innerText();
   // gvbm day 6A1,6A2,7A1,7A2,8A1,8A2,9A1,9A2 mon Toan+Hoa - khong duoc thay 6A3 (lop CN cua gvcn)
   const sees6A3 = /6A3/.test(gradeTxt);
-  check("W14", "GVBM chi thay lop minh day", !sees6A3 || /6A1|7A1|8A1/.test(gradeTxt),
-    sees6A3 ? "thay 6A3 (lop khong day)" : "scope dung");
+  check("W14", "GVBM chi thay lop minh day (khong thay 6A3)", !sees6A3,
+    sees6A3 ? "LEAK: thay 6A3 (lop khong day)" : "scope dung");
   await ctx.close();
 }
 
@@ -505,7 +516,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       check("W26a", "GVCN nop so -> submitted", (stillPending?.length ?? 0) < pending.length,
         `pending ${pending.length} -> ${stillPending?.length}`);
     } else check("W26a", "GVCN nop so", false, "no submit btn");
-  } else check("W26a", "GVCN nop so", true, "khong co pending (da nop het)");
+  } else check("W26a", "GVCN nop so", false, "PRECONDITION: khong co pending signoff - seed truoc khi chay");
   await ctx.close();
 }
 {
@@ -538,7 +549,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       check("W26c", "BGH ky duyet -> signed", (stillSub?.length ?? 0) < submitted.length,
         `submitted ${submitted.length} -> ${stillSub?.length}`);
     } else check("W26c", "BGH ky duyet", false, "no sign btn");
-  } else check("W26c", "BGH ky duyet", true, "khong co submitted cho duyet");
+  } else check("W26c", "BGH ky duyet", false, "PRECONDITION: khong co submitted signoff");
   await ctx.close();
 }
 
@@ -603,7 +614,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       check("W29", "To truong duyet giao an -> team_approved",
         approved >= 1, `moved=${approved}/${ids.length}`);
     } else check("W29", "To truong duyet giao an", false, "no approve btn");
-  } else check("W29", "To truong duyet giao an", true, "khong co submitted");
+  } else check("W29", "To truong duyet giao an", false, "PRECONDITION: khong co lesson_plans submitted");
   await ctx.close();
 }
 
@@ -625,7 +636,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       const approved = (after ?? []).filter((x) => x.status === "approved").length;
       check("W30", "BGH duyet giao an -> approved", approved >= 1, `moved=${approved}/${ids.length}`);
     } else check("W30", "BGH duyet giao an", false, "no approve btn at /school/approvals");
-  } else check("W30", "BGH duyet giao an", true, "khong co team_approved");
+  } else check("W30", "BGH duyet giao an", false, "PRECONDITION: khong co lesson_plans team_approved");
   await ctx.close();
 }
 
@@ -646,12 +657,13 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       const moved = (after ?? []).filter((x) => x.status === "confirmed").length;
       check("W31", "GVCN xac nhan lich hen -> confirmed", moved >= 1, `moved=${moved}/${ids.length}`);
     } else check("W31", "GVCN xac nhan lich hen", false, "no confirm btn");
-  } else check("W31", "GVCN xac nhan lich hen", true, "khong co proposed");
+  } else check("W31", "GVCN xac nhan lich hen", false, "PRECONDITION: khong co appointment proposed");
   await ctx.close();
 }
 
 console.log("\n=== console errors:", errors.length);
 [...new Set(errors)].slice(0, 15).forEach((e) => console.log("  -", e));
+check("CONSOLE", "0 console errors", errors.length === 0, [...new Set(errors)].slice(0, 3).join(" | "));
 const pass = results.filter((r) => r.pass).length;
 const fails = results.filter((r) => !r.pass);
 console.log(`\n===== ${pass}/${results.length} PASS =====`);

@@ -119,11 +119,11 @@ export default async function SchoolRadarPage() {
   const classOfStudent = new Map(students.map((s) => [s.id, s.class_id]));
 
   // Anchor the 30-day window to the newest data available.
-  const { data: latestAtt } = studentIds.length
+  const { data: latestAtt } = classIds.length
     ? await supabase
         .from("attendance_records")
-        .select("date")
-        .in("student_id", studentIds)
+        .select("date,students!inner(class_id)")
+        .in("students.class_id", classIds)
         .order("date", { ascending: false })
         .limit(1)
     : { data: [] };
@@ -133,25 +133,25 @@ export default async function SchoolRadarPage() {
   const windowStart = addDays(anchor, -29);
 
   const [attRes, gradeRes, incidentRes, counselingRes] = await Promise.all([
-    studentIds.length
+    classIds.length
       ? fetchAllRows<{ student_id: string }>((f, t) =>
           supabase
             .from("attendance_records")
-            .select("student_id")
-            .in("student_id", studentIds)
+            .select("student_id,students!inner(class_id)")
             .eq("status", "unexcused")
             .gte("date", windowStart)
+            .in("students.class_id", classIds)
             .order("id")
             .range(f, t),
         ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
-    studentIds.length
+    classIds.length
       ? fetchAllRows<{ student_id: string; subject_id: string; assessment_type: string; score: number | null }>(
           (f, t) =>
             supabase
               .from("grades")
-              .select("student_id,subject_id,assessment_type,score")
-              .in("student_id", studentIds)
+              .select("student_id,subject_id,assessment_type,score,students!inner(class_id)")
+              .in("students.class_id", classIds)
               .order("id")
               .range(f, t),
         ).then((r) => ({ data: r.rows }))

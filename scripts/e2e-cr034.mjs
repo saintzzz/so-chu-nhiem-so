@@ -72,6 +72,21 @@ try {
   const t2 = await page.textContent("body");
   ok("admin creates GV", t2.includes(gvEmail));
 
+  // 5b. GV moi login -> role home + truong moi co lap (0 HS truong khac)
+  await ctx.clearCookies();
+  const u3 = await login(gvEmail, "demo1234");
+  ok("login new GV", !u3.includes("/login"), u3);
+  await page.goto(`${BASE}/records/students`, { waitUntil: "networkidle" }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const tgv = await page.textContent("body");
+  // truong moi: khong co HS nao cua truong khac (empty state hoac chi HS seed cua truong minh)
+  ok("new GV records khong lo HS truong khac", !/Trường THCS Nguyễn Du|Trường TH Chu Văn An/i.test(tgv), "");
+
+  // 5c. GV moi denied dept routes
+  await page.goto(`${BASE}/dept/schools`, { waitUntil: "networkidle" });
+  const tg2 = await page.textContent("body");
+  ok("new GV denied /dept/schools", !tg2.includes("Tạo trường mới"), "");
+
   // 6. Usage dashboard
   await ctx.clearCookies();
   await login("sogd@demo.scn", "demo1234");

@@ -126,7 +126,8 @@ export default async function StudentTranscriptPage() {
         year: yearAverage(hk1, hk2),
         resultHk1,
         resultHk2,
-        resultYear: resultHk2 ?? resultHk1,
+        // Ket qua ca nam chi tu HK2 - HK1 khong duoc hien thi nhu ket qua nam.
+        resultYear: resultHk2,
         rows,
       };
     })

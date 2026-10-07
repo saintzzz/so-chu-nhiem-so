@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
-import { averageByStudent, semesterAverage, yearAverage } from "@/lib/tt22";
+import { averageByStudent, semesterAverage } from "@/lib/tt22";
 import { NLPC_ATTRIBUTES } from "@/lib/nlpc";
 
 interface StudentInput {
@@ -137,7 +137,8 @@ export async function POST(req: Request) {
       s.name,
     ]),
   );
-  // Per-student per-subject year average -> strongest/weakest subject
+  // Per-student per-subject latest-term average -> strongest/weakest subject
+  // (context cho AI, khong phai con so quy dinh - giua nam van can hoat dong)
   const subjCell = new Map<string, typeof gradeRows>();
   for (const g of gradeRows) {
     const key = `${g.student_id}|${g.subject_id}`;
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
     const [sid, subjectId] = key.split("|");
     const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
     const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
-    const avg = yearAverage(hk1, hk2);
+    const avg = hk2 ?? hk1;
     if (avg != null) subjAvg.set(key, { sid, subjectId, avg });
   }
   const subjByStudent = new Map<string, { name: string; avg: number }[]>();

@@ -32,12 +32,60 @@ export function semesterAverage(rows: GradeComponent[]): number | null {
   return Math.round(avg * 10) / 10;
 }
 
-/** Điểm trung bình môn cả năm: (ĐTBmhk1 + 2 x ĐTBmhk2) / 3, làm tròn 0.1. */
+/**
+ * Điểm trung bình môn cả năm theo TT22: (ĐTBmhk1 + 2 x ĐTBmhk2) / 3,
+ * làm tròn 0.1. Ket qua ca nam chi xac dinh khi co DU 2 hoc ky - tra
+ * null cho den khi co HK2. Caller can "diem moi nhat" thi dung hk2 ?? hk1.
+ */
 export function yearAverage(hk1: number | null, hk2: number | null): number | null {
-  if (hk1 == null && hk2 == null) return null;
-  if (hk1 == null) return hk2;
-  if (hk2 == null) return hk1;
+  if (hk1 == null || hk2 == null) return null;
   return Math.round(((hk1 + hk2 * 2) / 3) * 10) / 10;
+}
+
+// Ky moi nhat gianh quyen quyet dinh (hk2 > hk1 > khac) - bat bien thu tu hang.
+const TERM_RANK: Record<string, number> = { hk1: 1, hk2: 2 };
+
+/**
+ * Danh sach HS co DTBm mon <5 tai hoc ky MOI NHAT (hk2 neu co, nguoc lai
+ * hk1). Nhom diem theo (HS, mon, ky), tinh semesterAverage tung o, roi lay
+ * ky moi nhat cho moi cap (HS, mon). Ham thuan, ket qua bat bien voi thu tu
+ * hang dau vao - dung cho radar canh bao som.
+ */
+export function lowGradeStudentIds<
+  T extends GradeComponent & {
+    student_id: string;
+    subject_id: string;
+    term: string;
+  },
+>(rows: T[]): Set<string> {
+  const cells = new Map<string, T[]>();
+  for (const r of rows) {
+    const key = `${r.student_id}|${r.subject_id}|${r.term}`;
+    const arr = cells.get(key) ?? [];
+    arr.push(r);
+    cells.set(key, arr);
+  }
+  const latestByPair = new Map<string, { rank: number; term: string; avg: number }>();
+  for (const [key, cell] of cells) {
+    const avg = semesterAverage(cell);
+    if (avg == null) continue;
+    const sep = key.indexOf("|");
+    const sep2 = key.indexOf("|", sep + 1);
+    const pairKey = key.slice(0, sep2);
+    const term = key.slice(sep2 + 1);
+    const rank = TERM_RANK[term] ?? 0;
+    const cur = latestByPair.get(pairKey);
+    // Rank bang nhau (term khong biet) -> chon term lon nhat theo chuoi,
+    // bao dam ket qua khong phu thuoc thu tu hang dau vao.
+    if (!cur || rank > cur.rank || (rank === cur.rank && term > cur.term)) {
+      latestByPair.set(pairKey, { rank, term, avg });
+    }
+  }
+  const out = new Set<string>();
+  for (const [pairKey, cell] of latestByPair) {
+    if (cell.avg < 5) out.add(pairKey.slice(0, pairKey.indexOf("|")));
+  }
+  return out;
 }
 
 /** ĐTB mỗi ô (học sinh x môn x kỳ) rồi trung bình các ô theo học sinh. */

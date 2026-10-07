@@ -13,7 +13,9 @@ import { dirname, join } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
-const { averageScoreBand } = await import(join(ROOT, "src/lib/tt22.ts"));
+const { averageScoreBand, yearAverage, lowGradeStudentIds } = await import(
+  join(ROOT, "src/lib/tt22.ts")
+);
 const { fetchAllRows } = await import(
   join(ROOT, "src/lib/supabase/fetch-all.ts")
 );
@@ -439,4 +441,117 @@ test("R4-02: comment import dung alias map - gia tri la khong thanh dat", () => 
   // O invalid duoc ghi ten HS + gia tri vao canh bao import
   assert.match(branch[0], /invalid\.push\(/);
   assert.match(src, /giá trị không hợp lệ \(giữ nguyên ô cũ\)/);
+});
+
+// --- R5-03: yearAverage nghiem ngat - can du 2 hoc ky ----------------------
+test("R5-03: yearAverage tra null khi thieu 1 trong 2 hoc ky", () => {
+  assert.equal(yearAverage(8, null), null,
+    "HK1-only khong duoc hien nhu ket qua ca nam");
+  assert.equal(yearAverage(null, 8), null,
+    "HK2-only khong duoc hien nhu ket qua ca nam");
+  assert.equal(yearAverage(null, null), null);
+  assert.equal(yearAverage(6, 8), Math.round(((6 + 16) / 3) * 10) / 10);
+  assert.equal(yearAverage(6, 8), 7.3);
+});
+
+test("R5-03: yearAverage khong con fallback return hk1/hk2 (static)", () => {
+  const tt = read("src/lib/tt22.ts");
+  const fn = tt.match(/export function yearAverage[\s\S]*?\n\}/);
+  assert.ok(fn, "thieu ham yearAverage");
+  assert.ok(!/return hk1\b/.test(fn[0]) && !/return hk2\b/.test(fn[0]),
+    "yearAverage con fallback mot hoc ky - gia ket qua ca nam");
+});
+
+// --- R5-01: radar nhom diem theo ky - bat bien thu tu hang -----------------
+test("R5-01: lowGradeStudentIds bat bien voi thu tu hang (nhom theo term)", () => {
+  const g = (sid, term, type, score) => ({
+    student_id: sid,
+    subject_id: "m1",
+    term,
+    assessment_type: type,
+    score,
+  });
+  // HS1: HK1 toan 2, HK2 toan 8 -> ky moi nhat (HK2) = 8 -> khong flag.
+  // HS2: chi co HK1 toan 2 -> flag.
+  const rows = [
+    g("s1", "hk1", "ddg_tx", 2), g("s1", "hk1", "ddg_gk", 2), g("s1", "hk1", "ddg_ck", 2),
+    g("s1", "hk2", "ddg_tx", 8), g("s1", "hk2", "ddg_gk", 8), g("s1", "hk2", "ddg_ck", 8),
+    g("s2", "hk1", "ddg_gk", 2), g("s2", "hk1", "ddg_ck", 2),
+  ];
+  const fwd = lowGradeStudentIds(rows);
+  const rev = lowGradeStudentIds([...rows].reverse());
+  assert.deepEqual([...fwd].sort(), [...rev].sort(),
+    "ket qua phu thuoc thu tu hang - semester-average bi tron ky");
+  assert.equal(fwd.has("s1"), false, "HK2=8 phai thang HK1=2");
+  assert.equal(fwd.has("s2"), true, "HS chi co HK1 <5 phai bi flag");
+});
+
+test("R5-01: term khong biet cung rank -> tie-break bat bien thu tu hang", () => {
+  const g = (sid, term, score) => ({
+    student_id: sid,
+    subject_id: "m1",
+    term,
+    assessment_type: "ddg_ck",
+    score,
+  });
+  // Hai term "other" cung rank 0: fwd/rev phai cho cung ket qua.
+  const rows = [g("s1", "termA", 2), g("s1", "termB", 8)];
+  const fwd = lowGradeStudentIds(rows);
+  const rev = lowGradeStudentIds([...rows].reverse());
+  assert.deepEqual([...fwd].sort(), [...rev].sort(),
+    "rank tie giua cac term khong biet phai tie-break deterministic");
+  // termB > termA theo chuoi -> diem termB=8 thang -> khong flag.
+  assert.equal(fwd.has("s1"), false, "term lon nhat theo chuoi phai thang");
+});
+
+test("R5-01: radar grades query select term va dung lowGradeStudentIds", () => {
+  const radar = read("src/lib/school/radar.ts");
+  assert.match(radar,
+    /select\("student_id,subject_id,term,assessment_type,score/,
+    "grades query phai select term de tach hoc ky");
+  assert.match(radar, /lowGradeStudentIds\(gradeRes\.rows\)/,
+    "phai gom theo (HS, mon, ky) qua ham thuan");
+});
+
+// --- R5-02: radar khong nuot loi nguon -------------------------------------
+test("R5-02: RadarData co truong errors va buildRadarData thu loi nguon", () => {
+  const radar = read("src/lib/school/radar.ts");
+  assert.match(radar, /errors: string\[\]/, "RadarData thieu errors");
+  for (const label of ["classes", "students", "attendance", "grades",
+                       "incidents", "counseling"]) {
+    assert.ok(radar.includes(`fail("${label}"`),
+      `thieu nhan loi "${label}" (fail() giu label co dinh)`);
+  }
+  // errors khong duoc chua raw DB error (no lo ra cron response).
+  assert.ok(!/errors\.push\(`[^`]*\$\{[^}]*(?:error|Err|message)/.test(radar),
+    "RadarData.errors phai la label co dinh, khong echo raw DB error");
+  assert.match(radar, /truncated\) errors\.push\("students truncated"\)/);
+});
+
+test("R5-02: radar-sync kiem loi schools query + tra 500 khi co loi", () => {
+  const route = read("src/app/api/cron/radar-sync/route.ts");
+  assert.match(route, /error: schoolsErr/, "schools query chua check error");
+  const fail = route.match(/if \(schoolsErr\) \{[\s\S]*?status: 500[\s\S]*?\}\);/);
+  assert.ok(fail, "schools query loi phai tra 500 ngay");
+  assert.ok(!/schoolsErr\.message/.test(fail[0].match(/json\([\s\S]*?\}\)/)?.[0] ?? ""),
+    "response khong duoc echo raw DB error");
+  assert.match(route, /data\.errors\.length/, "phai skip school co data errors");
+  assert.match(route, /status: errors\.length \? 500 : 200/,
+    "partial failure phai tra 500, khong phai 200 ok");
+  // errors day ra response chi duoc la label co dinh - khong echo raw DB
+  // error hay exception message (parent-digest precedent).
+  assert.ok(!/errors\.push\(`[^`]*error\.message/.test(route),
+    "insert error phai push label co dinh, khong echo error.message");
+  assert.ok(!/errors\.push\(`[^`]*e instanceof Error/.test(route),
+    "catch block phai push label co dinh, khong echo exception");
+});
+
+test("R5-02: radar page + refresh action chan khi errors non-empty", () => {
+  const page = read("src/app/(app)/school/radar/page.tsx");
+  assert.match(page, /errors\.length > 0/, "page phai hien loi thay bang rui ro");
+  const act = read("src/app/(app)/school/radar/actions.ts");
+  const guard = act.match(/if \(data\.errors\.length\) \{[\s\S]*?\n  \}/);
+  assert.ok(guard, "refreshRadarWarnings thieu guard errors");
+  assert.match(guard[0], /return \{[\s\S]*?error:/,
+    "errors non-empty phai return error, khong insert warnings");
 });

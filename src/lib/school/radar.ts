@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
-import { semesterAverage } from "@/lib/tt22";
+import { lowGradeStudentIds } from "@/lib/tt22";
+import type { GradeComponent } from "@/lib/tt22";
 import { isoDateVN, todayVN } from "@/lib/utils";
 import type {
   AttendanceRecord,
@@ -71,7 +72,15 @@ export interface RadarData {
   anchor: string;
   risks: ClassRisk[];
   candidates: WarningCandidate[];
+  /** Nhan loi ngan gon theo nguon du lieu ("grades: <err>", "students truncated") - khong chua PII. */
+  errors: string[];
 }
+
+type RadarGradeRow = GradeComponent & {
+  student_id: string;
+  subject_id: string;
+  term: string;
+};
 
 /**
  * Tinh toan radar canh bao som - THUAN doc. Viec persist vao early_warnings
@@ -82,11 +91,18 @@ export async function buildRadarData(
   supabase: SupabaseClient,
   profile: Profile,
 ): Promise<RadarData> {
-  const { data: classRows } = await supabase
+  const errors: string[] = [];
+  // errors chi giu nhan co dinh - chi tiet DB log server-side, khong lo ra response.
+  const fail = (label: string, detail?: string | null) => {
+    errors.push(label);
+    console.error(`[radar] ${label} query failed:`, detail ?? "unknown");
+  };
+  const { data: classRows, error: classErr } = await supabase
     .from("classes")
     .select("id,name,campus_id")
     .eq("school_id", profile.school_id ?? "")
     .order("name");
+  if (classErr) fail("classes", classErr.message);
   let classes = (classRows ?? []) as Pick<
     ClassRoom,
     "id" | "name" | "campus_id"
@@ -99,7 +115,7 @@ export async function buildRadarData(
   }
   const classIds = classes.map((c) => c.id);
 
-  const { rows: studentRows } = classIds.length
+  const studentsRes = classIds.length
     ? await fetchAllRows<Pick<Student, "id" | "class_id">>((f, t) =>
         supabase
           .from("students")
@@ -108,20 +124,27 @@ export async function buildRadarData(
           .order("id")
           .range(f, t),
       )
-    : { rows: [] as Pick<Student, "id" | "class_id">[] };
-  const students = studentRows;
+    : {
+        rows: [] as Pick<Student, "id" | "class_id">[],
+        error: null,
+        truncated: false,
+      };
+  if (studentsRes.error) fail("students", studentsRes.error);
+  else if (studentsRes.truncated) errors.push("students truncated");
+  const students = studentsRes.rows;
   const studentIds = students.map((s) => s.id);
   const classOfStudent = new Map(students.map((s) => [s.id, s.class_id]));
 
   // Anchor the 30-day window to the newest data available.
-  const { data: latestAtt } = classIds.length
+  const { data: latestAtt, error: anchorErr } = classIds.length
     ? await supabase
         .from("attendance_records")
         .select("date,students!inner(class_id)")
         .in("students.class_id", classIds)
         .order("date", { ascending: false })
         .limit(1)
-    : { data: [] };
+    : { data: [] as Pick<AttendanceRecord, "date">[], error: null };
+  if (anchorErr) fail("attendance", anchorErr.message);
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)
       ?.date ?? todayVN();
@@ -138,63 +161,58 @@ export async function buildRadarData(
             .in("students.class_id", classIds)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows }))
-      : Promise.resolve({ data: [] }),
+        )
+      : Promise.resolve({
+          rows: [] as { student_id: string }[],
+          error: null,
+          truncated: false,
+        }),
     classIds.length
-      ? fetchAllRows<{ student_id: string; subject_id: string; assessment_type: string; score: number | null }>(
-          (f, t) =>
-            supabase
-              .from("grades")
-              .select("student_id,subject_id,assessment_type,score,students!inner(class_id)")
-              .in("students.class_id", classIds)
-              .order("id")
-              .range(f, t),
-        ).then((r) => ({ data: r.rows }))
-      : Promise.resolve({ data: [] }),
+      ? fetchAllRows<RadarGradeRow>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score,students!inner(class_id)")
+            .in("students.class_id", classIds)
+            .order("id")
+            .range(f, t),
+        )
+      : Promise.resolve({
+          rows: [] as RadarGradeRow[],
+          error: null,
+          truncated: false,
+        }),
     classIds.length
       ? supabase
           .from("incidents")
           .select("id,class_id,status")
           .in("class_id", classIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({
+          data: [] as Pick<Incident, "id" | "class_id" | "status">[],
+          error: null,
+        }),
     studentIds.length
       ? supabase
           .from("counseling_cases")
           .select("id,student_id,status")
           .in("student_id", studentIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({
+          data: [] as Pick<CounselingCase, "id" | "student_id" | "status">[],
+          error: null,
+        }),
   ]);
 
-  const unexcused = (attRes.data ?? []) as Pick<
-    AttendanceRecord,
-    "student_id"
-  >[];
-  const gradeRows = (gradeRes.data ?? []) as {
-    student_id: string;
-    subject_id: string;
-    assessment_type: string;
-    score: number | null;
-  }[];
-  const cellRows = new Map<string, typeof gradeRows>();
-  for (const g of gradeRows) {
-    const key = `${g.student_id}|${g.subject_id}`;
-    const arr = cellRows.get(key) ?? [];
-    arr.push(g);
-    cellRows.set(key, arr);
-  }
-  const lowGradeStudents = new Set<string>();
-  for (const [key, rows] of cellRows) {
-    const a = semesterAverage(rows);
-    if (a != null && a < 5) lowGradeStudents.add(key.split("|")[0]);
-  }
-  const incidents = (incidentRes.data ?? []) as Pick<
-    Incident,
-    "id" | "class_id" | "status"
-  >[];
-  const cases = (counselingRes.data ?? []) as Pick<
-    CounselingCase,
-    "id" | "student_id" | "status"
-  >[];
+  if (attRes.error) fail("attendance", attRes.error);
+  else if (attRes.truncated) errors.push("attendance truncated");
+  if (gradeRes.error) fail("grades", gradeRes.error);
+  else if (gradeRes.truncated) errors.push("grades truncated");
+  if (incidentRes.error) fail("incidents", incidentRes.error.message);
+  if (counselingRes.error) fail("counseling", counselingRes.error.message);
+
+  const unexcused = attRes.rows;
+  // Nhom diem theo (HS, mon, ky) - ky moi nhat quyet dinh, bat bien thu tu hang.
+  const lowGradeStudents = lowGradeStudentIds(gradeRes.rows);
+  const incidents = incidentRes.data ?? [];
+  const cases = counselingRes.data ?? [];
 
   const countByClass = new Map<
     string,
@@ -295,5 +313,5 @@ export async function buildRadarData(
     }
   }
 
-  return { classes, classIds, anchor, risks, candidates };
+  return { classes, classIds, anchor, risks, candidates, errors };
 }

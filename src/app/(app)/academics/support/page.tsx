@@ -8,7 +8,7 @@ import {
   SupportPlanBoard,
   type WeakPair,
 } from "@/components/academics/support-plan-board";
-import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
@@ -110,7 +110,8 @@ export default async function SupportPage({
 
   const planKey = new Map(plans.map((p) => [`${p.student_id}:${p.subject_id}`, p]));
 
-  // ĐTBm cả năm theo TT22 cho từng cặp (học sinh, môn)
+  // ĐTBm học kỳ mới nhất (HK2 nếu có, ngược lại HK1) cho từng cặp
+  // (học sinh, môn) - trang flag HS đang dưới 5, vẫn phải chạy giữa năm.
   const pairRows = new Map<string, GradeRow[]>();
   for (const g of grades) {
     const key = `${g.student_id}:${g.subject_id}`;
@@ -124,7 +125,7 @@ export default async function SupportPage({
       const [student_id, subject_id] = key.split(":");
       const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
       const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
-      return { student_id, subject_id, avg: yearAverage(hk1, hk2) };
+      return { student_id, subject_id, avg: hk2 ?? hk1 };
     })
     .filter(
       (w): w is { student_id: string; subject_id: string; avg: number } =>

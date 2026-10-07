@@ -41,7 +41,7 @@ export default async function SchoolRadarPage() {
 
   // Compute thuan doc - viec ghi canh bao vao early_warnings do server action
   // refreshRadarWarnings (nut "Lam moi canh bao") dam nhiem.
-  const { classes, classIds, anchor, risks } = await buildRadarData(
+  const { classes, classIds, anchor, risks, errors } = await buildRadarData(
     supabase,
     profile,
   );
@@ -85,87 +85,98 @@ export default async function SchoolRadarPage() {
           .join("/")}`}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {risks.map((r) => {
-          const meta = LEVEL_META[r.level];
-          return (
-            <div
-              key={r.classId}
-              className={cn(
-                "rounded-xl border border-l-4 border-border bg-card p-4 shadow-[var(--shadow-sm-token)]",
-                meta.ring,
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-semibold">Lớp {r.className}</h3>
-                <StatusBadge label={meta.label} tone={meta.tone} />
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Vắng KP (30n)</dt>
-                  <dd className="font-medium">{r.unexcused}</dd>
+      {errors.length > 0 ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu nguồn để tính radar - kết quả có thể thiếu
+          chính xác. Vui lòng thử lại sau.
+        </p>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {risks.map((r) => {
+              const meta = LEVEL_META[r.level];
+              return (
+                <div
+                  key={r.classId}
+                  className={cn(
+                    "rounded-xl border border-l-4 border-border bg-card p-4 shadow-[var(--shadow-sm-token)]",
+                    meta.ring,
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold">Lớp {r.className}</h3>
+                    <StatusBadge label={meta.label} tone={meta.tone} />
+                  </div>
+                  <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Vắng KP (30n)</dt>
+                      <dd className="font-medium">{r.unexcused}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Điểm &lt;5</dt>
+                      <dd className="font-medium">{r.lowGrades}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Sự cố mở</dt>
+                      <dd className="font-medium">{r.openIncidents}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">HS cần tư vấn</dt>
+                      <dd className="font-medium">{r.pendingCounseling}</dd>
+                    </div>
+                  </dl>
+                  <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                    Điểm rủi ro:{" "}
+                    <span className="font-semibold text-foreground">
+                      {r.score}
+                    </span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Điểm &lt;5</dt>
-                  <dd className="font-medium">{r.lowGrades}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Sự cố mở</dt>
-                  <dd className="font-medium">{r.openIncidents}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">HS cần tư vấn</dt>
-                  <dd className="font-medium">{r.pendingCounseling}</dd>
-                </div>
-              </dl>
-              <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
-                Điểm rủi ro:{" "}
-                <span className="font-semibold text-foreground">{r.score}</span>
+              );
+            })}
+            {risks.length === 0 && (
+              <p className="col-span-full rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
+                Chưa có lớp nào trong trường.
               </p>
-            </div>
-          );
-        })}
-        {risks.length === 0 && (
-          <p className="col-span-full rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Chưa có lớp nào trong trường.
-          </p>
-        )}
-      </div>
+            )}
+          </div>
 
-      <h2 className="mb-3 mt-8 text-base font-semibold">
-        Chi tiết theo lớp{" "}
-        <span className="text-sm font-normal text-muted-foreground">
-          ({flagged.length} lớp cần chú ý)
-        </span>
-      </h2>
-      <DataTable
-        columns={[
-          "Lớp",
-          "Vắng không phép (30 ngày)",
-          "Số điểm <5",
-          "Sự cố đang mở",
-          "Ca tư vấn chờ xử lý",
-          "Điểm rủi ro",
-          "Mức độ",
-        ]}
-      >
-        {risks.map((r) => {
-          const meta = LEVEL_META[r.level];
-          return (
-            <tr key={r.classId}>
-              <td className="font-medium">{r.className}</td>
-              <td>{r.unexcused}</td>
-              <td>{r.lowGrades}</td>
-              <td>{r.openIncidents}</td>
-              <td>{r.pendingCounseling}</td>
-              <td className="font-semibold">{r.score}</td>
-              <td>
-                <StatusBadge label={meta.label} tone={meta.tone} />
-              </td>
-            </tr>
-          );
-        })}
-      </DataTable>
+          <h2 className="mb-3 mt-8 text-base font-semibold">
+            Chi tiết theo lớp{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              ({flagged.length} lớp cần chú ý)
+            </span>
+          </h2>
+          <DataTable
+            columns={[
+              "Lớp",
+              "Vắng không phép (30 ngày)",
+              "Số điểm <5",
+              "Sự cố đang mở",
+              "Ca tư vấn chờ xử lý",
+              "Điểm rủi ro",
+              "Mức độ",
+            ]}
+          >
+            {risks.map((r) => {
+              const meta = LEVEL_META[r.level];
+              return (
+                <tr key={r.classId}>
+                  <td className="font-medium">{r.className}</td>
+                  <td>{r.unexcused}</td>
+                  <td>{r.lowGrades}</td>
+                  <td>{r.openIncidents}</td>
+                  <td>{r.pendingCounseling}</td>
+                  <td className="font-semibold">{r.score}</td>
+                  <td>
+                    <StatusBadge label={meta.label} tone={meta.tone} />
+                  </td>
+                </tr>
+              );
+            })}
+          </DataTable>
+        </>
+      )}
 
       <h2 className="mb-3 mt-8 flex items-center justify-between text-base font-semibold">
         <span>

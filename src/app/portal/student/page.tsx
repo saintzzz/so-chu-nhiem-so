@@ -199,13 +199,15 @@ export default async function StudentPortalPage() {
         avg: yearAverage(hk1, hk2),
         resultHk1,
         resultHk2,
-        resultYear: resultHk2 ?? resultHk1,
+        // Cot "ca nam" chi hien ket qua HK2 - HK1 khong phai ket qua nam.
+        resultYear: resultHk2,
         count: rows.length,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  // Stat card "Diem trung binh" la chi bao trong nam -> ky moi nhat co diem.
   const scoredAvgs = subjectAverages
-    .map((s) => s.avg)
+    .map((s) => s.hk2 ?? s.hk1)
     .filter((a): a is number => a != null);
   const overallAvg = scoredAvgs.length
     ? (

@@ -20,7 +20,15 @@ export async function refreshRadarWarnings(): Promise<{
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { candidates } = await buildRadarData(supabase, profile);
+  const data = await buildRadarData(supabase, profile);
+  // Nguon du lieu loi/truncated -> khong ghi canh bao tu du lieu thieu.
+  if (data.errors.length) {
+    console.error("[radar] buildRadarData errors:", data.errors.join("; "));
+    return {
+      error: "Không tải đủ dữ liệu nguồn để tính radar - vui lòng thử lại sau.",
+    };
+  }
+  const { candidates } = data;
   if (!candidates.length) {
     revalidatePath("/school/radar");
     return { inserted: 0 };

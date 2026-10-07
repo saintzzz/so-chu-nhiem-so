@@ -257,7 +257,8 @@ export default async function ParentPortalPage({
         avg: yearAverage(hk1, hk2),
         resultHk1,
         resultHk2,
-        resultYear: resultHk2 ?? resultHk1,
+        // Cot "ca nam" chi hien ket qua HK2 - HK1 khong phai ket qua nam.
+        resultYear: resultHk2,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));

@@ -26,17 +26,29 @@ async function run(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
-  const { data: schools } = await supabase.from("schools").select("id");
+  const { data: schools, error: schoolsErr } = await supabase
+    .from("schools")
+    .select("id");
+  if (schoolsErr) {
+    console.error("[radar-sync] schools query failed:", schoolsErr.message);
+    return NextResponse.json({ error: "query failed" }, { status: 500 });
+  }
   const schoolIds = ((schools ?? []) as { id: string }[]).map((s) => s.id);
 
   let inserted = 0;
   const errors: string[] = [];
   for (const schoolId of schoolIds) {
     try {
-      const { candidates } = await buildRadarData(supabase, {
+      const data = await buildRadarData(supabase, {
         role: "bgh",
         school_id: schoolId,
       } as Profile);
+      // Nguon du lieu loi/truncated -> khong ghi canh bao tu du lieu thieu.
+      if (data.errors.length) {
+        for (const e of data.errors) errors.push(`${schoolId}: ${e}`);
+        continue;
+      }
+      const { candidates } = data;
       if (!candidates.length) continue;
 
       const { data: existing } = await supabase
@@ -55,20 +67,30 @@ async function run(req: NextRequest) {
         .map((c) => ({ ...c, school_id: schoolId }));
       if (fresh.length) {
         const { error } = await supabase.from("early_warnings").insert(fresh);
-        if (error) errors.push(`${schoolId}: ${error.message}`);
-        else inserted += fresh.length;
+        if (error) {
+          // Chi label co dinh ra response - chi tiet DB log server-side.
+          console.error(`[radar-sync] insert failed ${schoolId}:`, error.message);
+          errors.push(`${schoolId}: early_warnings insert`);
+        } else {
+          inserted += fresh.length;
+        }
       }
     } catch (e) {
-      errors.push(`${schoolId}: ${e instanceof Error ? e.message : "error"}`);
+      console.error(`[radar-sync] school ${schoolId} failed:`, e);
+      errors.push(`${schoolId}: sync failed`);
     }
   }
 
-  return NextResponse.json({
-    ok: errors.length === 0,
-    schools: schoolIds.length,
-    inserted,
-    errors: errors.slice(0, 10),
-  });
+  return NextResponse.json(
+    {
+      ok: errors.length === 0,
+      schools: schoolIds.length,
+      inserted,
+      errors: errors.slice(0, 10),
+    },
+    // Partial/total failure van phai tra 5xx de scheduler khong ghi nhan success sai.
+    { status: errors.length ? 500 : 200 },
+  );
 }
 
 export async function GET(req: NextRequest) {

@@ -68,12 +68,18 @@ export async function reviewActivity(
   if (!profile || !["bgh", "pht", "admin"].includes(profile.role)) {
     return { error: "Chỉ Ban Giám Hiệu mới có quyền phê duyệt." };
   }
-  const { error } = await supabase
+  // R2-09: conditional update phai kiem rows affected - nguoi thua trong
+  // duyet dong thoi khong duoc nhan thanh cong.
+  const { data: updated, error } = await supabase
     .from("activities")
     .update({ status: approve ? "approved" : "draft" })
     .eq("id", activityId)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id");
   if (error) return { error: error.message };
+  if (updated?.length !== 1) {
+    return { error: "Hoạt động đã được xử lý. Vui lòng tải lại trang." };
+  }
   revalidatePath("/activities/plan");
   revalidatePath("/school/approvals");
   return {};

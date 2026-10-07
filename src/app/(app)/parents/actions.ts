@@ -114,6 +114,45 @@ export async function replyMessage(input: {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.content.trim()) return { error: "Vui lòng nhập nội dung trả lời." };
+  // R2-02: kiểm tra quan hệ người nhận - học sinh ở tầng action (RLS
+  // scn_can_message là tuyến phòng thủ cuối cho client insert trực tiếp).
+  const profile = await getProfile();
+  if (!input.studentId) {
+    return { error: "Thiếu học sinh liên quan đến tin nhắn." };
+  }
+  const { data: st } = await supabase
+    .from("students")
+    .select("id,profile_id,classes!inner(school_id,gvcn_id)")
+    .eq("id", input.studentId)
+    .maybeSingle();
+  const stuCls =
+    st &&
+    (Array.isArray(st.classes) ? st.classes[0] : (st.classes as {
+      school_id: string;
+      gvcn_id: string | null;
+    } | null));
+  if (!st || !stuCls || stuCls.school_id !== profile?.school_id) {
+    return { error: "Học sinh không thuộc trường của bạn." };
+  }
+  if (profile?.role === "gvcn" && stuCls.gvcn_id !== profile.id) {
+    return { error: "Chỉ trả lời tin nhắn về học sinh lớp bạn chủ nhiệm." };
+  }
+  // Người nhận phải là phụ huynh của học sinh này hoặc chính học sinh.
+  const { data: parentLinks } = await supabase
+    .from("parent_students")
+    .select("parents!inner(profile_id)")
+    .eq("student_id", input.studentId);
+  const allowed = new Set<string>(
+    ((parentLinks ?? []) as { parents: { profile_id: string | null } | { profile_id: string | null }[] }[])
+      .map((l) =>
+        Array.isArray(l.parents) ? l.parents[0]?.profile_id : l.parents?.profile_id,
+      )
+      .filter((x): x is string => Boolean(x)),
+  );
+  if (st.profile_id) allowed.add(st.profile_id as string);
+  if (!allowed.has(input.recipientId)) {
+    return { error: "Người nhận không liên quan đến học sinh này." };
+  }
   const { error } = await supabase.from("messages").insert({
     sender_id: user.id,
     recipient_id: input.recipientId,

@@ -30,6 +30,21 @@ Trạng thái: bản nháp nội bộ - cần pháp chế/chuyên gia rà soát 
 - AI prompt không chứa PII HS (chỉ YCCĐ).
 - JWT verify local (getClaims) - không gọi ra ngoài mỗi request.
 
+## 3a. Ngoại lệ đã biết - CHƯA ĐƯỢC XỬ LÝ (External Review r2, 2026-11)
+
+- Ba route AI sau **truyền dữ liệu học sinh nguyên văn** (có thể chứa PII)
+  sang nhà cung cấp LLM bên thứ 3 và cả fallback Devin:
+  `src/app/api/ai/extract-records/route.ts`,
+  `src/app/api/ai/incident-report/route.ts`,
+  `src/app/api/ai/counseling-summary/route.ts`.
+- Chủ sở hữu sản phẩm đã quyết định **giữ nguyên 3 luồng này** trong
+  thời gian chờ ruling pháp lý. Đây là rủi ro DPIA CÒN MỞ, không được
+  coi là đã xử lý: mục "AI prompt không chứa PII HS" ở mục 3 không áp
+  dụng cho 3 route trên.
+- Điều kiện để mở pilot: gate pháp lý + consent của phụ huynh + DPA với
+  nhà cung cấp AI (mục 4), hoặc tiền xử lý ẩn danh/loại PII trước khi
+  gọi provider.
+
 ## 4. Còn thiếu (đưa vào roadmap pilot)
 
 - [ ] Điều khoản đồng ý PH (consent) cho dữ liệu HS + bản ghi consent.

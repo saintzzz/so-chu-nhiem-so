@@ -18,8 +18,10 @@ export interface PeriodEntry {
   subject: string;
   teacher: string | null;
   room: string | null;
-  /** Tiết do chính người dùng dạy - chỉ GV này mới được ghi sổ */
+  /** Tiết do chính người dùng dạy hoặc được phân công dạy thay - mới được ghi sổ */
   mine: boolean;
+  /** Tiết người dùng dạy thay cho GV vắng (mine=true nhưng không phải GV chính) */
+  substitute?: boolean;
 }
 
 export interface PeriodAbsenceState {
@@ -426,6 +428,7 @@ export function PeriodLogBoard({
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {entry.teacher ?? "Chưa phân công GV"}
+                        {entry.substitute ? " · Bạn dạy thay" : ""}
                         {entry.room ? ` · Phòng ${entry.room}` : ""}
                         {` · Sĩ số ${roster.size}`}
                       </span>

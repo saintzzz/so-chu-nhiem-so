@@ -1,0 +1,332 @@
+// R2 regression tests - External Review round 2 fixes.
+// Chay: node --test tests/r2-regression.test.mjs
+// Boundary: file nay la static guard cho source TS/SQL. Hanh vi RLS +
+// trigger duoc test THUC boi tests/r2-db.test.mjs (Postgres container,
+// skip neu khong co docker). Phan con lai (server action integration,
+// E2E role flows) can staging - khong chay probe ghi len production.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (p) => readFileSync(join(ROOT, p), "utf8");
+
+const { averageScoreBand } = await import(join(ROOT, "src/lib/tt22.ts"));
+const { fetchAllRows } = await import(
+  join(ROOT, "src/lib/supabase/fetch-all.ts")
+);
+
+const MIGRATION = read("supabase/migrations/20261105_r2_security_fixes.sql");
+
+// --- R2-01: nhom diem TB khong gia xep loai TT22 -------------------------
+test("R2-01: averageScoreBand tra nhan nhom diem, khong phai xep loai TT22", () => {
+  for (const v of [9, 8, 7.9, 6.5, 5.5, 5, 4.9, 0]) {
+    const { label } = averageScoreBand(v);
+    assert.ok(!["Tốt", "Khá", "Đạt", "Chưa đạt"].includes(label),
+      `label "${label}" gia xep loai TT22`);
+  }
+  assert.equal(averageScoreBand(null).label, "-");
+  // Cac nguong dung theo khoang diem
+  assert.equal(averageScoreBand(8).label, "≥ 8,0");
+  assert.equal(averageScoreBand(6.5).label, "6,5 - 7,9");
+  assert.equal(averageScoreBand(5).label, "5,0 - 6,4");
+  assert.equal(averageScoreBand(4.9).label, "< 5,0");
+});
+
+test("tt22: khong con ham scoreBand (xep loai sai) trong codebase", () => {
+  const tt22 = read("src/lib/tt22.ts");
+  assert.ok(!tt22.includes("export function scoreBand"),
+    "scoreBand cu van con - se bi dung nham nhu xep loai TT22");
+});
+
+// --- R2-03: substitute khong cap quyen cho ngay tuong lai -----------------
+test("R2-03: substitute chi cap quyen den ngay phan cong (bien tren)", () => {
+  const subFns = MIGRATION.match(/scn_i_teach_student_subject[\s\S]*?\$function\$;[\s\S]*?scn_student_in_my_teaching[\s\S]*?\$function\$;/);
+  assert.ok(subFns, "migration thieu 2 ham substitute scope");
+  const upperBounds = (MIGRATION.match(/r\.date <= current_date/g) ?? []).length;
+  assert.ok(upperBounds >= 2,
+    `can >= 2 bien tren r.date <= current_date, thay ${upperBounds}`);
+});
+
+// --- R2-04: substitute duoc ghi so dau bai dung ngay ----------------------
+test("R2-04: period_logs/absences policies chap nhan substitute dung ngay", () => {
+  assert.match(MIGRATION, /create or replace function public\.scn_is_sub_ttentry_date/);
+  assert.match(MIGRATION, /r\.date = d/, "assignment phai khop DUNG ngay");
+  for (const pol of ["pl_owner_ins", "pl_owner_upd", "pl_owner_del",
+                     "pa_owner_ins", "pa_owner_upd", "pa_owner_del"]) {
+    const re = new RegExp(`create policy ${pol}[\\s\\S]*?;`);
+    const m = MIGRATION.match(re);
+    assert.ok(m, `thieu policy ${pol}`);
+    assert.match(m[0], /scn_is_sub_ttentry_date/,
+      `${pol} chua xet substitute`);
+  }
+});
+
+// DEFECT 2 (re-review): ham sub_ttentry phai co cua so ngay, exact subject,
+// va rang buoc school khop lop.
+test("R2-04: scn_is_sub_ttentry_date rang buoc ngay/mon/school chat", () => {
+  const fn = MIGRATION.match(/scn_is_sub_ttentry_date\(tid uuid, d date\)[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu ham scn_is_sub_ttentry_date");
+  assert.match(fn[0], /d between current_date - 60 and current_date/,
+    "thieu cua so [today-60, today] - substitute ghi duoc log tuong lai");
+  assert.match(fn[0], /r\.subject_id = t\.subject_id/,
+    "subject phai exact match, khong wildcard null");
+  assert.ok(!/r\.subject_id is null or/i.test(fn[0]),
+    "con wildcard subject_id is null");
+  assert.match(fn[0], /r\.school_id = c\.school_id/,
+    "thieu rang buoc school khop lop");
+});
+
+// DEFECT 3 (re-review): subr_ins cho phep forge request approved + lop khac
+// truong. Phai siết ca INSERT va UPDATE.
+test("R2-04: subr_ins/subr_upd chan forge + chi pending khi tao", () => {
+  const ins = MIGRATION.match(/create policy subr_ins[\s\S]*?;/);
+  assert.ok(ins, "thieu policy subr_ins");
+  assert.match(ins[0], /status = 'pending'/,
+    "subr_ins khong bat status='pending' - forge approved san duoc");
+  assert.match(ins[0], /scn_subr_refs_in_school\(school_id, class_id, subject_id, absent_teacher_id, substitute_teacher_id\)/,
+    "subr_ins chua kiem refs cung school");
+  const upd = MIGRATION.match(/create policy subr_upd[\s\S]*?;/);
+  assert.ok(upd && /status = 'pending'[\s\S]*?any\(array\['bgh','pht','admin'\]\)/.test(upd[0]),
+    "subr_upd phai chi cho approver dat trang thai quyet dinh");
+  // Trigger rang buoc transition + decided_by
+  assert.match(MIGRATION, /create trigger trg_subr_update_guard before update on public\.substitute_requests/);
+  const guard = MIGRATION.match(/scn_subr_update_guard\(\)[\s\S]*?\$function\$;/);
+  assert.ok(guard, "thieu scn_subr_update_guard");
+  assert.match(guard[0], /old\.status = 'pending' and new\.status in \('approved','rejected'\)/,
+    "trigger khong rang buoc transition pending -> approved|rejected");
+  assert.match(guard[0], /new\.decided_by is distinct from auth\.uid\(\)/,
+    "trigger khong bat decided_by = nguoi duyet");
+  // Kiem refs cung school o ca 2 chieu
+  const refs = MIGRATION.match(/scn_subr_refs_in_school\(school uuid[\s\S]*?\$function\$;/);
+  assert.ok(refs, "thieu scn_subr_refs_in_school");
+  for (const tbl of ["classes c", "subjects sj", "profiles p"]) {
+    assert.ok(refs[0].includes(tbl), `refs check thieu bang ${tbl}`);
+  }
+  assert.ok((refs[0].match(/school_id = school/g) ?? []).length >= 3,
+    "refs phai khop school cho class/subject/teachers");
+});
+
+test("R2-04 UI: period-log page nap substitute assignments va danh dau mine", () => {
+  const page = read("src/app/(app)/schedule/period-log/page.tsx");
+  assert.match(page, /substitute_requests/);
+  assert.match(page, /\.eq\("status", "approved"\)/);
+  assert.match(page, /\.eq\("date", date\)/, "phai loc dung ngay dang xem");
+  assert.match(page, /subEntryIds\.has\(e\.id\)/);
+  const board = read("src/components/schedule/period-log-board.tsx");
+  assert.match(board, /substitute\?: boolean/);
+});
+
+// Round-3: UI match phai chat dung nhu DB helper - exact subject (NULL
+// khong wildcard), school khop lop, va cua so [today-60, today].
+test("R2-04 UI parity: substitute match giong scn_is_sub_ttentry_date", () => {
+  const page = read("src/app/(app)/schedule/period-log/page.tsx");
+  assert.ok(!/r\.subject_id === null \|\| r\.subject_id ===/.test(page),
+    "con wildcard subject null - UI rong hon DB");
+  assert.match(page, /r\.subject_id !== null\s*&&\s*r\.subject_id === e\.subject_id/,
+    "subject phai exact match nhu DB");
+  assert.match(page, /r\.school_id === entrySchoolId/,
+    "phai kiem school cua request khop truong lop");
+  assert.match(page, /classes\(school_id\)/,
+    "phai embed school cua lop de so sanh");
+  assert.match(page, /date <= today && date >= minSubDate/,
+    "phai chan phan cong ngoai cua so [today-60, today]");
+});
+
+// --- R2-02: messages RLS + server action ----------------------------------
+test("R2-02: msg_send bat buoc scn_can_message", () => {
+  assert.match(MIGRATION, /create or replace function public\.scn_can_message/);
+  const pol = MIGRATION.match(/create policy msg_send[\s\S]*?;/);
+  assert.ok(pol && /scn_can_message\(recipient_id, student_id\)/.test(pol[0]),
+    "msg_send chua goi scn_can_message");
+  // sender khong the nhan tin chinh minh
+  assert.match(MIGRATION, /recipient <> auth\.uid\(\)/);
+  // msg_read_update co WITH CHECK de khong sua duoc sender/student
+  const upd = MIGRATION.match(/create policy msg_read_update[\s\S]*?;/);
+  assert.ok(upd && /with check/.test(upd[0]), "msg_read_update thieu WITH CHECK");
+});
+
+// DEFECT 1 (re-review): WITH CHECK chi so NEW voi policy, khong chan sua cot
+// khac -> can trigger immutable cho moi truong tru read_at.
+test("R2-02: trigger trg_messages_immutable khoa moi cot tru read_at", () => {
+  assert.match(MIGRATION, /create trigger trg_messages_immutable before update on public\.messages/);
+  const fn = MIGRATION.match(/scn_messages_immutable_guard\(\)[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu function scn_messages_immutable_guard");
+  // Moi cot du lieu phai nam trong danh sach bat bien (schema thuc tren prod)
+  for (const col of ["id", "sender_id", "recipient_id", "student_id", "content", "created_at"]) {
+    assert.ok(new RegExp(`new\\.${col} is distinct from old\\.${col}`).test(fn[0]),
+      `trigger khong khoa cot ${col} - recipient van spoof duoc`);
+  }
+  assert.ok(!/new\.read_at is distinct/.test(fn[0]),
+    "read_at phai la cot duy nhat duoc doi");
+});
+
+test("R2-02: server actions kiem quan he nguoi nhan truoc khi insert", () => {
+  const reply = read("src/app/(app)/parents/actions.ts");
+  assert.match(reply, /parent_students/, "replyMessage phai kiem PH cua HS");
+  assert.match(reply, /Người nhận không liên quan đến học sinh/);
+  const portal = read("src/app/portal/parent/actions.ts");
+  assert.match(portal, /STAFF_ROLES/, "replyToTeacher phai kiem nhan vien truong");
+});
+
+// --- R2-05/R2-09: conditional update bat zero-row --------------------------
+test("R2-05/R2-09: duyet substitute/activity kiem 1 row bi anh huong", () => {
+  const sub = read("src/app/(app)/school/substitutes/actions.ts");
+  assert.match(sub, /\.eq\("status", "pending"\)\s*\.select\("id"\)/);
+  assert.match(sub, /updated\?\.length !== 1/);
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.match(act, /\.eq\("status", "pending"\)\s*\.select\("id"\)/);
+  assert.match(act, /updated\?\.length !== 1/);
+});
+
+// --- R2-06: dashboard khong .in() toan bo student, incidents phan trang ----
+test("R2-06: dashboard loc bang embedded class filter + gioi han incidents", () => {
+  const dash = read("src/app/(app)/school/dashboard/page.tsx");
+  assert.ok(!/\.in\("student_id"/.test(dash),
+    "dashboard van .in() toan bo student_id");
+  assert.match(dash, /students!inner\(class_id\)/);
+  assert.match(dash, /count: "exact", head: true/, "dem su co tuan bang count");
+  assert.match(dash, /\.gte\("occurred_at", weekStart\)/, "loc ngay o DB");
+  assert.match(dash, /\.limit\(6\)/, "incidents gan day gioi han 6");
+});
+
+// --- R2-07: digest phan trang + lan truyen loi -----------------------------
+test("R2-07: digest dung fetchAllRows va loi lam dung run", () => {
+  const route = read("src/app/api/cron/parent-digest/route.ts");
+  assert.ok(!/pageTable/.test(route), "con pageTable nuot loi");
+  const fetches = (route.match(/fetchAllRows/g) ?? []).length;
+  assert.ok(fetches >= 5, `can >=5 fetchAllRows (co import), thay ${fetches}`);
+  assert.match(route, /order\("id"\)/);
+  assert.match(route, /chunkError/, "chunk loi phai dung run");
+});
+
+// Round-3: parent_students link query trong moi chunk cung phai paginate -
+// 500 PH co the co >1000 con, PostgREST cat ngam neu chi dung .in().
+test("R2-07: parent_students links query paginated qua fetchAllRows", () => {
+  const route = read("src/app/api/cron/parent-digest/route.ts");
+  const linksFetch = route.match(
+    /fetchAllRows<\{[\s\S]*?parent_id[\s\S]*?>\([\s\S]*?parent_students[\s\S]*?\.range\(f, t\)/);
+  assert.ok(linksFetch,
+    "parent_students query trong chunk van khong phan trang");
+  assert.match(linksFetch[0], /order\("parent_id"\)[\s\S]*?order\("student_id"\)/,
+    "can order composite on dinh (parent_students khong co cot id)");
+  // Loi/truncation phai di vao fatalError
+  assert.match(route, /linksRes\.error \|\| linksRes\.truncated/);
+  assert.match(route, /const links = linksRes\.rows/);
+});
+
+// DEFECT 5 (re-review): loi query nguon phai tra 5xx (khong phai 200) de
+// scheduler khong ghi nhan success sai; loi insert digest_deliveries cung
+// phai xu ly; response khong echo noi dung loi DB (co the chua PII).
+test("R2-07: loi nguon tra 500, insert delivery log khong nuot", () => {
+  const route = read("src/app/api/cron/parent-digest/route.ts");
+  // Fatal source error -> response 5xx
+  assert.match(route, /if \(fatalError\)/, "thieu nhanh fatalError");
+  const fatal = route.match(/if \(fatalError\) \{[\s\S]*?status: 500[\s\S]*?\}\);/);
+  assert.ok(fatal, "fatalError khong tra status 500");
+  // Bo phan destructure `const { error: X } = await ...` truoc khi quet,
+  // chi phat hien echo raw error vao response body.
+  const routeNoDestructuring = route.replace(
+    /\{[^}]*error: \w+[^}]*\} = await/g, "await");
+  assert.ok(!/error: (parentsErr|linksErr|chunkError|delErr|prev\.error|done\.error)\b/
+      .test(routeNoDestructuring),
+    "response khong duoc echo message loi DB (co the chua PII)");
+  assert.match(fatal[0], /error: fatalError/,
+    "response 5xx chi tra nhan loi chung, khong phai raw DB error");
+  // digest_deliveries insert error duoc bat
+  assert.match(route, /const \{ error: delErr \} = await supabase[\s\S]*?digest_deliveries[\s\S]*?insert\(deliveries\)/,
+    "insert digest_deliveries van khong check error");
+  assert.match(route, /fatalError = "delivery log insert failed"/,
+    "delErr phai lam dung run");
+  // Giữ counter partial-send trong response loi
+  assert.match(fatal[0], /sent,[\s\S]*?failed,[\s\S]*?skipped,/,
+    "response 5xx van phai tra counters");
+  // Delivery-level errors dem rieng, khong fail ca run
+  assert.match(route, /delivery_errors: failed \|\| undefined/);
+});
+
+test("fetchAllRows: loi duoc tra ve, khong nuot", async () => {
+  const res = await fetchAllRows(async (f) => {
+    if (f === 0) return { data: [{ id: 1 }], error: null };
+    return { data: null, error: { message: "boom" } };
+  }, 1);
+  assert.equal(res.error, "boom");
+});
+
+test("fetchAllRows: doc het nhieu trang", async () => {
+  const res = await fetchAllRows(async (f) => ({
+    data: f < 3 ? [{ id: f }] : [],
+    error: null,
+  }), 1);
+  assert.equal(res.error, null);
+  assert.equal(res.rows.length, 3);
+});
+
+// --- R2-08: student record history khong nuot loi --------------------------
+test("R2-08: insert history loi thi tra error ro rang", () => {
+  const act = read("src/app/(app)/records/students/actions.ts");
+  assert.match(act, /error: histErr/);
+  assert.match(act, /không ghi được lịch sử thay đổi/);
+});
+
+// --- R2-10: PHT chua gan campus -> fail-closed -----------------------------
+test("R2-10: moi surface PHT fail-closed khi campus_id null", () => {
+  const files = [
+    "src/lib/school/radar.ts",
+    "src/app/(app)/school/dashboard/page.tsx",
+    "src/app/(app)/school/daily-reports/page.tsx",
+    "src/app/(app)/school/substitutes/page.tsx",
+    "src/app/(app)/school/approvals/page.tsx",
+    "src/app/(app)/schedule/timetable/page.tsx",
+    "src/app/(app)/safety/bgh/page.tsx",
+    "src/app/(app)/school/journals/page.tsx",
+    "src/app/api/ai/daily-digest/route.ts",
+  ];
+  for (const f of files) {
+    const src = read(f);
+    const idx = src.indexOf('profile.role === "pht"');
+    assert.ok(idx >= 0, `${f}: thieu dieu kien pht`);
+    const guard = src.slice(idx, idx + 400);
+    assert.ok(!/role === "pht" && profile\.campus_id/.test(guard),
+      `${f}: van fail-open khi campus_id null`);
+  }
+  // RLS fail-closed o DB
+  assert.match(MIGRATION, /scn_pht_allows_campus/);
+});
+
+// --- R2-11: chart cuon ngang + menu wrap ----------------------------------
+test("R2-11: chart co min-width + scroll container, nav wrap nhan dai", () => {
+  const charts = read("src/components/charts.tsx");
+  const scrolls = (charts.match(/overflow-x-auto/g) ?? []).length;
+  assert.ok(scrolls >= 2, "ca BarChart va LineChart can vung cuon");
+  assert.match(charts, /minWidth: width/);
+  const nav = read("src/components/sidebar-nav.tsx");
+  assert.ok(!/className="truncate">\{item\.label\}/.test(nav),
+    "nav item van truncate nhan dai");
+  assert.match(nav, /title=\{item\.label\}/);
+});
+
+// DEFECT 4 (re-review): role="img" khong duoc bao table (screen reader mat
+// table semantics); can empty state ro rang khi data rong.
+test("R2-11: ChartCard chi dat role=img khi hien chart, co empty state", () => {
+  const charts = read("src/components/charts.tsx");
+  // Cau truc moi: showTable && table -> render table thuong; else div role=img
+  const card = charts.match(
+    /export function ChartCard[\s\S]*?\nexport function LineChart/);
+  assert.ok(card, "khong tim thay ChartCard");
+  const body = card[0].match(/return \([\s\S]*?\n  \);\n\}/);
+  assert.ok(body, "khong tim thay return cua ChartCard");
+  const imgIdx = body[0].indexOf('role="img"');
+  const tableIdx = body[0].indexOf("showTable && table");
+  assert.ok(tableIdx >= 0 && tableIdx < imgIdx,
+    "role=\"img\" van bao quanh table - screen reader mat table semantics");
+  // Div role=img chi render children (chart), khong render table
+  const imgDiv = body[0].slice(imgIdx, imgIdx + 200);
+  assert.ok(!/showTable \? table/.test(imgDiv),
+    "trong div role=img van co the render table");
+  // Empty state ro rang khi data=[]
+  assert.match(charts, /data\.length === 0/);
+  assert.match(charts, /Chưa có dữ liệu/);
+});

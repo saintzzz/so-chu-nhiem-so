@@ -1,5 +1,5 @@
 import { requireRoles } from "@/lib/auth";
-import { formatDateOnly, todayVN } from "@/lib/utils";
+import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -102,6 +102,65 @@ export default async function PeriodLogPage({
     const { data: entriesRaw } = await entryQuery;
     let entryRows = (entriesRaw ?? []) as EntryRow[];
 
+    // GV dạy thay: phải khớp ĐÚNG rule của RLS scn_is_sub_ttentry_date:
+    // status approved, r.date = ngày đang xem VÀ ngày đó nằm trong cua so
+    // [today-60, today] (DB tu choi ghi log ngay tuong lai / qua 60 ngay),
+    // subject_id khop EXACT (request subject NULL khong cap quyen nao),
+    // va school_id cua request phai khop school cua lop. Neu UI lo long
+    // hon DB se hien "co the ghi" nhung RLS van chan -> trai nghiem loi.
+    const today = todayVN();
+    const minSubDate = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 60);
+      return isoDateVN(d);
+    })();
+    const subReqs: {
+      class_id: string;
+      subject_id: string | null;
+      period: number;
+      school_id: string | null;
+    }[] = [];
+    if (date <= today && date >= minSubDate) {
+      const { data: subsRaw } = await supabase
+        .from("substitute_requests")
+        .select("class_id,subject_id,period,school_id")
+        .eq("substitute_teacher_id", profile.id)
+        .eq("date", date)
+        .eq("status", "approved");
+      subReqs.push(...((subsRaw ?? []) as typeof subReqs));
+    }
+    const subEntryIds = new Set<string>();
+    if (subReqs.length > 0) {
+      const subClassIds = [...new Set(subReqs.map((r) => r.class_id))];
+      // embed classes(school_id) de kiem r.school_id khop truong cua lop
+      // dung nhu DB helper.
+      const { data: subEntriesRaw } = await supabase
+        .from("timetable_entries")
+        .select("id,class_id,subject_id,teacher_id,period,room,classes(school_id)")
+        .eq("weekday", weekday)
+        .in("class_id", subClassIds);
+      const known = new Set(entryRows.map((e) => e.id));
+      for (const e of (subEntriesRaw ?? []) as (EntryRow & {
+        classes: { school_id: string }[] | { school_id: string } | null;
+      })[]) {
+        const entrySchoolId = Array.isArray(e.classes)
+          ? e.classes[0]?.school_id
+          : e.classes?.school_id;
+        const match = subReqs.some(
+          (r) =>
+            r.class_id === e.class_id &&
+            r.period === e.period &&
+            r.subject_id !== null &&
+            r.subject_id === e.subject_id &&
+            r.school_id === entrySchoolId,
+        );
+        if (match) {
+          subEntryIds.add(e.id);
+          if (!known.has(e.id)) entryRows.push(e);
+        }
+      }
+    }
+
     const classIds = [...new Set(entryRows.map((e) => e.class_id))];
     const subjectIds = [...new Set(entryRows.map((e) => e.subject_id))];
     const teacherIds = [
@@ -184,7 +243,8 @@ export default async function PeriodLogPage({
         subject: subjectName.get(e.subject_id) ?? "-",
         teacher: e.teacher_id ? (teacherName.get(e.teacher_id) ?? null) : null,
         room: e.room,
-        mine: e.teacher_id === profile.id,
+        mine: e.teacher_id === profile.id || subEntryIds.has(e.id),
+        substitute: subEntryIds.has(e.id) && e.teacher_id !== profile.id,
       }))
       .sort(
         (a, b) =>

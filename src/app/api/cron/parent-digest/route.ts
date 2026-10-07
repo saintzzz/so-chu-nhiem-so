@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fmtDateVN, isoDateVN, todayVN } from "@/lib/utils";
 
 /**
@@ -29,27 +30,6 @@ interface StudentRow {
   id: string;
   full_name: string;
   classes: { name: string }[] | { name: string } | null;
-}
-
-type Admin = ReturnType<typeof createAdminClient>;
-type FilterQ = ReturnType<ReturnType<Admin["from"]>["select"]>;
-
-async function pageTable<T>(
-  supabase: Admin,
-  table: string,
-  select: string,
-  apply?: (q: FilterQ) => FilterQ,
-): Promise<T[]> {
-  const out: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    let q = supabase.from(table).select(select) as unknown as FilterQ;
-    if (apply) q = apply(q);
-    const { data, error } = await q.range(from, from + 999);
-    if (error || !data?.length) break;
-    out.push(...(data as T[]));
-    if (data.length < 1000) break;
-  }
-  return out;
 }
 
 async function run(req: NextRequest) {
@@ -82,29 +62,52 @@ async function run(req: NextRequest) {
   let retryParents: Set<string> | null = null;
   const prevAttempts = new Map<string, number>();
   let sentThisWeek = new Set<string>();
+  // fetchAllRows tra error thay vi nuot - query loi phai dung run, khong gui
+  // email khi thieu du lieu nguon.
   if (retryRun) {
-    const prev = await pageTable<{ parent_id: string; attempts: number }>(
-      supabase, "digest_deliveries", "parent_id, attempts",
-      (q) => q.eq("run_id", retryRun).in("status", ["failed", "skipped"]),
+    const prev = await fetchAllRows<{ parent_id: string; attempts: number }>(
+      (f, t) =>
+        supabase
+          .from("digest_deliveries")
+          .select("parent_id, attempts")
+          .eq("run_id", retryRun)
+          .in("status", ["failed", "skipped"])
+          .order("id")
+          .range(f, t),
     );
-    retryParents = new Set(prev.map((r) => r.parent_id));
-    for (const r of prev) prevAttempts.set(r.parent_id, r.attempts);
+    if (prev.error) {
+      console.error("[parent-digest] retry lookup failed:", prev.error);
+      return NextResponse.json({ error: "delivery lookup failed" }, { status: 500 });
+    }
+    retryParents = new Set(prev.rows.map((r) => r.parent_id));
+    for (const r of prev.rows) prevAttempts.set(r.parent_id, r.attempts);
   } else {
-    const done = await pageTable<{ parent_id: string }>(
-      supabase, "digest_deliveries", "parent_id",
-      (q) => q.eq("week_start", weekStart).eq("status", "sent"),
+    const done = await fetchAllRows<{ parent_id: string }>((f, t) =>
+      supabase
+        .from("digest_deliveries")
+        .select("parent_id")
+        .eq("week_start", weekStart)
+        .eq("status", "sent")
+        .order("id")
+        .range(f, t),
     );
-    sentThisWeek = new Set(done.map((r) => r.parent_id));
+    if (done.error) {
+      console.error("[parent-digest] sent-this-week lookup failed:", done.error);
+      return NextResponse.json({ error: "delivery lookup failed" }, { status: 500 });
+    }
+    sentThisWeek = new Set(done.rows.map((r) => r.parent_id));
   }
 
   const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(todayVN())}`;
   let sent = 0, skipped = 0, failed = 0, parentsTotal = 0, chunks = 0;
-  let lastError: string | undefined;
+  // Loi nguon du lieu / log delivery: run phai tra 5xx de scheduler biet
+  // retry - khong tra 200 (scheduler se ghi nhan thanh cong sai).
+  let fatalError: string | undefined;
   let lastParentId = "";
 
   // Keyset paging tren parents.id - khong bi cat 1000, khong offset scan
   for (let chunk = 0; chunk < MAX_CHUNKS; chunk++) {
-    const { data: parents } = await supabase
+    const { data: parents, error: parentsErr } = await supabase
       .from("parents")
       .select("id, full_name, email")
       .not("email", "is", null)
@@ -112,24 +115,74 @@ async function run(req: NextRequest) {
       .gt("id", lastParentId || "00000000-0000-0000-0000-000000000000")
       .order("id")
       .limit(CHUNK);
+    if (parentsErr) {
+      fatalError = "parents query failed";
+      console.error("[parent-digest] parents query failed:", parentsErr);
+      break;
+    }
     if (!parents?.length) break;
     chunks++;
     lastParentId = parents[parents.length - 1].id;
 
     const parentIds = (parents as ParentRow[]).map((p) => p.id);
-    const { data: links } = await supabase
-      .from("parent_students")
-      .select("parent_id, student_id")
-      .in("parent_id", parentIds);
-    if (!links?.length) continue;
+    // 500 PH/chunk co the co >1000 con - phai paginate, khong de PostgREST
+    // cat ngam o 1000 (lam email thieu HS). parent_students khong co cot id:
+    // order composite (parent_id, student_id) de paging on dinh.
+    const linksRes = await fetchAllRows<{
+      parent_id: string;
+      student_id: string;
+    }>((f, t) =>
+      supabase
+        .from("parent_students")
+        .select("parent_id, student_id")
+        .in("parent_id", parentIds)
+        .order("parent_id")
+        .order("student_id")
+        .range(f, t),
+    );
+    if (linksRes.error || linksRes.truncated) {
+      fatalError = "parent_students query failed";
+      console.error(
+        "[parent-digest] parent_students query failed:",
+        linksRes.error ?? "truncated at maxRows",
+      );
+      break;
+    }
+    const links = linksRes.rows;
+    if (!links.length) continue;
 
+    // R2-07: query con cua chunk truoc day khong .range() -> PostgREST cat
+    // ngam o 1000 rows va email bao cao thieu du lieu. fetchAllRows doc het;
+    // loi/truncate => dung run, khong gui email thieu du lieu.
     const studentIds = [...new Set(links.map((l) => l.student_id as string))];
-    const [{ data: students }, att, conduct, grades] = await Promise.all([
-      supabase.from("students").select("id, full_name, class_id, classes(name)").in("id", studentIds),
-      supabase.from("attendance_records").select("student_id, date, status").in("student_id", studentIds).gte("date", sinceDate),
-      supabase.from("conduct_records").select("student_id, date, type, content, points").in("student_id", studentIds).gte("date", sinceDate),
-      supabase.from("grades").select("student_id, score, assessment_type, subjects(name)").in("student_id", studentIds).gte("created_at", since.toISOString()),
+    const [studentsRes, att, conduct, grades] = await Promise.all([
+      fetchAllRows<{ id: string }>((f, t) =>
+        supabase.from("students").select("id, full_name, class_id, classes(name)").in("id", studentIds).order("id").range(f, t),
+      ),
+      fetchAllRows<{ student_id: string; date: string; status: string }>((f, t) =>
+        supabase.from("attendance_records").select("student_id, date, status").in("student_id", studentIds).gte("date", sinceDate).order("id").range(f, t),
+      ),
+      fetchAllRows<{ student_id: string; date: string; type: string; content: string; points: number | null }>((f, t) =>
+        supabase.from("conduct_records").select("student_id, date, type, content, points").in("student_id", studentIds).gte("date", sinceDate).order("id").range(f, t),
+      ),
+      fetchAllRows<{ student_id: string; score: number | null; assessment_type: string; subjects: { name: string }[] | { name: string } | null }>((f, t) =>
+        supabase.from("grades").select("student_id, score, assessment_type, subjects(name)").in("student_id", studentIds).gte("created_at", since.toISOString()).order("id").range(f, t),
+      ),
     ]);
+    const students = studentsRes.rows;
+    const chunkError =
+      studentsRes.error ??
+      att.error ??
+      conduct.error ??
+      grades.error ??
+      (studentsRes.truncated || att.truncated || conduct.truncated || grades.truncated
+        ? "query results truncated at maxRows"
+        : null);
+    if (chunkError) {
+      fatalError = "student data query failed";
+      console.error("[parent-digest] chunk data query failed:", chunkError);
+      break;
+    }
 
     // Map thay filter long nhau (O(N) thay vi O(P*K*N))
     const studentById = new Map<string, StudentRow>(
@@ -150,9 +203,9 @@ async function run(req: NextRequest) {
       }
       return m;
     };
-    const attBySid = bySid(att.data);
-    const condBySid = bySid(conduct.data);
-    const gradeBySid = bySid(grades.data);
+    const attBySid = bySid(att.rows);
+    const condBySid = bySid(conduct.rows);
+    const gradeBySid = bySid(grades.rows);
 
     const jobs: { parentId: string; email: string; text: string }[] = [];
     for (const p of parents as ParentRow[]) {
@@ -224,7 +277,9 @@ async function run(req: NextRequest) {
         if (r.skipped) skipped++;
         else if (r.error) failed++;
         else sent += r.sent;
-        if (r.error) lastError = r.error;
+        if (r.error) {
+          console.error("[parent-digest] send failed for parent:", j.parentId, r.error);
+        }
         return {
           run_id: runId,
           parent_id: j.parentId,
@@ -235,9 +290,38 @@ async function run(req: NextRequest) {
           attempts: (prevAttempts.get(j.parentId) ?? 0) + 1,
         };
       });
-      await supabase.from("digest_deliveries").insert(deliveries);
+      // Khong ghi duoc delivery log => lan chay sau se gui trung email.
+      // Dung run ngay, tra 5xx de scheduler retry thay vi tiep tuc gui
+      // khong tracking.
+      const { error: delErr } = await supabase
+        .from("digest_deliveries")
+        .insert(deliveries);
+      if (delErr) {
+        fatalError = "delivery log insert failed";
+        console.error("[parent-digest] digest_deliveries insert failed:", delErr);
+        break;
+      }
     }
+    if (fatalError) break;
     if (parents.length < CHUNK) break;
+  }
+
+  if (fatalError) {
+    // 5xx: scheduler/pg_cron ghi nhan loi va retry. Khong echo message DB
+    // ra response (co the chua thong tin loc/PII); chi tra nhan loi chung
+    // + counters + run_id de doi chieu log server.
+    return NextResponse.json(
+      {
+        run_id: runId,
+        error: fatalError,
+        sent,
+        failed,
+        skipped,
+        parents: parentsTotal,
+        chunks,
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
@@ -248,7 +332,9 @@ async function run(req: NextRequest) {
     parents: parentsTotal,
     chunks,
     truncated: chunks >= MAX_CHUNKS,
-    error: lastError,
+    // Loi gui tung email (Resend) khong lam run fail - da log status='failed'
+    // per-parent de retry; chi bao co loi, khong echo noi dung provider.
+    delivery_errors: failed || undefined,
   });
 }
 

@@ -74,14 +74,14 @@ export function averageByStudent<
   return out;
 }
 
-/** Xếp loại học lực theo ĐTB: Tốt/Khá/Đạt/Chưa đạt (TT22). */
-export function scoreBand(avg: number | null): {
+/** Nhóm điểm trung bình số học, không phải xếp loại kết quả học tập theo TT22. */
+export function averageScoreBand(avg: number | null): {
   label: string;
   tone: "success" | "primary" | "warning" | "error" | "default";
 } {
   if (avg == null) return { label: "-", tone: "default" };
-  if (avg >= 8) return { label: "Tốt", tone: "success" };
-  if (avg >= 6.5) return { label: "Khá", tone: "primary" };
-  if (avg >= 5) return { label: "Đạt", tone: "warning" };
-  return { label: "Chưa đạt", tone: "error" };
+  if (avg >= 8) return { label: "≥ 8,0", tone: "success" };
+  if (avg >= 6.5) return { label: "6,5 - 7,9", tone: "primary" };
+  if (avg >= 5) return { label: "5,0 - 6,4", tone: "warning" };
+  return { label: "< 5,0", tone: "error" };
 }

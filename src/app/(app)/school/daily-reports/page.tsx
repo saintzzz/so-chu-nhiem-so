@@ -20,9 +20,11 @@ export default async function SchoolDailyReportsPage() {
     .order("name");
   let classes = (classData ?? []) as ClassRoom[];
 
-  // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách
-  if (profile.role === "pht" && profile.campus_id) {
-    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách; chưa gán campus -> fail-closed.
+  if (profile.role === "pht") {
+    classes = profile.campus_id
+      ? classes.filter((c) => c.campus_id === profile.campus_id)
+      : [];
   }
   const classIds = classes.map((c) => c.id);
 

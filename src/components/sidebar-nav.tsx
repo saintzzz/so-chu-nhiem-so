@@ -77,7 +77,10 @@ export function SidebarNav({
                           )}
                         >
                           <ItemIcon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-                          <span className="truncate">{item.label}</span>
+                          {/* Nhan dai duoc xuong dong thay vi truncate, kem tooltip day du */}
+                          <span className="leading-snug" title={item.label}>
+                            {item.label}
+                          </span>
                         </Link>
                       </li>
                       );

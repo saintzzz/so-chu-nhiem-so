@@ -51,10 +51,12 @@ export default async function SubstitutesPage() {
   const requests = ((reqData ?? []) as SubstituteRequest[]).filter((r) =>
     classIds.has(r.class_id),
   );
-  // PHT chỉ thao tác lớp thuộc cơ sở phụ trách
+  // PHT chỉ thao tác lớp thuộc cơ sở phụ trách; chưa gán campus -> fail-closed.
   const scopedClasses =
-    profile.role === "pht" && profile.campus_id
-      ? classes.filter((c) => c.campus_id === profile.campus_id)
+    profile.role === "pht"
+      ? profile.campus_id
+        ? classes.filter((c) => c.campus_id === profile.campus_id)
+        : []
       : classes;
   const scopedIds = new Set(scopedClasses.map((c) => c.id));
 

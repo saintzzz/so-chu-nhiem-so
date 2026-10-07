@@ -217,6 +217,13 @@ export default async function AttendanceHistoryPage({
           <ChartCard
             title={`Số lượt vắng không phép theo ngày (${hasRange ? "khoảng chọn" : "30 ngày"})`}
             ariaDescription="Biểu đồ cột số lượt vắng không phép mỗi ngày trong 30 ngày gần nhất"
+            data={last30
+              .slice()
+              .reverse()
+              .map(([d, c]) => ({
+                label: `Ngày ${new Date(`${d}T00:00:00`).getDate()}`,
+                value: c.unexcused,
+              }))}
           >
             <BarChart
               data={last30

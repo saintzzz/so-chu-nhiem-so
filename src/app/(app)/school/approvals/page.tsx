@@ -52,12 +52,14 @@ export default async function ApprovalsPage() {
   ]);
 
   const classes = (classData ?? []) as ClassRoom[];
-  // PHT chỉ duyệt trong phạm vi cơ sở phụ trách
+  // PHT chỉ duyệt trong phạm vi cơ sở phụ trách; chưa gán campus -> fail-closed.
   const scopedIds =
-    profile.role === "pht" && profile.campus_id
+    profile.role === "pht"
       ? new Set(
           classes
-            .filter((c) => c.campus_id === profile.campus_id)
+            .filter(
+              (c) => profile.campus_id && c.campus_id === profile.campus_id,
+            )
             .map((c) => c.id),
         )
       : null;

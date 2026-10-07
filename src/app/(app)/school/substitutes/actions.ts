@@ -91,7 +91,7 @@ export async function decideSubstituteRequest(
     period: number;
   };
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("substitute_requests")
     .update({
       status: approve ? "approved" : "rejected",
@@ -104,8 +104,10 @@ export async function decideSubstituteRequest(
         : {}),
     })
     .eq("id", requestId)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("id");
   if (error) return { error: error.message };
+  if (updated?.length !== 1) return { error: "Yêu cầu đã được xử lý. Vui lòng tải lại trang." };
 
   const targets = new Set([r.requested_by, r.absent_teacher_id]);
   const effectiveSub = substituteTeacherId ?? r.substitute_teacher_id;

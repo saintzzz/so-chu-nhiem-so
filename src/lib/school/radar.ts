@@ -91,8 +91,11 @@ export async function buildRadarData(
     ClassRoom,
     "id" | "name" | "campus_id"
   >[];
-  if (profile.role === "pht" && profile.campus_id) {
-    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  // PHT chưa phân công campus -> fail-closed, không đọc toàn trường.
+  if (profile.role === "pht") {
+    classes = profile.campus_id
+      ? classes.filter((c) => c.campus_id === profile.campus_id)
+      : [];
   }
   const classIds = classes.map((c) => c.id);
 

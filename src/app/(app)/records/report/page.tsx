@@ -205,6 +205,11 @@ export default async function RecordsReportPage() {
     );
   }
 
+  const attChartData = stats.map((s) => ({
+    label: s.name,
+    value: s.attendancePct ?? 0,
+  }));
+
   return (
     <div>
       <PageHeader
@@ -280,13 +285,9 @@ export default async function RecordsReportPage() {
           <ChartCard
             title="Tỷ lệ chuyên cần theo lớp (%)"
             ariaDescription="Biểu đồ cột so sánh tỷ lệ chuyên cần giữa các lớp"
+            data={attChartData}
           >
-            <BarChart
-              data={stats.map((s) => ({
-                label: s.name,
-                value: s.attendancePct ?? 0,
-              }))}
-            />
+            <BarChart data={attChartData} />
           </ChartCard>
         </div>
       )}

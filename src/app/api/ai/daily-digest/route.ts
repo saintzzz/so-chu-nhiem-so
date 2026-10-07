@@ -32,8 +32,11 @@ export async function POST(req: Request) {
     name: string;
     campus_id: string | null;
   }[];
-  if (profile.role === "pht" && profile.campus_id) {
-    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  // PHT chưa gán campus -> fail-closed, không tổng hợp toàn trường.
+  if (profile.role === "pht") {
+    classes = profile.campus_id
+      ? classes.filter((c) => c.campus_id === profile.campus_id)
+      : [];
   }
   const className = new Map(classes.map((c) => [c.id, c.name]));
 

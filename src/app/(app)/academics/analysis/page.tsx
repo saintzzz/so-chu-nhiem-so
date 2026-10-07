@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
-import { semesterAverage, scoreBand } from "@/lib/tt22";
+import { semesterAverage, averageScoreBand } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
@@ -53,22 +53,16 @@ interface RankedStudent extends StudentRow {
   count: number;
 }
 
-function StudentTable({
-  rows,
-  tone,
-}: {
-  rows: RankedStudent[];
-  tone: "success" | "error";
-}) {
+function StudentTable({ rows }: { rows: RankedStudent[] }) {
   return (
-    <DataTable columns={["#", "Họ và tên", "Điểm TB", "Đánh giá"]}>
+    <DataTable columns={["#", "Họ và tên", "Điểm TB", "Nhóm điểm TB"]}>
       {rows.map((s, i) => (
         <tr key={s.id}>
           <td className="text-muted-foreground">{i + 1}</td>
           <td className="font-medium">{s.full_name}</td>
           <td className="font-semibold">{s.avg.toFixed(1)}</td>
           <td>
-            <StatusBadge label={scoreBand(s.avg).label} tone={tone} />
+            <StatusBadge {...averageScoreBand(s.avg)} />
           </td>
         </tr>
       ))}
@@ -259,12 +253,14 @@ export default async function AnalysisPage({
         <ChartCard
           title="Điểm trung bình theo môn"
           ariaDescription="Biểu đồ cột điểm trung bình các môn học của lớp"
+          data={subjectChart}
         >
           <BarChart data={subjectChart} />
         </ChartCard>
         <ChartCard
           title="Phân bố điểm trung bình"
           ariaDescription="Biểu đồ cột phân bố học sinh theo khoảng điểm trung bình"
+          data={buckets}
         >
           <BarChart data={buckets} />
         </ChartCard>
@@ -273,11 +269,11 @@ export default async function AnalysisPage({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-2">
           <h3 className="text-base font-semibold">Top 5 học sinh</h3>
-          <StudentTable rows={top} tone="success" />
+          <StudentTable rows={top} />
         </div>
         <div className="space-y-2">
           <h3 className="text-base font-semibold">5 học sinh cần cố gắng</h3>
-          <StudentTable rows={bottom} tone="error" />
+          <StudentTable rows={bottom} />
         </div>
       </div>
     </div>

@@ -145,6 +145,7 @@ export default async function DeptDashboardPage() {
         <ChartCard
           title={`Điểm thi đua theo lớp - ${EMULATION_PERIOD}`}
           ariaDescription="Biểu đồ cột điểm thi đua các lớp"
+          data={chartData}
         >
           {chartData.length ? (
             <BarChart data={chartData} />

@@ -10,7 +10,6 @@ import type {
   EmulationScore,
   Incident,
   School,
-  Student,
 } from "@/types";
 import { currentPeriodVN, currentSemesterVN, isoDateVN, todayVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
@@ -49,32 +48,23 @@ export default async function SchoolDashboardPage() {
     ClassRoom,
     "id" | "name" | "campus_id"
   >[];
-  // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách
-  if (profile.role === "pht" && profile.campus_id) {
-    classes = classes.filter((c) => c.campus_id === profile.campus_id);
+  // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách; chưa phân công campus
+  // thì fail-closed - không được đọc toàn trường.
+  if (profile.role === "pht") {
+    classes = profile.campus_id
+      ? classes.filter((c) => c.campus_id === profile.campus_id)
+      : [];
   }
   const classIds = classes.map((c) => c.id);
   const classNameOf = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { rows: studentRows } = classIds.length
-    ? await fetchAllRows<Pick<Student, "id" | "class_id">>((f, t) =>
-        supabase
-          .from("students")
-          .select("id,class_id")
-          .in("class_id", classIds)
-          .order("id")
-          .range(f, t),
-      )
-    : { rows: [] as Pick<Student, "id" | "class_id">[] };
-  const students = studentRows;
-  const studentIds = students.map((s) => s.id);
-
   // Anchor "today" to the newest data so the demo dashboard is never empty.
-  const { data: latestAtt } = studentIds.length
+  // Lọc theo lớp qua embedded join - tránh tải toàn bộ student_id vào .in().
+  const { data: latestAtt } = classIds.length
     ? await supabase
         .from("attendance_records")
-        .select("date")
-        .in("student_id", studentIds)
+        .select("date,students!inner(class_id)")
+        .in("students.class_id", classIds)
         .order("date", { ascending: false })
         .limit(1)
     : { data: [] };
@@ -84,13 +74,21 @@ export default async function SchoolDashboardPage() {
   const weekStart = addDays(anchor, -6);
   const monthStart = addDays(anchor, -29);
 
-  const [incidentsRes, emulationRes, kpiRes, attRes] = await Promise.all([
+  const [incidentWeekRes, incidentsRes, emulationRes, kpiRes, attRes] = await Promise.all([
+    classIds.length
+      ? supabase
+          .from("incidents")
+          .select("id", { count: "exact", head: true })
+          .in("class_id", classIds)
+          .gte("occurred_at", weekStart)
+      : Promise.resolve({ count: 0 }),
     classIds.length
       ? supabase
           .from("incidents")
           .select("id,class_id,type,severity,status,description,occurred_at")
           .in("class_id", classIds)
           .order("occurred_at", { ascending: false })
+          .limit(6)
       : Promise.resolve({ data: [] }),
     classIds.length
       ? supabase
@@ -106,12 +104,12 @@ export default async function SchoolDashboardPage() {
           .eq("period", KPI_PERIOD)
           .in("class_id", classIds)
       : Promise.resolve({ data: [] }),
-    studentIds.length
+    classIds.length
       ? fetchAllRows<{ status: string }>((f, t) =>
           supabase
             .from("attendance_records")
-            .select("status")
-            .in("student_id", studentIds)
+            .select("status,students!inner(class_id)")
+            .in("students.class_id", classIds)
             .gte("date", monthStart)
             .order("id")
             .range(f, t),
@@ -119,13 +117,11 @@ export default async function SchoolDashboardPage() {
       : Promise.resolve({ data: [] }),
   ]);
 
+  const incidentsThisWeek = incidentWeekRes.count ?? 0;
   const incidents = (incidentsRes.data ?? []) as Pick<
     Incident,
     "id" | "class_id" | "type" | "severity" | "status" | "description" | "occurred_at"
   >[];
-  const incidentsThisWeek = incidents.filter(
-    (i) => i.occurred_at.slice(0, 10) >= weekStart,
-  ).length;
 
   const emulationRows = (emulationRes.data ?? []) as Pick<
     EmulationScore,
@@ -156,7 +152,7 @@ export default async function SchoolDashboardPage() {
     ? ((attended / attRows.length) * 100).toFixed(1) + "%"
     : "-";
 
-  const recentIncidents = incidents.slice(0, 6);
+  const recentIncidents = incidents;
 
   const { data: schoolRow } = profile.school_id
     ? await supabase
@@ -206,6 +202,7 @@ export default async function SchoolDashboardPage() {
           <ChartCard
             title={`Điểm thi đua theo lớp - ${EMULATION_PERIOD}`}
             ariaDescription="Biểu đồ cột tổng điểm thi đua của từng lớp"
+            data={chartData}
           >
             {chartData.length ? (
               <BarChart data={chartData} />

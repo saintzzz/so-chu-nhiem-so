@@ -96,6 +96,37 @@ export async function replyToTeacher(input: {
   if (!(await ownsStudent(supabase, parent.id, input.studentId))) {
     return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
   }
+  // R2-02: nguoi nhan phai la nhan vien truong cua hoc sinh.
+  const { data: stu } = await supabase
+    .from("students")
+    .select("classes!inner(school_id)")
+    .eq("id", input.studentId)
+    .single();
+  const stuSchool =
+    stu &&
+    (Array.isArray(stu.classes)
+      ? stu.classes[0]?.school_id
+      : (stu.classes as { school_id: string } | null)?.school_id);
+  const { data: rec } = await supabase
+    .from("profiles")
+    .select("id,role,school_id")
+    .eq("id", input.recipientId)
+    .maybeSingle();
+  const STAFF_ROLES = new Set([
+    "gvcn",
+    "gvbm",
+    "to_truong",
+    "bgh",
+    "pht",
+    "admin",
+  ]);
+  if (
+    !rec ||
+    !STAFF_ROLES.has((rec as { role: string }).role) ||
+    (rec as { school_id: string | null }).school_id !== stuSchool
+  ) {
+    return { error: "Người nhận không phải giáo viên trường của con bạn." };
+  }
   const { error } = await supabase.from("messages").insert({
     sender_id: user.id,
     recipient_id: input.recipientId,

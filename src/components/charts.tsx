@@ -7,18 +7,47 @@ export function ChartCard({
   ariaDescription,
   children,
   tableContent,
+  data,
 }: {
   title: string;
   ariaDescription: string;
   children: React.ReactNode;
   tableContent?: React.ReactNode;
+  /** Nếu truyền data thì có sẵn bảng dữ liệu thay thế cho biểu đồ (a11y/mobile). */
+  data?: { label: string; value: number }[];
 }) {
   const [showTable, setShowTable] = useState(false);
+  const table =
+    tableContent ??
+    (data ? (
+      data.length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Chưa có dữ liệu.
+        </p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+              <th className="py-1.5 pr-2 font-medium">Nhãn</th>
+              <th className="py-1.5 text-right font-medium">Giá trị</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((d) => (
+              <tr key={d.label} className="border-b border-border/60 last:border-0">
+                <td className="py-1.5 pr-2">{d.label}</td>
+                <td className="py-1.5 text-right font-medium">{d.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    ) : undefined);
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-base font-semibold">{title}</h3>
-        {tableContent && (
+        {table && (
           <button
             onClick={() => setShowTable((s) => !s)}
             className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
@@ -27,9 +56,14 @@ export function ChartCard({
           </button>
         )}
       </div>
-      <div role="img" aria-label={ariaDescription}>
-        {showTable ? tableContent : children}
-      </div>
+      {showTable && table ? (
+        // Bang thay the giu nguyen semantics table - khong dat role="img" len wrapper.
+        table
+      ) : (
+        <div role="img" aria-label={ariaDescription}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -62,8 +96,11 @@ export function LineChart({
   const area = `${path} L${pts[pts.length - 1]?.x ?? pad.left},${pad.top + ih} L${pad.left},${pad.top + ih} Z`;
   const gid = useId();
 
+  // R2-11: tren man hinh hep, SVG 560px co xuong ~310px lam chu qua nho.
+  // Giu be rong toi thieu = viewBox va cho cuon ngang de nhan doc duoc.
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
+    <div className="relative overflow-x-auto">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: width }}>
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.18} />
@@ -128,6 +165,7 @@ export function LineChart({
         </g>
       ))}
     </svg>
+    </div>
   );
 }
 
@@ -146,8 +184,10 @@ export function BarChart({
   const ih = height - pad.top - pad.bottom;
   const bw = Math.min(48, (iw / data.length) * 0.6);
 
+  // R2-11: giu be rong toi thieu = viewBox, cuon ngang tren mobile de chu doc duoc.
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
+    <div className="relative overflow-x-auto">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ minWidth: width }}>
       {data.map((d, i) => {
         const x = pad.left + (i + 0.5) * (iw / data.length) - bw / 2;
         const h = (d.value / max) * ih;
@@ -184,5 +224,6 @@ export function BarChart({
         );
       })}
     </svg>
+    </div>
   );
 }

@@ -37,9 +37,12 @@ export default async function TimetablePage({
     .select("id,name")
     .eq("status", "active")
     .order("name", { ascending: true });
-  // PHT chỉ xem TKB các lớp thuộc cơ sở mình phụ trách
-  if (profile.role === "pht" && profile.campus_id) {
-    allClassesQuery = allClassesQuery.eq("campus_id", profile.campus_id);
+  // PHT chỉ xem TKB các lớp thuộc cơ sở mình phụ trách; chưa gán campus -> fail-closed.
+  if (profile.role === "pht") {
+    allClassesQuery = allClassesQuery.eq(
+      "campus_id",
+      profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
+    );
   }
   const [{ data: classesRaw }, { data: ownClsRaw }, { data: taughtRaw }] =
     await Promise.all([

@@ -19,8 +19,12 @@ export default async function SafetyBghPage() {
   if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  if (profile.role === "pht" && profile.campus_id) {
-    classQuery = classQuery.eq("campus_id", profile.campus_id);
+  // PHT chưa gán campus -> fail-closed, không xem lớp toàn trường.
+  if (profile.role === "pht") {
+    classQuery = classQuery.eq(
+      "campus_id",
+      profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
+    );
   }
   const { data: classData } = await classQuery;
   const classes = (classData ?? []) as ClassRoom[];

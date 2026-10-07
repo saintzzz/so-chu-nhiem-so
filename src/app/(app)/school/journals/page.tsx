@@ -22,9 +22,12 @@ export default async function SchoolJournalsPage({
     .eq("school_id", sid)
     .eq("status", "active")
     .order("name");
-  // PHT chỉ xem sổ đầu bài của phân hiệu mình phụ trách
-  if (profile.role === "pht" && profile.campus_id) {
-    qCls = qCls.eq("campus_id", profile.campus_id);
+  // PHT chỉ xem sổ đầu bài của phân hiệu mình phụ trách; chưa gán campus -> fail-closed.
+  if (profile.role === "pht") {
+    qCls = qCls.eq(
+      "campus_id",
+      profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
+    );
   }
   const { data: clsRaw } = await qCls;
   const classes = (clsRaw ?? []) as {

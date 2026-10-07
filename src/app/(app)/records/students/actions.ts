@@ -97,6 +97,8 @@ export async function updateStudentRecord(
   if (upErr) return { updated: 0, error: upErr.message };
 
   // Lich su tung truong - tab "Lich su cap nhat ho so" doc bang nay.
+  // R2-08: khong duoc nuot loi - neu ghi history that bai thi bao ro de
+  // van hanh dong bo lai, thay vi tra thanh cong gia.
   const history = Object.entries(changed).map(([field, nv]) => ({
     student_id: studentId,
     changed_by: profile.id,
@@ -104,7 +106,24 @@ export async function updateStudentRecord(
     old_value: cur[field] ?? null,
     new_value: nv,
   }));
-  await supabase.from("student_record_history").insert(history);
+  const { error: histErr } = await supabase
+    .from("student_record_history")
+    .insert(history);
+  if (histErr) {
+    logAudit(supabase, {
+      action: "Lỗi ghi lịch sử hồ sơ học sinh",
+      entity: "student_record_history",
+      entityId: studentId,
+      payload: {
+        error: histErr.message,
+        fields: Object.keys(changed),
+      },
+    });
+    return {
+      updated: Object.keys(changed).length,
+      error: `Hồ sơ đã lưu nhưng không ghi được lịch sử thay đổi: ${histErr.message}`,
+    };
+  }
 
   logAudit(supabase, {
     action: "Sửa hồ sơ học sinh",

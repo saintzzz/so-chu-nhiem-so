@@ -146,6 +146,36 @@ create table seating_charts(
 create unique index seating_charts_one_current
   on seating_charts (class_id, month) where is_current;
 
+-- R15: attendance_records (chuyen can ngay) + emulation_scores (diem thi dua).
+-- Cot toi thieu can cho RPC + policies; unique (student_id, date) va
+-- (class_id, criterion_id, period) khop constraint da verify tren prod.
+create table attendance_records(
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id),
+  date date not null,
+  status text,
+  source text default 'manual',
+  note text,
+  created_at timestamptz default now(),
+  unique (student_id, date)
+);
+create table emulation_criteria(
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid,
+  name text,
+  max_score numeric,
+  category text
+);
+create table emulation_scores(
+  id uuid primary key default gen_random_uuid(),
+  class_id uuid references classes(id),
+  criterion_id uuid references emulation_criteria(id),
+  period text,
+  score numeric,
+  created_at timestamptz default now(),
+  unique (class_id, criterion_id, period)
+);
+
 -- Stub cac helper da co tren production (migration chi replace mot so).
 create or replace function public.my_role() returns text
 language sql stable security definer set search_path = 'public'
@@ -230,6 +260,12 @@ language sql stable security definer set search_path = 'public'
 as $$ select s.id from students s join classes c on c.id = s.class_id
      where c.school_id = my_school_id() $$;
 
+-- Stub cho es_staff_read (prod: 20261009) - migration R2 create or replace
+-- len ban co campus check; policy giu binding vi OR REPLACE giu OID.
+create or replace function public.my_school_class_ids() returns setof uuid
+language sql stable security definer set search_path = 'public'
+as $$ select id from classes where school_id = my_school_id() $$;
+
 -- RLS on - appuser (non-owner) chiu policies; select policies giong prod.
 alter table messages enable row level security;
 alter table substitute_requests enable row level security;
@@ -240,6 +276,8 @@ alter table nlpc_comments enable row level security;
 alter table incidents enable row level security;
 alter table class_roles enable row level security;
 alter table seating_charts enable row level security;
+alter table attendance_records enable row level security;
+alter table emulation_scores enable row level security;
 
 create policy msg_own on messages for select
   using (sender_id = auth.uid() or recipient_id = auth.uid());
@@ -346,6 +384,73 @@ create policy seat_del on seating_charts for delete
   using ((my_role()='gvcn' and scn_is_my_homeroom_class(class_id))
     or (my_role()='bgh' and scn_class_in_school(class_id)) or my_role()='admin');
 
+-- Prod: att_staff_read verbatim tu 20261009_rls_setof_helpers_perf.sql +
+-- att_ins/upd/del verbatim tu 20260925_cr016_role_scope.sql (GVCN lop CN +
+-- BGH + GV ghi source='period_log' cho HS lop minh day).
+create policy att_staff_read on attendance_records for select using (
+  (select is_staff()) and ((select scn_is_dept())
+    or student_id in (select my_school_student_ids()))
+  and ((select my_role()) = any(array['gvcn','gvbm','to_truong','bgh','pht','admin','so_gd','ubnd']))
+);
+create policy att_ins on attendance_records for insert
+  with check (
+    (my_role() = 'gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() = 'bgh' and scn_student_in_school(student_id))
+    or my_role() = 'admin'
+    or (source = 'period_log' and scn_student_in_my_teaching(student_id)));
+create policy att_upd on attendance_records for update
+  using (
+    (my_role() = 'gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() = 'bgh' and scn_student_in_school(student_id))
+    or my_role() = 'admin'
+    or (source = 'period_log' and scn_student_in_my_teaching(student_id)))
+  with check (
+    (my_role() = 'gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() = 'bgh' and scn_student_in_school(student_id))
+    or my_role() = 'admin'
+    or (source = 'period_log' and scn_student_in_my_teaching(student_id)));
+create policy att_del on attendance_records for delete
+  using (
+    (my_role() = 'gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() = 'bgh' and scn_student_in_school(student_id))
+    or my_role() = 'admin'
+    or (source = 'period_log' and scn_student_in_my_teaching(student_id)));
+
+-- Prod: es_staff_read verbatim tu 20261009_rls_setof_helpers_perf.sql +
+-- es_staff_ins/upd/del verbatim tu 20260922_cr013_signoff_emulation.sql
+-- (GVCN chi lop CN, BGH moi lop trong truong, admin).
+create policy es_staff_read on emulation_scores for select using (
+  (select is_staff()) and ((select scn_is_dept())
+    or class_id in (select my_school_class_ids()))
+);
+create policy es_staff_ins on emulation_scores for insert with check (
+  is_school_staff() and (
+    my_role() = 'admin'
+    or (my_role() = 'bgh' and scn_class_in_school(class_id))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
+  )
+);
+create policy es_staff_upd on emulation_scores for update using (
+  is_school_staff() and (
+    my_role() = 'admin'
+    or (my_role() = 'bgh' and scn_class_in_school(class_id))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
+  )
+) with check (
+  is_school_staff() and (
+    my_role() = 'admin'
+    or (my_role() = 'bgh' and scn_class_in_school(class_id))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
+  )
+);
+create policy es_staff_del on emulation_scores for delete using (
+  is_school_staff() and (
+    my_role() = 'admin'
+    or (my_role() = 'bgh' and scn_class_in_school(class_id))
+    or (my_role() = 'gvcn' and scn_is_my_homeroom_class(class_id))
+  )
+);
+
 create role appuser nologin;
 -- Role authenticated ton tai tren Supabase prod - migration grant execute vao
 -- role nay; fixture can no de chay migration verbatim.
@@ -413,3 +518,16 @@ insert into class_roles(student_id, role) values
 insert into seating_charts(id, class_id, month, version, layout, is_current) values
   ('c0000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-00000000000a','2026-10-01',1,'{"cols":8,"rows":5,"seats":[]}'::jsonb,true),
   ('c0000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-00000000000a','2026-10-01',2,'{"cols":8,"rows":5,"seats":[{"x":0,"y":0,"student_id":"60000000-0000-0000-0000-00000000000a"}]}'::jsonb,false);
+-- R15: row period_log cho stuA ngay 2026-11-05 (test manual save giu source)
+-- + tieu chi thi dua truong A (3) / truong B (1) + 2 diem ky 2026-T11
+-- (critA=10 update, critA2=8 delete trong test mixed-ops).
+insert into attendance_records(student_id, date, status, source, note) values
+  ('60000000-0000-0000-0000-00000000000a','2026-11-05','unexcused','period_log','tu so dau bai');
+insert into emulation_criteria(id, school_id, name, max_score, category) values
+  ('d0000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-00000000000a','Chuyen can',30,'nep'),
+  ('d0000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-00000000000a','Hoc tap',30,'hoc_tap'),
+  ('d0000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-00000000000a','Ve sinh',20,'nep'),
+  ('d0000000-0000-0000-0000-000000000004','10000000-0000-0000-0000-00000000000b','Chuyen can B',30,'nep');
+insert into emulation_scores(class_id, criterion_id, period, score) values
+  ('30000000-0000-0000-0000-00000000000a','d0000000-0000-0000-0000-000000000001','2026-T11',10),
+  ('30000000-0000-0000-0000-00000000000a','d0000000-0000-0000-0000-000000000002','2026-T11',8);

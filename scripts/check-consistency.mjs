@@ -257,6 +257,54 @@ for (const [p, src] of srcFiles) {
   check(`code:unscoped-subjects:${rel(p)}`, n);
 }
 
+// B8. Migration filename versions must be unique - Supabase CLI parses the
+// numeric prefix before "_" as THE version; two files sharing it collide in
+// migration history and one will be skipped/rejected on db push.
+// Known collisions below are historical (applied via MCP apply_migration,
+// prod versions are apply-timestamps); renaming applied files would create
+// phantom "new" migrations, so the EXACT filename sets are frozen here.
+// Any extra file joining an allowlisted prefix still fails.
+{
+  const KNOWN_DUPES = new Map([
+    ["20260922", new Set([
+      "20260922_cr009_lesson_plan_files.sql",
+      "20260922_cr011_parity.sql",
+      "20260922_cr013_signoff_emulation.sql",
+      "20260922_cr014_student_edit.sql",
+    ])],
+    ["20261006", new Set([
+      "20261006_cr026_khbd_templates.sql",
+      "20261006_cr028_questions_school_bank.sql",
+      "20261006_cr029_materials_school_review.sql",
+      "20261006_cr030_permissions_acl.sql",
+    ])],
+    ["20261007", new Set([
+      "20261007_cr031_question_media.sql",
+      "20261007_cr032_teacher_profile.sql",
+    ])],
+  ]);
+  const migDir = resolve(root, "supabase/migrations");
+  const byVersion = new Map();
+  for (const f of readdirSync(migDir)) {
+    const m = /^(\d+)_.+\.sql$/.exec(f);
+    if (!m) continue;
+    const list = byVersion.get(m[1]) ?? [];
+    list.push(f);
+    byVersion.set(m[1], list);
+  }
+  const dupes = [];
+  for (const [v, fs] of byVersion) {
+    if (fs.length <= 1) continue;
+    const known = KNOWN_DUPES.get(v);
+    const extra = known ? fs.filter((f) => !known.has(f)) : fs;
+    const missing = known ? [...known].filter((f) => !fs.includes(f)) : [];
+    if (extra.length || missing.length || !known) {
+      dupes.push(`${v}: ${fs.join(", ")}`);
+    }
+  }
+  check("db:migration-version-unique", dupes.length, dupes.join(" | "));
+}
+
 console.log("\n" + (failures.length
   ? `${failures.length} check(s) FAILED`
   : "All consistency checks passed"));

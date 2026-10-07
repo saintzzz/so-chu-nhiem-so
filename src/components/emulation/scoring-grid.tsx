@@ -76,7 +76,14 @@ export function ScoringGrid({
     setError(null);
     const supabase = createClient();
     try {
-      const ops: PromiseLike<unknown>[] = [];
+      // R15-02: chi gui cac o THAY DOI len RPC scn_save_emulation - delete
+      // (score=null) + upsert chay trong 1 transaction phia DB. Truoc day
+      // chay nhieu statement rieng song song: 1 op loi de lai nua voc.
+      const ops: {
+        class_id: string;
+        criterion_id: string;
+        score: number | null;
+      }[] = [];
       for (const c of classes) {
         if (!editable.has(c.id)) continue;
         for (const cr of criteria) {
@@ -85,49 +92,26 @@ export function ScoringGrid({
           const raw = (values[key] ?? "").trim();
           if (raw === "") {
             if (existing) {
-              ops.push(
-                supabase.from("emulation_scores").delete().eq("id", existing.id),
-              );
+              ops.push({ class_id: c.id, criterion_id: cr.id, score: null });
             }
             continue;
           }
           const score = Number(raw);
           if (Number.isNaN(score)) continue;
-          if (existing) {
-            if (existing.score !== score) {
-              ops.push(
-                supabase
-                  .from("emulation_scores")
-                  .update({ score })
-                  .eq("id", existing.id),
-              );
-            }
-          } else {
-            ops.push(
-              supabase.from("emulation_scores").insert({
-                class_id: c.id,
-                criterion_id: cr.id,
-                period,
-                score,
-              }),
-            );
+          if (!existing || existing.score !== score) {
+            ops.push({ class_id: c.id, criterion_id: cr.id, score });
           }
         }
       }
-      const results = await Promise.all(ops);
-      const failed = results.find(
-        (r) =>
-          typeof r === "object" &&
-          r !== null &&
-          "error" in r &&
-          (r as { error: unknown }).error !== null,
-      );
-      if (failed) {
-        console.error(
-          "[scoring-grid] save emulation_scores:",
-          (failed as { error: { message?: string } }).error?.message,
-        );
-        throw new Error("save failed");
+      if (ops.length) {
+        const { error: saveErr } = await supabase.rpc("scn_save_emulation", {
+          p_period: period,
+          p_ops: ops,
+        });
+        if (saveErr) {
+          console.error("[scoring-grid] scn_save_emulation:", saveErr.message);
+          throw new Error("save failed");
+        }
       }
       setMessage("Đã lưu điểm thi đua.");
       router.refresh();

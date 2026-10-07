@@ -38,6 +38,10 @@ const MIGRATION_R12 = readFileSync(
   join(ROOT, "supabase/migrations/20261110_r12_seating_atomic.sql"),
   "utf8",
 );
+const MIGRATION_R15 = readFileSync(
+  join(ROOT, "supabase/migrations/20261111_r15_atomic_writes.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -61,6 +65,10 @@ const ID = {
   incA: "b0000000-0000-0000-0000-000000000001", // incident lop A (R11)
   seatV1: "c0000000-0000-0000-0000-000000000001", // so do lop A v1 current (R12)
   seatV2: "c0000000-0000-0000-0000-000000000002", // so do lop A v2 cu (R12)
+  critA: "d0000000-0000-0000-0000-000000000001",  // tieu chi truong A (R15)
+  critA2: "d0000000-0000-0000-0000-000000000002", // tieu chi truong A (R15)
+  critA3: "d0000000-0000-0000-0000-000000000003", // tieu chi truong A (R15)
+  critB: "d0000000-0000-0000-0000-000000000004",  // tieu chi truong B (R15)
 };
 
 const dockerAvailable = (() => {
@@ -122,6 +130,7 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   psql(MIGRATION_R8);
   psql(MIGRATION_R11);
   psql(MIGRATION_R12);
+  psql(MIGRATION_R15);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -660,6 +669,144 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
       `select count(*) from seating_charts
         where class_id='${ID.classA}' and month='2026-11-01' and is_current`).trim();
     assert.equal(curCount, "1", "phai con dung 1 current sau 2 save song song");
+  });
+
+  // ---------- R15-01: scn_save_attendance atomic upsert ----------
+  await t.test("scn_save_attendance: insert moi + goi lai update, khong dup", () => {
+    asUser(ID.tA,
+      `select scn_save_attendance('2026-11-06',
+        '[{"student_id":"${ID.stuA}","status":"excused","note":"om"}]'::jsonb)`);
+    let out = psql(
+      `select status || '|' || coalesce(note,'~') || '|' || source
+         from attendance_records
+        where student_id='${ID.stuA}' and date='2026-11-06'`).trim();
+    assert.equal(out, "excused|om|manual");
+    // Lan 2 cung (student,date): update tren cho, khong tao row moi.
+    asUser(ID.tA,
+      `select scn_save_attendance('2026-11-06',
+        '[{"student_id":"${ID.stuA}","status":"late","note":null}]'::jsonb)`);
+    out = psql(
+      `select status || '|' || coalesce(note,'~') || '|' || source
+         from attendance_records
+        where student_id='${ID.stuA}' and date='2026-11-06'`).trim();
+    assert.equal(out, "late|~|manual", "lan 2 phai update row cu");
+    assert.equal(
+      psql(`select count(*) from attendance_records
+             where student_id='${ID.stuA}' and date='2026-11-06'`).trim(),
+      "1", "upsert tao them row trung (student_id,date)");
+  });
+
+  await t.test("scn_save_attendance: row period_log giu nguyen source", () => {
+    // Fixture seed: stuA 2026-11-05 source='period_log' (so dau bai ghi).
+    // Manual save cung (student,date) chi doi status/note - source phai con
+    // 'period_log' (fallback cu delete+insert la mat dau vet nay).
+    asUser(ID.tA,
+      `select scn_save_attendance('2026-11-05',
+        '[{"student_id":"${ID.stuA}","status":"excused","note":"gvcn xac nhan"}]'::jsonb)`);
+    const out = psql(
+      `select status || '|' || source || '|' || note
+         from attendance_records
+        where student_id='${ID.stuA}' and date='2026-11-05'`).trim();
+    assert.equal(out, "excused|period_log|gvcn xac nhan",
+      "DO UPDATE khong duoc cham cot source");
+  });
+
+  await t.test("scn_save_attendance: HS truong khac bi chan, toan bo rollback", () => {
+    // 1 row hop le + 1 row truong B trong CUNG call: WITH CHECK fail tren
+    // stuB -> exception -> row stuA cung khong duoc ghi (khong nua voc nhu
+    // fallback cu).
+    denied(ID.tA,
+      `select scn_save_attendance('2026-11-07',
+        '[{"student_id":"${ID.stuA}","status":"present","note":null},
+          {"student_id":"${ID.stuB}","status":"excused","note":null}]'::jsonb)`,
+      "gvcn truong A ghi duoc chuyen can HS truong B - function khong invoker?");
+    assert.equal(
+      psql(`select count(*) from attendance_records where date='2026-11-07'`).trim(),
+      "0", "row hop le da commit du call bi chan - khong atomic");
+  });
+
+  await t.test("scn_save_attendance: update bi RLS loc silent -> postcondition raise", () => {
+    // tB khong doc/duoc quyen gi tren attendance_records truong A: insert
+    // vi pham WITH CHECK -> loi. Nhung du co duong silent-skip nao thi
+    // postcondition cung bat - khong bao thanh cong gia nhu client cu.
+    denied(ID.tB,
+      `select scn_save_attendance('2026-11-05',
+        '[{"student_id":"${ID.stuA}","status":"present","note":null}]'::jsonb)`,
+      "gvcn truong B sua duoc chuyen can truong A");
+    const out = psql(
+      `select status from attendance_records
+        where student_id='${ID.stuA}' and date='2026-11-05'`).trim();
+    assert.equal(out, "excused", "row bi doi boi caller khong du quyen");
+  });
+
+  await t.test("scn_save_attendance: array rong OK, input khong phai array loi", () => {
+    asUser(ID.tA, `select scn_save_attendance('2026-11-08','[]'::jsonb)`);
+    denied(ID.tA,
+      `select scn_save_attendance('2026-11-08','{"a":1}'::jsonb)`,
+      "p_rows khong phai array van chap nhan");
+    denied(ID.tA,
+      `select scn_save_attendance(null,'[]'::jsonb)`,
+      "p_date null van chap nhan");
+  });
+
+  // ---------- R15-02: scn_save_emulation atomic delete+upsert ----------
+  await t.test("scn_save_emulation: insert+update+delete hon hop trong 1 call", () => {
+    // Fixture: (classA,critA,2026-T11)=10, (classA,critA2,2026-T11)=8.
+    // Ops: critA -> 15 (update), critA2 -> null (delete), critA3 -> 20 (insert).
+    asUser(ID.tA,
+      `select scn_save_emulation('2026-T11',
+        '[{"class_id":"${ID.classA}","criterion_id":"${ID.critA}","score":15},
+          {"class_id":"${ID.classA}","criterion_id":"${ID.critA2}","score":null},
+          {"class_id":"${ID.classA}","criterion_id":"${ID.critA3}","score":20}]'::jsonb)`);
+    const rows = psql(
+      `select criterion_id || '|' || score from emulation_scores
+        where class_id='${ID.classA}' and period='2026-T11' order by criterion_id`)
+      .trim().split("\n");
+    assert.deepEqual(rows,
+      [`${ID.critA}|15`, `${ID.critA3}|20`],
+      "update/insert/delete khong ap dung dung trong 1 txn");
+  });
+
+  await t.test("scn_save_emulation: upsert loi -> delete trong cung call rollback", () => {
+    // Constraint test-only ep score=-999 fail: delete critA chay truoc
+    // trong txn roi insert fail -> critA phai con 15 (khong nua voc).
+    psql(`alter table emulation_scores add constraint z_r15_test_fail
+          check (score <> -999)`);
+    try {
+      denied(ID.tA,
+        `select scn_save_emulation('2026-T11',
+          '[{"class_id":"${ID.classA}","criterion_id":"${ID.critA}","score":null},
+            {"class_id":"${ID.classA}","criterion_id":"${ID.critA2}","score":-999}]'::jsonb)`,
+        "upsert loi van tra thanh cong");
+      const out = psql(
+        `select score from emulation_scores
+          where class_id='${ID.classA}' and criterion_id='${ID.critA}'
+            and period='2026-T11'`).trim();
+      assert.equal(out, "15",
+        "delete da commit du upsert fail - khong atomic");
+    } finally {
+      psql(`alter table emulation_scores drop constraint z_r15_test_fail`);
+    }
+  });
+
+  await t.test("scn_save_emulation: lop truong khac bi chan (WITH CHECK)", () => {
+    denied(ID.tA,
+      `select scn_save_emulation('2026-T11',
+        '[{"class_id":"${ID.classB}","criterion_id":"${ID.critB}","score":5}]'::jsonb)`,
+      "gvcn truong A cham duoc diem lop truong B - function khong invoker?");
+    assert.equal(
+      psql(`select count(*) from emulation_scores where class_id='${ID.classB}'`).trim(),
+      "0", "row truong B da duoc ghi");
+  });
+
+  await t.test("scn_save_emulation: array rong OK, period null loi", () => {
+    asUser(ID.tA, `select scn_save_emulation('2026-T12','[]'::jsonb)`);
+    denied(ID.tA,
+      `select scn_save_emulation(null,'[]'::jsonb)`,
+      "p_period null van chap nhan");
+    denied(ID.tA,
+      `select scn_save_emulation('2026-T12','"x"'::jsonb)`,
+      "p_ops khong phai array van chap nhan");
   });
 
   // ---------- R2-10: PHT campus NULL fail-closed ----------

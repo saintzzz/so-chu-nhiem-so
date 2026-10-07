@@ -2335,3 +2335,122 @@ test("R14-04: 9 callers tieu thu error cua getAccessibleClasses", () => {
     }
   }
 });
+
+// --- R15-01: daily-roster qua RPC nguyen tu, bo destructive fallback -------
+test("R15-01: daily-roster goi scn_save_attendance, khong con fallback huy diet", () => {
+  const src = read("src/components/attendance/daily-roster.tsx");
+  assert.match(src, /rpc\("scn_save_attendance"/,
+    "confirm() phai goi RPC scn_save_attendance");
+  assert.match(src, /p_date: date/, "phai truyen p_date");
+  assert.match(src, /p_rows: payload/, "phai truyen p_rows");
+  // Khong con ghi truc tiep attendance_records: fallback cu DELETE manual
+  // rows roi UPDATE/INSERT tung HS voi moi loi bi nuot -> bao thanh cong gia.
+  assert.ok(!/\.from\("attendance_records"\)/.test(src),
+    "van con truy cap attendance_records truc tiep - fallback chua bi go bo");
+  assert.ok(!/source:\s*["']manual["']/.test(src),
+    "client khong duoc gui source - RPC dat phia DB");
+  assert.match(src, /console\.error\(\s*"\[daily-roster\] scn_save_attendance:"/,
+    "loi RPC phai console.error chi tiet");
+  assert.match(src, /Không lưu được chuyên cần - vui lòng thử lại\./,
+    "thieu nhan loi co dinh");
+});
+
+test("R15-01: migration scn_save_attendance dung contract (INVOKER, giu source)", () => {
+  const mig = read("supabase/migrations/20261111_r15_atomic_writes.sql");
+  const fn = mig.match(
+    /create or replace function public\.scn_save_attendance[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu body scn_save_attendance");
+  assert.ok(!/security definer/i.test(fn[0]),
+    "scn_save_attendance phai la SECURITY INVOKER (RLS enforce ben trong)");
+  // ON CONFLICT DO UPDATE chi set status+note - TUYET DOI khong cham source
+  // (bao ton rows source='period_log' do so dau bai ghi).
+  assert.match(fn[0],
+    /on conflict \(student_id, date\) do update\s+set status = excluded\.status, note = excluded\.note/i,
+    "DO UPDATE phai chi set status+note");
+  assert.ok(!/excluded\.source|source = excluded/i.test(fn[0]),
+    "DO UPDATE khong duoc ghi de source");
+  assert.match(fn[0], /'manual'/,
+    "insert path phai dat source='manual'");
+  assert.match(fn[0], /jsonb_typeof\(p_rows\) <> 'array'/,
+    "phai validate p_rows la array");
+  assert.match(mig,
+    /grant execute on function public\.scn_save_attendance\(date, jsonb\) to authenticated/,
+    "thieu grant execute cho authenticated");
+});
+
+// --- R15-02: scoring-grid qua RPC nguyen tu, bo Promise.all write loop -----
+test("R15-02: scoring-grid goi scn_save_emulation, bo Promise.all write loop", () => {
+  const src = read("src/components/emulation/scoring-grid.tsx");
+  assert.match(src, /rpc\("scn_save_emulation"/,
+    "save() phai goi RPC scn_save_emulation");
+  assert.match(src, /p_period: period/, "phai truyen p_period");
+  assert.match(src, /p_ops: ops/, "phai truyen p_ops (chi o thay doi)");
+  assert.ok(!/\.from\("emulation_scores"\)/.test(src),
+    "van con ghi truc tiep emulation_scores - phai qua RPC");
+  assert.ok(!/Promise\.all/.test(src),
+    "con Promise.all write loop - 1 op loi de lai trang thai nua voc");
+  // Chi gui o THAY DOI: clear co existing -> score null; doi/co moi -> score.
+  assert.match(src, /score: null/, "o bi xoa phai gui score=null de RPC delete");
+  assert.match(src, /existing\.score !== score/,
+    "o khong doi khong duoc gui len RPC");
+  assert.match(src, /console\.error\(\s*"\[scoring-grid\] scn_save_emulation:"/,
+    "loi RPC phai console.error chi tiet");
+  assert.match(src, /Không thể lưu điểm - vui lòng thử lại\./,
+    "thieu nhan loi co dinh");
+});
+
+test("R15-02: migration scn_save_emulation delete+upsert trong 1 txn", () => {
+  const mig = read("supabase/migrations/20261111_r15_atomic_writes.sql");
+  const fn = mig.match(
+    /create or replace function public\.scn_save_emulation[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu body scn_save_emulation");
+  assert.ok(!/security definer/i.test(fn[0]),
+    "scn_save_emulation phai la SECURITY INVOKER");
+  assert.match(fn[0], /delete from emulation_scores/,
+    "thieu buoc delete cho cac o score=null");
+  assert.match(fn[0],
+    /on conflict \(class_id, criterion_id, period\) do update\s+set score = excluded\.score/i,
+    "upsert phai khop unique (class_id,criterion_id,period)");
+  assert.match(fn[0], /\(r->>'score'\) is null/,
+    "delete path phai loc theo score null");
+  assert.match(mig,
+    /grant execute on function public\.scn_save_emulation\(text, jsonb\) to authenticated/,
+    "thieu grant execute cho authenticated");
+});
+
+// --- R15-03: exams page phan trang + gate board tren loi nguon -------------
+test("R15-03: exams page fetchAllRows exam_sessions + check moi nguon + gate board", () => {
+  const src = read("src/app/(app)/academics/exams/page.tsx");
+  assert.match(src,
+    /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  // exam_sessions co the vuot PostgREST cap ~1000 -> fetchAllRows voi khoa
+  // sap xep on dinh date,start_time,id.
+  assert.match(src,
+    /fetchAllRows<SessionRow>\(\(f, t\) =>[\s\S]*?from\("exam_sessions"\)[\s\S]*?\.order\("date"\)[\s\S]*?\.order\("start_time"\)[\s\S]*?\.order\("id"\)[\s\S]*?\.range\(f, t\)/,
+    "exam_sessions phai fetchAllRows + order date,start_time,id");
+  assert.match(src, /sessionsRes\.error \|\| sessionsRes\.truncated/,
+    "phai check ca error lan truncated cua fetchAllRows");
+  // Moi query nguon con lai deu phai bat loi vao srcErrors.
+  for (const e of ["examErr", "classErr", "subjectErr", "teacherErr", "schoolErr"]) {
+    assert.match(src, new RegExp(`error: ${e}`),
+      `query chua dat ten loi ${e}`);
+    assert.match(src, new RegExp(`if \\(${e}\\) \\{`),
+      `${e} chua duoc ghi nhan vao srcErrors`);
+  }
+  assert.match(src, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./,
+    "thieu nhan loi co dinh");
+  assert.match(src, /\{loadError \? \(/, "render phai la ternary gate");
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  assert.ok(noticeIdx >= 0 && src.indexOf("<ExamsBoard") > noticeIdx,
+    "ExamsBoard phai nam trong nhanh thanh cong sau notice gate");
+});
+
+test("R15-03: exams-board khong doc exam_sessions phia client", () => {
+  // Board nhan sessions qua props (page fetchAllRows + gate loi) - khong con
+  // select khong phan trang nao cap ngam 1000 rows cho count/template.
+  const src = read("src/components/exams/exams-board.tsx");
+  assert.ok(!/\.from\("exam_sessions"\)\s*\.select\(/.test(src),
+    "board con select exam_sessions khong phan trang");
+});

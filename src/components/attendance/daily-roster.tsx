@@ -153,57 +153,23 @@ export function DailyRoster({
       statuses[studentId] && statuses[studentId] !== "present"
         ? notes[studentId]?.trim() || null
         : null;
+    // R15-01: upsert nguyen tu qua RPC (SECURITY INVOKER - RLS giu nguyen).
+    // Truoc day upsert + fallback DELETE/UPDATE/INSERT tung row, loi bi nuot
+    // va co the xoa mat manual rows. RPC chi nhan {student_id,status,note} -
+    // source do DB dat ('manual' luc insert, giu nguyen 'period_log' luc
+    // update conflict).
     const payload = rows.map((r) => ({
       student_id: r.studentId,
-      date,
       status: statuses[r.studentId] ?? "present",
       note: noteFor(r.studentId),
-      source: "manual",
     }));
-    let { error } = await supabase
-      .from("attendance_records")
-      .upsert(payload, { onConflict: "student_id,date" });
-    if (error) {
-      // Fallback khi bảng chưa có unique constraint (student_id,date).
-      // Giữ nguyên rows source="period_log" (ghi từ sổ đầu bài) - chi xoá
-      // manual rows cũ rồi upsert thủ công từng HS.
-      const ids = rows.map((r) => r.studentId);
-      await supabase
-        .from("attendance_records")
-        .delete()
-        .eq("date", date)
-        .in("student_id", ids)
-        .eq("source", "manual");
-      const { data: existing } = await supabase
-        .from("attendance_records")
-        .select("student_id")
-        .eq("date", date)
-        .in("student_id", ids);
-      const hasPeriodLog = new Set(
-        (existing ?? []).map((r) => r.student_id as string),
-      );
-      // HS đã có row period_log: update status, giữ source
-      for (const r of rows.filter((x) => hasPeriodLog.has(x.studentId))) {
-        await supabase
-          .from("attendance_records")
-          .update({
-            status: statuses[r.studentId] ?? "present",
-            note: noteFor(r.studentId),
-          })
-          .eq("student_id", r.studentId)
-          .eq("date", date);
-      }
-      const toInsert = payload.filter((r) => !hasPeriodLog.has(r.student_id));
-      if (toInsert.length) {
-        const retry = await supabase.from("attendance_records").insert(toInsert);
-        error = retry.error;
-      } else {
-        error = null;
-      }
-    }
+    const { error } = await supabase.rpc("scn_save_attendance", {
+      p_date: date,
+      p_rows: payload,
+    });
     setSaving(false);
     if (error) {
-      console.error("[daily-roster] save attendance:", error.message);
+      console.error("[daily-roster] scn_save_attendance:", error.message);
       setFeedback({
         ok: false,
         text: "Không lưu được chuyên cần - vui lòng thử lại.",

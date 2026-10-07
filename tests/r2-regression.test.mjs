@@ -387,3 +387,56 @@ test("R2-11: ChartCard chi dat role=img khi hien chart, co empty state", () => {
   assert.match(charts, /data\.length === 0/);
   assert.match(charts, /Chưa có dữ liệu/);
 });
+
+// --- Round-4 F1: import DDGtx tran cot -> mo rong bang, khong drop ngam ----
+test("R4-01: file co nhieu cot DDGtx hon so -> grow txCols (kind tx)", () => {
+  const src = read("src/components/academics/grades-editor.tsx");
+  // Phai co nhanh mo rong txCols truoc khi do diem
+  assert.match(src, /cols\.tx\.length > txCols\.length/,
+    "thieu kiem tra so cot DDGtx cua file vuot so hien co");
+  assert.match(src, /newColId\("tx"\)/,
+    "cot overflow phai tao voi kind tx chung");
+  assert.match(src, /setTxCols\(importTxCols\)/,
+    "phai setTxCols voi tap cot da mo rong");
+  // Vong do diem phai map theo tap cot da mo rong, khong phai txCols cu
+  const fill = src.match(/cols\.tx\.forEach\(\(i, j\) => \{[\s\S]*?\}\);/);
+  assert.ok(fill, "khong tim thay vong do DDGtx");
+  assert.match(fill[0], /importTxCols\[j\]/,
+    "van map theo txCols cu - diem cot overflow bi drop ngam");
+  assert.ok(!/const col = txCols\[j\]/.test(fill[0]),
+    "con drop ngam cot DDGtx vuot so hien co");
+  // Canh bao cho GV biet da them cot
+  assert.match(src, /thêm \$\{addedTxCols\} cột ĐĐGtx/);
+});
+
+// --- Round-4 F2: import mon nhan xet chi nhan alias ro rang ----------------
+test("R4-02: comment import dung alias map - gia tri la khong thanh dat", () => {
+  const src = read("src/components/academics/grades-editor.tsx");
+  // Alias map tuong minh, normalize bo dau truoc khi tra
+  assert.match(src, /const RESULT_ALIAS: Record<string, "dat" \| "chua_dat">/);
+  const fn = src.match(/function parseResult[\s\S]*?\n\}/);
+  assert.ok(fn, "thieu ham parseResult");
+  assert.match(fn[0], /normalizeKey\(raw\)/,
+    "phai normalize (lowercase + bo dau) truoc khi tra alias");
+  assert.match(fn[0], /RESULT_ALIAS\[k\] \?\? "invalid"/,
+    "gia tri ngoai alias map phai la invalid, khong doan");
+  for (const alias of ["dat", "d", "chua_dat", "cd"]) {
+    assert.ok(new RegExp(`\\b${alias}: "`).test(src),
+      `RESULT_ALIAS thieu alias "${alias}"`);
+  }
+  // Branch comment: invalid giu nguyen o cu + bao cao, khong fallback "dat"
+  const branch = src.match(
+    /else if \(method === "comment"\) \{[\s\S]*?commentCk: cmtCol/);
+  assert.ok(branch, "khong tim thay nhanh method=comment");
+  assert.match(branch[0], /parseResult\(raw\)/);
+  assert.match(branch[0], /parsed === "invalid"\s*\?\s*cur\.result/,
+    "invalid phai giu ket qua cu, khong doan thanh dat");
+  assert.ok(!/v\.includes\("chưa"\)/.test(branch[0]) &&
+            !/includes\("chua"\)/.test(branch[0]),
+    "con heuristic includes(chua) - moi gia tri khac deu thanh dat");
+  assert.ok(!/\? "chua_dat"[\s\S]*?: "dat"/.test(branch[0]),
+    "con fallback bat ky gia tri khong rong -> dat");
+  // O invalid duoc ghi ten HS + gia tri vao canh bao import
+  assert.match(branch[0], /invalid\.push\(/);
+  assert.match(src, /giá trị không hợp lệ \(giữ nguyên ô cũ\)/);
+});

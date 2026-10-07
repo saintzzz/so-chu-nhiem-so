@@ -202,16 +202,29 @@ function mapHeaderCells(header: string[]) {
       cols.key = i;
     } else if (
       cols.name === null &&
-      (k.includes("ho_va_ten") || k === "ho_ten" || k === "hoten" || k === "name")
+      (k.includes("ho_va_ten") ||
+        k === "ho_ten" ||
+        k === "hoten" ||
+        k === "name")
     ) {
       cols.name = i;
     } else if (cols.dob === null && (k.includes("ngay_sinh") || k === "dob")) {
       cols.dob = i;
-    } else if (/^ddg_?tx/.test(k) || k.startsWith("ddg_thuong_xuyen") || /^tx\d?$/.test(k)) {
+    } else if (
+      /^ddg_?tx/.test(k) ||
+      k.startsWith("ddg_thuong_xuyen") ||
+      /^tx\d?$/.test(k)
+    ) {
       cols.tx.push(i);
-    } else if (cols.gk === null && (k.startsWith("ddg_?gk") || k === "ddggk" || k.includes("giua_ky"))) {
+    } else if (
+      cols.gk === null &&
+      (k.startsWith("ddg_?gk") || k === "ddggk" || k.includes("giua_ky"))
+    ) {
       cols.gk = i;
-    } else if (cols.ck === null && (k.startsWith("ddg_?ck") || k === "ddgck" || k === "ddg_cuoi_ky")) {
+    } else if (
+      cols.ck === null &&
+      (k.startsWith("ddg_?ck") || k === "ddgck" || k === "ddg_cuoi_ky")
+    ) {
       cols.ck = i;
     } else if (cols.ktdk === null && k.includes("ktdk")) {
       cols.ktdk = i;
@@ -227,16 +240,23 @@ function mapHeaderCells(header: string[]) {
       cols.levelCk = i;
     } else if (
       cols.comment === null &&
-      (k === "nhan_xet" || k === "noi_dung_nhan_xet" || k === "noi_dung" ||
-        k === "comment" || k === "nhan_xet_ck")
+      (k === "nhan_xet" ||
+        k === "noi_dung_nhan_xet" ||
+        k === "noi_dung" ||
+        k === "comment" ||
+        k === "nhan_xet_ck")
     ) {
       cols.comment = i;
     } else if (cols.commentCode === null && k === "ma_nhan_xet") {
       cols.commentCode = i;
     } else if (
       cols.result === null &&
-      (k === "danh_gia" || k === "ket_qua" || k === "xep_loai" ||
-        k === "muc_dat_duoc" || k === "muc_danh_gia" || k === "ket_qua_ren_luyen")
+      (k === "danh_gia" ||
+        k === "ket_qua" ||
+        k === "xep_loai" ||
+        k === "muc_dat_duoc" ||
+        k === "muc_danh_gia" ||
+        k === "ket_qua_ren_luyen")
     ) {
       cols.result = i;
     }
@@ -247,10 +267,31 @@ function mapHeaderCells(header: string[]) {
 function parseLevel(raw: string): Level | "invalid" {
   const t = normalizeKey(raw).replace(/_/g, "");
   if (!t) return "";
-  if (t === "t" || t === "tot" || t === "hoanthanhtot" || t === "htt") return "T";
+  if (t === "t" || t === "tot" || t === "hoanthanhtot" || t === "htt")
+    return "T";
   if (t === "h" || t === "dat" || t === "hoanthanh" || t === "ht") return "H";
-  if (t === "c" || t === "chuadat" || t === "chuahoanthanh" || t === "cht") return "C";
+  if (t === "c" || t === "chuadat" || t === "chuahoanthanh" || t === "cht")
+    return "C";
   return "invalid";
+}
+
+/** Ket qua mon danh gia bang nhan xet chi nhan alias ro rang - gia tri la
+ *  (CĐ viet tat khac, "khong hop le", rác OCR...) KHONG duoc doan thanh "dat". */
+const RESULT_ALIAS: Record<string, "dat" | "chua_dat"> = {
+  dat: "dat",
+  d: "dat",
+  dat_x: "dat",
+  datx: "dat",
+  chua_dat: "chua_dat",
+  cd: "chua_dat",
+  khong_dat: "chua_dat",
+  khongdat: "chua_dat",
+};
+
+function parseResult(raw: string): "" | "dat" | "chua_dat" | "invalid" {
+  const k = normalizeKey(raw);
+  if (!k) return "";
+  return RESULT_ALIAS[k] ?? "invalid";
 }
 
 /** Sổ điểm - THCS/THPT theo TT22 (ĐĐGtx/gk/ck + ĐTBm), Tiểu học theo mức T/H/C + Điểm KTĐK.
@@ -331,7 +372,8 @@ export function GradesEditor({
         gk: gkRow?.score?.toString() ?? "",
         ck: ckRow?.score?.toString() ?? "",
         ktdk: ckRow?.score?.toString() ?? "",
-        result: (rows.find((g) => g.result)?.result as CellState["result"]) ?? "",
+        result:
+          (rows.find((g) => g.result)?.result as CellState["result"]) ?? "",
         commentCk: ckRow?.comment ?? "",
         levelGk: gkRow?.level ?? "",
         commentGk: gkRow?.comment ?? "",
@@ -366,16 +408,20 @@ export function GradesEditor({
 
   const byCode = new Map(students.map((s) => [s.code.toLowerCase(), s.id]));
   const byNationalId = new Map(
-    students.filter((s) => s.national_id).map((s) => [s.national_id!.trim().toLowerCase(), s.id]),
+    students
+      .filter((s) => s.national_id)
+      .map((s) => [s.national_id!.trim().toLowerCase(), s.id]),
   );
   const byNameDob = new Map(
-    students.map((s) => [
-      `${normalizeKey(s.full_name)}|${s.dob ?? ""}`,
-      s.id,
-    ]),
+    students.map((s) => [`${normalizeKey(s.full_name)}|${s.dob ?? ""}`, s.id]),
   );
 
-  function matchStudent(r: string[], keyCol: number, nameCol: number | null, dobCol: number | null) {
+  function matchStudent(
+    r: string[],
+    keyCol: number,
+    nameCol: number | null,
+    dobCol: number | null,
+  ) {
     const key = (r[keyCol] ?? "").trim().toLowerCase();
     if (key) {
       const byNid = byNationalId.get(key);
@@ -401,7 +447,9 @@ export function GradesEditor({
           { id: "nx", label: "Mẫu nhận xét môn học" },
         ]
       : [{ id: "nx", label: "Mẫu nhận xét môn học (Đánh giá + nhận xét)" }];
-  const [templateId, setTemplateId] = useState<TemplateId>(templateOptions[0].id);
+  const [templateId, setTemplateId] = useState<TemplateId>(
+    templateOptions[0].id,
+  );
 
   function downloadTemplate() {
     if (templateId === "mau2") {
@@ -519,7 +567,11 @@ export function GradesEditor({
           s.national_id ?? s.code,
           s.full_name,
           s.dob ?? "",
-          cells[s.id]?.result === "chua_dat" ? "Chưa đạt" : cells[s.id]?.result ? "Đạt" : "",
+          cells[s.id]?.result === "chua_dat"
+            ? "Chưa đạt"
+            : cells[s.id]?.result
+              ? "Đạt"
+              : "",
           cells[s.id]?.commentCk ?? "",
         ]),
       );
@@ -587,69 +639,126 @@ export function GradesEditor({
     const header = headerIdx >= 0 ? table[headerIdx] : null;
     const cols = header
       ? mapHeaderCells(header)
-      : { ...mapHeaderCells([]), key: 0, name: 1, tx: [2], gk: 3, ck: 4, comment: null, commentCode: null, result: 2, dob: null, ktdk: null, levelGk: null, levelCk: null };
+      : {
+          ...mapHeaderCells([]),
+          key: 0,
+          name: 1,
+          tx: [2],
+          gk: 3,
+          ck: 4,
+          comment: null,
+          commentCode: null,
+          result: 2,
+          dob: null,
+          ktdk: null,
+          levelGk: null,
+          levelCk: null,
+        };
     // Nhận xét: ưu tiên "Nội dung nhận xét", fallback "Mã nhận xét"
     const cmtCol = cols.comment ?? cols.commentCode;
     const dataRows = table.slice(headerIdx >= 0 ? headerIdx + 1 : 0);
     let matched = 0;
     const missed: string[] = [];
+    const invalid: string[] = [];
+    // R4-01: file co them cot DDGtx hon so hien co -> mo rong them cot "tx"
+    // chung de MOI diem import deu co cho dung, thay vi bi bo mat ngam trong
+    // khi HS van duoc dem la matched.
+    let importTxCols = txCols;
+    let addedTxCols = 0;
+    if (!isTh && method === "score" && cols.tx.length > txCols.length) {
+      addedTxCols = cols.tx.length - txCols.length;
+      importTxCols = [
+        ...txCols,
+        ...Array.from({ length: addedTxCols }, () => ({
+          id: newColId("tx"),
+          kind: "tx" as TxKind,
+        })),
+      ];
+      setTxCols(importTxCols);
+    }
+    // Tinh patch thuan + bao cao dong bo; ap len state MOI NHAT trong
+    // setCells de khong ghi de edit cua GV trong luc await parseSpreadsheet.
+    const patches = new Map<string, (cur: CellState) => CellState>();
+    for (const r of dataRows) {
+      if (r.every((c) => !c.trim())) continue;
+      const id = matchStudent(r, cols.key ?? 0, cols.name, cols.dob);
+      if (!id) {
+        missed.push(r[cols.key ?? 0] ?? r[cols.name ?? 0] ?? "");
+        continue;
+      }
+      matched += 1;
+      const stuName = students.find((s) => s.id === id)?.full_name ?? id;
+      if (isTh) {
+        const lg =
+          cols.levelGk !== null ? parseLevel(r[cols.levelGk] ?? "") : "";
+        const lc =
+          cols.levelCk !== null ? parseLevel(r[cols.levelCk] ?? "") : "";
+        if (lg === "invalid") {
+          invalid.push(`${stuName}: "${(r[cols.levelGk!] ?? "").trim()}"`);
+        }
+        if (lc === "invalid") {
+          invalid.push(`${stuName}: "${(r[cols.levelCk!] ?? "").trim()}"`);
+        }
+        patches.set(id, (cur) => ({
+          ...cur,
+          levelGk: lg === "invalid" ? cur.levelGk : lg || cur.levelGk,
+          levelCk: lc === "invalid" ? cur.levelCk : lc || cur.levelCk,
+          ktdk: cols.ktdk !== null ? (r[cols.ktdk] ?? "").trim() : cur.ktdk,
+          commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
+        }));
+      } else if (method === "comment") {
+        // R4-02: chi nhan alias ro rang - gia tri la giu nguyen + canh bao,
+        // khong bao gio doan thanh "dat".
+        const raw = cols.result !== null ? (r[cols.result] ?? "") : "";
+        const parsed = parseResult(raw);
+        if (parsed === "invalid") {
+          invalid.push(`${stuName}: "${raw.trim()}"`);
+        }
+        patches.set(id, (cur) => ({
+          ...cur,
+          result: (parsed === "invalid"
+            ? cur.result
+            : parsed || cur.result) as CellState["result"],
+          commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
+        }));
+      } else {
+        // đổ các cột ĐĐGtx của file vào các cột hiện có theo thứ tự
+        // (importTxCols da mo rong de phu het cot file - R4-01)
+        const txPatch: Record<string, string> = {};
+        if (cols.tx.length > 0) {
+          cols.tx.forEach((i, j) => {
+            const v = (r[i] ?? "").trim();
+            const col = importTxCols[j];
+            if (col && v) txPatch[col.id] = v;
+          });
+        }
+        patches.set(id, (cur) => ({
+          ...cur,
+          tx: { ...cur.tx, ...txPatch },
+          gk: cols.gk !== null ? (r[cols.gk] ?? "").trim() : cur.gk,
+          ck: cols.ck !== null ? (r[cols.ck] ?? "").trim() : cur.ck,
+          commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
+        }));
+      }
+    }
     setCells((prev) => {
       const next = { ...prev };
-      for (const r of dataRows) {
-        if (r.every((c) => !c.trim())) continue;
-        const id = matchStudent(r, cols.key ?? 0, cols.name, cols.dob);
-        if (!id) {
-          missed.push(r[cols.key ?? 0] ?? r[cols.name ?? 0] ?? "");
-          continue;
-        }
-        matched += 1;
-        const cur = next[id] ?? { ...EMPTY_CELL };
-        if (isTh) {
-          const lg = cols.levelGk !== null ? parseLevel(r[cols.levelGk] ?? "") : "";
-          const lc = cols.levelCk !== null ? parseLevel(r[cols.levelCk] ?? "") : "";
-          next[id] = {
-            ...cur,
-            levelGk: lg === "invalid" ? cur.levelGk : lg || cur.levelGk,
-            levelCk: lc === "invalid" ? cur.levelCk : lc || cur.levelCk,
-            ktdk: cols.ktdk !== null ? (r[cols.ktdk] ?? "").trim() : cur.ktdk,
-            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
-          };
-        } else if (method === "comment") {
-          const v = (cols.result !== null ? (r[cols.result] ?? "") : "").trim().toLowerCase();
-          const result = v
-            ? v.includes("chưa") || v === "chua_dat"
-              ? "chua_dat"
-              : "dat"
-            : cur.result;
-          next[id] = {
-            ...cur,
-            result: result as CellState["result"],
-            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
-          };
-        } else {
-          // đổ các cột ĐĐGtx của file vào các cột hiện có theo thứ tự
-          const txPatch = { ...cur.tx };
-          if (cols.tx.length > 0) {
-            cols.tx.forEach((i, j) => {
-              const v = (r[i] ?? "").trim();
-              const col = txCols[j];
-              if (col && v) txPatch[col.id] = v;
-            });
-          }
-          next[id] = {
-            ...cur,
-            tx: txPatch,
-            gk: cols.gk !== null ? (r[cols.gk] ?? "").trim() : cur.gk,
-            ck: cols.ck !== null ? (r[cols.ck] ?? "").trim() : cur.ck,
-            commentCk: cmtCol !== null ? (r[cmtCol] ?? "").trim() : cur.commentCk,
-          };
-        }
+      for (const [id, apply] of patches) {
+        next[id] = apply(next[id] ?? { ...EMPTY_CELL });
       }
       return next;
     });
     setSaved(false);
     setImportMsg(
-      `Đã điền ${matched} học sinh từ file${missed.length ? ` - không khớp: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}` : ""}. Kiểm tra rồi bấm Lưu điểm.`,
+      `Đã điền ${matched} học sinh từ file` +
+        (addedTxCols ? ` - thêm ${addedTxCols} cột ĐĐGtx` : "") +
+        (missed.length
+          ? ` - không khớp: ${missed.slice(0, 5).join(", ")}${missed.length > 5 ? "…" : ""}`
+          : "") +
+        (invalid.length
+          ? ` - giá trị không hợp lệ (giữ nguyên ô cũ): ${invalid.slice(0, 5).join(", ")}${invalid.length > 5 ? "…" : ""}`
+          : "") +
+        `. Kiểm tra rồi bấm Lưu điểm.`,
     );
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -847,7 +956,10 @@ export function GradesEditor({
 
   return (
     <div className="space-y-3">
-      <div data-slot="toolbar" className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        data-slot="toolbar"
+        className="flex flex-wrap items-center justify-between gap-3"
+      >
         <span className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {students.length} học sinh
           {method === "score" && !isTh && (
@@ -937,18 +1049,24 @@ export function GradesEditor({
               {isTh ? (
                 <>
                   <td>
-                    {levelSelect(c.levelGk, (v) => setCell(s.id, { levelGk: v }))}
+                    {levelSelect(c.levelGk, (v) =>
+                      setCell(s.id, { levelGk: v }),
+                    )}
                   </td>
                   <td>
                     <AutoGrowTextarea
                       bare
                       value={c.commentGk}
-                      onChange={(e) => setCell(s.id, { commentGk: e.target.value })}
+                      onChange={(e) =>
+                        setCell(s.id, { commentGk: e.target.value })
+                      }
                       className="w-44"
                     />
                   </td>
                   <td>
-                    {levelSelect(c.levelCk, (v) => setCell(s.id, { levelCk: v }))}
+                    {levelSelect(c.levelCk, (v) =>
+                      setCell(s.id, { levelCk: v }),
+                    )}
                   </td>
                   <td>
                     <input
@@ -965,7 +1083,9 @@ export function GradesEditor({
                     <AutoGrowTextarea
                       bare
                       value={c.commentCk}
-                      onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
+                      onChange={(e) =>
+                        setCell(s.id, { commentCk: e.target.value })
+                      }
                       className="w-44"
                     />
                   </td>
@@ -1022,7 +1142,9 @@ export function GradesEditor({
                     <AutoGrowTextarea
                       bare
                       value={c.commentCk}
-                      onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
+                      onChange={(e) =>
+                        setCell(s.id, { commentCk: e.target.value })
+                      }
                       className="w-44"
                     />
                   </td>
@@ -1048,7 +1170,9 @@ export function GradesEditor({
                     <AutoGrowTextarea
                       bare
                       value={c.commentCk}
-                      onChange={(e) => setCell(s.id, { commentCk: e.target.value })}
+                      onChange={(e) =>
+                        setCell(s.id, { commentCk: e.target.value })
+                      }
                       className="w-52"
                     />
                   </td>

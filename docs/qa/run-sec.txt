@@ -1,0 +1,65 @@
+PASS S01 PH self-escalate role bi chan - Khong the thay doi vai tro hoac truong
+PASS S02 PH self-escalate school bi chan
+PASS S03 PH tvc_materials -> 0
+PASS S04 PH ai_jobs -> 0
+PASS S05 PH parents <= 1 (chi cua minh) - rows=1
+PASS S06 PH insert attendance bi chan
+PASS S07a ke_toan grades -> 0 - 0
+PASS S07b ke_toan counseling_cases -> 0 - 0
+PASS S07c ke_toan incidents -> 0 - 0
+PASS S07d ke_toan parents -> 0 - 0
+PASS S07e ke_toan digest_deliveries -> 0 - 0
+PASS S07f ke_toan ai_jobs -> 0 - 0
+PASS S07g ke_toan audit_logs -> 0 - 0
+PASS S08 bgh-th students chi thuoc truong minh - rows=74 foreign=0
+PASS S09 bgh-th tvc_materials -> 0 published xa
+PASS S10 gvbm students scope < toan he thong - gvbm=292 total=366
+PASS S11 cron khong auth -> 401/403 - status=401
+PASS S12 cron ?secret= sai -> 401 (header-only) - status=401
+PASS S13 devin-callback token sai -> 4xx - status=401
+PASS S23-THCS Nguyễn Du gv004@nd.test chi thay HS truong minh - rows=292 foreign=0
+PASS S24-THCS Nguyễn Du query HS lop truong khac -> 0 - leak=0
+PASS S23-Tiểu học Chu V gv004@cva.test chi thay HS truong minh - rows=74 foreign=0
+PASS S24-Tiểu học Chu V query HS lop truong khac -> 0 - leak=0
+PASS S23-Tiểu học Kim Đ gv004@kd.test chi thay HS truong minh - rows=0 foreign=0 (truong chua co HS)
+PASS S24-Tiểu học Kim Đ query HS lop truong khac -> 0 - leak=0
+PASS E01 sai MK -> loi inline + o lai /login - https://sochunhiem.vieschool.com/login
+PASS E02 email khong ton tai -> o lai /login
+PASS E03 unauth /dashboard -> /login - https://sochunhiem.vieschool.com/login
+PASS E04 unauth /portal/parent -> /login
+PASS E05 student id khong ton tai -> 404/redirect sach - status=404 url=https://sochunhiem.vieschool.com/records/students/00000000-0000-0000-0000-000000000000
+PASS E06 IDOR roster?class= truong khac -> khong lo HS - class=1A leaked=0
+PASS E07 diem=15 + Luu -> inline invalid hoac disabled - disabled=false
+PASS E08 XSS payload khong execute (dialog) - dialog=false
+PASS E09 email loi -> 'Email không hợp lệ' + khong tao user
+PASS E09b user email loi khong ton tai trong DB
+PASS E10 form tao truong: submit disable khi thieu required - disabled=true
+PASS E11a nut dang xuat ton tai - url=https://sochunhiem.vieschool.com/dashboard
+PASS E11 sau logout /dashboard -> /login - https://sochunhiem.vieschool.com/login
+PASS S14a phu_huynh POST /api/ai/dept-brief -> 4xx - status=403
+PASS S14b phu_huynh POST /api/ai/draft-message -> 4xx - status=403
+PASS S14c phu_huynh POST /api/studio/tools/soan-thao/generate -> 4xx - status=404
+PASS S15 hoc_sinh POST /api/ai/dept-brief -> 4xx - status=403
+PASS S16 admin role -> /dept/schools accessible - status=200
+PASS S17 admin -> /register/roster denied - status=200 loc=
+PASS E13 GVBM nhap diem -> luu -> DB co row moi score=4.5 - after45=3
+PASS S18 gvbm POST DC-01/generate -> 200 + doc - status=200 usedFallback=true pending=false
+PASS S19 tvc_generations co row moi (DC-01) - rows=5
+PASS S20 export docx material "KẾ HOẠCH BÀI DẠY - PHÉP CỘNG C" - status=200 bytes=9619
+PASS S21 ke_toan export material -> 4xx - status=404 (published=true)
+PASS S22 phu_huynh export material -> 4xx - status=404
+  perf gvcn@demo.scn /dashboard: cold=6173ms warm-ttfb=659ms warm-total=1158ms
+  perf gvcn@demo.scn /academics/grades: cold=506ms warm-ttfb=618ms warm-total=1129ms
+  perf gvcn@demo.scn /records/report: cold=602ms warm-ttfb=444ms warm-total=951ms
+  perf bgh@demo.scn /school/dashboard: cold=894ms warm-ttfb=978ms warm-total=1484ms
+  perf bgh@demo.scn /school/exam-analytics: cold=4721ms warm-ttfb=648ms warm-total=1158ms
+  perf bgh@demo.scn /school/radar: cold=1966ms warm-ttfb=1113ms warm-total=1624ms
+  perf phuhuynh@demo.scn /portal/parent: cold=820ms warm-ttfb=898ms warm-total=1408ms
+  perf hocsinh@demo.scn /portal/student: cold=3472ms warm-ttfb=1671ms warm-total=2169ms
+  perf sogd@demo.scn /dept/usage: cold=7285ms warm-ttfb=837ms warm-total=1348ms
+PASS P01 warm load < 8s (9 trang) - max=2169ms
+PASS P02 warm TTFB < 2s - ok
+PASS P03 cold start < 15s (lambda init) - max=7285ms
+PASS E12 khong co pageerror JS trong suite
+
+===== 54/54 PASS =====

@@ -190,6 +190,10 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
       await p.waitForTimeout(5000);
       r = await fetchRoute();
     }
+    if (!r) { // transient timeout/cold-start - retry mot lan truoc khi fail
+      await new Promise((res) => setTimeout(res, 2000));
+      r = await fetchRoute();
+    }
     if (!r) { fails.push(`${route}:no-response`); continue; }
     const { res, finalPath } = r;
     const expected = roles.includes(role);
@@ -253,9 +257,9 @@ const MARK = `FULL-${Date.now()}`;
   const { data: an } = await db.from("announcements").select("id").ilike("content", `%${MARK}%`).limit(1);
   check("W03", "Thong bao PH -> DB", (an?.length ?? 0) === 1, "");
 
-  // W04: Cham diem thi dua - doc period tu DB (khong tinh tu Date)
-  const { data: anyEmu } = await db.from("emulation_scores").select("period").limit(1);
-  const period = anyEmu?.[0]?.period ?? "2026-T9";
+  // W04: Cham diem thi dua - form luu vao currentPeriodVN() (thang hien tai VN)
+  const vnNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
+  const period = `${vnNow.getFullYear()}-T${vnNow.getMonth() + 1}`;
   await p.goto(`${BASE}/emulation/scoring`);
   await settle(p, 1500);
   // chon gia tri chua ton tai trong ky de assert deterministic

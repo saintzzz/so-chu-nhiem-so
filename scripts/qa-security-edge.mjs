@@ -83,6 +83,36 @@ await asUser("gvbm@demo.scn", async (c) => {
   check("S13", "devin-callback token sai -> 4xx", r3 && r3.status >= 400 && r3.status < 500, `status=${r3?.status}`);
 }
 
+// S23: tai khoan per-truong (gv*.test) - tenant isolation thuc te.
+// Moi truong co ~100 account gvcn/gvbm/to_truong/bgh - gan nhat voi
+// kich ban demo gate (truong tu dung account cua minh, khong share).
+{
+  const { data: schools } = await admin.from("schools").select("id,name");
+  const { data: cls } = await admin.from("classes").select("id,school_id").limit(100);
+  for (const sch of schools ?? []) {
+    const { data: prof } = await admin.from("profiles").select("email")
+      .eq("school_id", sch.id).in("role", ["gvcn", "gvbm"]).like("email", "%.test").limit(1);
+    const email = (prof ?? [])[0]?.email;
+    if (!email) { check(`S23-${sch.name.slice(0, 12)}`, "co account .test", false, "no account"); continue; }
+    await asUser(email, async (c) => {
+      const { data: stus } = await c.from("students").select("id,classes!inner(school_id)").limit(500);
+      const foreign = (stus ?? []).filter((s) => s.classes?.school_id !== sch.id).length;
+      const { count: schoolStu } = await admin.from("students").select("id", { count: "exact", head: true })
+        .in("class_id", (cls ?? []).filter((x) => x.school_id === sch.id).map((x) => x.id));
+      const hasData = (schoolStu ?? 0) > 0;
+      check(`S23-${sch.name.slice(0, 14)}`, `${email} chi thay HS truong minh`,
+        foreign === 0 && (!hasData || (stus ?? []).length > 0),
+        `rows=${(stus ?? []).length} foreign=${foreign}${hasData ? "" : " (truong chua co HS)"}`);
+      // truy cap hoc sinh lop truong khac -> 0
+      const foreignCls = (cls ?? []).find((x) => x.school_id !== sch.id);
+      if (foreignCls) {
+        const { data: leak } = await c.from("students").select("id").eq("class_id", foreignCls.id).limit(10);
+        check(`S24-${sch.name.slice(0, 14)}`, "query HS lop truong khac -> 0", (leak ?? []).length === 0, `leak=${(leak ?? []).length}`);
+      }
+    });
+  }
+}
+
 // ================= EDGE / ABNORMAL (browser) =================
 const browser = await chromium.launch();
 const ctx = await browser.newContext();
@@ -214,15 +244,19 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 {
   await ctx.clearCookies();
   await login("gvcn@demo.scn");
-  await page.waitForTimeout(3000);
+  // doi session set xong (roi /login) roi moi vao dashboard - tranh race cookie
+  await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" }).catch(() => {});
+  await page.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
   // dang xuat qua nut that (icon-only, aria-label) - that bai thi FAIL, khong fallback
   const logoutBtn = page.locator('button[aria-label="Đăng xuất"]').first();
-  check("E11a", "nut dang xuat ton tai", (await logoutBtn.count()) > 0, "");
+  await logoutBtn.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+  check("E11a", "nut dang xuat ton tai", (await logoutBtn.count()) > 0, `url=${page.url()}`);
   if ((await logoutBtn.count()) > 0) await logoutBtn.click();
-  await page.waitForTimeout(1500);
+  await page.waitForURL((u) => u.pathname.includes("/login"), { timeout: 15000 }).catch(() => {});
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
-  check("E11", "sau logout /dashboard -> /login", page.url().includes("/login"), "");
+  check("E11", "sau logout /dashboard -> /login", page.url().includes("/login"), page.url());
 }
 
 // ============ API ROLE MATRIX: role sai -> 401/403 ============
@@ -331,8 +365,9 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     const hasDoc = !!(j?.doc || j?.pending);
     check("S18", "gvbm POST DC-01/generate -> 200 + doc", !!r?.ok() && hasDoc, `status=${r?.status()} usedFallback=${j?.usedFallback ?? ""} pending=${j?.pending ?? false}`);
     await new Promise((res) => setTimeout(res, 1500));
-    const { data: gens } = await admin.from("tvc_generations").select("id,tool_code,input").order("id", { ascending: false }).limit(5);
-    const mine = (gens ?? []).find((g) => g.tool_code === "DC-01" && !(before.data ?? []).find((b) => b.id === g.id));
+    const { data: gens } = await admin.from("tvc_generations").select("id,tool_code,input")
+      .eq("tool_code", "DC-01").order("created_at", { ascending: false }).limit(5);
+    const mine = (gens ?? []).find((g) => !(before.data ?? []).find((b) => b.id === g.id));
     check("S19", "tvc_generations co row moi (DC-01)", !!mine, `rows=${(gens ?? []).length}`);
     // cleanup generation test
     if (mine) await admin.from("tvc_generations").delete().eq("id", mine.id);

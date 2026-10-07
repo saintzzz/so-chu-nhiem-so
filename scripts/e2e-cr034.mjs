@@ -68,9 +68,10 @@ try {
   await page.fill('input[type="email"]', gvEmail);
   await page.fill('label:has-text("Mật khẩu") input', "demo1234");
   await page.click('button:has-text("Tạo tài khoản")');
-  await page.waitForSelector('text=Đã tạo tài khoản', { timeout: 30000 });
+  const created = await page.waitForSelector('text=Đã tạo tài khoản', { timeout: 30000 }).then(() => true).catch(() => false);
+  await page.reload({ waitUntil: "networkidle" }).catch(() => {});
   const t2 = await page.textContent("body");
-  ok("admin creates GV", t2.includes(gvEmail));
+  ok("admin creates GV", created && t2.includes(gvEmail), `created=${created} inList=${t2.includes(gvEmail)}`);
 
   // 5b. GV moi login -> role home + truong moi co lap (0 HS truong khac)
   await ctx.clearCookies();

@@ -62,7 +62,7 @@ function note(s, txt, y = 6.9) {
   s.addText("Giai đoạn T10/2026 - T01/2027 - VieSchool / Sổ Chủ Nhiệm Số + TVC360 - đội phát triển 3.3 FTE", {
     x: 0.8, y: 3.15, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 15, color: "5eead4",
   });
-  s.addText("2 phương án phân chia chi phí cho giai đoạn build & pilot - trình TVC",
+  s.addText("2 phương án phân chia chi phí cho giai đoạn build & pilot - gate demo trường 15/10/2026 - trình TVC",
     { x: 0.8, y: 3.8, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 13, color: "94a3b8" });
   s.addText("Đã triển khai từ 04/09/2026 - chi phí giai đoạn trước T10 do bên phát triển tự gánh, không tính trong đề xuất này",
     { x: 0.8, y: 4.35, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 11.5, italic: true, color: "64748b" });
@@ -81,7 +81,7 @@ function note(s, txt, y = 6.9) {
     ["TỔNG NHÂN SỰ", "", "3.3 FTE", "", "129 000 000"],
   ], { boldLast: true });
   bullets(s, [
-    { t: "Deliverables T10-T01: hoàn thiện ecosystem (SCN + Studio + Portal), pilot 3-5 trường thật, bank nội dung theo YCCĐ, quy trình duyệt 2 lớp, báo cáo DPIA/bảo mật.", y: 5.1 },
+    { t: "Deliverables T10-T01: gate 15/10 bản demo core functions đẩy về trường → hoàn thiện ecosystem (SCN + Studio + Portal), pilot 3-5 trường thật, bank nội dung theo YCCĐ, quy trình duyệt 2 lớp, báo cáo DPIA/bảo mật.", y: 5.1 },
   ], { y: 5.1, fontSize: 12.5 });
 }
 
@@ -90,13 +90,14 @@ function note(s, txt, y = 6.9) {
   const s = p.addSlide();
   slideTitle(s, "KẾ HOẠCH NHÂN LỰC", "Resource planning theo milestone - ai làm gì, tháng nào");
   table(s, [
-    ["Nhân sự", "T10 - M1", "T11 - M2", "T12 - M3", "T01 - M4"],
-    ["Bình - Fullstack 100%", "Hoàn thiện core modules + admin/phân quyền", "Bank câu hỏi + export DOCX + duyệt 2 lớp", "Pilot prep: data thật, HDSD, checklist", "Pilot trường thật + hardening"],
-    ["Phiên - Backend 100%", "Schema/RLS, RBAC audit", "ACL chi tiết + API duyệt + audit log", "Migration dữ liệu trường + backup", "Monitoring + hotfix pilot"],
-    ["Lan - QA 100%", "Test plan + E2E core flows", "E2E bank/duyệt + data coverage", "UAT cùng trường pilot + checklist", "Regression + báo cáo chất lượng"],
-    ["PM / BA - 30%", "Backlog + requirement", "Review gate CR + rủi ro", "Đào tạo GV + tài liệu", "Báo cáo chuyên gia + handover"],
+    ["Nhân sự", "T10 - M1 (gate demo 15/10)", "T11 - M2", "T12 - M3", "T01 - M4"],
+    ["Bình - Fullstack 100%", "Hardening core → demo 15/10, sau đó fix feedback + admin/phân quyền", "Bank câu hỏi + export DOCX + duyệt 2 lớp", "Pilot prep: data thật, HDSD, checklist", "Pilot trường thật + hardening"],
+    ["Phiên - Backend 100%", "Môi trường demo ổn định + tài khoản trường + Schema/RLS", "ACL chi tiết + API duyệt + audit log", "Migration dữ liệu trường + backup", "Monitoring + hotfix pilot"],
+    ["Lan - QA 100%", "Test core demo flows trước 15/10 + regression sau feedback", "E2E bank/duyệt + data coverage", "UAT cùng trường pilot + checklist", "Regression + báo cáo chất lượng"],
+    ["PM / BA - 30%", "Đóng băng scope demo + checklist vận hành trường", "Review gate CR + rủi ro", "Đào tạo GV + tài liệu", "Báo cáo chuyên gia + handover"],
   ], { rowH: 0.78 });
   bullets(s, [
+    { t: "Gate 15/10/2026 (yêu cầu TVC): bản demo core functions đẩy về trường - scope demo đóng băng trước đó, feedback sau demo triage vào backlog từ T11", c: C.red },
     { t: "Phía TVC: hội đồng chuyên môn duyệt 80 YCCĐ còn lại + pipeline 3-5 trường pilot - deliverable 2 chiều gắn cùng milestone", c: C.accent },
     { t: "AI API ramp cao nhất T11 (gen bank câu hỏi) - đã tính trong buffer ~4M/tháng" },
     { t: "Không tuyển thêm trong giai đoạn này - đánh giá scale-out sau pilot nếu >5 trường cùng lúc" },
@@ -144,7 +145,7 @@ function note(s, txt, y = 6.9) {
     { t: "Bên phát triển gánh 50% còn lại (~272M) - đóng góp dạng sweat equity, không hoàn lại cho TVC", b: 1 },
     { t: "Best practice: cost-sharing 50% trong build phase khi đối tác sales giữ 70% doanh thu - mỗi bên cùng có 'skin in the game'", c: C.accent },
     { t: "Giải ngân theo milestone hàng tháng (M1-M4) gắn deliverables rõ ràng - TVC có quyền kiểm soát tiến độ:", },
-    { sub: ["M1 (T10): core modules hoàn thiện + admin/phân quyền | M2 (T11): bank câu hỏi + export + duyệt 2 lớp", "M3 (T12): pilot prep (data, hướng dẫn, checklist) | M4 (T01/27): pilot trường thật + báo cáo chuyên gia"] },
+    { sub: ["Gate 15/10: bản demo core functions đẩy về trường | M1 (T10): hoàn thiện + fix feedback demo", "M2 (T11): bank câu hỏi + export + duyệt 2 lớp | M3 (T12): pilot prep (data, hướng dẫn, checklist)", "M4 (T01/27): pilot trường thật + báo cáo chuyên gia"] },
     { t: "Rev share 70-30 giữ nguyên - phần 50% của TVC là co-investment, KHÔNG khấu trừ vào doanh thu sau này", c: C.accent },
   ]);
   note(s, "Ưu điểm: TVC chỉ bỏ ~272M cho 4 tháng - thấp hơn nhiều so với thuê dev shop; đổi lại commitment + kiểm soát milestone.");
@@ -192,6 +193,7 @@ function note(s, txt, y = 6.9) {
     { t: "Báo cáo doanh thu hàng tháng + audit rights; chi phí infra trừ khỏi gross trước khi chia" },
     { t: "Milestone/deliverables 2 chiều: dev giao sản phẩm ↔ TVC giao pipeline trường (commitment sale đi đôi 70%)" },
     { t: "Phần build 04/09 - 30/09 đã hoàn thành là contribution của bên phát triển - không đưa vào cost-share, không khấu trừ" },
+    { t: "Phạm vi 'core functions' cho bản demo 15/10 chốt bằng văn bản trước gate - feedback trường sau demo đi vào backlog chung, không tính thay đổi scope cam kết" },
   ]);
 }
 
@@ -207,7 +209,7 @@ function note(s, txt, y = 6.9) {
     ["PA2 - Nuôi quân", "TVC ứng 100% (~545M/4th), khấu trừ từ 30% khi doanh thu đủ"],
     ["Rev share", "Giữ nguyên 70-30 từ khách paid đầu tiên, 24 tháng"],
     ["Equity", "10% vesting từ ngày ký, ghi văn bản"],
-    ["Milestone", "Giải ngân theo M1-M4 = T10 / T11 / T12 / T01 gắn deliverables"],
+    ["Milestone", "Gate demo trường 15/10; giải ngân M1-M4 = T10 / T11 / T12 / T01 gắn deliverables"],
   ]);
   note(s, "Bản chất: TVC mua năng lực team 3.3 FTE với giá ~136M/tháng - rẻ hơn 40-60% so với thuê ngoài cùng scope, và được giữ 70% upside.");
 }

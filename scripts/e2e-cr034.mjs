@@ -88,7 +88,7 @@ try {
   ok("gvcn denied /dept/schools", !t4.includes("Tạo trường mới"));
 
   // 8. gvcn roster renders (parent-grant UI reachable)
-  await page.goto(`${BASE}/register`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}/register/roster`, { waitUntil: "networkidle" });
   const t5 = await page.textContent("body");
   ok("gvcn roster render", /học sinh|danh sách|Liên kết/i.test(t5));
 

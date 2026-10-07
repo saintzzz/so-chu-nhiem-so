@@ -57,9 +57,11 @@ export function ConductEvaluationEditor({
     Object.fromEntries(
       students.map((s) => {
         const ev = evaluations.find((e) => e.student_id === s.id);
+        // Round-3: HS chua danh gia = "" (khong phai "tot") - tranh viec
+        // Save upsert mac dinh "Tot" cho ca lop khi GVCN chi vao doc.
         return [
           s.id,
-          { rating: ev?.rating ?? "tot", comment: ev?.comment ?? "" },
+          { rating: ev?.rating ?? "", comment: ev?.comment ?? "" },
         ];
       }),
     ),
@@ -78,7 +80,7 @@ export function ConductEvaluationEditor({
         const c = comments[s.code];
         if (c) {
           next[s.id] = {
-            ...(next[s.id] ?? { rating: "tot", comment: "" }),
+            ...(next[s.id] ?? { rating: "", comment: "" }),
             comment: c,
           };
         }
@@ -144,7 +146,7 @@ export function ConductEvaluationEditor({
         s.national_id ?? s.code,
         s.full_name,
         s.dob ?? "",
-        RATING_LABEL[draft[s.id]?.rating ?? "tot"],
+        RATING_LABEL[draft[s.id]?.rating ?? ""] ?? "",
         draft[s.id]?.comment ?? "",
       ]),
     );
@@ -226,7 +228,7 @@ export function ConductEvaluationEditor({
         matched += 1;
         const rating = LABEL_TO_RATING[(r[ratingCol] ?? "").trim().toLowerCase()];
         next[id] = {
-          rating: rating ?? next[id]?.rating ?? "tot",
+          rating: rating ?? next[id]?.rating ?? "",
           comment:
             commentCol >= 0
               ? (r[commentCol] ?? "").trim()
@@ -246,27 +248,48 @@ export function ConductEvaluationEditor({
     setSaved(false);
     setDraft((prev) => ({
       ...prev,
-      [id]: { ...(prev[id] ?? { rating: "tot", comment: "" }), ...part },
+      [id]: { ...(prev[id] ?? { rating: "", comment: "" }), ...part },
     }));
   }
 
   function save() {
     setSaved(false);
     setError(null);
+    setImportMsg(null);
     startTransition(async () => {
       const supabase = createClient();
-      const rows = students.map((s) => {
+      // Chi ghi HS ma GVCN DA CHON xep loai hop le (row cu luon hop le vi
+      // draft khoi tao tu ev.rating). rating "" = chua danh gia -> bo qua,
+      // khong bao gio upsert "tot" cho HS chua cham.
+      const rows = students.flatMap((s) => {
         const ev = evaluations.find((e) => e.student_id === s.id);
-        const d = draft[s.id] ?? { rating: "tot", comment: "" };
-        return {
-          id: ev?.id ?? crypto.randomUUID(),
-          student_id: s.id,
-          term,
-          rating: d.rating,
-          comment: d.comment.trim() || null,
-          evaluated_by: meId,
-        };
+        const d = draft[s.id] ?? { rating: "", comment: "" };
+        if (!RATINGS.some((r) => r.value === d.rating)) return [];
+        return [
+          {
+            id: ev?.id ?? crypto.randomUUID(),
+            student_id: s.id,
+            term,
+            rating: d.rating,
+            comment: d.comment.trim() || null,
+            evaluated_by: meId,
+          },
+        ];
       });
+      if (!rows.length) {
+        setError("Chưa chọn xếp loại cho học sinh nào.");
+        return;
+      }
+      // HS co nhan xet nhung chua chon xep loai se bi bo qua - canh bao de
+      // GVCN khong nghi nham da luu.
+      const commentOnly = students.filter((s) => {
+        const d = draft[s.id];
+        return (
+          d &&
+          !RATINGS.some((r) => r.value === d.rating) &&
+          d.comment.trim()
+        );
+      }).length;
       const { error: err } = await supabase
         .from("conduct_evaluations")
         .upsert(rows);
@@ -279,6 +302,11 @@ export function ConductEvaluationEditor({
         entity: "conduct_evaluations",
         payload: { term, students: rows.length },
       });
+      if (commentOnly > 0) {
+        setImportMsg(
+          `Đã lưu ${rows.length} học sinh - bỏ qua ${commentOnly} em có nhận xét nhưng chưa chọn xếp loại.`,
+        );
+      }
       setSaved(true);
       router.refresh();
     });
@@ -305,7 +333,7 @@ export function ConductEvaluationEditor({
           students: list.map((s) => ({
             code: s.code,
             name: s.full_name,
-            rating: draft[s.id]?.rating ?? "tot",
+            rating: draft[s.id]?.rating || "tot",
           })),
         }),
       });
@@ -388,7 +416,7 @@ export function ConductEvaluationEditor({
         footer={<span>{students.length} học sinh</span>}
       >
       {students.map((s) => {
-        const d = draft[s.id] ?? { rating: "tot", comment: "" };
+        const d = draft[s.id] ?? { rating: "", comment: "" };
         return (
           <tr key={s.id}>
             <td className="font-mono text-xs text-muted-foreground">
@@ -399,8 +427,13 @@ export function ConductEvaluationEditor({
               <select
                 value={d.rating}
                 onChange={(e) => patch(s.id, { rating: e.target.value })}
-                className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring"
+                className={`h-8 rounded-lg border px-2 text-sm outline-none focus:border-ring ${
+                  d.rating
+                    ? "border-border bg-background"
+                    : "border-warning/50 bg-warning-bg/30 text-muted-foreground"
+                }`}
               >
+                <option value="">- Chưa đánh giá -</option>
                 {RATINGS.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}

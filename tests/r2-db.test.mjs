@@ -271,6 +271,31 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
     assert.match(out, /ok/);
   });
 
+  // ---------- Round-3: assignSubstitute tren request approved ----------
+  await t.test("bghA phan cong GV cho request approved con trong: OK", () => {
+    // Trigger bat decided_by = nguoi thuc hien tren row approved -> action
+    // phai stamp lai decided_by/decided_at.
+    asUser(ID.bghA,
+      `update substitute_requests
+       set substitute_teacher_id='${ID.subA}', decided_by='${ID.bghA}', decided_at=now()
+       where id='a0000000-0000-0000-0000-000000000006'
+         and status='approved' and substitute_teacher_id is null`);
+    const out = psql(
+      `select substitute_teacher_id from substitute_requests where id='a0000000-0000-0000-0000-000000000006'`).trim();
+    assert.equal(out, ID.subA);
+  });
+
+  await t.test("phan cong lai request da co GV: 0 row (guard is null)", () => {
+    asUser(ID.bghA,
+      `update substitute_requests
+       set substitute_teacher_id='${ID.tA}', decided_by='${ID.bghA}', decided_at=now()
+       where id='a0000000-0000-0000-0000-000000000006'
+         and status='approved' and substitute_teacher_id is null`);
+    const out = psql(
+      `select substitute_teacher_id from substitute_requests where id='a0000000-0000-0000-0000-000000000006'`).trim();
+    assert.equal(out, ID.subA, "GV da phan cong khong duoc bi ghi de");
+  });
+
   // ---------- R2-10: PHT campus NULL fail-closed ----------
   await t.test("PHT campus NULL: my_school_class_ids rong", () => {
     const out = asUser(ID.pht0, "select count(*) from my_school_class_ids()");

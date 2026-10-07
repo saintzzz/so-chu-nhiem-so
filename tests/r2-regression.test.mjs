@@ -171,6 +171,63 @@ test("R2-02: server actions kiem quan he nguoi nhan truoc khi insert", () => {
   assert.match(portal, /STAFF_ROLES/, "replyToTeacher phai kiem nhan vien truong");
 });
 
+// --- Round-3 F1: assignSubstitute cho request approved con trong -----------
+test("R3-01: assignSubstitute co guard + bat zero-row + notify", () => {
+  const act = read("src/app/(app)/school/substitutes/actions.ts");
+  assert.match(act, /export async function assignSubstitute/);
+  assert.match(act, /checkActionRole\(\["bgh", "pht"\]\)/);
+  const body = act.match(/assignSubstitute[\s\S]*?revalidatePath/);
+  assert.ok(body, "thieu than assignSubstitute");
+  assert.match(body[0], /\.eq\("status", "approved"\)[\s\S]*?\.is\("substitute_teacher_id", null\)/,
+    "phai guard chi gan vao request approved con trong");
+  assert.match(body[0], /\.select\("id"\)/);
+  assert.match(body[0], /updated\?\.length !== 1/, "phai bat zero-row");
+  // Trigger prod bat decided_by=auth.uid() tren row approved
+  assert.match(body[0], /decided_by: profile\.id/);
+  assert.match(body[0], /notifications/);
+  // R3-re-review: chi gan profile co role GV (gvcn/gvbm/to_truong), khong gan
+  // ke toan/nhan vien khac lam GV day thay.
+  assert.match(body[0], /TEACHER_LINK_ROLES\.has/,
+    "assignSubstitute phai kiem role GV truoc khi gan");
+  // UI: approved + chua co GV hien control phan cong
+  const board = read("src/components/school/substitute-board.tsx");
+  assert.match(board, /r\.status === "approved" && !r\.substitute_teacher_id/);
+  assert.match(board, /assignSubstitute/);
+});
+
+// --- Round-3 F2: notification link theo role nguoi nhan --------------------
+test("R3-02: substitute notification link GV -> period-log, approver -> queue", () => {
+  const act = read("src/app/(app)/school/substitutes/actions.ts");
+  assert.match(act, /subNotificationLink/);
+  const fn = act.match(/function subNotificationLink[\s\S]*?\n\}/);
+  assert.ok(fn);
+  assert.match(fn[0], /schedule\/period-log\?date=/,
+    "GV phai duoc link toi so dau bai dung ngay");
+  assert.match(fn[0], /\/school\/substitutes/,
+    "role khac giu link trang dieu dong");
+  // Khong con hardcode link cho moi recipient
+  const inserts = act.match(/link: "/g);
+  assert.ok(!inserts, "con hardcode link: \"/school/substitutes\" trong insert");
+});
+
+// --- Round-3 F3: conduct evaluation khong ghi "tot" ngam -------------------
+test("R3-03: evaluation editor khong default tot, chi ghi rating da chon", () => {
+  const ed = read("src/components/conduct/evaluation-editor.tsx");
+  // Draft init blank, khong con ?? "tot" cho HS chua danh gia
+  assert.match(ed, /rating: ev\?\.rating \?\? ""/);
+  assert.ok(!/draft\[s\.id\] \?\? \{ rating: "tot"/.test(ed),
+    "con fallback rating tot trong save/render");
+  // Option trong cho trang thai chua danh gia
+  assert.match(ed, /option value=""/);
+  assert.match(ed, /Chưa đánh giá/);
+  // Save chi upsert row co rating hop le - guard trong flatMap
+  const save = ed.match(/function save\(\)[\s\S]*?router\.refresh\(\);[\s\S]*?\}\s*\}/);
+  assert.ok(save, "khong tim thay ham save");
+  assert.match(save[0], /!RATINGS\.some\(\(r\) => r\.value === d\.rating\)\) return \[\]/,
+    "save van upsert ca HS chua chon xep loai");
+  assert.match(save[0], /Chưa chọn xếp loại/, "can loi khi khong co gi de luu");
+});
+
 // --- R2-05/R2-09: conditional update bat zero-row --------------------------
 test("R2-05/R2-09: duyet substitute/activity kiem 1 row bi anh huong", () => {
   const sub = read("src/app/(app)/school/substitutes/actions.ts");

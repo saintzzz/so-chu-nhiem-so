@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { formatDateOnly, isoDateVN, PERIODS } from "@/lib/utils";
 import {
+  assignSubstitute,
   createSubstituteRequest,
   decideSubstituteRequest,
 } from "@/app/(app)/school/substitutes/actions";
@@ -187,6 +188,26 @@ export function SubstituteBoard({
       );
       if (r.error) setErr(r.error);
       else setMsg(approve ? "Đã duyệt điều động." : "Đã từ chối.");
+    });
+  }
+
+  // Request da duyet nhung chua phan cong GV - BGH/PHT gan GV sau qua
+  // assignSubstitute (update co guard: status='approved' + substitute null).
+  function assign(id: string) {
+    const teacherId = assignPick[id];
+    if (!teacherId) {
+      setErr("Chọn giáo viên dạy thay trước khi phân công.");
+      return;
+    }
+    start(async () => {
+      setErr(null);
+      setMsg(null);
+      const r = await assignSubstitute(id, teacherId);
+      if (r.error) setErr(r.error);
+      else {
+        setMsg("Đã phân công giáo viên dạy thay.");
+        setAssignPick((p) => ({ ...p, [id]: "" }));
+      }
     });
   }
 
@@ -405,6 +426,39 @@ export function SubstituteBoard({
                       className="rounded-md p-1.5 text-error hover:bg-error-bg disabled:opacity-40"
                     >
                       <X className="size-4" />
+                    </button>
+                  </span>
+                )}
+                {/* Da duyet nhung chua co GV thay: van cho phan cong lai qua
+                    assignSubstitute - dong dead-end "duyet, phan cong sau". */}
+                {r.status === "approved" && !r.substitute_teacher_id && (
+                  <span className="flex items-center gap-1">
+                    <select
+                      value={assignPick[r.id] ?? ""}
+                      onChange={(e) =>
+                        setAssignPick((p) => ({
+                          ...p,
+                          [r.id]: e.target.value,
+                        }))
+                      }
+                      className="h-7 max-w-36 rounded-md border border-border bg-background px-1.5 text-xs"
+                      title="Phân công GV dạy thay"
+                    >
+                      <option value="">- Chọn GV thay -</option>
+                      {candidatesFor(r).map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => assign(r.id)}
+                      disabled={pending || !assignPick[r.id]}
+                      title="Phân công GV đã chọn"
+                      className="rounded-md px-2 py-1 text-xs font-medium text-success hover:bg-success-bg disabled:opacity-40"
+                    >
+                      Phân công
                     </button>
                   </span>
                 )}

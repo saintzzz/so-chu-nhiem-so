@@ -13,7 +13,8 @@ export default async function SchoolStudentsPage({
 }: {
   searchParams: Promise<{ class?: string }>;
 }) {
-  const profile = await requireRoles(["bgh", "pht"]);
+  // CR-016/ROLE-MATRIX: pht khong tiep can ho so chi tiet HS
+  const profile = await requireRoles(["bgh", "admin"]);
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
   const sp = await searchParams;

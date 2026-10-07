@@ -24,6 +24,9 @@ const { olderMessagesPredicate, mergeChatMessages, STAFF_CHAT_ROLES } =
 const { messageLinkForRole, teacherChatLinkForRole } = await import(
   join(ROOT, "src/lib/message-link.ts")
 );
+const { monthParts, prevMonthOf } = await import(
+  join(ROOT, "src/lib/utils.ts")
+);
 
 const MIGRATION = read("supabase/migrations/20261105_r2_security_fixes.sql");
 
@@ -1867,4 +1870,163 @@ test("R11-03: export route kiem error/truncated moi nguon + tra 422", () => {
   const guardIdx = route.lastIndexOf("sourceFailed");
   assert.ok(csvIdx > 0 && guardIdx < csvIdx,
     "phan hoi CSV phai sau tat ca guard loi");
+});
+
+// --- R12-01: seating save/restore nguyen tu qua RPC -----------------------
+test("R12-01: seating-grid save() goi rpc scn_save_seating, bo 2-statement", () => {
+  const src = read("src/components/register/seating-grid.tsx");
+  const body = src.match(/async function save\(\)[\s\S]*?setSaving\(false\);\n  \}/);
+  assert.ok(body, "khong tim thay than save()");
+  assert.match(body[0], /\.rpc\(\s*"scn_save_seating"/,
+    "phai goi RPC 1 lan thay vi update+insert rieng le");
+  for (const p of ["p_class", "p_month", "p_layout"]) {
+    assert.ok(body[0].includes(p), `rpc thieu tham so ${p}`);
+  }
+  assert.ok(!/\.from\("seating_charts"\)/.test(body[0]),
+    "con update/insert truc tiep seating_charts tren client");
+  // Loi rpc: console.error chi tiet + nhan co dinh, KHONG doi local state
+  // (setVersion chi trong nhanh success).
+  assert.match(body[0], /console\.error\(/);
+  assert.match(body[0],
+    /if \(error\) \{[\s\S]*?setMessage\([\s\S]*?\}\s*else \{/,
+    "loi rpc phai bao ra UI va khong roi vao nhanh setVersion");
+  assert.match(body[0], /Không thể lưu sơ đồ/);
+  assert.match(body[0], /setVersion\(v\)/,
+    "version hien thi phai lay tu gia tri DB tra ve");
+});
+
+test("R12-01: seating-history restore() goi rpc scn_restore_seating", () => {
+  const src = read("src/components/register/seating-history-client.tsx");
+  const body = src.match(/async function restore[\s\S]*?setBusy\(false\);\n  \}/);
+  assert.ok(body, "khong tim thay than restore()");
+  assert.match(body[0], /\.rpc\("scn_restore_seating"/);
+  assert.match(body[0], /p_chart: chart\.id/);
+  assert.ok(!/\.from\("seating_charts"\)/.test(src),
+    "con update truc tiep seating_charts tren client");
+  assert.match(body[0], /console\.error\(/);
+  assert.match(body[0],
+    /if \(error\) \{[\s\S]*?setMessage\([\s\S]*?\}\s*else \{/,
+    "loi rpc phai bao ra UI va khong doi local charts state");
+  assert.match(body[0], /Không thể khôi phục phiên bản này/);
+});
+
+test("R12-01: migration scn_save_seating + scn_restore_seating invoker atomic", () => {
+  const mig = read("supabase/migrations/20261110_r12_seating_atomic.sql");
+  const save = mig.match(
+    /create or replace function public\.scn_save_seating\(p_class uuid, p_month text, p_layout jsonb\)[\s\S]*?\$function\$;/);
+  assert.ok(save, "thieu function scn_save_seating");
+  assert.ok(!/security definer/i.test(save[0]),
+    "scn_save_seating phai SECURITY INVOKER (mac dinh) de RLS ap dung");
+  assert.match(save[0],
+    /update seating_charts\s+set is_current = false\s+where class_id = p_class and month = v_month/,
+    "phai tat current cu trong cung transaction");
+  assert.match(save[0], /coalesce\(max\(version\), 0\) \+ 1/,
+    "version phai tinh phia DB (max+1), khong tin client");
+  assert.match(save[0],
+    /insert into seating_charts \(class_id, month, version, layout, is_current\)/);
+  assert.match(save[0], /is_current\) <> 1/,
+    "postcondition phai bat dung 1 ban ghi current");
+  assert.match(save[0], /p_month::date/,
+    "month la cot date - phai cast p_month");
+  const rst = mig.match(
+    /create or replace function public\.scn_restore_seating\(p_chart uuid\)[\s\S]*?\$function\$;/);
+  assert.ok(rst, "thieu function scn_restore_seating");
+  assert.ok(!/security definer/i.test(rst[0]),
+    "scn_restore_seating phai SECURITY INVOKER de RLS ap dung");
+  assert.match(rst[0],
+    /select class_id, month into v_class, v_month[\s\S]*?where id = p_chart/,
+    "phai scope update theo class/month cua chinh ban ghi");
+  const updates = rst[0].match(/\bupdate\s+seating_charts\b/gi) ?? [];
+  assert.equal(updates.length, 2,
+    "restore phai gom tat-current + bat-lai trong cung function");
+  assert.ok((rst[0].match(/if not found then/g) ?? []).length >= 2,
+    "can raise khi chart khong ton tai / update bi RLS loc ve 0 row");
+  assert.match(rst[0], /is_current\) <> 1/,
+    "postcondition phai bat dung 1 ban ghi current");
+  assert.match(mig,
+    /grant execute on function public\.scn_save_seating\(uuid, text, jsonb\) to authenticated/);
+  assert.match(mig,
+    /grant execute on function public\.scn_restore_seating\(uuid\) to authenticated/);
+});
+
+// --- R12-02: thang/ky danh gia tai thoi diem goi, khong dong bang ---------
+test("R12-02: prevMonthOf/monthParts tinh dung bien nam Dec->Jan", () => {
+  // Bien nam: thang 1 phai ve thang 12 cua nam truoc.
+  assert.equal(prevMonthOf("2026-01-15"), "2025-12",
+    "thang 1 phai ve thang 12 nam truoc - bien Dec->Jan");
+  assert.equal(prevMonthOf("2026-12-31"), "2026-11");
+  assert.equal(prevMonthOf("2026-03-01"), "2026-02");
+  assert.deepEqual(monthParts("2026-03-05"), { year: 2026, month: 3 });
+});
+
+test("R12-02: types.ts khong con hang module-level dong bang thang", () => {
+  const types = read("src/components/register/types.ts");
+  assert.ok(!/export const (CURRENT_MONTH|PREV_MONTH|CURRENT_PERIOD)\b/.test(types),
+    "con hang CURRENT_MONTH/PREV_MONTH/CURRENT_PERIOD - dong bang luc import");
+  assert.ok(!/^const \w+ = todayVN\(\)/m.test(types),
+    "con goi todayVN() o module scope - ket qua van bi dong bang");
+  for (const fn of ["currentMonthVN", "prevMonthVN", "currentPeriodVN"]) {
+    assert.match(types, new RegExp(`export function ${fn}\\(\\)`),
+      `thieu function ${fn}`);
+  }
+  // Function phai danh gia tai thoi diem goi, khong cache.
+  assert.match(types, /export function prevMonthVN\(\)[\s\S]*?prevMonthOf\(todayVN\(\)\)/,
+    "prevMonthVN phai goi todayVN() ben trong function body");
+});
+
+test("R12-02: moi caller dung dang function, danh gia tai diem ghi", () => {
+  // Quet toan src/: khong con import/dung hang so dong bang cu.
+  const files = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile() && /\.(ts|tsx)$/.test(e.name)) files.push(p);
+    }
+  };
+  walk(join(ROOT, "src"));
+  const hits = [];
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    if (/\b(CURRENT_MONTH|PREV_MONTH|CURRENT_PERIOD)\b/.test(src)) {
+      hits.push(f.replace(`${ROOT}/`, ""));
+    }
+  }
+  assert.deepEqual(hits, [],
+    `con file dung hang module-level dong bang thang: ${hits.join(", ")}`);
+  // Khong co goi ham thang/ky o module scope (const o cot 0 = top-level).
+  const modScope = [];
+  for (const f of files) {
+    const src = readFileSync(f, "utf8");
+    if (/^const \w+ = (todayVN|currentMonthVN|prevMonthVN|currentPeriodVN)\(\)/m
+      .test(src)) {
+      modScope.push(f.replace(`${ROOT}/`, ""));
+    }
+  }
+  assert.deepEqual(modScope, [],
+    `con goi ham thoi gian o module scope: ${modScope.join(", ")}`);
+
+  // Write paths phai tinh ky TAI THOI DIEM bam nut (trong handler).
+  const signoff = read("src/components/register/signoff-client.tsx");
+  const batch = signoff.match(/async function createBatch[\s\S]*?setBusy\(false\);\n  \}/);
+  assert.ok(batch, "khong tim thay createBatch");
+  assert.match(batch[0], /const period = currentMonthVN\(\)/,
+    "ky phai tinh trong handler tai thoi diem submit, khong phai hang prop");
+  assert.match(batch[0], /period: "so_chu_nhiem"|period,/,
+    "insert van phai ghi period vua tinh");
+  const lock = read("src/components/register/lock-records-client.tsx");
+  const lbatch = lock.match(/async function createBatch[\s\S]*?setBusy\(false\);\n  \}/);
+  assert.ok(lbatch, "khong tim thay createBatch cua lock-records");
+  assert.match(lbatch[0], /const period = currentPeriodVN\(\)/,
+    "ky so hoc ba phai tinh trong handler tai thoi diem submit");
+  // Default hien thi useState: lazy initializer (danh gia 1 lan khi mount).
+  const kpi = read("src/components/register/kpi-client.tsx");
+  assert.match(kpi, /useState\(\(\) => currentPeriodVN\(\)\)/,
+    "default ky KPI phai la lazy initializer, khong phai hang module");
+  // Server components: danh gia theo request.
+  const seat = read("src/app/(app)/register/seating/page.tsx");
+  assert.match(seat, /currentMonthVN\(\)/);
+  assert.match(seat, /prevMonthVN\(\)/);
+  const exp = read("src/app/(app)/register/export/page.tsx");
+  assert.match(exp, /defaultPeriod=\{currentMonthVN\(\)\}/);
 });

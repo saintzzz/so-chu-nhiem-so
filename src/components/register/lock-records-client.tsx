@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
-import { CURRENT_PERIOD, type Signoff } from "./types";
+import { currentPeriodVN, type Signoff } from "./types";
 import { logAudit } from "@/lib/audit";
 
 const STATUS_META: Record<
@@ -135,17 +135,20 @@ export function LockRecordsClient({
   async function createBatch() {
     setBusy(true);
     setMessage(null);
+    // R12-02: ky tinh tai thoi diem bam nut - hang module-level se dong
+    // bang sai qua ranh gioi thang trong session dai.
+    const period = currentPeriodVN();
     const existing = new Set(signoffs.map((s) => `${s.class_id}|${s.period}`));
     const rows = classes
       .map((c) => ({
         class_id: c.id,
-        period: CURRENT_PERIOD,
+        period,
         type: "so_hoc_ba" as const,
         status: "pending" as const,
       }))
       .filter((r) => !existing.has(`${r.class_id}|${r.period}`));
     if (rows.length === 0) {
-      setMessage(`Đợt duyệt kỳ "${CURRENT_PERIOD}" đã tồn tại cho tất cả lớp.`);
+      setMessage(`Đợt duyệt kỳ "${period}" đã tồn tại cho tất cả lớp.`);
       setBusy(false);
       return;
     }
@@ -155,11 +158,11 @@ export function LockRecordsClient({
       .select();
     if (!error && data) {
       setSignoffs((ss) => [...ss, ...(data as Signoff[])]);
-      setMessage(`Đã tạo đợt duyệt "${CURRENT_PERIOD}" cho ${rows.length} lớp.`);
+      setMessage(`Đã tạo đợt duyệt "${period}" cho ${rows.length} lớp.`);
       logAudit(supabase, {
         action: "Tạo đợt duyệt sổ học bạ",
         entity: "register_signoffs",
-        payload: { period: CURRENT_PERIOD, classes: rows.length },
+        payload: { period, classes: rows.length },
       });
     } else {
       setMessage("Không thể tạo đợt duyệt.");

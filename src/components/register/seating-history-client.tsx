@@ -10,10 +10,8 @@ import { StatusBadge } from "@/components/status-badge";
 import type { SeatingChart } from "@/types";
 
 export function SeatingHistoryClient({
-  classId,
   charts: initialCharts,
 }: {
-  classId: string;
   charts: SeatingChart[];
 }) {
   const supabase = createClient();
@@ -24,16 +22,15 @@ export function SeatingHistoryClient({
   async function restore(chart: SeatingChart) {
     setBusy(true);
     setMessage(null);
-    await supabase
-      .from("seating_charts")
-      .update({ is_current: false })
-      .eq("class_id", classId)
-      .eq("month", chart.month);
-    const { error } = await supabase
-      .from("seating_charts")
-      .update({ is_current: true })
-      .eq("id", chart.id);
+    // R12-01: lat current ve phien ban cu trong 1 transaction phia DB
+    // (rpc scn_restore_seating, SECURITY INVOKER). Loi thi bao ra UI va
+    // KHONG doi local state - truoc day UPDATE-all-false roi UPDATE-one-
+    // true tren 2 statement, loi giua chung de lai thang khong co current.
+    const { error } = await supabase.rpc("scn_restore_seating", {
+      p_chart: chart.id,
+    });
     if (error) {
+      console.error("[seating] restore:", error.message);
       setMessage("Không thể khôi phục phiên bản này.");
     } else {
       setCharts((cs) =>

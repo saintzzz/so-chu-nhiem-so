@@ -41,6 +41,18 @@ export function currentSchoolYearVN(): string {
   return m >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
 }
 
+// {year, month} tach tu chuoi ISO "YYYY-MM-DD" - helper thuan, test truc
+// tiep duoc (khong phu thuoc dong ho he thong).
+export function monthParts(isoDate: string): { year: number; month: number } {
+  return { year: Number(isoDate.slice(0, 4)), month: Number(isoDate.slice(5, 7)) };
+}
+
+// "YYYY-MM" cua thang truoc chua `isoDate` (bien nam Dec->Jan tinh dung).
+export function prevMonthOf(isoDate: string): string {
+  const { year, month } = monthParts(isoDate);
+  return new Date(Date.UTC(year, month - 2, 1)).toISOString().slice(0, 7);
+}
+
 // First and last calendar day of the current month in Vietnam timezone.
 export function currentMonthRangeVN(): { start: string; end: string } {
   const p = vnParts(new Date());

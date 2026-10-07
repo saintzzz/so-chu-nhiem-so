@@ -65,13 +65,22 @@ export const EVENT_CATEGORIES: Record<string, string> = {
   khac: "Khác",
 };
 
-import { todayVN } from "@/lib/utils";
+import { prevMonthOf, todayVN } from "@/lib/utils";
 
-// "YYYY-MM" tháng hiện tại theo giờ VN; PREV_MONTH = tháng trước.
-const _today = todayVN();
-export const CURRENT_MONTH = _today.slice(0, 7);
-const _prev = new Date(
-  Date.UTC(Number(_today.slice(0, 4)), Number(_today.slice(5, 7)) - 2, 1),
-);
-export const PREV_MONTH = _prev.toISOString().slice(0, 7);
-export const CURRENT_PERIOD = `Tháng ${Number(_today.slice(5, 7))}/${_today.slice(0, 4)}`;
+// R12-02: thang/ky danh gia TAI THOI DIEM GOI - hang module-level bi dong
+// bang luc import, sai qua ranh gioi thang trong session dai.
+/** "YYYY-MM" tháng hiện tại theo giờ VN. */
+export function currentMonthVN(): string {
+  return todayVN().slice(0, 7);
+}
+
+/** "YYYY-MM" tháng trước theo giờ VN. */
+export function prevMonthVN(): string {
+  return prevMonthOf(todayVN());
+}
+
+/** "Tháng M/YYYY" kỳ hiện tại (nhãn sổ học bạ) theo giờ VN. */
+export function currentPeriodVN(): string {
+  const t = todayVN();
+  return `Tháng ${Number(t.slice(5, 7))}/${t.slice(0, 4)}`;
+}

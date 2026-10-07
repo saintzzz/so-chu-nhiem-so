@@ -34,6 +34,10 @@ const MIGRATION_R11 = readFileSync(
   join(ROOT, "supabase/migrations/20261109_r11_atomic_writes.sql"),
   "utf8",
 );
+const MIGRATION_R12 = readFileSync(
+  join(ROOT, "supabase/migrations/20261110_r12_seating_atomic.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -55,6 +59,8 @@ const ID = {
   ttA3: "80000000-0000-0000-0000-00000000000c", // subjA2, period 3 - request exact-subject
   msg1: "90000000-0000-0000-0000-000000000001",
   incA: "b0000000-0000-0000-0000-000000000001", // incident lop A (R11)
+  seatV1: "c0000000-0000-0000-0000-000000000001", // so do lop A v1 current (R12)
+  seatV2: "c0000000-0000-0000-0000-000000000002", // so do lop A v2 cu (R12)
 };
 
 const dockerAvailable = (() => {
@@ -115,6 +121,7 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   psql(MIGRATION_R7);
   psql(MIGRATION_R8);
   psql(MIGRATION_R11);
+  psql(MIGRATION_R12);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -548,6 +555,111 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
     } finally {
       psql(`alter table class_roles drop constraint z_r11_test_fail`);
     }
+  });
+
+  // ---------- R12-01: scn_save_seating / scn_restore_seating atomic -----
+  await t.test("scn_save_seating: tao version moi la current duy nhat", () => {
+    // Fixture: v1 current thang 2026-10. Save -> v3 (max+1) current, v1/v2
+    // mat current - truoc day insert loi de lai thang khong co current.
+    const v = asUser(ID.tA,
+      `select scn_save_seating('${ID.classA}','2026-10-01','{"cols":8,"rows":5,"seats":[]}'::jsonb)`).trim();
+    assert.equal(v, "3", "version moi phai la max(version)+1 tinh phia DB");
+    const cur = psql(
+      `select version from seating_charts
+        where class_id='${ID.classA}' and month='2026-10-01' and is_current`).trim();
+    assert.equal(cur, "3", "ban ghi moi phai la current duy nhat");
+    assert.equal(
+      psql(`select is_current from seating_charts where id='${ID.seatV1}'`).trim(),
+      "f", "phien ban cu phai mat current");
+  });
+
+  await t.test("scn_restore_seating: lat current ve phien ban cu nguyen tu", () => {
+    asUser(ID.tA, `select scn_restore_seating('${ID.seatV1}')`);
+    const rows = psql(
+      `select version || '|' || is_current from seating_charts
+        where class_id='${ID.classA}' and month='2026-10-01' order by version`)
+      .trim().split("\n");
+    const map = Object.fromEntries(rows.map((r) => r.split("|")));
+    assert.equal(map["1"], "true", "v1 phai la current sau restore");
+    assert.equal(map["2"], "false", "v2 khong duoc con current");
+    assert.equal(map["3"], "false", "v3 khong duoc con current - chi 1 current");
+  });
+
+  await t.test("scn_save_seating: caller truong khac bi chan + current giu nguyen", () => {
+    // INVOKER: UPDATE loc ve 0 row (RLS), INSERT vi pham WITH CHECK -> loi
+    // + rollback - khong silent nhu chuoi statement cu.
+    denied(ID.tB,
+      `select scn_save_seating('${ID.classA}','2026-10-01','{"cols":8,"rows":5,"seats":[]}'::jsonb)`,
+      "gvcn truong B van luu duoc so do lop truong A - WITH CHECK?");
+    const cur = psql(
+      `select version from seating_charts
+        where class_id='${ID.classA}' and month='2026-10-01' and is_current`).trim();
+    assert.equal(cur, "1",
+      "current bi doi boi caller khong du quyen - khong atomic");
+    const n = psql(
+      `select count(*) from seating_charts
+        where class_id='${ID.classA}' and month='2026-10-01'`).trim();
+    assert.equal(n, "3", "insert bi chan nhung van tao row moi");
+  });
+
+  await t.test("scn_restore_seating: caller truong khac bi chan ro rang (RLS)", () => {
+    denied(ID.tB,
+      `select scn_restore_seating('${ID.seatV2}')`,
+      "gvcn truong B khoi phuc duoc so do lop truong A");
+    const cur = psql(
+      `select version from seating_charts
+        where class_id='${ID.classA}' and month='2026-10-01' and is_current`).trim();
+    assert.equal(cur, "1", "current bi doi boi caller khong du quyen");
+  });
+
+  await t.test("scn_restore_seating: chart khong ton tai -> loi, khong silent", () => {
+    denied(ID.tA,
+      `select scn_restore_seating('00000000-0000-0000-0000-000000000099')`,
+      "id khong ton tai van tra thanh cong");
+  });
+
+  await t.test("scn_save_seating: insert loi SAU deactivate -> rollback giu current cu", () => {
+    // Lead R12: UPDATE deactivate phai THUC SU chay truoc khi insert fail
+    // de chung minh rollback. Constraint test-only ep row insert co
+    // layout->>'fail' bi tu choi (fixture, khong ton tai trong migration).
+    psql(`alter table seating_charts add constraint z_r12_test_fail
+          check (layout->>'fail' is null)`);
+    try {
+      denied(ID.tA,
+        `select scn_save_seating('${ID.classA}','2026-10-01','{"fail":true}'::jsonb)`,
+        "insert loi van tra thanh cong");
+      const cur = psql(
+        `select version from seating_charts
+          where class_id='${ID.classA}' and month='2026-10-01' and is_current`).trim();
+      assert.equal(cur, "1",
+        "insert fail nhung deactivate da commit - mat current, khong atomic");
+    } finally {
+      psql(`alter table seating_charts drop constraint z_r12_test_fail`);
+    }
+  });
+
+  await t.test("scn_save_seating: 2 session song song cho thang moi -> 1 current", async () => {
+    // Lead R12: khi chua co row nao, UPDATE deactivate khong khoa gi -> 2 txn
+    // song song co the tao 2 version-1 current. Advisory lock phai serialize.
+    const psqlAsync = promisify(execFile);
+    const run = () =>
+      psqlAsync("docker", [
+        "exec", "-i", NAME,
+        "psql", "-U", "postgres", "-d", "postgres",
+        "-v", "ON_ERROR_STOP=1", "-qAt", "-c",
+        `set role appuser; set app.uid='${ID.tA}'; ` +
+          `select scn_save_seating('${ID.classA}','2026-11-01','{"cols":8,"rows":5,"seats":[]}'::jsonb)`,
+      ], { encoding: "utf8" });
+    const results = await Promise.allSettled([run(), run()]);
+    const ok = results.filter((r) => r.status === "fulfilled");
+    assert.equal(ok.length, 2, "ca 2 save hop le phai thanh cong (serialize)");
+    const versions = ok.map((r) => r.value.stdout.trim()).sort();
+    assert.deepEqual(versions, ["1", "2"],
+      "advisory lock phai serialize - 2 version rieng, khong phai 2x v1");
+    const curCount = psql(
+      `select count(*) from seating_charts
+        where class_id='${ID.classA}' and month='2026-11-01' and is_current`).trim();
+    assert.equal(curCount, "1", "phai con dung 1 current sau 2 save song song");
   });
 
   // ---------- R2-10: PHT campus NULL fail-closed ----------

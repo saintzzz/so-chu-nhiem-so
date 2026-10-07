@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { logAudit } from "@/lib/audit";
-import { CURRENT_PERIOD, type Kpi } from "./types";
+import { currentPeriodVN, type Kpi } from "./types";
 
 const KPI_LABELS: Record<string, string> = {
   chuyen_can: "Chuyên cần (%)",
@@ -37,7 +37,9 @@ export function KpiClient({
 }) {
   const supabase = createClient();
   const [kpis, setKpis] = useState<Kpi[]>(initialKpis);
-  const [period, setPeriod] = useState(CURRENT_PERIOD);
+  // Default hien thi khoi tao 1 lan (useState initializer) - gia tri thuc
+  // ghi khi user submit doc tu `period` state, khong phai hang module.
+  const [period, setPeriod] = useState(() => currentPeriodVN());
   const [chuyenCan, setChuyenCan] = useState("98");
   const [tyLeKha, setTyLeKha] = useState("60");
   const [viPham, setViPham] = useState("0");

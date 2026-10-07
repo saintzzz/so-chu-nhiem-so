@@ -5,7 +5,7 @@ import {
   EmptyClassNotice,
   getAccessibleClasses,
 } from "@/components/register/server-utils";
-import { CURRENT_MONTH } from "@/components/register/types";
+import { currentMonthVN } from "@/components/register/types";
 
 export default async function ExportPage() {
   const profile = await requireRoles(["gvcn"]);
@@ -26,7 +26,7 @@ export default async function ExportPage() {
       ) : (
         <ExportClient
           classes={classes.map((c) => ({ id: c.id, name: c.name }))}
-          defaultPeriod={CURRENT_MONTH}
+          defaultPeriod={currentMonthVN()}
         />
       )}
     </>

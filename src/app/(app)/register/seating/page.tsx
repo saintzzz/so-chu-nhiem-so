@@ -8,7 +8,7 @@ import {
   getAccessibleClasses,
   pickClass,
 } from "@/components/register/server-utils";
-import { CURRENT_MONTH, PREV_MONTH } from "@/components/register/types";
+import { currentMonthVN, prevMonthVN } from "@/components/register/types";
 import type { SeatingChart, Student } from "@/types";
 
 export default async function SeatingPage({
@@ -35,8 +35,11 @@ export default async function SeatingPage({
     );
   }
 
-  const currentMonth = `${CURRENT_MONTH}-01`;
-  const prevMonth = `${PREV_MONTH}-01`;
+  // R12-02: danh gia thang tai thoi diem request - hang module-level se
+  // dong bang sai qua ranh gioi thang.
+  const curMonth = currentMonthVN();
+  const currentMonth = `${curMonth}-01`;
+  const prevMonth = `${prevMonthVN()}-01`;
 
   const [{ data: chartsData }, { data: studentsData }] = await Promise.all([
     supabase
@@ -89,7 +92,7 @@ export default async function SeatingPage({
       <PageHeader
         section="Sổ chủ nhiệm"
         title="Sơ đồ lớp"
-        description={`Lớp ${cls.name} · Tháng ${CURRENT_MONTH.slice(5)}/${CURRENT_MONTH.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
+        description={`Lớp ${cls.name} · Tháng ${curMonth.slice(5)}/${curMonth.slice(0, 4)} · Kéo thả để đổi chỗ ngồi`}
       />
       <ClassChips
         classes={classes}

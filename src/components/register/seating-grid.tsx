@@ -302,29 +302,30 @@ export function SeatingGrid({
       y: Math.floor(i / cols),
       student_id,
     }));
-    const nextVersion = version + 1;
-    await supabase
-      .from("seating_charts")
-      .update({ is_current: false })
-      .eq("class_id", classId)
-      .eq("month", month);
-    const { error } = await supabase.from("seating_charts").insert({
-      class_id: classId,
-      month,
-      version: nextVersion,
-      layout: { cols, rows, seats },
-      is_current: true,
-    });
+    // R12-01: tat current cu + insert phien ban moi trong 1 transaction
+    // phia DB (rpc scn_save_seating, SECURITY INVOKER). Version do DB tinh
+    // (max+1). Loi thi bao ra UI va KHONG doi local state - truoc day 2
+    // statement rieng, insert loi de lai thang khong co ban ghi current.
+    const { data: savedVersion, error } = await supabase.rpc(
+      "scn_save_seating",
+      {
+        p_class: classId,
+        p_month: month,
+        p_layout: { cols, rows, seats },
+      },
+    );
     if (error) {
+      console.error("[seating] save:", error.message);
       setMessage("Không thể lưu sơ đồ. Vui lòng thử lại.");
     } else {
-      setVersion(nextVersion);
-      setMessage(`Đã lưu sơ đồ phiên bản v${nextVersion}.`);
+      const v = typeof savedVersion === "number" ? savedVersion : version + 1;
+      setVersion(v);
+      setMessage(`Đã lưu sơ đồ phiên bản v${v}.`);
       logAudit(supabase, {
         action: "Lưu sơ đồ chỗ ngồi",
         entity: "seating_charts",
         entityId: classId,
-        payload: { month, version: nextVersion, seats: seats.length },
+        payload: { month, version: v, seats: seats.length },
       });
     }
     setSaving(false);

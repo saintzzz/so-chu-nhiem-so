@@ -1,7 +1,8 @@
 -- Fixture: schema toi thieu mo phong production de chay
 -- supabase/migrations/20261105_r2_security_fixes.sql +
 -- 20261107_r7_substitute_role.sql + 20261108_r8_nlpc_atomic.sql +
--- 20261109_r11_atomic_writes.sql tren Postgres thuong (khong co Supabase).
+-- 20261109_r11_atomic_writes.sql + 20261110_r12_seating_atomic.sql tren
+-- Postgres thuong (khong co Supabase).
 -- auth.uid() doc GUC app.uid; set role appuser de RLS co hieu luc
 -- (owner/superuser bypass RLS).
 create schema if not exists auth;
@@ -128,6 +129,23 @@ create table class_roles(
   unique (student_id, role)
 );
 
+-- R12-01: seating_charts (so do cho ngoi). month la cot date luu ngay dau
+-- thang ("2026-10-01") - khop prod (QA-REPORT: query month=eq.2026-09 loi
+-- 400 vi cot date). Cot toi thieu can cho RPC + policies.
+create table seating_charts(
+  id uuid primary key default gen_random_uuid(),
+  class_id uuid references classes(id),
+  month date,
+  version int not null,
+  layout jsonb,
+  is_current boolean default false,
+  created_at timestamptz default now(),
+  -- Khop prod: unique (class_id, month, version) + toi da 1 current.
+  unique (class_id, month, version)
+);
+create unique index seating_charts_one_current
+  on seating_charts (class_id, month) where is_current;
+
 -- Stub cac helper da co tren production (migration chi replace mot so).
 create or replace function public.my_role() returns text
 language sql stable security definer set search_path = 'public'
@@ -221,6 +239,7 @@ alter table competency_evaluations enable row level security;
 alter table nlpc_comments enable row level security;
 alter table incidents enable row level security;
 alter table class_roles enable row level security;
+alter table seating_charts enable row level security;
 
 create policy msg_own on messages for select
   using (sender_id = auth.uid() or recipient_id = auth.uid());
@@ -309,6 +328,24 @@ create policy cr2_del on class_roles for delete
   using ((my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
     or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin');
 
+-- Prod: seat_staff_read mo phong mo hinh via-class cua 20260920
+-- (scn_class_in_school - staff cung truong doc duoc; repo khong chua file
+-- tao policy select nay, prod co san). seat_ins/upd/del verbatim tu
+-- 20260925_cr016_role_scope.sql.
+create policy seat_staff_read on seating_charts for select
+  using (is_staff() and (scn_is_dept() or scn_class_in_school(class_id)));
+create policy seat_ins on seating_charts for insert
+  with check ((my_role()='gvcn' and scn_is_my_homeroom_class(class_id))
+    or (my_role()='bgh' and scn_class_in_school(class_id)) or my_role()='admin');
+create policy seat_upd on seating_charts for update
+  using ((my_role()='gvcn' and scn_is_my_homeroom_class(class_id))
+    or (my_role()='bgh' and scn_class_in_school(class_id)) or my_role()='admin')
+  with check ((my_role()='gvcn' and scn_is_my_homeroom_class(class_id))
+    or (my_role()='bgh' and scn_class_in_school(class_id)) or my_role()='admin');
+create policy seat_del on seating_charts for delete
+  using ((my_role()='gvcn' and scn_is_my_homeroom_class(class_id))
+    or (my_role()='bgh' and scn_class_in_school(class_id)) or my_role()='admin');
+
 create role appuser nologin;
 -- Role authenticated ton tai tren Supabase prod - migration grant execute vao
 -- role nay; fixture can no de chay migration verbatim.
@@ -371,3 +408,8 @@ insert into incidents(id, class_id, student_id, type, severity, status, descript
   ('b0000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-00000000000a','60000000-0000-0000-0000-00000000000a','fighting','medium','new','Mo ta ban dau','20000000-0000-0000-0000-000000000001',now());
 insert into class_roles(student_id, role) values
   ('60000000-0000-0000-0000-00000000000a','lop_truong');
+-- R12: 2 phien ban so do lop A thang 2026-10 - v1 dang current (test save
+-- tao v2 + restore lat lai); month la ngay dau thang nhu prod/seed.
+insert into seating_charts(id, class_id, month, version, layout, is_current) values
+  ('c0000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-00000000000a','2026-10-01',1,'{"cols":8,"rows":5,"seats":[]}'::jsonb,true),
+  ('c0000000-0000-0000-0000-000000000002','30000000-0000-0000-0000-00000000000a','2026-10-01',2,'{"cols":8,"rows":5,"seats":[{"x":0,"y":0,"student_id":"60000000-0000-0000-0000-00000000000a"}]}'::jsonb,false);

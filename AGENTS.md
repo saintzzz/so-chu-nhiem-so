@@ -73,7 +73,8 @@ scripts/            # Asset download scripts
 
 ## Mandatory SDLC (no bypass)
 
-- **All feature work runs the multi-agent-framework pipeline** (PM → BA → Designer → Tech Lead → Developer → Tester → Deployer). Direct implementation is forbidden; the only exceptions are trivial fixes changing no requirement (typo, lint, one-line bug) - those still need typecheck/lint/build.
+- **All feature work runs the multi-agent-framework pipeline** (PM → BA → Designer → Tech Lead → Developer → Tester → Deployer → External Review Loop). Direct implementation is forbidden; the only exceptions are trivial fixes changing no requirement (typo, lint, one-line bug) - those still need typecheck/lint/build.
+- **External Review Loop (mandatory):** after deploy, an independent whole-repo review (Codex Cloud primary) runs on source/structure/security/performance/UIUX; findings are triaged (fixed / not-confirmed+evidence / deferred+design) and the loop repeats until a clean round (max 3, then human adjudicates). Runbook: `PU_SDLC/EXTERNAL_REVIEW_LOOP.md`.
 - **Requirement changes are CRs.** Write `docs/project/CR-NNN-*.md` (scope + impact assessment + separate estimate), get user approval via Q&A, then re-enter the pipeline at the earliest affected phase. Cascade artifacts (PRD, ROLE-MATRIX, ARCHITECTURE, QA-REPORT).
 - If work happened outside the pipeline, stop and write the CR retroactively before continuing.
 - Active CRs: `docs/project/CR-001-ops-modules.md` (ops modules from school-management reference).

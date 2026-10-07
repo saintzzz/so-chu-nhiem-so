@@ -316,13 +316,25 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
     });
   });
 
-  // Bu chenh lech do lam tron vao cell cuoi de tong diem dung `total`.
-  const ptsSum = cells.reduce((a, c) => a + c.points, 0);
-  const diff = Math.round((total - ptsSum) * 100) / 100;
-  if (cells.length && Math.abs(diff) >= 0.25) {
-    const last = cells[cells.length - 1];
-    last.points = Math.round((last.points + diff) * 100) / 100;
-    spec[spec.length - 1].points = last.points;
+  // Bu chenh lech do lam tron: phan bo +-0.25 vao cac cell lon nhat truoc,
+  // khong de cell nao xuong duoi diem toi thieu cua 1 cau.
+  let diff = Math.round((total - cells.reduce((a, c) => a + c.points, 0)) * 100) / 100;
+  const order = cells
+    .map((c, i) => ({ i, pts: c.points }))
+    .sort((a, b) => b.pts - a.pts);
+  let guard = 1000;
+  while (Math.abs(diff) >= 0.25 && guard-- > 0) {
+    const step = diff > 0 ? 0.25 : -0.25;
+    // Uu tien cell con du diem toi thieu 1 cau; neu khong co (tong nho,
+    // cell deu thap) thi relax xuong floor 0.25 - van khong am.
+    const target =
+      order.find(({ i }) => cells[i].points + step >= unit[cells[i].qtype]) ??
+      order.find(({ i }) => cells[i].points + step >= 0.25);
+    if (!target) break;
+    const cell = cells[target.i];
+    cell.points = Math.round((cell.points + step) * 100) / 100;
+    spec[target.i].points = cell.points;
+    diff = Math.round((diff - step) * 100) / 100;
   }
 
   const totalCount = cells.reduce((a, c) => a + c.count, 0);

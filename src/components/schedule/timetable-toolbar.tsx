@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { PERIODS } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
@@ -66,7 +67,7 @@ export function TimetableToolbar({
     downloadXlsxTemplate(
       `mau-tkb-${selectedClass.name.toLowerCase()}.xlsx`,
       ["Tiết", ...WEEKDAYS.map((w) => `Thứ ${w}`)],
-      [1, 2, 3, 4, 5].map((p) => [
+      PERIODS.map((p) => [
         String(p),
         ...WEEKDAYS.map((w) => {
           const e = grid.get(`${w}-${p}`);

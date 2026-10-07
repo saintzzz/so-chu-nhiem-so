@@ -246,7 +246,8 @@ export default async function ParentPortalPage({
   }
   const subjectAverages = [...bySubject.entries()]
     .map(([subjectId, rows]) => {
-      const commentRow = rows.find((r) => r.result != null);
+      const resultHk1 = rows.find((r) => r.term === "hk1" && r.result != null)?.result ?? null;
+      const resultHk2 = rows.find((r) => r.term === "hk2" && r.result != null)?.result ?? null;
       const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
       const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
       return {
@@ -254,7 +255,9 @@ export default async function ParentPortalPage({
         hk1,
         hk2,
         avg: yearAverage(hk1, hk2),
-        result: commentRow?.result ?? null,
+        resultHk1,
+        resultHk2,
+        resultYear: resultHk2 ?? resultHk1,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
@@ -468,13 +471,12 @@ export default async function ParentPortalPage({
                 {subjectAverages.map((s) => (
                   <tr key={s.name}>
                     <td className="font-medium">{s.name}</td>
-                    {s.result != null ? (
-                      <td colSpan={3} className="font-semibold">
-                        {s.result === "dat" ? "Đạt" : "Chưa đạt"}
-                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                          (môn đánh giá bằng nhận xét)
-                        </span>
-                      </td>
+                    {s.resultHk1 != null || s.resultHk2 != null ? (
+                      <>
+                        <td>{s.resultHk1 === "dat" ? "Đạt" : s.resultHk1 === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                        <td>{s.resultHk2 === "dat" ? "Đạt" : s.resultHk2 === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                        <td className="font-semibold">{s.resultYear === "dat" ? "Đạt" : s.resultYear === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                      </>
                     ) : (
                       <>
                         <td>{s.hk1 != null ? s.hk1.toFixed(1) : "-"}</td>

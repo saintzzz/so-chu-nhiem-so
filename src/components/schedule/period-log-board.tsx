@@ -215,11 +215,22 @@ export function PeriodLogBoard({
         ]),
       ];
       if (affectedIds.length > 0) {
-        // Mọi tiết cùng lớp trong ngày -> log ids -> absences
+        // Tính lại điểm danh ngày từ TẤT CẢ tiết của lớp trong ngày - không
+        // chỉ các tiết của GV đang lưu, nếu không GV A lưu sẽ xóa vắng do
+        // GV B ghi ở tiết khác.
         const classId = entries.find((e) => e.id === entryId)?.class_id;
-        const entryIds = entries
-          .filter((e) => e.class_id === classId)
-          .map((e) => e.id);
+        const jsDay = new Date(`${date}T00:00:00`).getDay();
+        const weekday = jsDay === 0 ? null : jsDay + 1;
+        const { data: dayEntries } = weekday
+          ? await supabase
+              .from("timetable_entries")
+              .select("id")
+              .eq("class_id", classId ?? "")
+              .eq("weekday", weekday)
+          : { data: [] };
+        const entryIds = ((dayEntries ?? []) as { id: string }[]).map(
+          (e) => e.id,
+        );
         const { data: dayLogs } = await supabase
           .from("period_logs")
           .select("id")

@@ -3,10 +3,10 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
-import { cn } from "@/lib/utils";
+import { cn, PERIODS } from "@/lib/utils";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
-const PERIODS = [1, 2, 3, 4, 5] as const;
+
 
 interface ClassRow {
   id: string;

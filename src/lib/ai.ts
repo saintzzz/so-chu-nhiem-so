@@ -23,9 +23,19 @@ export function getAiConfig(): AiConfig | null {
  */
 export function getAiConfigs(): AiConfig[] {
   const forced = process.env.AI_PROVIDER as AiProvider | undefined;
+  // Allowlist processor duoc phep nhan du lieu truong (DPIA): chi provider
+  // nam trong AI_ALLOWED_PROVIDERS moi duoc goi, ke ca khi co key san.
+  // Mac dinh mo het de khong pha cau hinh hien tai.
+  const allowed = (process.env.AI_ALLOWED_PROVIDERS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const allowedSet = allowed.length ? new Set(allowed) : null;
   const model = process.env.AI_MODEL;
   const pick = (provider: AiProvider, key?: string): AiConfig | null =>
-    key ? { provider, key, model: model ?? DEFAULT_MODELS[provider] } : null;
+    key && (!allowedSet || allowedSet.has(provider))
+      ? { provider, key, model: model ?? DEFAULT_MODELS[provider] }
+      : null;
 
   if (forced) {
     const key =

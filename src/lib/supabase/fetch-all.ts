@@ -39,5 +39,9 @@ export async function fetchAllRows<T>(
     }
     if (done) return { rows, error: null, truncated: false };
   }
-  return { rows, error: null, truncated: rows.length >= maxRows };
+  const truncated = rows.length >= maxRows;
+  if (truncated) {
+    console.error(`[fetchAllRows] truncated at ${rows.length}/${maxRows} rows`);
+  }
+  return { rows, error: null, truncated };
 }

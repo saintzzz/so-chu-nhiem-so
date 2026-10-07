@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download, Printer } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { sanitizeSpreadsheetCell } from "@/lib/excel";
 import { DataTable } from "@/components/data-table";
 import type { Grade, Student, StudentGroup } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
@@ -161,9 +162,9 @@ export function ExportClient({
     });
     data.forEach((r) => {
       ws.addRow([
-        r.code,
-        r.name,
-        r.group,
+        sanitizeSpreadsheetCell(r.code),
+        sanitizeSpreadsheetCell(r.name),
+        sanitizeSpreadsheetCell(r.group),
         r.avgScore,
         r.attDetail.filter((a) => a.status === "present").length,
         r.excused,
@@ -183,7 +184,12 @@ export function ExportClient({
     ws2.getColumn(4).width = 18;
     for (const r of data) {
       for (const a of r.attDetail) {
-        ws2.addRow([r.code, r.name, a.date, STATUS_LABEL[a.status] ?? a.status]);
+        ws2.addRow([
+          sanitizeSpreadsheetCell(r.code),
+          sanitizeSpreadsheetCell(r.name),
+          a.date,
+          STATUS_LABEL[a.status] ?? a.status,
+        ]);
       }
     }
 

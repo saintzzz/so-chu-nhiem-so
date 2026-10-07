@@ -524,11 +524,10 @@ export async function POST(
       const result: Picked[] = [];
       for (const cell of cells) {
         const sameQtype = await pickFrom(cell, false);
+        const sqIds = new Set(sameQtype.map((x) => x.id));
         const t1 = sameQtype.filter((x) => x.level === cell.level);
         const t2 = sameQtype.filter((x) => x.level !== cell.level);
-        const t3 = (await pickFrom(cell, true)).filter(
-          (x) => !sameQtype.includes(x),
-        );
+        const t3 = (await pickFrom(cell, true)).filter((x) => !sqIds.has(x.id));
         const fresh = [...t1, ...t2, ...t3].filter(
           (x) => !excludeIds.has(x.id) && !excludeStems.has(stemKey(x.stem)),
         );
@@ -536,22 +535,27 @@ export async function POST(
           (x) => excludeIds.has(x.id) || excludeStems.has(stemKey(x.stem)),
         );
         const pool = [...fresh, ...rest];
-        for (let i = 0; i < cell.count; i++) {
-          const q = pool[i];
-          if (q) {
-            used.add(q.id);
-            usedStems.add(stemKey(q.stem));
-            result.push({
-              q,
-              cell,
-              review:
-                q.level !== cell.level ||
-                q.qtype !== cell.qtype ||
-                excludeIds.has(q.id),
-            });
-          } else {
-            result.push({ q: missingQ(cell, i), cell, review: true });
-          }
+        // Recheck used/stem at pick time - same question can appear in pools
+        // of different cells; never insert the same question twice.
+        let taken = 0;
+        for (const q of pool) {
+          if (taken >= cell.count) break;
+          if (used.has(q.id) || usedStems.has(stemKey(q.stem))) continue;
+          used.add(q.id);
+          usedStems.add(stemKey(q.stem));
+          taken++;
+          result.push({
+            q,
+            cell,
+            review:
+              q.level !== cell.level ||
+              q.qtype !== cell.qtype ||
+              excludeIds.has(q.id),
+          });
+        }
+        while (taken < cell.count) {
+          result.push({ q: missingQ(cell, taken), cell, review: true });
+          taken++;
         }
       }
       return result;
@@ -587,7 +591,7 @@ export async function POST(
     }
     const realCT = pickedCT.filter((p) => !p.q.id.startsWith("missing-"));
     if (realCT.length) {
-      await supabase.from("tvc_exam_questions").insert(
+      const { error: eqErr } = await supabase.from("tvc_exam_questions").insert(
         realCT.map((p, i) => ({
           exam_id: exam.id,
           question_id: p.q.id,
@@ -596,6 +600,15 @@ export async function POST(
           needs_review: p.review,
         })),
       );
+      if (eqErr) {
+        // Roll back the orphan exam row - a saved exam with no questions
+        // is a silent integrity failure.
+        await supabase.from("tvc_exams").delete().eq("id", exam.id);
+        return NextResponse.json(
+          { error: "Không lưu được câu hỏi của đề." },
+          { status: 500 },
+        );
+      }
     }
 
     const subjectName = subject?.name ?? matrix.subject_code ?? "-";
@@ -627,15 +640,20 @@ export async function POST(
         .select()
         .single();
       if (examDB && realDB.length) {
-        await supabase.from("tvc_exam_questions").insert(
-          realDB.map((p, i) => ({
-            exam_id: examDB.id,
-            question_id: p.q.id,
-            position: i + 1,
-            points: p.cell.points / Math.max(p.cell.count, 1),
-            needs_review: p.review,
-          })),
-        );
+        const { error: eqDbErr } = await supabase
+          .from("tvc_exam_questions")
+          .insert(
+            realDB.map((p, i) => ({
+              exam_id: examDB.id,
+              question_id: p.q.id,
+              position: i + 1,
+              points: p.cell.points / Math.max(p.cell.count, 1),
+              needs_review: p.review,
+            })),
+          );
+        if (eqDbErr) {
+          await supabase.from("tvc_exams").delete().eq("id", examDB.id);
+        }
       }
       docDB = buildExamDoc(
         pickedDB,

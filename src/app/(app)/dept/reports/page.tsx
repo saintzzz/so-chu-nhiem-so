@@ -66,8 +66,6 @@ export default async function DeptReportsPage() {
       )
     : { rows: [] as { id: string; class_id: string }[] };
   const students = studentRows;
-  const studentIds = students.map((s) => s.id);
-  const studentClass = new Map(students.map((s) => [s.id, s.class_id]));
   const classSchool = new Map(classes.map((c) => [c.id, c.school_id]));
 
   const { data: teacherRows } = await supabase
@@ -86,17 +84,23 @@ export default async function DeptReportsPage() {
     todayVN();
   const windowStart = addDays(anchor, -29);
 
-  const { rows: attRows } = studentIds.length
-    ? await fetchAllRows<{ student_id: string; status: string }>((f, t) =>
+  // Loc theo class_id cua hoc sinh qua embedded filter thay vi .in(student_id)
+  // voi hang nghin UUID - trainh URL PostgREST phinh to muc khong gui duoc.
+  const { rows: attRows, truncated: attTruncated } = classIds.length
+    ? await fetchAllRows<{
+        student_id: string;
+        status: string;
+        students: { class_id: string }[] | null;
+      }>((f, t) =>
         supabase
           .from("attendance_records")
-          .select("student_id,status")
+          .select("student_id,status,students!inner(class_id)")
           .gte("date", windowStart)
-          .in("student_id", studentIds)
+          .in("students.class_id", classIds)
           .order("id")
           .range(f, t),
       )
-    : { rows: [] as { student_id: string; status: string }[] };
+    : { rows: [] as { student_id: string; status: string; students: { class_id: string }[] | null }[], truncated: false };
 
   // Gom số liệu theo trường
   const per = new Map<
@@ -113,9 +117,10 @@ export default async function DeptReportsPage() {
   for (const t of (teacherRows ?? []) as { id: string; school_id: string }[]) {
     if (per.has(t.school_id)) per.get(t.school_id)!.teachers++;
   }
-  for (const a of (attRows ?? []) as { student_id: string; status: string }[]) {
-    const cid = studentClass.get(a.student_id);
-    const sid = cid ? classSchool.get(cid) : undefined;
+  for (const a of attRows) {
+    const sid = a.students?.[0]?.class_id
+      ? classSchool.get(a.students[0].class_id)
+      : undefined;
     if (!sid) continue;
     const row = per.get(sid)!;
     row.total++;
@@ -133,6 +138,11 @@ export default async function DeptReportsPage() {
         title="Báo cáo tổng hợp các trường"
         description={`Quy mô, nhân sự và chuyên cần 30 ngày gần nhất (đến ${anchor.split("-").reverse().join("/")}).`}
       />
+      {attTruncated && (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Dữ liệu chuyên cần vượt giới hạn xử lý - số liệu bên dưới có thể chưa đầy đủ.
+        </div>
+      )}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Trường" value={scopedSchools.length} />
         <StatCard label="Lớp" value={classes.length} />

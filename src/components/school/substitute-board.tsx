@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
-import { formatDateOnly, isoDateVN } from "@/lib/utils";
+import { formatDateOnly, isoDateVN, PERIODS } from "@/lib/utils";
 import {
   createSubstituteRequest,
   decideSubstituteRequest,
@@ -233,7 +233,7 @@ export function SubstituteBoard({
                 }}
                 className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring"
               >
-                {[1, 2, 3, 4, 5].map((p) => (
+                {PERIODS.map((p) => (
                   <option key={p} value={p}>
                     Tiết {p}
                   </option>

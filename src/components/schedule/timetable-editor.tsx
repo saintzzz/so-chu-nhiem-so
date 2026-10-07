@@ -7,10 +7,10 @@ import {
   saveTimetableEntry,
   deleteTimetableEntry,
 } from "@/app/(app)/school/actions";
-import { compareVietnameseName } from "@/lib/utils";
+import { compareVietnameseName, PERIODS } from "@/lib/utils";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
-const PERIODS = [1, 2, 3, 4, 5] as const;
+
 
 interface Entry {
   id: string;

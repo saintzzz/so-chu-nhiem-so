@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { compareVietnameseName } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { sanitizeSpreadsheetCell } from "@/lib/excel";
 
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -176,9 +177,9 @@ export function ClassReportExport({
     students.forEach((s, i) => {
       ws.addRow([
         String(i + 1),
-        className,
-        s.national_id ?? s.code,
-        s.full_name,
+        sanitizeSpreadsheetCell(className),
+        sanitizeSpreadsheetCell(s.national_id ?? s.code),
+        sanitizeSpreadsheetCell(s.full_name),
         s.dob ?? "",
         ...subjects.map((sub) => cellByKey.get(`${s.id}|${sub.id}`) ?? ""),
         CONDUCT_LABEL[conductByStudent.get(s.id) ?? ""] ?? "",

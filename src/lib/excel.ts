@@ -33,6 +33,22 @@ function splitCsvLine(line: string, delimiter: string): string[] {
   return out.map((s) => s.trim());
 }
 
+/**
+ * Chống formula injection khi xuat CSV/XLSX: Excel/Sheets thuc thi cac cell
+ * bat dau bang = + - @ (hoac tab/CR chen vao). Prefix ' buoc hien thi dang text.
+ */
+export function sanitizeSpreadsheetCell(value: unknown): string {
+  let s =
+    value === null || value === undefined
+      ? ""
+      : typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value);
+  s = s.replace(/[\r\n\t]/g, " ").trim();
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return s;
+}
+
 /** Accepts YYYY-MM-DD or DD/MM/YYYY, returns YYYY-MM-DD or null. */
 export function normalizeDate(d: string): string | null {
   const t = d.trim();

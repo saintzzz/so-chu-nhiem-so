@@ -160,3 +160,8 @@ export function sortByVietnameseName<T>(rows: T[], get: (r: T) => string): T[] {
 export function sanitizeOrTerm(q: string): string {
   return q.replace(/[,().\\"\']/g, " ").trim();
 }
+
+// So tiet hop le trong ngay (sang 1-5, chieu 6-10) - phai khop voi
+// validation o school/actions. Grid TKB phai render du range nay, neu
+// khong tiet chieu luu xong se "mat" tren UI.
+export const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;

@@ -16,6 +16,9 @@ export interface DevinSession {
 }
 
 export function devinEnabled(): boolean {
+  // Devin la processor thu 4 (DPIA) - AI_ALLOW_DEVIN_FALLBACK=false de tat
+  // kenh fallback nay du co DEVIN_API_KEY.
+  if (process.env.AI_ALLOW_DEVIN_FALLBACK === "false") return false;
   return Boolean(process.env.DEVIN_API_KEY);
 }
 
@@ -110,19 +113,24 @@ export async function fallbackToDevin(params: {
   if (!devinEnabled()) return null;
   const { supabase, kind, prompt, expectedShape, createdBy, req } = params;
 
+  // Token plaintext gui cho engine; DB chi luu sha256 - ai_jobs readable boi
+  // BGH/dept qua RLS nen luu plaintext la cho phep gia mao callback.
+  const { createHash, randomUUID } = await import("node:crypto");
+  const token = randomUUID();
+  const tokenHash = createHash("sha256").update(token).digest("hex");
   const { data: job } = await supabase
     .from("ai_jobs")
-    .insert({ kind, created_by: createdBy })
-    .select("id,callback_token")
+    .insert({ kind, created_by: createdBy, callback_token: tokenHash })
+    .select("id")
     .single();
-  const row = job as { id?: string; callback_token?: string } | null;
-  if (!row?.id || !row.callback_token) return null;
+  const row = job as { id?: string } | null;
+  if (!row?.id) return null;
 
   const session = await createDevinSession(
     buildDevinPrompt({
       originalPrompt: prompt,
       jobId: row.id,
-      callbackToken: row.callback_token,
+      callbackToken: token,
       expectedShape,
       callbackBase: devinCallbackBase(req),
     }),

@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { todayVN, sanitizeOrTerm } from "@/lib/utils";
+import { sanitizeSpreadsheetCell } from "@/lib/excel";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LIMIT = 5000;
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
   }
 
   const esc = (v: unknown) =>
-    `"${String(v == null ? "" : typeof v === "object" ? JSON.stringify(v) : v).replaceAll('"', '""')}"`;
+    `"${sanitizeSpreadsheetCell(v).replaceAll('"', '""')}"`;
   const csv =
     "\uFEFF" +
     [header.join(","), ...rows.map((r) => header.map((h) => esc(r[h])).join(","))].join("\n");

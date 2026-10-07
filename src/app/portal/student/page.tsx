@@ -6,7 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell, CalendarDays } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
-import { currentSchoolYearVN, fmtDateVN, todayVN } from "@/lib/utils";
+import { currentSchoolYearVN, fmtDateVN, todayVN, PERIODS } from "@/lib/utils";
 import type {
   Announcement,
   AttendanceRecord,
@@ -162,7 +162,7 @@ export default async function StudentPortalPage() {
     ]),
   );
   const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
-  const PERIODS = [1, 2, 3, 4, 5] as const;
+  
   const ttGrid = new Map(ttEntries.map((e) => [`${e.weekday}-${e.period}`, e]));
 
   const subjectNameOf = new Map(
@@ -184,7 +184,8 @@ export default async function StudentPortalPage() {
   }
   const subjectAverages = [...bySubject.entries()]
     .map(([subjectId, rows]) => {
-      const commentRow = rows.find((r) => r.result != null);
+      const resultHk1 = rows.find((r) => r.term === "hk1" && r.result != null)?.result ?? null;
+      const resultHk2 = rows.find((r) => r.term === "hk2" && r.result != null)?.result ?? null;
       const hk1 = semesterAverage(
         rows.filter((r) => r.term === "hk1"),
       );
@@ -196,7 +197,9 @@ export default async function StudentPortalPage() {
         hk1,
         hk2,
         avg: yearAverage(hk1, hk2),
-        result: commentRow?.result ?? null,
+        resultHk1,
+        resultHk2,
+        resultYear: resultHk2 ?? resultHk1,
         count: rows.length,
       };
     })
@@ -413,13 +416,12 @@ export default async function StudentPortalPage() {
                 {subjectAverages.map((s) => (
                   <tr key={s.name}>
                     <td className="font-medium">{s.name}</td>
-                    {s.result != null ? (
-                      <td colSpan={3} className="font-semibold">
-                        {s.result === "dat" ? "Đạt" : "Chưa đạt"}
-                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                          (môn đánh giá bằng nhận xét)
-                        </span>
-                      </td>
+                    {s.resultHk1 != null || s.resultHk2 != null ? (
+                      <>
+                        <td>{s.resultHk1 === "dat" ? "Đạt" : s.resultHk1 === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                        <td>{s.resultHk2 === "dat" ? "Đạt" : s.resultHk2 === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                        <td className="font-semibold">{s.resultYear === "dat" ? "Đạt" : s.resultYear === "chua_dat" ? "Chưa đạt" : "-"}</td>
+                      </>
                     ) : (
                       <>
                         <td>{s.hk1 != null ? s.hk1.toFixed(1) : "-"}</td>

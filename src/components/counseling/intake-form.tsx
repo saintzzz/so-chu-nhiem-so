@@ -63,7 +63,8 @@ export function CounselingIntakeForm({
         detected_by: meId,
       });
       if (err) {
-        setError(err.message);
+        console.error("[intake-form] create case:", err.message);
+        setError("Không tạo được ca tư vấn - vui lòng thử lại.");
         return;
       }
       setIssue("");

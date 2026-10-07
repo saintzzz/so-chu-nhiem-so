@@ -44,7 +44,8 @@ export function ReferralCard({
         .update(patch)
         .eq("id", caseId);
       if (err) {
-        setError(err.message);
+        console.error("[referral-card] update case:", err.message);
+        setError("Không cập nhật được thông tin chuyển tiếp - vui lòng thử lại.");
         return;
       }
       setSaved(true);

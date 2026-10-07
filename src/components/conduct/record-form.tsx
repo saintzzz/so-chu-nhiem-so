@@ -75,7 +75,8 @@ export function ConductRecordForm({
         recorded_by: meId,
       });
       if (err) {
-        setError(err.message);
+        console.error("[record-form] insert conduct_records:", err.message);
+        setError("Không lưu được ghi nhận - vui lòng thử lại.");
         return;
       }
       logAudit(supabase, {

@@ -871,7 +871,8 @@ export function GradesEditor({
         p_rows: rows,
       });
       if (saveErr) {
-        setError(saveErr.message);
+        console.error("[grades-editor] scn_save_grades:", saveErr.message);
+        setError("Không lưu được điểm - vui lòng thử lại.");
         return;
       }
       logAudit(supabase, {

@@ -203,7 +203,11 @@ export function DailyRoster({
     }
     setSaving(false);
     if (error) {
-      setFeedback({ ok: false, text: `Lưu thất bại: ${error.message}` });
+      console.error("[daily-roster] save attendance:", error.message);
+      setFeedback({
+        ok: false,
+        text: "Không lưu được chuyên cần - vui lòng thử lại.",
+      });
       return;
     }
     logAudit(supabase, {

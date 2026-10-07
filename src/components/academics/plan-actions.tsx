@@ -45,7 +45,8 @@ export function PlanActions({
         })
         .eq("id", planId);
       if (err) {
-        setError(err.message);
+        console.error("[plan-actions] update support_plans:", err.message);
+        setError("Không cập nhật được kế hoạch - vui lòng thử lại.");
         return;
       }
       router.refresh();

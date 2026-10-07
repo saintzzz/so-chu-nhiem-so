@@ -189,7 +189,8 @@ export function TimetableToolbar({
         .from("timetable_entries")
         .upsert(rows, { onConflict: "class_id,weekday,period" });
       if (err) {
-        setError(`Không thể lưu thời khóa biểu: ${err.message}`);
+        console.error("[timetable-toolbar] save:", err.message);
+        setError("Không thể lưu thời khóa biểu - vui lòng thử lại.");
       } else {
         setMessage(
           `Đã nhập ${rows.length} ô tiết (ghi đè ô trùng).` +

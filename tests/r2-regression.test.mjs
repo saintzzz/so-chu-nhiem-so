@@ -1288,3 +1288,259 @@ test("R8-03: leaves page fetchAllRows attendance + bo qua stats khi loi", () => 
     "nguon loi phai hien notice thay vi stats/table thieu");
   assert.ok(!/\.limit\(\d+\)/.test(src), "con .limit() cap ngam");
 });
+
+// --- R9-01: emulation_scores phan trang het, loi khong xuat ban ket qua -----
+test("R9-01: emulation 3 site dung fetchAllRows + bat error/truncated", () => {
+  for (const f of [
+    "src/app/(app)/emulation/ranking/page.tsx",
+    "src/app/(app)/emulation/scoring/page.tsx",
+    "src/app/api/ai/emulation-summary/route.ts",
+  ]) {
+    const src = read(f);
+    assert.match(src,
+      /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/,
+      `${f} chua import fetchAllRows`);
+    const q = src.match(/from\("emulation_scores"\)[\s\S]*?\.range\(f, t\)/);
+    assert.ok(q, `${f}: emulation_scores van query khong phan trang`);
+    assert.match(q[0], /\.order\("id"\)/,
+      `${f}: can order id on dinh cho range paging`);
+    assert.match(src, /scoresRes\.error \|\| scoresRes\.truncated/,
+      `${f}: error/truncated cua emulation_scores chua duoc bat`);
+  }
+  // Hai page: loi nguon -> notice co dinh, skip ranking/scoring output.
+  for (const f of [
+    "src/app/(app)/emulation/ranking/page.tsx",
+    "src/app/(app)/emulation/scoring/page.tsx",
+  ]) {
+    const src = read(f);
+    assert.match(src, /errors\.length > 0/, `${f} thieu nhanh notice`);
+    assert.match(src, /Không tải đủ dữ liệu/, `${f} thieu nhan loi co dinh`);
+  }
+  const rank = read("src/app/(app)/emulation/ranking/page.tsx");
+  const noticeIdx = rank.indexOf("Không tải đủ dữ liệu");
+  const tableIdx = rank.indexOf("<DataTable");
+  assert.ok(noticeIdx >= 0 && tableIdx > noticeIdx,
+    "notice phai nam truoc bang xep hang (skip output khi loi)");
+  const score = read("src/app/(app)/emulation/scoring/page.tsx");
+  const sNotice = score.indexOf("Không tải đủ dữ liệu");
+  const gridIdx = score.indexOf("<ScoringGrid");
+  assert.ok(sNotice >= 0 && gridIdx > sNotice,
+    "notice phai nam truoc ScoringGrid (skip output khi loi)");
+  // API route: tra 500 nhan co dinh, khong tom tat tren du lieu thieu.
+  const route = read("src/app/api/ai/emulation-summary/route.ts");
+  assert.match(route, /critErr \|\| clsErr \|\| scoresRes\.error/,
+    "route phai bat loi ca 3 nguon (criteria/classes/scores)");
+  assert.match(route, /Không tải đủ dữ liệu nguồn/);
+  assert.match(route, /status: 500/);
+  assert.ok(!/scoresRaw/.test(route), "route con bien scoresRaw khong phan trang");
+});
+
+// --- R9-02: attendance/history fetchAllRows, error/truncated -> notice ------
+test("R9-02: history page fetchAllRows, error/truncated hien notice", () => {
+  const src = read("src/app/(app)/attendance/history/page.tsx");
+  assert.match(src,
+    /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  assert.ok(!/fetchAllAttendance|for \(let from = 0; from < \d+/.test(src),
+    "con vong lap phan trang thu cong / cap ngam");
+  const q = src.match(/from\("attendance_records"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(q, "attendance_records van khong doc qua fetchAllRows");
+  assert.match(q[0], /\.order\("date", \{ ascending: false \}\)/,
+    "giu order date desc");
+  assert.match(q[0], /\.order\("id"\)/,
+    "can tie-break id cho range paging on dinh");
+  assert.match(q[0], /\.gte\("date", range\.from\)/, "giu from filter");
+  assert.match(q[0], /\.lte\("date", range\.to\)/, "giu to filter");
+  assert.match(src, /attRes\.error \|\| attRes\.truncated/,
+    "caller phai nhan error/truncated tu fetchAllRows");
+  assert.match(src, /dataError/, "thieu co loi dua vao render");
+  // Notice thay vi "Chua co du lieu chuyen can" khi nguon loi.
+  const noticeIdx = src.indexOf("Không tải đủ dữ liệu");
+  const statsIdx = src.indexOf("<StatCard");
+  assert.ok(noticeIdx >= 0 && statsIdx > noticeIdx,
+    "notice phai nam truoc stats/bang (skip output khi loi)");
+});
+
+// --- R9-03: client components khong dua raw .message vao UI state -----------
+// Pass thu 2 cua R7-04: quet call den UI-state setter (setError/setErr/
+// setMsg/setMessage/setMessages/setFeedback/setImportMsg/setNotice/flash/...)
+// ma argument chua property-access `.message` (ke ca trong template literal,
+// object literal, conditional, updater fn long nhau). Convention:
+// console.error(detail) + nhan VN co dinh len UI.
+const UI_ERROR_SETTER =
+  /^(flash|set\w*(err(or)?|msg|message|feedback|notice)\w*)$/i;
+// Ten field state mang loi (khong gom "message" - field do thuong la noi dung
+// chat hop le, khong phai echo loi).
+const UI_ERROR_FIELD = /^(err(or)?|msg|feedback|notice)$/i;
+
+function scanSourceForUiErrorEchoes(sourceText) {
+  const sf = ts.createSourceFile(
+    "scan.tsx", sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX,
+  );
+  const hits = [];
+  const hasMessageAccess = (node, depth = 0) => {
+    if (!node || depth > 60) return false;
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      node.name.text === "message"
+    ) {
+      return true;
+    }
+    let found = false;
+    ts.forEachChild(node, (n) => {
+      if (!found && hasMessageAccess(n, depth + 1)) found = true;
+    });
+    return found;
+  };
+  // Object-state: `{...s, error: e.message}` / updater `()=>({error: e.message})`.
+  const hasErrorFieldMessage = (node, depth = 0) => {
+    if (!node || depth > 60) return false;
+    if (
+      ts.isPropertyAssignment(node) &&
+      ts.isIdentifier(node.name) &&
+      UI_ERROR_FIELD.test(node.name.text) &&
+      hasMessageAccess(node.initializer)
+    ) {
+      return true;
+    }
+    let found = false;
+    ts.forEachChild(node, (n) => {
+      if (!found && hasErrorFieldMessage(n, depth + 1)) found = true;
+    });
+    return found;
+  };
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression)
+    ) {
+      const name = node.expression.text;
+      const isErrorSetter = UI_ERROR_SETTER.test(name);
+      const isGenericSetter = /^set[A-Z]\w*$/.test(name);
+      for (const a of node.arguments) {
+        const bad = isErrorSetter
+          ? hasMessageAccess(a)
+          : isGenericSetter && hasErrorFieldMessage(a);
+        if (bad) {
+          const pos = sf.getLineAndCharacterOfPosition(a.getStart(sf));
+          hits.push(
+            `${name}(...) @${pos.line + 1}:${pos.character + 1}: ` +
+              `${a.getText(sf).slice(0, 80)}`,
+          );
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return hits;
+}
+
+test("R9-03 scanner: bat dang .message trong setter, bo qua nhan co dinh", () => {
+  const bad = [
+    ["plain", "function f(err){ setError(err.message); }"],
+    ["template",
+      "function f(err){ setError(`Lưu thất bại: ${err.message}`); }"],
+    ["flash", "function f(err){ flash(false, err.message); }"],
+    ["feedback object",
+      "function f(error){ setFeedback({ ok: false, text: `Lỗi ${error.message}` }); }"],
+    ["instanceof conditional",
+      "function f(e){ setError(e instanceof Error ? e.message : 'Không lưu được'); }"],
+    ["nested updater",
+      "function f(err){ setErrors((p) => [...p, err.message]); }"],
+    ["setErr alias", "function f(up){ setErr(`x ${up.error.message}`); }"],
+    ["setMsg", "function f(e){ setMsg(e.message); }"],
+    ["setImportMsg", "function f(e){ setImportMsg(e.message); }"],
+    ["concat", "function f(up){ return setError('Upload lỗi: ' + up.message); }"],
+    ["optional chain", "function f(e){ setError(e?.message ?? 'x'); }"],
+    ["deep prop", "function f(res){ setError(res.error.message); }"],
+    ["object-state spread",
+      "function f(e){ setState({ ...s, error: e.message }); }"],
+    ["object-state updater",
+      "function f(e){ setState((p) => ({ ...p, err: e.message })); }"],
+    ["generic setter feedback field",
+      "function f(e){ setForm({ ...form, feedback: e.message }); }"],
+  ];
+  for (const [name, src] of bad) {
+    const hits = scanSourceForUiErrorEchoes(src);
+    assert.ok(hits.length >= 1, `scanner bo sot dang: ${name}`);
+  }
+  const ok = [
+    ["fixed label", "function f(){ setError('Không lưu được.'); }"],
+    ["console detail + label",
+      `function f(err){ console.error('[x] save:', err.message);
+        setError('Không lưu được - vui lòng thử lại.'); }`],
+    ["flash label", "function f(){ flash(false, 'Không lưu được.'); }"],
+    ["feedback label",
+      "function f(){ setFeedback({ ok: false, text: 'Thử lại sau.' }); }"],
+    ["non-setter named message fn",
+      "function f(m){ renderText(m.message); }"],
+    ["non-error setter",
+      "function f(m){ setStatus(m.message); }"],
+    ["prop named message (khong phai access)",
+      "function f(t){ setMessage(t); }"],
+    ["server label prop",
+      "function f(json){ setError(json.error ?? 'Lỗi.'); }"],
+    ["object-state fixed label",
+      "function f(){ setState({ ...s, error: 'Không lưu được.' }); }"],
+    ["content field khong phai loi",
+      "function f(m){ setDraft({ ...d, note: m.message }); }"],
+  ];
+  for (const [name, src] of ok) {
+    const hits = scanSourceForUiErrorEchoes(src);
+    assert.deepEqual(hits, [], `scanner flag nham dang hop le: ${name}`);
+  }
+});
+
+test("R9-03: khong con raw .message vao UI state trong src/ (AST pass 2)", () => {
+  const files = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile() && /\.(ts|tsx)$/.test(e.name)) files.push(p);
+    }
+  };
+  walk(join(ROOT, "src"));
+
+  const hits = [];
+  for (const f of files) {
+    for (const h of scanSourceForUiErrorEchoes(readFileSync(f, "utf8"))) {
+      hits.push(`${f.replace(`${ROOT}/`, "")}: ${h}`);
+    }
+  }
+  assert.deepEqual(hits, [],
+    `con raw .message vao UI state (console.error + nhan co dinh):\n${hits.join("\n")}`);
+  assert.ok(files.length >= 150,
+    `scanner chi thay ${files.length} file - co ve sai duong dan`);
+});
+
+test("R9-03: cac site da cham deu co console.error + nhan VN co dinh", () => {
+  const cases = [
+    ["src/components/school/assignments-board.tsx", /phân công chủ nhiệm|phân công giảng dạy|môn phụ trách/],
+    ["src/components/records/new-class-form.tsx", /tiếp nhận lớp/],
+    ["src/components/attendance/daily-roster.tsx", /lưu được chuyên cần/i],
+    ["src/components/competency/self-assessment-form.tsx", /lưu đánh giá/i],
+    ["src/components/competency/evidence-form.tsx", /thêm minh chứng/i],
+    ["src/components/academics/lesson-plan-board.tsx", /file đính kèm/],
+    ["src/components/academics/chat-thread.tsx", /tin nhắn/],
+    ["src/components/academics/plan-actions.tsx", /kế hoạch/],
+    ["src/components/academics/grades-editor.tsx", /lưu được điểm/i],
+    ["src/components/parents/cmhs-board.tsx", /thành viên|vai trò/],
+    ["src/components/schedule/timetable-toolbar.tsx", /thời khóa biểu/],
+    ["src/components/schedule/period-log-board.tsx", /sổ đầu bài|rèn luyện/],
+    ["src/components/conduct/record-form.tsx", /ghi nhận/],
+    ["src/components/conduct/evaluation-editor.tsx", /hạnh kiểm/],
+    ["src/components/emulation/scoring-grid.tsx", /lưu điểm/i],
+    ["src/components/counseling/intake-form.tsx", /ca tư vấn/],
+    ["src/components/counseling/case-controls.tsx", /ca tư vấn/],
+    ["src/components/counseling/referral-card.tsx", /chuyển tiếp/],
+    ["src/components/exams/exams-board.tsx", /kỳ thi|buổi thi|lịch thi/],
+    ["src/components/tvc/question-bank.tsx", /đọc file|tải được ảnh/i],
+  ];
+  for (const [f, labelRe] of cases) {
+    const src = read(f);
+    assert.match(src, labelRe, `${f} thieu nhan loi VN co dinh`);
+    assert.match(src, /console\.error\(/,
+      `${f} thieu console.error cho chi tiet loi`);
+  }
+});

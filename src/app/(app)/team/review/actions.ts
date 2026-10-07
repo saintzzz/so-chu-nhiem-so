@@ -41,7 +41,10 @@ export async function approveAssessment(assessmentId: string) {
     .from("teacher_assessments")
     .update({ status: "approved" })
     .eq("id", assessmentId);
-  if (error) throw new Error("Duyệt thất bại: " + error.message);
+  if (error) {
+    console.error("[team/review] approve assessment:", error.message);
+    throw new Error("Không duyệt được đánh giá - vui lòng thử lại.");
+  }
 
   revalidatePath("/team/review");
   revalidatePath("/team/home");

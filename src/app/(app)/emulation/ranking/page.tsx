@@ -1,6 +1,7 @@
 import { Trophy } from "lucide-react";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { PageHeader } from "@/components/page-header";
 import { ChartCard, BarChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
@@ -36,7 +37,10 @@ export default async function EmulationRankingPage() {
   const PERIOD = currentPeriodVN();
   const supabase = await createClient();
 
-  const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =
+  // R9-01: emulation_scores truoc day query khong phan trang - PostgREST cat
+  // ngam ~1000 rows va loi bi nuot, bang xep hang xuat ban tu du lieu thieu.
+  // Doc het qua fetchAllRows (order id on dinh); loi/truncated -> notice.
+  const [{ data: critRaw, error: critErr }, { data: classesRaw, error: clsErr }, scoresRes] =
     await Promise.all([
       supabase
         .from("emulation_criteria")
@@ -47,15 +51,36 @@ export default async function EmulationRankingPage() {
         .select("id,name,gvcn_id")
         .eq("status", "active")
         .order("name", { ascending: true }),
-      supabase
-        .from("emulation_scores")
-        .select("class_id,criterion_id,score")
-        .eq("period", PERIOD),
+      fetchAllRows<ScoreRow>((f, t) =>
+        supabase
+          .from("emulation_scores")
+          .select("class_id,criterion_id,score")
+          .eq("period", PERIOD)
+          .order("id")
+          .range(f, t),
+      ),
     ]);
+
+  const errors: string[] = [];
+  if (critErr) {
+    errors.push("emulation_criteria");
+    console.error("[emulation/ranking] emulation_criteria:", critErr.message);
+  }
+  if (clsErr) {
+    errors.push("classes");
+    console.error("[emulation/ranking] classes:", clsErr.message);
+  }
+  if (scoresRes.error || scoresRes.truncated) {
+    errors.push("emulation_scores");
+    console.error(
+      "[emulation/ranking] emulation_scores:",
+      scoresRes.error ?? "truncated",
+    );
+  }
 
   const criteria = (critRaw ?? []) as CriterionRow[];
   const classes = (classesRaw ?? []) as ClassRow[];
-  const scores = (scoresRaw ?? []) as ScoreRow[];
+  const scores = errors.length ? [] : scoresRes.rows;
 
   const scoreMap = new Map<string, number>();
   for (const s of scores) {
@@ -91,6 +116,12 @@ export default async function EmulationRankingPage() {
         description={`Kết quả thi đua kỳ ${PERIOD} giữa các lớp`}
       />
 
+      {errors.length > 0 ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu nguồn để xếp hạng - vui lòng thử lại.
+        </p>
+      ) : (
+        <>
       {top && top.total > 0 && (
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-border bg-success-bg p-4 shadow-[var(--shadow-sm-token)]">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-success text-primary-foreground">
@@ -202,6 +233,8 @@ export default async function EmulationRankingPage() {
           </tr>
         )}
       </DataTable>
+        </>
+      )}
     </>
   );
 }

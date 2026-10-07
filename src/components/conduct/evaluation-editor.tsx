@@ -294,7 +294,8 @@ export function ConductEvaluationEditor({
         .from("conduct_evaluations")
         .upsert(rows);
       if (err) {
-        setError(err.message);
+        console.error("[evaluation-editor] save evaluations:", err.message);
+        setError("Không lưu được đánh giá hạnh kiểm - vui lòng thử lại.");
         return;
       }
       logAudit(supabase, {

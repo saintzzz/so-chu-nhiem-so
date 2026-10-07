@@ -23,7 +23,10 @@ export async function createMeeting(formData: FormData) {
     content: content || null,
     created_by: profile.id,
   });
-  if (error) throw new Error("Tạo buổi sinh hoạt thất bại: " + error.message);
+  if (error) {
+    console.error("[team/meetings] create meeting:", error.message);
+    throw new Error("Không tạo được buổi sinh hoạt - vui lòng thử lại.");
+  }
 
   revalidatePath("/team/meetings");
   revalidatePath("/team/home");

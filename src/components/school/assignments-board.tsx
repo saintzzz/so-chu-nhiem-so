@@ -106,7 +106,8 @@ export function AssignmentsBoard({
           .update({ gvcn_id: next })
           .eq("id", c.id);
         if (err) {
-          flash(false, err.message);
+          console.error("[assignments] save homeroom:", err.message);
+          flash(false, "Không lưu được phân công chủ nhiệm - vui lòng thử lại.");
           return;
         }
       }
@@ -122,7 +123,8 @@ export function AssignmentsBoard({
         .delete()
         .eq("teacher_id", tsTeacher);
       if (delErr) {
-        flash(false, delErr.message);
+        console.error("[assignments] clear teacher_subjects:", delErr.message);
+        flash(false, "Không lưu được môn phụ trách - vui lòng thử lại.");
         return;
       }
       const rows = [...(tsDraft[tsTeacher] ?? [])].map((subject_id) => ({
@@ -134,7 +136,8 @@ export function AssignmentsBoard({
           .from("teacher_subjects")
           .insert(rows);
         if (insErr) {
-          flash(false, insErr.message);
+          console.error("[assignments] insert teacher_subjects:", insErr.message);
+          flash(false, "Không lưu được môn phụ trách - vui lòng thử lại.");
           return;
         }
       }
@@ -155,7 +158,8 @@ export function AssignmentsBoard({
           .eq("class_id", p.class_id)
           .eq("subject_id", p.subject_id);
         if (err) {
-          flash(false, err.message);
+          console.error("[assignments] save timetable:", err.message);
+          flash(false, "Không lưu được phân công giảng dạy - vui lòng thử lại.");
           return;
         }
       }

@@ -37,7 +37,8 @@ export function EvidenceForm({ assessmentId }: { assessmentId: string }) {
       setNote("");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể thêm minh chứng");
+      console.error("[evidence-form] insert:", err);
+      setError("Không thể thêm minh chứng - vui lòng thử lại.");
     } finally {
       setSaving(false);
     }

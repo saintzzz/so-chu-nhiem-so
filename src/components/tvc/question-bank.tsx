@@ -415,7 +415,8 @@ export function QuestionBank({
         if (!json.rows.length) return setError("Không tìm thấy câu hỏi nào trong file.");
         await applyAiRows(json.rows);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Lỗi khi đọc file.");
+        console.error("[question-bank] read file:", e);
+        setError("Lỗi khi đọc file - vui lòng thử lại.");
       } finally {
         setAiScanning(false);
       }
@@ -1020,7 +1021,10 @@ export function QuestionBank({
                       const { error: up } = await supa.storage
                         .from("tvc-media")
                         .upload(path, f, { cacheControl: "3600" });
-                      if (up) return setError("Upload ảnh lỗi: " + up.message);
+                      if (up) {
+                        console.error("[question-bank] upload image:", up.message);
+                        return setError("Không tải được ảnh - vui lòng thử lại.");
+                      }
                       setForm((prev) => ({
                         ...prev,
                         media: [...prev.media, { kind: "image", path, alt: f.name }],

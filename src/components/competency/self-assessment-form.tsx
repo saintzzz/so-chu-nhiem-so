@@ -64,7 +64,8 @@ export function SelfAssessmentForm({
       );
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể lưu đánh giá");
+      console.error("[self-assessment] save:", e);
+      setError("Không thể lưu đánh giá - vui lòng thử lại.");
     } finally {
       setSaving(null);
     }

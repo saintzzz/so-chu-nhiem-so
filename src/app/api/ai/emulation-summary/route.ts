@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /**
  * AI tóm tắt tuần/kỳ thi đua giữa các lớp - dùng cho /emulation/ranking.
@@ -21,7 +22,9 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
-  const [{ data: critRaw }, { data: classesRaw }, { data: scoresRaw }] =
+  // R9-01: emulation_scores phan trang het qua fetchAllRows (order id on dinh);
+  // loi/truncated tra 500 thay vi tom tat tren du lieu thieu.
+  const [{ data: critRaw, error: critErr }, { data: classesRaw, error: clsErr }, scoresRes] =
     await Promise.all([
       supabase.from("emulation_criteria").select("id,name,max_score"),
       supabase
@@ -30,18 +33,35 @@ export async function POST(req: Request) {
         .eq("school_id", sid)
         .eq("status", "active")
         .order("name"),
-      supabase
-        .from("emulation_scores")
-        .select("class_id,criterion_id,score")
-        .eq("period", period),
+      fetchAllRows<{
+        class_id: string;
+        criterion_id: string;
+        score: number;
+      }>((f, t) =>
+        supabase
+          .from("emulation_scores")
+          .select("class_id,criterion_id,score")
+          .eq("period", period)
+          .order("id")
+          .range(f, t),
+      ),
     ]);
+  if (critErr || clsErr || scoresRes.error || scoresRes.truncated) {
+    console.error(
+      "[ai/emulation-summary] sources:",
+      critErr?.message ??
+        clsErr?.message ??
+        scoresRes.error ??
+        "emulation_scores truncated",
+    );
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const criteria = (critRaw ?? []) as { id: string; name: string; max_score: number }[];
   const classes = (classesRaw ?? []) as { id: string; name: string }[];
-  const scores = (scoresRaw ?? []) as {
-    class_id: string;
-    criterion_id: string;
-    score: number;
-  }[];
+  const scores = scoresRes.rows;
   if (!classes.length || !scores.length) {
     return NextResponse.json({
       result: { lines: ["Chưa có dữ liệu thi đua kỳ này."] },

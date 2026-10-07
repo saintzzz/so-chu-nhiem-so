@@ -51,7 +51,8 @@ export function NewClassForm({
     });
     setLoading(false);
     if (error) {
-      setMessage(`Không thể tiếp nhận lớp: ${error.message}`);
+      console.error("[new-class-form] insert class:", error.message);
+      setMessage("Không thể tiếp nhận lớp - vui lòng thử lại.");
       return;
     }
     setName("");

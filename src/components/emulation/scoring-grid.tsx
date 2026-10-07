@@ -123,14 +123,17 @@ export function ScoringGrid({
           (r as { error: unknown }).error !== null,
       );
       if (failed) {
-        throw new Error(
-          String((failed as { error: { message?: string } }).error?.message ?? "Lỗi lưu điểm"),
+        console.error(
+          "[scoring-grid] save emulation_scores:",
+          (failed as { error: { message?: string } }).error?.message,
         );
+        throw new Error("save failed");
       }
       setMessage("Đã lưu điểm thi đua.");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể lưu điểm");
+      console.error("[scoring-grid] save:", e);
+      setError("Không thể lưu điểm - vui lòng thử lại.");
     } finally {
       setSaving(false);
     }

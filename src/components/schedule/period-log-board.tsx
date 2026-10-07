@@ -321,7 +321,8 @@ export function PeriodLogBoard({
       setOpenId(null);
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể lưu sổ đầu bài");
+      console.error("[period-log-board] save:", e);
+      setError("Không thể lưu sổ đầu bài - vui lòng thử lại.");
     } finally {
       setSavingId(null);
     }
@@ -347,7 +348,8 @@ export function PeriodLogBoard({
       recorded_by: profileId,
     });
     if (e) {
-      setError(e.message);
+      console.error("[period-log-board] award points:", e.message);
+      setError("Không ghi nhận được điểm rèn luyện - vui lòng thử lại.");
       return;
     }
     logAudit(supabase, {

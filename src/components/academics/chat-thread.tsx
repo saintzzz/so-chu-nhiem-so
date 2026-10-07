@@ -48,7 +48,8 @@ export function ChatThread({
         content: text,
       });
       if (err) {
-        setError(err.message);
+        console.error("[chat-thread] send message:", err.message);
+        setError("Không gửi được tin nhắn - vui lòng thử lại.");
         return;
       }
       await supabase.from("notifications").insert({

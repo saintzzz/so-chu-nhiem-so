@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
@@ -9,38 +10,12 @@ import { DataTable } from "@/components/data-table";
 import { ChartCard, BarChart } from "@/components/charts";
 import { AttendanceRangeNav } from "@/components/attendance/date-controls";
 
-type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
-
 interface AttDayRow {
   date: string;
   status: AttendanceStatus;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-async function fetchAllAttendance(
-  supabase: ServerSupabase,
-  studentIds: string[],
-  range: { from: string; to: string },
-): Promise<AttDayRow[]> {
-  const out: AttDayRow[] = [];
-  const pageSize = 1000;
-  for (let from = 0; from < 30000; from += pageSize) {
-    let q = supabase
-      .from("attendance_records")
-      .select("date,status")
-      .in("student_id", studentIds)
-      .order("date", { ascending: false })
-      .range(from, from + pageSize - 1);
-    if (range.from) q = q.gte("date", range.from);
-    if (range.to) q = q.lte("date", range.to);
-    const { data } = await q;
-    const rows = (data ?? []) as AttDayRow[];
-    out.push(...rows);
-    if (rows.length < pageSize) break;
-  }
-  return out;
-}
 
 function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
@@ -76,7 +51,21 @@ export default async function AttendanceHistoryPage({
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  const { data: classData, error: classErr } = await classQuery;
+  if (classErr) {
+    console.error("[attendance/history] classes:", classErr.message);
+    return (
+      <div>
+        <PageHeader
+          section="Chuyên cần"
+          title="Lịch sử chuyên cần"
+        />
+        <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
+          Không tải được danh sách lớp - vui lòng thử lại.
+        </p>
+      </div>
+    );
+  }
   const classes = (classData ?? []) as ClassRoom[];
   const selected = classes.find((c) => c.id === classParam) ?? classes[0];
 
@@ -94,11 +83,14 @@ export default async function AttendanceHistoryPage({
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("id")
     .eq("class_id", selected.id)
     .eq("status", "active");
+  if (stuErr) {
+    console.error("[attendance/history] students:", stuErr.message);
+  }
   const students = (studentData ?? []) as Pick<Student, "id">[];
   const ids = students.map((s) => s.id);
   const range = {
@@ -106,9 +98,33 @@ export default async function AttendanceHistoryPage({
     to: toParam && DATE_RE.test(toParam) ? toParam : "",
   };
   const hasRange = !!(range.from || range.to);
-  const records = ids.length
-    ? await fetchAllAttendance(supabase, ids, range)
-    : [];
+  // R9-02: vong lap phan trang thu cong truoc day nuot error, coi data:null
+  // la het trang va cap ngam 30000 rows. Doc het qua fetchAllRows (order
+  // date desc + tie-break id on dinh); error/truncated duoc tra ve caller.
+  const emptyRes = { rows: [] as AttDayRow[], error: null, truncated: false };
+  const attRes = ids.length
+    ? await fetchAllRows<AttDayRow>((f, t) => {
+        let q = supabase
+          .from("attendance_records")
+          .select("date,status")
+          .in("student_id", ids)
+          .order("date", { ascending: false })
+          .order("id");
+        if (range.from) q = q.gte("date", range.from);
+        if (range.to) q = q.lte("date", range.to);
+        return q.range(f, t);
+      })
+    : emptyRes;
+  // Loi students/attendance/truncated -> hien notice, khong render tong hop
+  // tu du lieu thieu (loi students khong duoc bien thanh "chua co du lieu").
+  const dataError = !!(stuErr || attRes.error || attRes.truncated);
+  if (dataError) {
+    console.error(
+      "[attendance/history] attendance_records:",
+      attRes.error ?? (attRes.truncated ? "truncated" : ""),
+    );
+  }
+  const records = attRes.rows;
 
   const anchor =
     range.to || records[0]?.date || todayVN();
@@ -197,6 +213,12 @@ export default async function AttendanceHistoryPage({
         params={{ class: selected.id }}
       />
 
+      {dataError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu - vui lòng thử lại.
+        </p>
+      ) : (
+        <>
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label={
@@ -326,6 +348,8 @@ export default async function AttendanceHistoryPage({
           </tr>
         )}
       </DataTable>
+        </>
+      )}
     </div>
   );
 }

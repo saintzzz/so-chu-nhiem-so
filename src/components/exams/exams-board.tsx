@@ -113,7 +113,11 @@ export function ExamsBoard({
         end_date: newExam.end_date || null,
         status: "draft",
       });
-      return err?.message ?? null;
+      if (err) {
+        console.error("[exams-board] create exam:", err.message);
+        return "Không tạo được kỳ thi - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -124,7 +128,11 @@ export function ExamsBoard({
         .from("exams")
         .update({ status })
         .eq("id", examId);
-      return err?.message ?? null;
+      if (err) {
+        console.error("[exams-board] set exam status:", err.message);
+        return "Không cập nhật được trạng thái kỳ thi - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -145,7 +153,11 @@ export function ExamsBoard({
         room: newSession.room.trim() || null,
         proctor_id: newSession.proctor_id || null,
       });
-      return err?.message ?? null;
+      if (err) {
+        console.error("[exams-board] add session:", err.message);
+        return "Không thêm được buổi thi - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -156,7 +168,11 @@ export function ExamsBoard({
         .from("exam_sessions")
         .delete()
         .eq("id", id);
-      return err?.message ?? null;
+      if (err) {
+        console.error("[exams-board] remove session:", err.message);
+        return "Không xoá được buổi thi - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -240,7 +256,8 @@ export function ExamsBoard({
         .from("exam_sessions")
         .upsert(rows, { onConflict: "exam_id,class_id,subject_id" });
       if (err) {
-        setError(err.message);
+        console.error("[exams-board] import sessions:", err.message);
+        setError("Không nhập được lịch thi - vui lòng thử lại.");
         return;
       }
       setImportMsg(
@@ -258,7 +275,11 @@ export function ExamsBoard({
         .from("exam_sessions")
         .update(patch)
         .eq("id", id);
-      return err?.message ?? null;
+      if (err) {
+        console.error("[exams-board] patch session:", err.message);
+        return "Không cập nhật được buổi thi - vui lòng thử lại.";
+      }
+      return null;
     }, false);
   }
 

@@ -47,7 +47,8 @@ export function CaseControls({
         .update(patch)
         .eq("id", caseId);
       if (err) {
-        setError(err.message);
+        console.error("[case-controls] update case:", err.message);
+        setError("Không cập nhật được ca tư vấn - vui lòng thử lại.");
         return;
       }
       setSaved(true);

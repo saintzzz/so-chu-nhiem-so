@@ -88,7 +88,8 @@ export function LessonPlanBoard({
           .from("lesson-plans")
           .upload(filePath, file, { contentType: file.type });
         if (up.error) {
-          setErr(`Không tải được file: ${up.error.message}`);
+          console.error("[lesson-plan-board] upload:", up.error.message);
+          setErr("Không tải được file đính kèm - vui lòng thử lại.");
           return;
         }
         fileName = file.name;

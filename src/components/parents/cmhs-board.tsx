@@ -70,7 +70,11 @@ export function CmhsBoard({
         parent_id: addId,
         role: addRole,
       });
-      return err?.message ?? null;
+      if (err) {
+        console.error("[cmhs-board] add member:", err.message);
+        return "Không thêm được thành viên - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -81,7 +85,11 @@ export function CmhsBoard({
         .from("cmhs_members")
         .delete()
         .eq("id", id);
-      return err?.message ?? null;
+      if (err) {
+        console.error("[cmhs-board] remove member:", err.message);
+        return "Không xoá được thành viên - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 
@@ -92,7 +100,11 @@ export function CmhsBoard({
         .from("cmhs_members")
         .update({ role })
         .eq("id", id);
-      return err?.message ?? null;
+      if (err) {
+        console.error("[cmhs-board] set role:", err.message);
+        return "Không đổi được vai trò - vui lòng thử lại.";
+      }
+      return null;
     });
   }
 

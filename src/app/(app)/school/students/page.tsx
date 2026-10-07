@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { compareVietnameseName, fmtDateVN } from "@/lib/utils";
 import type { ClassRoom, Student } from "@/types";
 
@@ -17,25 +19,30 @@ export default async function SchoolStudentsPage({
   const sp = await searchParams;
   const classParam = sp.class ?? null;
 
-  const [{ data: classRaw }, { data: stuRaw }] = await Promise.all([
+  const { data: classIdRows } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("school_id", sid);
+  const classIds = (classIdRows ?? []).map((c: { id: string }) => c.id);
+
+  const [{ data: classRaw }, { rows: stuRaw }] = await Promise.all([
     supabase
       .from("classes")
       .select("id,name,campus_id")
       .eq("school_id", sid)
       .eq("status", "active")
       .order("name"),
-    supabase
-      .from("students")
-      .select("id,class_id,code,full_name,dob,gender,status,national_id")
-      .in(
-        "class_id",
-        (
-          await supabase
-            .from("classes")
-            .select("id")
-            .eq("school_id", sid)
-        ).data?.map((c: { id: string }) => c.id) ?? [],
-      ),
+    // paging de vuot PostgREST row cap - truong >1000 HS khong bi mat du lieu
+    fetchAllRows<
+      Pick<Student, "id" | "class_id" | "code" | "full_name" | "dob" | "gender" | "status" | "national_id">
+    >((f, t) =>
+      supabase
+        .from("students")
+        .select("id,class_id,code,full_name,dob,gender,status,national_id")
+        .in("class_id", classIds)
+        .order("id")
+        .range(f, t),
+    ),
   ]);
   const classes = (classRaw ?? []) as Pick<
     ClassRoom,
@@ -62,24 +69,24 @@ export default async function SchoolStudentsPage({
         description={`${students.length} học sinh - ${classes.length} lớp.`}
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <a
+        <Link
           href="/school/students"
           className={`rounded-full border px-3 py-1 text-sm ${selected === "all" ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-muted"}`}
         >
           Tất cả ({students.length})
-        </a>
+        </Link>
         {classes.map((c) => (
-          <a
+          <Link
             key={c.id}
             href={`/school/students?class=${c.id}`}
             className={`rounded-full border px-3 py-1 text-sm ${selected === c.id ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card hover:bg-muted"}`}
           >
             {c.name}
-          </a>
+          </Link>
         ))}
       </div>
       <DataTable
-        columns={["Mã HS", "Họ tên", "Lớp", "Ngày sinh", "Giới tính", "Mã định danh", "Trạng thái"]}
+        columns={["Mã học sinh", "Họ tên", "Lớp", "Ngày sinh", "Giới tính", "Mã định danh", "Trạng thái"]}
         footer={<span>{shown.length} học sinh</span>}
       >
         {shown.map((s) => (

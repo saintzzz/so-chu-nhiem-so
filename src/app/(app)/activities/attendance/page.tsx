@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { compareVietnameseName } from "@/lib/utils";
 import { AttendanceRoster } from "@/components/activities/attendance-roster";
 import type { Activity, ClassRoom, Profile, Student } from "@/types";
 
@@ -105,7 +106,7 @@ export default async function ActivitiesAttendancePage({
           evaluation: r.evaluation ?? "",
         };
       })
-      .sort((a, b) => a.studentName.localeCompare(b.studentName, "vi"));
+      .sort((a, b) => compareVietnameseName(a.studentName, b.studentName));
   }
 
   return (

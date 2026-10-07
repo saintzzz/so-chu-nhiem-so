@@ -4,7 +4,8 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Database, Download, ShieldCheck } from "lucide-react";
-import type { ClassRoom, Student } from "@/types";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import type { ClassRoom } from "@/types";
 
 const ENTITIES: { table: string; label: string }[] = [
   { table: "schools", label: "Trường học" },
@@ -51,22 +52,24 @@ export default async function DeptDataPage() {
       .from("classes")
       .select("id,name")
       .is("gvcn_id", null),
-    supabase.from("students").select("id"),
-    supabase.from("parent_students").select("student_id"),
+    fetchAllRows<{ id: string }>((f, t) =>
+      supabase.from("students").select("id").order("id").range(f, t),
+    ),
+    fetchAllRows<{ student_id: string }>((f, t) =>
+      supabase
+        .from("parent_students")
+        .select("student_id")
+        .order("student_id")
+        .range(f, t),
+    ),
   ]);
 
   const classesNoGvcn = (noGvcnRes.data ?? []) as Pick<
     ClassRoom,
     "id" | "name"
   >[];
-  const allStudentIds = new Set(
-    ((studentsRes.data ?? []) as Pick<Student, "id">[]).map((s) => s.id),
-  );
-  const linkedStudentIds = new Set(
-    ((linksRes.data ?? []) as { student_id: string }[]).map(
-      (l) => l.student_id,
-    ),
-  );
+  const allStudentIds = new Set(studentsRes.rows.map((s) => s.id));
+  const linkedStudentIds = new Set(linksRes.rows.map((l) => l.student_id));
   const orphans = [...allStudentIds].filter(
     (id) => !linkedStudentIds.has(id),
   ).length;

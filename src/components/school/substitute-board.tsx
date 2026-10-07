@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, isoDateVN } from "@/lib/utils";
 import {
   createSubstituteRequest,
   decideSubstituteRequest,
@@ -65,7 +65,7 @@ export function SubstituteBoard({
   const [date, setDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return isoDateVN(d);
   });
   const [period, setPeriod] = useState(1);
   const [subId, setSubId] = useState("");

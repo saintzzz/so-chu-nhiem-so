@@ -9,9 +9,13 @@ const VN_TZ = "Asia/Ho_Chi_Minh";
 
 // Current calendar date (YYYY-MM-DD) in Vietnam timezone.
 export function todayVN(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: VN_TZ }).format(
-    new Date(),
-  );
+  return isoDateVN(new Date());
+}
+
+// Calendar date (YYYY-MM-DD) of a Date in Vietnam timezone.
+// Dung thay cho d.toISOString().slice(0,10) - server UTC lech 1 ngay 0-7h sang VN.
+export function isoDateVN(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: VN_TZ }).format(d);
 }
 
 // Current emulation period ("2026-T9") in Vietnam timezone.

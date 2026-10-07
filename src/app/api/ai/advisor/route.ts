@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
+import { todayVN } from "@/lib/utils";
 
 /**
  * Trợ lý AI cho Ban Giám Hiệu - trả lời dựa trên số liệu thật của trường.
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     : { data: [] };
   const studentIds = ((students ?? []) as { id: string }[]).map((s) => s.id);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayVN();
   const [
     { data: att },
     { data: incidents },

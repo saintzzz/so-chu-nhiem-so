@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
+import { todayVN } from "@/lib/utils";
 
 interface SuggestedTask {
   title: string;
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayVN();
 
   const [{ data: classData }, { data: eventsData }, { data: tasksData }] =
     await Promise.all([

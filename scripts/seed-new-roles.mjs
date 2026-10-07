@@ -26,8 +26,11 @@ const CAMPUS_PH = "e58a9237-df26-432e-979b-37571b3cd281"; // Phân hiệu Bản 
 async function createAuthUser(email, password, role, full_name) {
   const { data, error } = await supabase.auth.admin.createUser({
     email, password, email_confirm: true,
-    user_metadata: { role, full_name, school_id: SID },
+    app_metadata: { role, full_name, school_id: SID },
   });
+  if (data.user) {
+    await supabase.from("profiles").update({ role, full_name, school_id: SID }).eq("id", data.user.id);
+  }
   if (error) {
     if (error.message.includes("already")) {
       const { data: list } = await supabase.auth.admin.listUsers();

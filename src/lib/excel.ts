@@ -1,9 +1,10 @@
+import { isoDateVN } from "./utils";
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 function cellText(value: unknown): string {
   if (value === null || value === undefined) return "";
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (value instanceof Date) return isoDateVN(value);
   if (typeof value === "object") {
     const v = value as { result?: unknown; text?: string; richText?: { text: string }[] };
     if (v.richText) return v.richText.map((r) => r.text).join("");

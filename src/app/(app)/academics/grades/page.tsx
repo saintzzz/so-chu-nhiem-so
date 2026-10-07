@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
+import { sortByVietnameseName } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
@@ -160,7 +161,10 @@ export default async function GradesPage({
         .eq("status", "active")
         .order("full_name")
     : { data: [] };
-  const students = (studentData ?? []) as StudentRow[];
+  const students = sortByVietnameseName(
+    (studentData ?? []) as StudentRow[],
+    (s) => s.full_name,
+  );
 
   const studentIds = students.map((s) => s.id);
   const { data: gradeData } =

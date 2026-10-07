@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -29,7 +30,11 @@ export async function POST(req: NextRequest) {
     .eq("id", body.job_id)
     .single();
   const row = job as { id: string; callback_token: string; status: string } | null;
-  if (!row || row.callback_token !== body.token || row.status !== "pending") {
+  const tokenOk =
+    !!row &&
+    row.callback_token.length === body.token.length &&
+    timingSafeEqual(Buffer.from(row.callback_token), Buffer.from(body.token));
+  if (!row || !tokenOk || row.status !== "pending") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -6,7 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell, CalendarDays } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
-import { currentSchoolYearVN, fmtDateVN } from "@/lib/utils";
+import { currentSchoolYearVN, fmtDateVN, todayVN } from "@/lib/utils";
 import type {
   Announcement,
   AttendanceRecord,
@@ -93,14 +93,14 @@ export default async function StudentPortalPage() {
           .from("exam_sessions")
           .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
           .eq("class_id", student.class_id)
-          .gte("date", new Date().toISOString().slice(0, 10))
+          .gte("date", todayVN())
           .order("date")
           .limit(10),
         supabase
           .from("school_year_events")
           .select("id,title,event_date,category")
           .eq("school_id", classroom?.school_id ?? "")
-          .gte("event_date", new Date().toISOString().slice(0, 10))
+          .gte("event_date", todayVN())
           .order("event_date")
           .limit(12),
         supabase
@@ -125,7 +125,7 @@ export default async function StudentPortalPage() {
     AttendanceRecord,
     "id" | "date" | "status"
   >[];
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayVN();
   const todayRec = attRows.find((r) => r.date === todayIso);
   const latestRec = attRows[0];
   const shownRec = todayRec ?? latestRec;

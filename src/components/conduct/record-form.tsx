@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { logAudit } from "@/lib/audit";
 import { Button } from "@/components/ui/button";
-import { sortByVietnameseName } from "@/lib/utils";
+import { sortByVietnameseName, todayVN } from "@/lib/utils";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface RecordStudent {
@@ -42,7 +42,7 @@ export function ConductRecordForm({
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [type, setType] = useState("nhan_xet");
   const [points, setPoints] = useState("0");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayVN());
   const [content, setContent] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export function ConductRecordForm({
         </label>
       </div>
       <div className="mt-3 flex items-center gap-3">
-        <Button size="sm" onClick={submit} disabled={pending}>
+        <Button size="sm" onClick={submit} disabled={pending || !studentId || !content.trim()}>
           {pending ? "Đang lưu…" : "Lưu ghi nhận"}
         </Button>
         {saved && <span className="text-sm text-success">Đã lưu.</span>}

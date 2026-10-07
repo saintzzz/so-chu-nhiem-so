@@ -21,8 +21,10 @@ import {
   formatDate as formatDateVN,
   formatDateOnly,
   todayVN,
+  isoDateVN,
   currentPeriodVN,
 } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 
 
@@ -75,7 +77,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 function addDaysIso(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 export default async function DashboardPage({
@@ -193,7 +195,7 @@ export default async function DashboardPage({
     { data: evalRaw },
   ] = await Promise.all([
     hasStudents
-      ? (() => {
+      ? fetchAllRows<{ student_id: string; status: string }>((f, t) => {
           let q = supabase
             .from("attendance_records")
             .select("student_id,status")
@@ -201,8 +203,8 @@ export default async function DashboardPage({
           q = rangeMode
             ? q.gte("date", rangeFrom).lte("date", rangeTo)
             : q.eq("date", attDate);
-          return q;
-        })()
+          return q.order("id").range(f, t);
+        }).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
     hasStudents && !rangeMode
       ? supabase
@@ -218,18 +220,32 @@ export default async function DashboardPage({
           .in("student_id", studentIds)
       : Promise.resolve({ count: 0 }),
     hasStudents
-      ? supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", studentIds)
+      ? fetchAllRows<{
+          student_id: string;
+          subject_id: string;
+          term: string;
+          assessment_type: string;
+          score: number | null;
+        }>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score")
+            .in("student_id", studentIds)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
     hasStudents
-      ? supabase
-          .from("conduct_records")
-          .select("student_id")
-          .eq("type", "vi_pham")
-          .gte("date", since30)
-          .in("student_id", studentIds)
+      ? fetchAllRows<{ student_id: string }>((f, t) =>
+          supabase
+            .from("conduct_records")
+            .select("student_id")
+            .eq("type", "vi_pham")
+            .gte("date", since30)
+            .in("student_id", studentIds)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
     hasStudents
       ? supabase

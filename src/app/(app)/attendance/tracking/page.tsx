@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +20,7 @@ interface AttRow {
 function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 export default async function AttendanceTrackingPage({
@@ -76,7 +77,7 @@ export default async function AttendanceTrackingPage({
   let anchor =
     toParam && /^\d{4}-\d{2}-\d{2}$/.test(toParam)
       ? toParam
-      : new Date().toISOString().slice(0, 10);
+      : todayVN();
   if (!toParam && ids.length > 0) {
     const { data: latest } = await supabase
       .from("attendance_records")
@@ -90,17 +91,20 @@ export default async function AttendanceTrackingPage({
   const windowStart = addDays(anchor, -29);
   const prevStart = addDays(anchor, -59);
 
-  const { data: attData } = ids.length
-    ? await supabase
-        .from("attendance_records")
-        .select("student_id,date,status")
-        .in("student_id", ids)
-        .in("status", ["unexcused", "late"])
-        .gte("date", prevStart)
-        .lte("date", anchor)
-        .limit(5000)
-    : { data: [] };
-  const records = (attData ?? []) as AttRow[];
+  const { rows: attData } = ids.length
+    ? await fetchAllRows<AttRow>((f, t) =>
+        supabase
+          .from("attendance_records")
+          .select("student_id,date,status")
+          .in("student_id", ids)
+          .in("status", ["unexcused", "late"])
+          .gte("date", prevStart)
+          .lte("date", anchor)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as AttRow[] };
+  const records = attData;
 
   interface Count {
     unexcused: number;

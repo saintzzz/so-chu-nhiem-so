@@ -1,5 +1,5 @@
 import { requireRoles } from "@/lib/auth";
-import { formatDateOnly } from "@/lib/utils";
+import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { AttendanceStatus, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
@@ -45,7 +45,7 @@ async function fetchAllAttendance(
 function addDays(iso: string, days: number): string {
   const d = new Date(`${iso}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 const MONTH_LABEL = (ym: string) => {
@@ -111,7 +111,7 @@ export default async function AttendanceHistoryPage({
     : [];
 
   const anchor =
-    range.to || records[0]?.date || new Date().toISOString().slice(0, 10);
+    range.to || records[0]?.date || todayVN();
   const windowStart = range.from || addDays(anchor, -29);
 
   // Tổng hợp theo ngày

@@ -54,7 +54,7 @@ function vnName(gender) {
 async function createAuthUser(email, password, role, full_name, school_id, department_id) {
   const { data, error } = await supabase.auth.admin.createUser({
     email, password, email_confirm: true,
-    user_metadata: { role, full_name, school_id, department_id },
+    app_metadata: { role, full_name, school_id, department_id },
   });
   if (error) {
     if (error.message.includes("already")) {
@@ -64,6 +64,8 @@ async function createAuthUser(email, password, role, full_name, school_id, depar
     }
     throw new Error(`auth ${email}: ${error.message}`);
   }
+  // trigger chi tao profile mac dinh - set role/truong ro rang
+  await supabase.from("profiles").update({ role, full_name, school_id, department_id }).eq("id", data.user.id);
   return data.user.id;
 }
 

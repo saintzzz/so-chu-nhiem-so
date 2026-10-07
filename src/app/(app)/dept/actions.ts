@@ -159,7 +159,7 @@ export async function createSchool(input: {
     email: adminEmail,
     password: input.adminPassword,
     email_confirm: true,
-    user_metadata: {
+    app_metadata: {
       role: "bgh",
       school_id: sid,
       full_name: input.adminName.trim(),
@@ -172,6 +172,19 @@ export async function createSchool(input: {
         : "Không tạo được tài khoản admin trường.",
     );
   }
+
+  // trigger tao profile mac dinh hoc_sinh; gan role/truong ro rang qua service role
+  const { data: upd, error: pErr } = await admin
+    .from("profiles")
+    .update({
+      role: "bgh",
+      school_id: sid,
+      full_name: input.adminName.trim(),
+    })
+    .eq("id", userData.user.id)
+    .select("id");
+  if (pErr || !upd?.length)
+    return fail("Không gán được hồ sơ admin trường.", userData.user.id);
 
   if (input.seedDemo) {
     const classNames = GRADE_NAMES[input.level as (typeof LEVELS)[number]];

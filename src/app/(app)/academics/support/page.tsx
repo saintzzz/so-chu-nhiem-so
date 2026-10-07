@@ -9,6 +9,7 @@ import {
   type WeakPair,
 } from "@/components/academics/support-plan-board";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
   id: string;
@@ -87,20 +88,24 @@ export default async function SupportPage({
   const studentName = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
-  const [{ data: gradeData }, { data: planData }] = studentIds.length
+  const [{ rows: gradeData }, { data: planData }] = studentIds.length
     ? await Promise.all([
-        supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", studentIds),
+        fetchAllRows<GradeRow>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score")
+            .in("student_id", studentIds)
+            .order("id")
+            .range(f, t),
+        ),
         supabase
           .from("support_plans")
           .select("id,student_id,subject_id,status")
           .in("student_id", studentIds)
           .neq("status", "cancelled"),
       ])
-    : [{ data: [] }, { data: [] }];
-  const grades = (gradeData ?? []) as GradeRow[];
+    : [{ rows: [] as GradeRow[] }, { data: [] }];
+  const grades = gradeData;
   const plans = (planData ?? []) as PlanRow[];
 
   const planKey = new Map(plans.map((p) => [`${p.student_id}:${p.subject_id}`, p]));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, todayVN } from "@/lib/utils";
 import { Check, Sparkles, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAiJob } from "@/hooks/use-ai-job";
@@ -125,7 +125,7 @@ export function SuggestionsClient({
     }
 
     if (!usedAi) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayVN();
       const { data: eventsData } = await supabase
         .from("school_year_events")
         .select("*")

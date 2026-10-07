@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { isoDateVN } from "@/lib/utils";
 
 /**
  * AI báo cáo bằng chữ cho cấp quản lý (Sở/Phòng/UBND) - dùng cho /dept/dashboard.
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   const classSchool = new Map(classList.map((c) => [c.id, c.school_id]));
 
   // Tỷ lệ chuyên cần 30 ngày gần theo trường
-  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const cutoff = isoDateVN(new Date(Date.now() - 30 * 86400000));
   const { data: att } = await supabase
     .from("attendance_records")
     .select("status, students!inner(class_id)")

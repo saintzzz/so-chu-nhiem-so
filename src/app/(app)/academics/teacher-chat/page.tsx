@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
-import { cn } from "@/lib/utils";
+import { cn, sortByVietnameseName } from "@/lib/utils";
 
 interface ProfileRow {
   id: string;
@@ -35,7 +35,10 @@ export default async function TeacherChatPage({
     .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
     .order("full_name");
-  const teachers = (teacherData ?? []) as ProfileRow[];
+  const teachers = sortByVietnameseName(
+    (teacherData ?? []) as ProfileRow[],
+    (t) => t.full_name,
+  );
 
   const peerId =
     typeof sp.to === "string" && teachers.some((t) => t.id === sp.to)

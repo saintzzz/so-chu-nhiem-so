@@ -62,7 +62,7 @@ export async function grantParentAccess(input: {
     email,
     password: input.password,
     email_confirm: true,
-    user_metadata: {
+    app_metadata: {
       role: "phu_huynh",
       school_id: profile.school_id,
       full_name: parent.full_name,
@@ -74,6 +74,26 @@ export async function grantParentAccess(input: {
         ? "Email đã tồn tại tài khoản."
         : "Không tạo được tài khoản.",
     };
+
+  // trigger tao profile mac dinh hoc_sinh; gan role/truong ro rang qua service role
+  const { data: upd, error: pErr } = await admin
+    .from("profiles")
+    .update({
+      role: "phu_huynh",
+      school_id: profile.school_id,
+      full_name: parent.full_name,
+    })
+    .eq("id", data.user.id)
+    .select("id");
+  if (pErr || !upd?.length) {
+    const { error: delErr } = await admin.auth.admin.deleteUser(data.user.id);
+    if (delErr) console.error("[grantParentAccess] orphan auth user", data.user.id);
+    return {
+      error: delErr
+        ? "Không gán được hồ sơ tài khoản - báo quản trị dọn tài khoản lẻ."
+        : "Không gán được hồ sơ tài khoản.",
+    };
+  }
 
   // conditional update + verify 1 row - tranh 2 request tao 2 account cho 1 PH
   const { data: linked, error: linkErr } = await supabase

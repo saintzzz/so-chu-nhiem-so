@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, isoDateVN } from "@/lib/utils";
 import type { TaskRow } from "./types";
 
 const inputCls =
@@ -19,7 +19,7 @@ function weekRange() {
   monday.setDate(now.getDate() - day);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => isoDateVN(d);
   return { start: fmt(monday), end: fmt(sunday) };
 }
 

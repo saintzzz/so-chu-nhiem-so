@@ -28,9 +28,18 @@ const fullName = () => `${rnd(FAMILY)} ${rnd(GIVEN)} ${rnd(NAME)}`;
 async function ensureUser(email, meta) {
   // createUser loi "da ton tai" -> lay lai id tu profiles
   const { data, error } = await sb.auth.admin.createUser({
-    email, password: PASS, email_confirm: true, user_metadata: meta,
+    email, password: PASS, email_confirm: true, app_metadata: meta,
   });
-  if (!error) return data.user.id;
+  if (!error) {
+    // trigger chi tao profile mac dinh - set role/truong ro rang
+    await sb.from("profiles").update({
+      role: meta.role, school_id: meta.school_id ?? null,
+      department_id: meta.department_id ?? null,
+      org_unit_id: meta.org_unit_id ?? null,
+      full_name: meta.full_name,
+    }).eq("id", data.user.id);
+    return data.user.id;
+  }
   const { data: p } = await sb.from("profiles").select("id").eq("email", email).maybeSingle();
   if (p) {
     await sb.from("profiles").update({ role: meta.role, school_id: meta.school_id }).eq("id", p.id);

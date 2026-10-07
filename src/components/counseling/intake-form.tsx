@@ -138,7 +138,7 @@ export function CounselingIntakeForm({
         </p>
       )}
       <div className="mt-3 flex items-center gap-3">
-        <Button size="sm" onClick={submit} disabled={pending}>
+        <Button size="sm" onClick={submit} disabled={pending || !studentId || !issue.trim()}>
           {pending ? "Đang lưu…" : "Tiếp nhận"}
         </Button>
         {saved && <span className="text-sm text-success">Đã tiếp nhận ca.</span>}

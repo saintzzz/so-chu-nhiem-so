@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import type { Grade, Student, StudentGroup } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
-import { sortByVietnameseName } from "@/lib/utils";
+import { isoDateVN, sortByVietnameseName } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ExportRow {
   code: string;
@@ -34,7 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
 /** Ngày cuối tháng của "YYYY-MM" - tránh lỗi "-31" cho tháng 30 ngày. */
 function monthEnd(period: string): string {
   const [y, m] = period.split("-").map(Number);
-  return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  return isoDateVN(new Date(Date.UTC(y, m, 0)));
 }
 
 export function ExportClient({
@@ -65,21 +66,36 @@ export function ExportClient({
     const groupMap = new Map(groups.map((g) => [g.id, g.name]));
     const ids = students.map((s) => s.id);
 
-    const [{ data: gradesData }, { data: attData }] =
+    const [{ rows: gradesData }, { rows: attData }] =
       ids.length > 0
         ? await Promise.all([
-            supabase.from("grades").select("*").in("student_id", ids),
-            supabase
-              .from("attendance_records")
-              .select("*")
-              .in("student_id", ids)
-              .gte("date", `${period}-01`)
-              .lte("date", monthEnd(period))
-              .order("date"),
+            fetchAllRows<Grade>((f, t) =>
+              supabase
+                .from("grades")
+                .select("*")
+                .in("student_id", ids)
+                .order("id")
+                .range(f, t),
+            ),
+            fetchAllRows<{ student_id: string; status: string; date: string }>(
+              (f, t) =>
+                supabase
+                  .from("attendance_records")
+                  .select("*")
+                  .in("student_id", ids)
+                  .gte("date", `${period}-01`)
+                  .lte("date", monthEnd(period))
+                  .order("date")
+                  .order("id")
+                  .range(f, t),
+            ),
           ])
-        : [{ data: [] }, { data: [] }];
-    const grades = (gradesData ?? []) as Grade[];
-    const attendance = (attData ?? []) as {
+        : [
+            { rows: [] as Grade[] },
+            { rows: [] as { student_id: string; status: string; date: string }[] },
+          ];
+    const grades = gradesData;
+    const attendance = attData as {
       student_id: string;
       status: string;
       date: string;

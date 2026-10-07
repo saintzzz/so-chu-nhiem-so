@@ -12,7 +12,8 @@ import type {
   School,
   Student,
 } from "@/types";
-import { currentPeriodVN, currentSemesterVN } from "@/lib/utils";
+import { currentPeriodVN, currentSemesterVN, isoDateVN, todayVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 const KPI_SUBMITTED = new Set(["submitted", "approved", "locked", "done"]);
 
@@ -26,7 +27,7 @@ interface KpiRow {
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 function formatDate(isoDate: string): string {
@@ -55,13 +56,17 @@ export default async function SchoolDashboardPage() {
   const classIds = classes.map((c) => c.id);
   const classNameOf = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { data: studentRows } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id")
-        .in("class_id", classIds)
-    : { data: [] };
-  const students = (studentRows ?? []) as Pick<Student, "id" | "class_id">[];
+  const { rows: studentRows } = classIds.length
+    ? await fetchAllRows<Pick<Student, "id" | "class_id">>((f, t) =>
+        supabase
+          .from("students")
+          .select("id,class_id")
+          .in("class_id", classIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as Pick<Student, "id" | "class_id">[] };
+  const students = studentRows;
   const studentIds = students.map((s) => s.id);
 
   // Anchor "today" to the newest data so the demo dashboard is never empty.
@@ -75,7 +80,7 @@ export default async function SchoolDashboardPage() {
     : { data: [] };
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)
-      ?.date ?? new Date().toISOString().slice(0, 10);
+      ?.date ?? todayVN();
   const weekStart = addDays(anchor, -6);
   const monthStart = addDays(anchor, -29);
 
@@ -102,11 +107,15 @@ export default async function SchoolDashboardPage() {
           .in("class_id", classIds)
       : Promise.resolve({ data: [] }),
     studentIds.length
-      ? supabase
-          .from("attendance_records")
-          .select("status")
-          .in("student_id", studentIds)
-          .gte("date", monthStart)
+      ? fetchAllRows<{ status: string }>((f, t) =>
+          supabase
+            .from("attendance_records")
+            .select("status")
+            .in("student_id", studentIds)
+            .gte("date", monthStart)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
   ]);
 

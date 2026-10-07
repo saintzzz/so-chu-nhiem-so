@@ -486,18 +486,21 @@ export async function createStaffAccount(input: {
     email: input.email.trim().toLowerCase(),
     password: input.password,
     email_confirm: true,
-    user_metadata: {
+    app_metadata: {
       role: input.role,
       school_id: profile.school_id,
       full_name: input.fullName.trim(),
     },
   });
   if (error) return { error: error.message.includes("already") ? "Email đã tồn tại." : "Không tạo được tài khoản." };
-  const supabase = await createClient();
   if (data.user) {
-    await supabase
+    // trigger tao profile mac dinh hoc_sinh; set role/truong ro rang qua service role
+    const { data: upd, error: pErr } = await admin
       .from("profiles")
       .update({
+        role: input.role,
+        school_id: profile.school_id,
+        full_name: input.fullName.trim(),
         campus_id: input.campusId ?? null,
         department_id: input.departmentId ?? null,
         staff_code: input.staffCode?.trim() || null,
@@ -505,7 +508,15 @@ export async function createStaffAccount(input: {
         qualification: input.qualification?.trim() || null,
       })
       .eq("id", data.user.id)
-      .eq("school_id", profile.school_id);
+      .select("id");
+    if (pErr || !upd?.length) {
+      const { error: dErr } = await admin.auth.admin.deleteUser(data.user.id);
+      return {
+        error: dErr
+          ? "Không gán được hồ sơ tài khoản và tài khoản chưa được dọn. Cần xử lý thủ công."
+          : "Không gán được hồ sơ tài khoản.",
+      };
+    }
   }
   revalidatePath("/school/users");
   return {};

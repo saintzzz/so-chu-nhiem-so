@@ -116,7 +116,7 @@ function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
             )}
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || pw.length < 6 || confirm !== pw}
               className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {busy ? "Đang đổi..." : "Đổi mật khẩu"}

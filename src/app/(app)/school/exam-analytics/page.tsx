@@ -4,6 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fmtDateVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { ClassRoom } from "@/types";
 
 export default async function ExamAnalyticsPage() {
@@ -43,11 +44,22 @@ export default async function ExamAnalyticsPage() {
           .in("exam_id", exams.map((e) => e.id))
       : Promise.resolve({ data: [] }),
     classIds.length
-      ? supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score,students!inner(class_id)")
-          .in("assessment_type", ["ddg_gk", "ddg_ck"])
-          .not("score", "is", null)
+      ? fetchAllRows<{
+          student_id: string;
+          subject_id: string;
+          term: string;
+          assessment_type: string;
+          score: number | null;
+        }>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score,students!inner(class_id)")
+            .in("assessment_type", ["ddg_gk", "ddg_ck"])
+            .in("students.class_id", classIds)
+            .not("score", "is", null)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
   ]);
 

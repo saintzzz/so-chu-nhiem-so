@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { semesterAverage, scoreBand } from "@/lib/tt22";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
   id: string;
@@ -131,14 +132,18 @@ export default async function AnalysisPage({
   const students = (studentData ?? []) as StudentRow[];
   const studentIds = students.map((s) => s.id);
 
-  const { data: gradeData } = studentIds.length
-    ? await supabase
-        .from("grades")
-        .select("student_id,subject_id,term,assessment_type,score")
-        .in("student_id", studentIds)
-        .eq("term", term)
-    : { data: [] };
-  const grades = (gradeData ?? []) as GradeRow[];
+  const { rows: gradeData } = studentIds.length
+    ? await fetchAllRows<GradeRow>((f, t) =>
+        supabase
+          .from("grades")
+          .select("student_id,subject_id,term,assessment_type,score")
+          .in("student_id", studentIds)
+          .eq("term", term)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as GradeRow[] };
+  const grades = gradeData;
 
   // ĐTBm học kỳ theo TT22 cho từng cặp học sinh x môn
   const byStudentSubject = new Map<string, GradeRow[]>();

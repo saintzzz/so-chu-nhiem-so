@@ -9,6 +9,7 @@ import { ChartCard, BarChart } from "@/components/charts";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { Sparkles } from "lucide-react";
 import { averageByStudent } from "@/lib/tt22";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassStats {
   id: string;
@@ -37,13 +38,17 @@ export default async function RecordsReportPage() {
   const classes = (classData ?? []) as ClassRoom[];
   const classIds = classes.map((c) => c.id);
 
-  const { data: studentData } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id")
-        .in("class_id", classIds)
-    : { data: [] };
-  const students = (studentData ?? []) as Pick<Student, "id" | "class_id">[];
+  const { rows: studentData } = classIds.length
+    ? await fetchAllRows<Pick<Student, "id" | "class_id">>((f, t) =>
+        supabase
+          .from("students")
+          .select("id,class_id")
+          .in("class_id", classIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as Pick<Student, "id" | "class_id">[] };
+  const students = studentData;
   const idsByClass = new Map<string, string[]>();
   for (const s of students) {
     const arr = idsByClass.get(s.class_id) ?? [];
@@ -55,22 +60,37 @@ export default async function RecordsReportPage() {
   const classOf = new Map(students.map((s) => [s.id, s.class_id]));
   const [attRes, gradesRes, violRes] = allIds.length
     ? await Promise.all([
-        supabase
-          .from("attendance_records")
-          .select("student_id,status")
-          .in("student_id", allIds)
-          .limit(100000),
-        supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", allIds)
-          .limit(100000),
-        supabase
-          .from("conduct_records")
-          .select("student_id")
-          .in("student_id", allIds)
-          .eq("type", "vi_pham")
-          .limit(100000),
+        fetchAllRows<{ student_id: string; status: string }>((f, t) =>
+          supabase
+            .from("attendance_records")
+            .select("student_id,status")
+            .in("student_id", allIds)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows })),
+        fetchAllRows<{
+          student_id: string;
+          subject_id: string;
+          term: string;
+          assessment_type: string;
+          score: number | null;
+        }>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score")
+            .in("student_id", allIds)
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows })),
+        fetchAllRows<{ student_id: string }>((f, t) =>
+          supabase
+            .from("conduct_records")
+            .select("student_id")
+            .in("student_id", allIds)
+            .eq("type", "vi_pham")
+            .order("id")
+            .range(f, t),
+        ).then((r) => ({ data: r.rows })),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
 

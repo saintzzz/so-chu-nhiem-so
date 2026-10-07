@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type {
   AttendanceStatus,
   ClassRoom,
@@ -91,43 +92,49 @@ export default async function RecordsStudentsPage({
   );
 
   const ids = [...studentIds];
-  const [gradesRes, conductRes] = ids.length
+  // tat ca doc loat lon dung fetchAllRows - vuot PostgREST row cap
+  const [gradesRes, conductRes, attRes] = ids.length
     ? await Promise.all([
-        supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", ids)
-          .limit(20000),
-        supabase
-          .from("conduct_evaluations")
-          .select("student_id,rating")
-          .in("student_id", ids)
-          .limit(5000),
+        fetchAllRows<{
+          student_id: string;
+          subject_id: string;
+          term: string;
+          assessment_type: string;
+          score: number | null;
+        }>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score")
+            .in("student_id", ids)
+            .order("id")
+            .range(f, t),
+        ),
+        fetchAllRows<{ student_id: string; rating: string }>((f, t) =>
+          supabase
+            .from("conduct_evaluations")
+            .select("student_id,rating")
+            .in("student_id", ids)
+            .order("id")
+            .range(f, t),
+        ),
+        fetchAllRows<{ student_id: string; status: AttendanceStatus }>((f, t) =>
+          supabase
+            .from("attendance_records")
+            .select("student_id,status")
+            .in("student_id", ids)
+            .order("id")
+            .range(f, t),
+        ),
       ])
-    : [{ data: [] }, { data: [] }];
-
-  // attendance_records có thể vượt giới hạn 1000 dòng/request - phân trang
-  const attRows: { student_id: string; status: AttendanceStatus }[] = [];
-  if (ids.length > 0) {
-    const pageSize = 1000;
-    for (let from = 0; from < 30000; from += pageSize) {
-      const { data } = await supabase
-        .from("attendance_records")
-        .select("student_id,status")
-        .in("student_id", ids)
-        .order("date", { ascending: false })
-        .range(from, from + pageSize - 1);
-      const batch = (data ?? []) as {
-        student_id: string;
-        status: AttendanceStatus;
-      }[];
-      attRows.push(...batch);
-      if (batch.length < pageSize) break;
-    }
-  }
+    : [
+        { rows: [] },
+        { rows: [] },
+        { rows: [] as { student_id: string; status: AttendanceStatus }[] },
+      ];
+  const attRows = attRes.rows;
 
   const studentAvgMap = averageByStudent(
-    (gradesRes.data ?? []) as {
+    gradesRes.rows as {
       student_id: string;
       subject_id: string;
       term: string;
@@ -145,7 +152,7 @@ export default async function RecordsStudentsPage({
   }
 
   const conductByStudent = new Map(
-    ((conductRes.data ?? []) as ConductEvalRow[]).map((c) => [
+    (conductRes.rows as ConductEvalRow[]).map((c) => [
       c.student_id,
       c.rating,
     ]),

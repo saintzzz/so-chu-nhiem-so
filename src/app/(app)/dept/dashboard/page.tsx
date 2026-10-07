@@ -11,14 +11,15 @@ import type {
   ClassRoom,
   EmulationScore,
 } from "@/types";
-import { currentPeriodVN } from "@/lib/utils";
+import { currentPeriodVN, isoDateVN, todayVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 const TEACHER_ROLES = ["gvcn", "gvbm", "to_truong"];
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 export default async function DeptDashboardPage() {
@@ -66,7 +67,7 @@ export default async function DeptDashboardPage() {
     .limit(1);
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)
-      ?.date ?? new Date().toISOString().slice(0, 10);
+      ?.date ?? todayVN();
   const windowStart = addDays(anchor, -29);
 
   const { data: scopedClassRows } = await supabase
@@ -79,15 +80,17 @@ export default async function DeptDashboardPage() {
   >[]).filter((c) => scopedSchoolIds.has(c.school_id));
   const scopedClassIds = classes.map((c) => c.id);
 
-  const { data: scopedStudents } = scopedClassIds.length
-    ? await supabase
-        .from("students")
-        .select("id")
-        .in("class_id", scopedClassIds)
-    : { data: [] };
-  const scopedStudentIds = ((scopedStudents ?? []) as { id: string }[]).map(
-    (s) => s.id,
-  );
+  const { rows: scopedStudents } = scopedClassIds.length
+    ? await fetchAllRows<{ id: string }>((f, t) =>
+        supabase
+          .from("students")
+          .select("id")
+          .in("class_id", scopedClassIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { id: string }[] };
+  const scopedStudentIds = scopedStudents.map((s) => s.id);
 
   const [
     teachersRes,

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { compareVietnameseName } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 const XLSX_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -85,22 +86,25 @@ export function ClassReportExport({
     }[];
     const studentIds = students.map((s) => s.id);
 
-    const [{ data: gradeData }, { data: conductData }] = studentIds.length
+    const [{ rows: gradeData }, { data: conductData }] = studentIds.length
       ? await Promise.all([
-          supabase
-            .from("grades")
-            .select("student_id,subject_id,assessment_type,score,result,level")
-            .in("student_id", studentIds)
-            .eq("term", term)
-            .limit(20000),
+          fetchAllRows<GradeRow>((f, t) =>
+            supabase
+              .from("grades")
+              .select("student_id,subject_id,assessment_type,score,result,level")
+              .in("student_id", studentIds)
+              .eq("term", term)
+              .order("id")
+              .range(f, t),
+          ),
           supabase
             .from("conduct_evaluations")
             .select("student_id,rating")
             .in("student_id", studentIds)
             .eq("term", term),
         ])
-      : [{ data: [] }, { data: [] }];
-    const grades = (gradeData ?? []) as GradeRow[];
+      : [{ rows: [] as GradeRow[] }, { data: [] }];
+    const grades = gradeData;
     const conductByStudent = new Map(
       ((conductData ?? []) as { student_id: string; rating: string }[]).map(
         (c) => [c.student_id, c.rating],

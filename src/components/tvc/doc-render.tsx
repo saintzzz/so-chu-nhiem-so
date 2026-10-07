@@ -19,7 +19,7 @@ function Formula({ tex }: { tex: string }) {
     }
   }, [tex]);
   if (!html) return <code className="block rounded bg-muted px-3 py-2 font-mono text-sm">{tex}</code>;
-  return <div className="my-2 overflow-x-auto" dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div className="relative my-2 overflow-x-auto" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 function Block({ block }: { block: DocBlock }) {
@@ -73,9 +73,12 @@ function Block({ block }: { block: DocBlock }) {
       return (
         <figure className="my-3 text-center">
           {block.svg ? (
-            <span
-              className="inline-block"
-              dangerouslySetInnerHTML={{ __html: block.svg }}
+            // img data-URI: svg tu DB khong the chay script (tranh stored XSS)
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(block.svg)}`}
+              alt={block.caption ?? "hình minh họa"}
+              className="mx-auto inline-block max-h-56"
             />
           ) : src ? (
             // eslint-disable-next-line @next/next/no-img-element

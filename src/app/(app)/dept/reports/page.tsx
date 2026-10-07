@@ -1,5 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { isoDateVN, todayVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
@@ -8,7 +10,7 @@ import type { AttendanceRecord } from "@/types";
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return isoDateVN(d);
 }
 
 export default async function DeptReportsPage() {
@@ -53,13 +55,17 @@ export default async function DeptReportsPage() {
   );
   const classIds = classes.map((c) => c.id);
 
-  const { data: studentRows } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id")
-        .in("class_id", classIds)
-    : { data: [] };
-  const students = (studentRows ?? []) as { id: string; class_id: string }[];
+  const { rows: studentRows } = classIds.length
+    ? await fetchAllRows<{ id: string; class_id: string }>((f, t) =>
+        supabase
+          .from("students")
+          .select("id,class_id")
+          .in("class_id", classIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { id: string; class_id: string }[] };
+  const students = studentRows;
   const studentIds = students.map((s) => s.id);
   const studentClass = new Map(students.map((s) => [s.id, s.class_id]));
   const classSchool = new Map(classes.map((c) => [c.id, c.school_id]));
@@ -77,16 +83,20 @@ export default async function DeptReportsPage() {
     .limit(1);
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)?.date ??
-    new Date().toISOString().slice(0, 10);
+    todayVN();
   const windowStart = addDays(anchor, -29);
 
-  const { data: attRows } = studentIds.length
-    ? await supabase
-        .from("attendance_records")
-        .select("student_id,status")
-        .gte("date", windowStart)
-        .in("student_id", studentIds)
-    : { data: [] };
+  const { rows: attRows } = studentIds.length
+    ? await fetchAllRows<{ student_id: string; status: string }>((f, t) =>
+        supabase
+          .from("attendance_records")
+          .select("student_id,status")
+          .gte("date", windowStart)
+          .in("student_id", studentIds)
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { student_id: string; status: string }[] };
 
   // Gom số liệu theo trường
   const per = new Map<

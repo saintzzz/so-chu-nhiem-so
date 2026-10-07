@@ -164,7 +164,7 @@ export function AiExtract() {
           {waiting && <AiProgress label="Đang trích xuất..." />}
           {err && <p className="text-sm text-error">{err}</p>}
           {rows && (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <div className="relative overflow-x-auto rounded-lg border border-border">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/50 text-xs uppercase text-muted-foreground">

@@ -25,7 +25,7 @@ function TexPreview({ text, display = false }: { text: string; display?: boolean
     if (!html) return null;
     return (
       <div
-        className="mt-0.5 overflow-x-auto rounded bg-muted/40 px-2 py-1"
+        className="relative mt-0.5 overflow-x-auto rounded bg-muted/40 px-2 py-1"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );

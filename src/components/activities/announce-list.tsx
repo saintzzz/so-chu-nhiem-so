@@ -23,15 +23,35 @@ export function AnnounceList({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
 
+  function resultMessage(res: {
+    registered?: number;
+    emailed?: number;
+    emailFailed?: number;
+    emailSkipped?: boolean;
+    emailError?: string;
+  }): string {
+    const reg = res.registered ?? 0;
+    if (res.emailSkipped) {
+      return `Đã gửi thông báo, đăng ký ${reg} học sinh (email chưa cấu hình).`;
+    }
+    const emailed = res.emailed ?? 0;
+    const failed = res.emailFailed ?? 0;
+    if (emailed > 0) {
+      return `Đã gửi thông báo, đăng ký ${reg} học sinh, email đến ${emailed} phụ huynh${failed > 0 ? ` (${failed} lỗi)` : ""}.`;
+    }
+    if (res.emailError) {
+      return `Đã gửi thông báo, đăng ký ${reg} học sinh (${res.emailError === "lookup failed" ? "không tra được danh sách phụ huynh" : "email lỗi"}).`;
+    }
+    return `Đã gửi thông báo, đăng ký ${reg} học sinh (${failed > 0 ? "email lỗi" : "không có email phụ huynh"}).`;
+  }
+
   async function handleAnnounce(id: string) {
     setPendingId(id);
     const res = await announceActivity(id);
     setPendingId(null);
     setMessages((prev) => ({
       ...prev,
-      [id]: res.error
-        ? `Lỗi: ${res.error}`
-        : `Đã gửi thông báo và đăng ký ${res.registered ?? 0} học sinh.`,
+      [id]: res.error ? `Lỗi: ${res.error}` : resultMessage(res),
     }));
   }
 

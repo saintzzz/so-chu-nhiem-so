@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { AnnounceList } from "@/components/activities/announce-list";
 import type { Activity, ClassRoom, Profile } from "@/types";
 
@@ -47,31 +48,47 @@ export default async function ActivitiesAnnouncePage() {
     : { data: [] };
   const activities = (actData ?? []) as Activity[];
 
+  // R6-03: phan trang - PostgREST cat ngam o ~1000 rows se lam sai so dang ky.
+  // activity_attendance khong co cot id -> order composite (activity_id,
+  // student_id) la khoa on dinh cho range paging.
   const activityIds = activities.map((a) => a.id);
-  const { data: attData } = activityIds.length
-    ? await supabase
-        .from("activity_attendance")
-        .select("activity_id,student_id")
-        .in("activity_id", activityIds)
-    : { data: [] };
-  const attendance = (attData ?? []) as {
-    activity_id: string;
-    student_id: string;
-  }[];
+  const emptyRes = { rows: [], error: null, truncated: false };
+  const [attRes, stuRes] = await Promise.all([
+    activityIds.length
+      ? fetchAllRows<{ activity_id: string; student_id: string }>((f, t) =>
+          supabase
+            .from("activity_attendance")
+            .select("activity_id,student_id")
+            .in("activity_id", activityIds)
+            .order("activity_id")
+            .order("student_id")
+            .range(f, t),
+        )
+      : Promise.resolve(emptyRes),
+    classIds.length
+      ? fetchAllRows<{ id: string; class_id: string }>((f, t) =>
+          supabase
+            .from("students")
+            .select("id,class_id")
+            .in("class_id", classIds)
+            .eq("status", "active")
+            .order("id")
+            .range(f, t),
+        )
+      : Promise.resolve(emptyRes),
+  ]);
+  // Loi/truncated -> hien thong bao thay vi render so lieu thieu chinh xac.
+  const errors: string[] = [];
+  if (attRes.error || attRes.truncated) errors.push("attendance");
+  if (stuRes.error || stuRes.truncated) errors.push("students");
+
   const regCount = new Map<string, number>();
-  for (const r of attendance) {
+  for (const r of attRes.rows) {
     regCount.set(r.activity_id, (regCount.get(r.activity_id) ?? 0) + 1);
   }
 
-  const { data: studentData } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id")
-        .in("class_id", classIds)
-        .eq("status", "active")
-    : { data: [] };
   const classStudentCount = new Map<string, number>();
-  for (const s of (studentData ?? []) as { id: string; class_id: string }[]) {
+  for (const s of stuRes.rows) {
     classStudentCount.set(
       s.class_id,
       (classStudentCount.get(s.class_id) ?? 0) + 1,
@@ -85,17 +102,24 @@ export default async function ActivitiesAnnouncePage() {
         title="Thông báo & đăng ký"
         description="Gửi thông báo đến phụ huynh và đăng ký danh sách học sinh tham gia hoạt động đã được duyệt."
       />
-      <AnnounceList
-        activities={activities.map((a) => ({
-          id: a.id,
-          title: a.title,
-          className: className.get(a.class_id) ?? "-",
-          activityDate: fmtDate(a.activity_date),
-          description: a.description,
-          registered: regCount.get(a.id) ?? 0,
-          studentCount: classStudentCount.get(a.class_id) ?? 0,
-        }))}
-      />
+      {errors.length > 0 ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu nguồn để hiển thị số đăng ký - kết quả có thể
+          thiếu chính xác. Vui lòng thử lại sau.
+        </p>
+      ) : (
+        <AnnounceList
+          activities={activities.map((a) => ({
+            id: a.id,
+            title: a.title,
+            className: className.get(a.class_id) ?? "-",
+            activityDate: fmtDate(a.activity_date),
+            description: a.description,
+            registered: regCount.get(a.id) ?? 0,
+            studentCount: classStudentCount.get(a.class_id) ?? 0,
+          }))}
+        />
+      )}
     </div>
   );
 }

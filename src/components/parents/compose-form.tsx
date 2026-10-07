@@ -64,14 +64,30 @@ export function ComposeForm({
     setPending(false);
     if (res.error) {
       setFeedback({ kind: "error", text: res.error });
+    } else if (
+      !res.emailSkipped &&
+      (res.emailError ||
+        ((res.emailFailed ?? 0) > 0 && (res.emailed ?? 0) === 0))
+    ) {
+      // Email loi hoan toan / khong tra duoc danh sach PH - giu nguyen
+      // form de GV gui lai khong phai soan lai.
+      setFeedback({
+        kind: "error",
+        text:
+          res.emailError === "lookup failed"
+            ? "Đã lưu thông báo nhưng không tra được danh sách phụ huynh - vui lòng thử lại sau."
+            : "Đã lưu thông báo nhưng không gửi được email nào - kiểm tra cấu hình hoặc gửi lại.",
+      });
     } else {
       setFeedback({
         kind: "success",
         text: res.emailSkipped
           ? "Đã gửi thông báo in-app (chưa cấu hình RESEND_API_KEY nên không gửi email)."
-          : res.emailed
-            ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
-            : "Đã gửi thông báo thành công.",
+          : (res.emailed ?? 0) > 0 && (res.emailFailed ?? 0) > 0
+            ? `Đã gửi email đến ${res.emailed} phụ huynh, ${res.emailFailed} lỗi - một số phụ huynh chưa nhận được, vui lòng kiểm tra lại.`
+            : (res.emailed ?? 0) > 0
+              ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
+              : "Đã gửi thông báo thành công.",
       });
       setTitle("");
       setContent("");

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { sendEmail } from "@/lib/email";
+import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
 
 export async function sendAnnouncement(input: {
@@ -10,7 +10,13 @@ export async function sendAnnouncement(input: {
   studentId: string | null;
   title: string;
   content: string;
-}): Promise<{error?: string; emailed?: number; emailSkipped?: boolean }> {
+}): Promise<{
+  error?: string;
+  emailed?: number;
+  emailFailed?: number;
+  emailSkipped?: boolean;
+  emailError?: string;
+}> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -30,54 +36,21 @@ export async function sendAnnouncement(input: {
     title: input.title.trim(),
     content: input.content.trim(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[announce] insert failed:", error.message);
+    return { error: "Không lưu được thông báo. Vui lòng thử lại." };
+  }
 
   // Email kênh liên hệ duy nhất hiện tại (Zalo/SMS chưa áp dụng).
-  // Resolve: class -> students -> parent_students -> parents.email
-  let emailed = 0;
-  let emailSkipped = false;
-  let studentQ = supabase
-    .from("students")
-    .select("id")
-    .eq("class_id", input.classId)
-    .eq("status", "active");
-  if (input.studentId) studentQ = studentQ.eq("id", input.studentId);
-  const { data: stuRows } = await studentQ;
-  const stuIds = ((stuRows ?? []) as { id: string }[]).map((s) => s.id);
-  if (stuIds.length) {
-    const { data: linkRows } = await supabase
-      .from("parent_students")
-      .select("parent_id")
-      .in("student_id", stuIds);
-    const parentIds = [
-      ...new Set(
-        ((linkRows ?? []) as { parent_id: string }[]).map((l) => l.parent_id),
-      ),
-    ];
-    if (parentIds.length) {
-      const { data: parentRows } = await supabase
-        .from("parents")
-        .select("email")
-        .in("id", parentIds)
-        .not("email", "is", null)
-        .not("email", "ilike", "%@demo.scn");
-      const emails = ((parentRows ?? []) as { email: string | null }[])
-        .map((p) => p.email)
-        .filter((e): e is string => Boolean(e));
-      if (emails.length) {
-        const res = await sendEmail({
-          to: emails,
-          subject: `[Sổ Chủ Nhiệm Số] ${input.title.trim()}`,
-          text: input.content.trim(),
-        });
-        emailed = res.sent;
-        emailSkipped = Boolean(res.skipped);
-      }
-    }
-  }
+  const mail = await emailClassParents(supabase, input);
   revalidatePath("/parents/compose");
   revalidatePath("/attendance/notify");
-  return { emailed, emailSkipped };
+  return {
+    emailed: mail.emailed,
+    emailFailed: mail.emailFailed,
+    emailSkipped: mail.emailSkipped,
+    emailError: mail.emailError,
+  };
 }
 
 export async function markMessageRead(
@@ -96,7 +69,10 @@ export async function markMessageRead(
     .eq("id", messageId)
     .eq("recipient_id", user.id)
     .is("read_at", null);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[messages] markRead failed:", error.message);
+    return { error: "Không cập nhật được tin nhắn. Vui lòng thử lại." };
+  }
   revalidatePath("/parents/inbox");
   return {};
 }
@@ -159,7 +135,10 @@ export async function replyMessage(input: {
     student_id: input.studentId,
     content: input.content.trim(),
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[messages] reply insert failed:", error.message);
+    return { error: "Không gửi được tin nhắn. Vui lòng thử lại." };
+  }
   await supabase.from("notifications").insert({
     profile_id: input.recipientId,
     type: "message",
@@ -186,7 +165,10 @@ export async function updateAppointmentStatus(
     .from("appointments")
     .update({ status })
     .eq("id", appointmentId);
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[appointments] update failed:", error.message);
+    return { error: "Không cập nhật được lịch hẹn. Vui lòng thử lại." };
+  }
   revalidatePath("/parents/appointments");
   revalidatePath("/parents/portal");
   return {};

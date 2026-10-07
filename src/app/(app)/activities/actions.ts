@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole } from "@/lib/auth";
 import type { Activity, Profile } from "@/types";
 
@@ -37,7 +38,10 @@ export async function createActivity(input: {
     activity_date: input.activityDate || null,
     status: "draft",
   });
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[activities] insert failed:", error.message);
+    return { error: "Không tạo được hoạt động. Vui lòng thử lại." };
+  }
   revalidatePath("/activities/plan");
   return {};
 }
@@ -54,7 +58,10 @@ export async function submitActivity(
     .update({ status: "pending" })
     .eq("id", activityId)
     .eq("status", "draft");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[activities] submit failed:", error.message);
+    return { error: "Không gửi duyệt được hoạt động. Vui lòng thử lại." };
+  }
   revalidatePath("/activities/plan");
   return {};
 }
@@ -76,7 +83,10 @@ export async function reviewActivity(
     .eq("id", activityId)
     .eq("status", "pending")
     .select("id");
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[activities] review failed:", error.message);
+    return { error: "Không cập nhật được quyết định. Vui lòng thử lại." };
+  }
   if (updated?.length !== 1) {
     return { error: "Hoạt động đã được xử lý. Vui lòng tải lại trang." };
   }
@@ -87,7 +97,14 @@ export async function reviewActivity(
 
 export async function announceActivity(
   activityId: string,
-): Promise<{error?: string; registered?: number }> {
+): Promise<{
+  error?: string;
+  registered?: number;
+  emailed?: number;
+  emailFailed?: number;
+  emailSkipped?: boolean;
+  emailError?: string;
+}> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
   const { supabase, user, profile } = await getContext();
@@ -101,17 +118,31 @@ export async function announceActivity(
   const activity = (actData ?? null) as Activity | null;
   if (!activity) return { error: "Không tìm thấy hoạt động." };
 
+  const annTitle = `Thông báo hoạt động: ${activity.title}`;
+  const annContent =
+    activity.description ??
+    `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`;
   const { error: annError } = await supabase.from("announcements").insert({
     sender_id: user.id,
     school_id: profile?.school_id ?? null,
     class_id: activity.class_id,
     student_id: null,
-    title: `Thông báo hoạt động: ${activity.title}`,
-    content:
-      activity.description ??
-      `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`,
+    title: annTitle,
+    content: annContent,
   });
-  if (annError) return { error: annError.message };
+  if (annError) {
+    console.error("[activity-announce] insert failed:", annError.message);
+    return { error: "Không lưu được thông báo. Vui lòng thử lại." };
+  }
+
+  // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
+  // [So Chu Nhiem So] do helper dat).
+  const mail = await emailClassParents(supabase, {
+    classId: activity.class_id,
+    studentId: null,
+    title: annTitle,
+    content: annContent,
+  });
 
   const { data: studentData } = await supabase
     .from("students")
@@ -141,12 +172,21 @@ export async function announceActivity(
     const { error: regError } = await supabase
       .from("activity_attendance")
       .insert(rows);
-    if (regError) return { error: regError.message };
+    if (regError) {
+      console.error("[activity-announce] register failed:", regError.message);
+      return { error: "Không đăng ký được danh sách học sinh. Vui lòng thử lại." };
+    }
   }
 
   revalidatePath("/activities/announce");
   revalidatePath("/activities/attendance");
-  return { registered: rows.length };
+  return {
+    registered: rows.length,
+    emailed: mail.emailed,
+    emailFailed: mail.emailFailed,
+    emailSkipped: mail.emailSkipped,
+    emailError: mail.emailError,
+  };
 }
 
 export async function saveActivityAttendance(
@@ -181,14 +221,20 @@ export async function saveActivityAttendance(
         .update(payload)
         .eq("activity_id", activityId)
         .eq("student_id", row.studentId);
-      if (error) return { error: error.message };
+      if (error) {
+        console.error("[activities] attendance update failed:", error.message);
+        return { error: "Không lưu được điểm danh. Vui lòng thử lại." };
+      }
     } else {
       const { error } = await supabase.from("activity_attendance").insert({
         activity_id: activityId,
         student_id: row.studentId,
         ...payload,
       });
-      if (error) return { error: error.message };
+      if (error) {
+        console.error("[activities] attendance insert failed:", error.message);
+        return { error: "Không lưu được điểm danh. Vui lòng thử lại." };
+      }
     }
   }
 

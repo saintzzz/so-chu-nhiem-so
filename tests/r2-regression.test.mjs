@@ -555,3 +555,146 @@ test("R5-02: radar page + refresh action chan khi errors non-empty", () => {
   assert.match(guard[0], /return \{[\s\S]*?error:/,
     "errors non-empty phai return error, khong insert warnings");
 });
+
+// --- R6-01: sendEmail dem loi tung dia chi (partial failure) ----------------
+test("R6-01: sendEmail tra sent=1, failed=1 khi 1/2 dia chi loi", async () => {
+  // Env phai dat truoc khi goi sendEmail (getEmailConfig doc env o call-time;
+  // EMAIL_PROVIDER ep duong env, bo qua vault).
+  process.env.EMAIL_PROVIDER = "resend";
+  process.env.RESEND_API_KEY = "test";
+  const { sendEmail } = await import(join(ROOT, "src/lib/email.ts"));
+  const origFetch = globalThis.fetch;
+  const statuses = [200, 500];
+  let call = 0;
+  globalThis.fetch = async () =>
+    new Response("{}", { status: statuses[call++] ?? 200 });
+  try {
+    const res = await sendEmail({
+      to: ["a@example.com", "b@example.com"],
+      subject: "s",
+      text: "t",
+    });
+    assert.equal(res.sent, 1);
+    assert.equal(res.failed, 1,
+      "dia chi that bai phai duoc dem vao failed - truoc day bi nuot");
+    assert.equal(res.error, undefined,
+      "partial failure khong phai tin hieu total-failure (error chi khi sent=0)");
+    assert.equal(call, 2, "phai thu gui cho ca 2 dia chi");
+  } finally {
+    globalThis.fetch = origFetch;
+    delete process.env.EMAIL_PROVIDER;
+    delete process.env.RESEND_API_KEY;
+  }
+});
+
+test("R6-01: EmailResult co truong failed va error giu ngu nghia total-failure", () => {
+  const email = read("src/lib/email.ts");
+  assert.match(email, /failed: number/, "EmailResult thieu truong failed");
+  assert.match(email, /failed: to\.length - sent/);
+  assert.match(email, /error: sent \? undefined : lastError/,
+    "error phai chi la tin hieu sent===0 - digest dung no cho tung delivery");
+});
+
+// --- R6-02: helper emailClassParents dung chung -----------------------------
+test("R6-02: sendAnnouncement + announceActivity goi helper emailClassParents", () => {
+  const parents = read("src/app/(app)/parents/actions.ts");
+  assert.match(parents, /emailClassParents\(supabase/,
+    "sendAnnouncement phai dung helper chung thay vi inline resolve");
+  assert.match(parents, /emailFailed: mail\.emailFailed/,
+    "sendAnnouncement phai tra emailFailed");
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.match(act, /import \{ emailClassParents \} from "@\/lib\/parent-email"/);
+  const body = act.match(/announceActivity[\s\S]*?announcements"\)\.insert/);
+  assert.ok(body, "khong tim thay announcements insert trong announceActivity");
+  const afterInsert = act.slice(act.indexOf('announcements").insert'));
+  assert.match(afterInsert, /emailClassParents\(supabase/,
+    "announceActivity phai email phu huynh sau khi insert announcement");
+  assert.match(act, /emailSkipped: mail\.emailSkipped/);
+  // emailError phai truyen xuyen qua ca 2 action de UI phan biet duoc
+  // "khong co nguoi nhan" voi "lookup failed".
+  assert.match(parents, /emailError: mail\.emailError/,
+    "sendAnnouncement phai tra emailError");
+  assert.match(act, /emailError: mail\.emailError/,
+    "announceActivity phai tra emailError");
+});
+
+test("R6-02: helper tra label loi co dinh, khong echo raw provider error", () => {
+  const helper = read("src/lib/parent-email.ts");
+  assert.match(helper, /subject: `\[Sổ Chủ Nhiệm Số\]/);
+  assert.match(helper, /emailError: res\.error \? "provider error" : undefined/,
+    "emailError phai la label co dinh, khong phai raw provider message");
+});
+
+test("R6-02: query nguon loi -> lookup failed, khong gia danh sach rong", () => {
+  // parent-email dung @/ alias nen khong import duoc bang node test -
+  // guard static: moi query resolve phai check error va tra lookup failed.
+  const helper = read("src/lib/parent-email.ts");
+  assert.match(helper, /emailError: "lookup failed"/,
+    "lookupFail phai tra nhan lookup failed co dinh");
+  for (const q of ["stuErr", "linkErr", "parentErr"]) {
+    assert.ok(
+      new RegExp(`${q}\\) return lookupFail`).test(helper),
+      `${q} phai tra lookup failed thay vi xu ly tiep nhu khong co nguoi nhan`);
+  }
+});
+
+test("R6-02: raw DB error khong ra client o 2 action da cham", () => {
+  const parents = read("src/app/(app)/parents/actions.ts");
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.ok(!/annError\) return \{ error: annError\.message/.test(act) &&
+            !/annError\.message/.test(act.match(/return \{[^}]*annError[^}]*\}/)?.[0] ?? ""),
+    "annError.message khong duoc tra ve client");
+  assert.ok(!/regError\.message/.test(act.match(/return \{[^}]*regError[^}]*\}/)?.[0] ?? ""),
+    "regError.message khong duoc tra ve client");
+  // announcements insert trong sendAnnouncement cung phai la label co dinh
+  const annInsert = parents.match(/announcements"\)\.insert[\s\S]{0,400}/);
+  assert.ok(annInsert && !/error: error\.message/.test(annInsert[0]),
+    "insert announcements loi phai tra label co dinh");
+});
+
+test("R6-02: compose-form giu form + bao loi khi toan bo email that bai", () => {
+  const form = read("src/components/parents/compose-form.tsx");
+  assert.match(form, /res\.emailFailed \?\? 0\) > 0/);
+  assert.match(form, /res\.emailed \?\? 0\) === 0/);
+  assert.match(form, /không gửi được email nào/);
+  // Nhanh loi-toan-bo phai return truoc khi clear form (khong roi vao setTitle("")).
+  const branch = form.match(
+    /res\.emailed \?\? 0\) === 0[\s\S]*?\}\s*else \{/);
+  assert.ok(branch, "khong tim thay nhanh all-failed");
+  assert.ok(!/setTitle\(""\)/.test(branch[0]),
+    "nhanh all-failed khong duoc clear form - GV can gui lai");
+  assert.match(form, /res\.emailed \?\? 0\) > 0 && \(res\.emailFailed \?\? 0\) > 0/,
+    "partial failure phai bao so email loi trong message thanh cong");
+});
+
+// --- R6-03: announce page phan trang + bao loi nguon ------------------------
+test("R6-03: announce page fetchAllRows cho activity_attendance + students", () => {
+  const page = read("src/app/(app)/activities/announce/page.tsx");
+  const uses = (page.match(/fetchAllRows/g) ?? []).length;
+  assert.ok(uses >= 3, `can >=3 fetchAllRows (import + 2 query), thay ${uses}`);
+  const att = page.match(/activity_attendance[\s\S]*?\.range\(f, t\)/);
+  assert.ok(att, "activity_attendance van query khong phan trang");
+  assert.match(att[0], /\.order\("activity_id"\)[\s\S]*?\.order\("student_id"\)/,
+    "activity_attendance khong co cot id - can order composite on dinh");
+  const stu = page.match(/\.from\("students"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(stu, "students van query khong phan trang");
+  assert.match(stu[0], /\.order\("id"\)/);
+  assert.match(page, /errors\.length > 0/,
+    "loi/truncated phai hien notice thay vi render so lieu thieu");
+});
+
+// --- R6-04: report page khong nuot loi nguon --------------------------------
+test("R6-04: report page kiem error/truncated truoc khi render stats", () => {
+  const page = read("src/app/(app)/records/report/page.tsx");
+  assert.ok(!/\.then\(\(r\) => \(\{ data: r\.rows \}\)\)/.test(page),
+    "con .then() nuot error/truncated cua fetchAllRows");
+  assert.match(page, /error: classErr/,
+    "classQuery error van bi bo qua");
+  for (const src of ["stuRes", "attRes", "gradesRes", "violRes"]) {
+    assert.ok(
+      new RegExp(`${src}\\.error \\|\\| ${src}\\.truncated`).test(page),
+      `${src} chua kiem error/truncated`);
+  }
+  assert.match(page, /errors\.length > 0/,
+    "nguon loi phai hien notice thay vi stats + narrative 'Chua ghi nhan vi pham'");
+});

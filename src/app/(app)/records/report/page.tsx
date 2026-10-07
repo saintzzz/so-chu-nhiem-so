@@ -34,11 +34,15 @@ export default async function RecordsReportPage() {
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  // R6-04: thu loi/truncation cua moi nguon - neu bat ky nguon nao thieu,
+  // trang hien thong bao thay vi bang thong ke + narrative "khong vi pham" sai.
+  const errors: string[] = [];
+  const { data: classData, error: classErr } = await classQuery;
+  if (classErr) errors.push("classes");
   const classes = (classData ?? []) as ClassRoom[];
   const classIds = classes.map((c) => c.id);
 
-  const { rows: studentData } = classIds.length
+  const stuRes = classIds.length
     ? await fetchAllRows<Pick<Student, "id" | "class_id">>((f, t) =>
         supabase
           .from("students")
@@ -47,8 +51,9 @@ export default async function RecordsReportPage() {
           .order("id")
           .range(f, t),
       )
-    : { rows: [] as Pick<Student, "id" | "class_id">[] };
-  const students = studentData;
+    : { rows: [] as Pick<Student, "id" | "class_id">[], error: null, truncated: false };
+  if (stuRes.error || stuRes.truncated) errors.push("students");
+  const students = stuRes.rows;
   const idsByClass = new Map<string, string[]>();
   for (const s of students) {
     const arr = idsByClass.get(s.class_id) ?? [];
@@ -58,6 +63,7 @@ export default async function RecordsReportPage() {
 
   const allIds = students.map((s) => s.id);
   const classOf = new Map(students.map((s) => [s.id, s.class_id]));
+  const emptyRows = { rows: [], error: null, truncated: false };
   const [attRes, gradesRes, violRes] = allIds.length
     ? await Promise.all([
         fetchAllRows<{ student_id: string; status: string }>((f, t) =>
@@ -67,7 +73,7 @@ export default async function RecordsReportPage() {
             .in("student_id", allIds)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows })),
+        ),
         fetchAllRows<{
           student_id: string;
           subject_id: string;
@@ -81,7 +87,7 @@ export default async function RecordsReportPage() {
             .in("student_id", allIds)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows })),
+        ),
         fetchAllRows<{ student_id: string }>((f, t) =>
           supabase
             .from("conduct_records")
@@ -90,12 +96,15 @@ export default async function RecordsReportPage() {
             .eq("type", "vi_pham")
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows })),
+        ),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+    : [emptyRows, emptyRows, emptyRows];
+  if (attRes.error || attRes.truncated) errors.push("attendance");
+  if (gradesRes.error || gradesRes.truncated) errors.push("grades");
+  if (violRes.error || violRes.truncated) errors.push("conduct");
 
   const attByClass = new Map<string, { total: number; absent: number }>();
-  for (const r of (attRes.data ?? []) as {
+  for (const r of attRes.rows as {
     student_id: string;
     status: AttendanceStatus;
   }[]) {
@@ -108,7 +117,7 @@ export default async function RecordsReportPage() {
   }
 
   const avgByStudent = averageByStudent(
-    (gradesRes.data ?? []) as {
+    gradesRes.rows as {
       student_id: string;
       subject_id: string;
       term: string;
@@ -126,7 +135,7 @@ export default async function RecordsReportPage() {
   }
 
   const violByClass = new Map<string, number>();
-  for (const r of (violRes.data ?? []) as { student_id: string }[]) {
+  for (const r of violRes.rows as { student_id: string }[]) {
     const cid = classOf.get(r.student_id);
     if (!cid) continue;
     violByClass.set(cid, (violByClass.get(cid) ?? 0) + 1);
@@ -218,6 +227,13 @@ export default async function RecordsReportPage() {
         description="Số liệu tổng hợp theo lớp: sĩ số, chuyên cần, điểm trung bình và vi phạm, kèm gợi ý phân tích."
       />
 
+      {errors.length > 0 ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu nguồn để tổng hợp báo cáo - số liệu có thể
+          thiếu chính xác. Vui lòng thử lại sau.
+        </p>
+      ) : (
+      <>
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Tổng sĩ số" value={totalStudents} />
         <StatCard
@@ -315,6 +331,8 @@ export default async function RecordsReportPage() {
         buttonLabel="Phân tích"
         progressLabel="Đang phân tích số liệu các lớp..."
       />
+      </>
+      )}
     </div>
   );
 }

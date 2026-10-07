@@ -19,6 +19,9 @@ const DEMO_EMAIL_RE = /@demo\.scn$/i;
 
 export interface EmailResult {
   sent: number;
+  // So dia chi da thu gui nhung that bai (to.length - sent). error chi la
+  // tin hieu that-bai-toan-bo (sent===0) - partial failure doc qua `failed`.
+  failed: number;
   skipped?: boolean;
   error?: string;
 }
@@ -91,8 +94,8 @@ export async function sendEmail(input: {
 }): Promise<EmailResult> {
   const { provider, key, from: fromRaw } = await getEmailConfig();
   const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
-  if (!to.length) return { sent: 0, skipped: true };
-  if (!key) return { sent: 0, skipped: true };
+  if (!to.length) return { sent: 0, failed: 0, skipped: true };
+  if (!key) return { sent: 0, failed: 0, skipped: true };
 
   const from = parseFrom(fromRaw);
   let sent = 0;
@@ -132,5 +135,5 @@ export async function sendEmail(input: {
       lastError = e instanceof Error ? e.message : String(e);
     }
   }
-  return { sent, error: sent ? undefined : lastError };
+  return { sent, failed: to.length - sent, error: sent ? undefined : lastError };
 }

@@ -81,7 +81,7 @@ function note(s, txt, y = 6.9) {
     ["TỔNG NHÂN SỰ", "", "3.3 FTE", "", "129 000 000"],
   ], { boldLast: true });
   bullets(s, [
-    { t: "Deliverables T10-T01: gate 15/10 bản demo core functions đẩy về trường → hoàn thiện ecosystem (SCN + Studio + Portal), pilot 3-5 trường thật, bank nội dung theo YCCĐ, quy trình duyệt 2 lớp, báo cáo DPIA/bảo mật.", y: 5.1 },
+    { t: "Deliverables T10-T01: gate 15/10 môi trường demo để trường tự đăng nhập dùng thử core functions (domain + tài khoản + data mẫu theo trường) → hoàn thiện ecosystem (SCN + Studio + Portal), pilot 3-5 trường thật, bank nội dung theo YCCĐ, quy trình duyệt 2 lớp, báo cáo DPIA/bảo mật.", y: 5.1 },
   ], { y: 5.1, fontSize: 12.5 });
 }
 
@@ -92,12 +92,12 @@ function note(s, txt, y = 6.9) {
   table(s, [
     ["Nhân sự", "T10 - M1 (gate demo 15/10)", "T11 - M2", "T12 - M3", "T01 - M4"],
     ["Bình - Fullstack 100%", "Hardening core → demo 15/10, sau đó fix feedback + admin/phân quyền", "Bank câu hỏi + export DOCX + duyệt 2 lớp", "Pilot prep: data thật, HDSD, checklist", "Pilot trường thật + hardening"],
-    ["Phiên - Backend 100%", "Môi trường demo ổn định + tài khoản trường + Schema/RLS", "ACL chi tiết + API duyệt + audit log", "Migration dữ liệu trường + backup", "Monitoring + hotfix pilot"],
-    ["Lan - QA 100%", "Test core demo flows trước 15/10 + regression sau feedback", "E2E bank/duyệt + data coverage", "UAT cùng trường pilot + checklist", "Regression + báo cáo chất lượng"],
-    ["PM / BA - 30%", "Đóng băng scope demo + checklist vận hành trường", "Review gate CR + rủi ro", "Đào tạo GV + tài liệu", "Báo cáo chuyên gia + handover"],
+    ["Phiên - Backend 100%", "Deploy môi trường demo (domain + SSL) + tài khoản/data mẫu theo trường", "ACL chi tiết + API duyệt + audit log", "Migration dữ liệu trường + backup", "Monitoring + hotfix pilot"],
+    ["Lan - QA 100%", "E2E demo flows + kiểm tra đăng nhập từng trường trước 15/10", "E2E bank/duyệt + data coverage", "UAT cùng trường pilot + checklist", "Regression + báo cáo chất lượng"],
+    ["PM / BA - 30%", "Đóng băng scope demo 12/10 + checklist vận hành trường", "Review gate CR + rủi ro", "Đào tạo GV + tài liệu", "Báo cáo chuyên gia + handover"],
   ], { rowH: 0.78 });
   bullets(s, [
-    { t: "Gate 15/10/2026 (yêu cầu TVC): bản demo core functions đẩy về trường - scope demo đóng băng trước đó, feedback sau demo triage vào backlog từ T11", c: C.red },
+    { t: "Gate 15/10/2026 (yêu cầu TVC): trường TỰ ĐĂNG NHẬP dùng thử core functions - cần domain + tài khoản/data theo trường + hotfix trong ngày; scope demo đóng băng 12/10, feedback triage vào backlog từ T11", c: C.red },
     { t: "Phía TVC: hội đồng chuyên môn duyệt 80 YCCĐ còn lại + pipeline 3-5 trường pilot - deliverable 2 chiều gắn cùng milestone", c: C.accent },
     { t: "AI API ramp cao nhất T11 (gen bank câu hỏi) - đã tính trong buffer ~4M/tháng" },
     { t: "Không tuyển thêm trong giai đoạn này - đánh giá scale-out sau pilot nếu >5 trường cùng lúc" },
@@ -193,7 +193,7 @@ function note(s, txt, y = 6.9) {
     { t: "Báo cáo doanh thu hàng tháng + audit rights; chi phí infra trừ khỏi gross trước khi chia" },
     { t: "Milestone/deliverables 2 chiều: dev giao sản phẩm ↔ TVC giao pipeline trường (commitment sale đi đôi 70%)" },
     { t: "Phần build 04/09 - 30/09 đã hoàn thành là contribution của bên phát triển - không đưa vào cost-share, không khấu trừ" },
-    { t: "Phạm vi 'core functions' cho bản demo 15/10 chốt bằng văn bản trước gate - feedback trường sau demo đi vào backlog chung, không tính thay đổi scope cam kết" },
+    { t: "Phạm vi 'core functions' cho bản demo 15/10 chốt bằng văn bản trước 12/10 - trường tự đăng nhập nên kèm SLA hotfix trong ngày suốt tuần demo + cơ chế reset/thu hồi tài khoản demo sau gate; feedback trường sau demo đi vào backlog chung, không tính thay đổi scope cam kết" },
   ]);
 }
 
@@ -209,7 +209,7 @@ function note(s, txt, y = 6.9) {
     ["PA2 - Nuôi quân", "TVC ứng 100% (~545M/4th), khấu trừ từ 30% khi doanh thu đủ"],
     ["Rev share", "Giữ nguyên 70-30 từ khách paid đầu tiên, 24 tháng"],
     ["Equity", "10% vesting từ ngày ký, ghi văn bản"],
-    ["Milestone", "Gate demo trường 15/10; giải ngân M1-M4 = T10 / T11 / T12 / T01 gắn deliverables"],
+    ["Milestone", "Gate 15/10: trường tự đăng nhập dùng thử (cần domain + tài khoản/data theo trường); giải ngân M1-M4 = T10/T11/T12/T01"],
   ]);
   note(s, "Bản chất: TVC mua năng lực team 3.3 FTE với giá ~136M/tháng - rẻ hơn 40-60% so với thuê ngoài cùng scope, và được giữ 70% upside.");
 }

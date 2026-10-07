@@ -85,6 +85,24 @@ function note(s, txt, y = 6.9) {
   ], { y: 5.1, fontSize: 12.5 });
 }
 
+// ---------- S2b Resource planning ----------
+{
+  const s = p.addSlide();
+  slideTitle(s, "KẾ HOẠCH NHÂN LỰC", "Resource planning theo milestone - ai làm gì, tháng nào");
+  table(s, [
+    ["Nhân sự", "T10 - M1", "T11 - M2", "T12 - M3", "T01 - M4"],
+    ["Bình - Fullstack 100%", "Hoàn thiện core modules + admin/phân quyền", "Bank câu hỏi + export DOCX + duyệt 2 lớp", "Pilot prep: data thật, HDSD, checklist", "Pilot trường thật + hardening"],
+    ["Phiên - Backend 100%", "Schema/RLS, RBAC audit", "ACL chi tiết + API duyệt + audit log", "Migration dữ liệu trường + backup", "Monitoring + hotfix pilot"],
+    ["Lan - QA 100%", "Test plan + E2E core flows", "E2E bank/duyệt + data coverage", "UAT cùng trường pilot + checklist", "Regression + báo cáo chất lượng"],
+    ["PM / BA - 30%", "Backlog + requirement", "Review gate CR + rủi ro", "Đào tạo GV + tài liệu", "Báo cáo chuyên gia + handover"],
+  ], { rowH: 0.78 });
+  bullets(s, [
+    { t: "Phía TVC: hội đồng chuyên môn duyệt 80 YCCĐ còn lại + pipeline 3-5 trường pilot - deliverable 2 chiều gắn cùng milestone", c: C.accent },
+    { t: "AI API ramp cao nhất T11 (gen bank câu hỏi) - đã tính trong buffer ~4M/tháng" },
+    { t: "Không tuyển thêm trong giai đoạn này - đánh giá scale-out sau pilot nếu >5 trường cùng lúc" },
+  ], { y: 5.55, fontSize: 12 });
+}
+
 // ---------- S3 Chi phi tong ----------
 {
   const s = p.addSlide();

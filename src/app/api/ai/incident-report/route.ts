@@ -23,18 +23,15 @@ export async function POST(req: Request) {
   let type = "";
   let severity = "";
   let notes = "";
-  let studentName = "";
   try {
     const body = (await req.json()) as {
       type?: string;
       severity?: string;
       notes?: string;
-      studentName?: string;
     };
     type = (body.type ?? "").trim();
     severity = (body.severity ?? "").trim();
     notes = (body.notes ?? "").trim();
-    studentName = (body.studentName ?? "").trim();
   } catch {
     return NextResponse.json({ error: "Body không hợp lệ" }, { status: 400 });
   }
@@ -56,11 +53,10 @@ export async function POST(req: Request) {
     prompt: `Viết hồ sơ sự cố học sinh từ thông tin thô:
 - Loại sự cố: ${type || "Chưa rõ"}
 - Mức độ: ${severity || "Chưa rõ"}
-${studentName ? `- Học sinh: ${studentName}` : ""}
 - Ghi chú thô của giáo viên: ${notes}
 
 Yêu cầu:
-- "description": đoạn mô tả khách quan, đủ các yếu tố (thời gian, địa điểm, diễn biến, người liên quan, xử lý ban đầu nếu có) - viết lại từ ghi chú thô, KHÔNG bịa chi tiết không có trong ghi chú.
+- "description": đoạn mô tả khách quan, đủ các yếu tố (thời gian, địa điểm, diễn biến, người liên quan, xử lý ban đầu nếu có) - viết lại từ ghi chú thô, KHÔNG bịa chi tiết không có trong ghi chú. Gọi người liên quan là "học sinh"/"giáo viên", KHÔNG ghi tên riêng.
 - "suggestion": 2-3 việc cần làm tiếp theo (báo BGH, liên hệ phụ huynh, theo dõi sức khỏe...), mỗi việc 1 câu ngắn.
 
 Trả về CHỈ JSON {"description": "...", "suggestion": "..."}, không markdown.`,

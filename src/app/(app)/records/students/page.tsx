@@ -190,7 +190,7 @@ export default async function RecordsStudentsPage({
       <PageHeader
         section="Hồ sơ lớp học"
         title="Chi tiết hồ sơ học sinh"
-        description="Tra cứu hồ sơ tổng hợp của từng học sinh: thông tin, điểm trung bình, chuyên cần và hạnh kiểm. Nhấn vào một dòng để xem chi tiết."
+        description="Tra cứu hồ sơ tổng hợp của từng học sinh: thông tin, điểm trung bình, chuyên cần và kết quả rèn luyện. Nhấn vào một dòng để xem chi tiết."
       />
       <StudentsExplorer
         students={rows}

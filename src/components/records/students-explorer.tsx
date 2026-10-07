@@ -170,7 +170,7 @@ export function StudentsExplorer({
                 "Tổ",
                 "Điểm TB",
                 "Chuyên cần",
-                "Hạnh kiểm",
+                "Rèn luyện",
                 "Trạng thái",
                 "",
               ].map((c) => (
@@ -321,7 +321,7 @@ export function StudentsExplorer({
                             <div className="mt-1.5">
                               {s.conductLabel ? (
                                 <StatusBadge
-                                  label={`Hạnh kiểm: ${s.conductLabel}`}
+                                  label={`Rèn luyện: ${s.conductLabel}`}
                                   tone={s.conductTone}
                                 />
                               ) : (

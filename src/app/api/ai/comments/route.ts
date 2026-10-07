@@ -271,6 +271,13 @@ export async function POST(req: Request) {
     }
   }
 
+  const nameList = students.map((s) => s.name).filter(Boolean);
+  const redactNames = (t: string | null): string | null => {
+    if (!t) return t;
+    let out = t;
+    for (const n of nameList) out = out.split(n).join("em");
+    return out;
+  };
   const payload = students.map((s) => {
     const id = idByCode.get(s.code);
     const viol = id ? violById.get(id) : undefined;
@@ -283,8 +290,8 @@ export async function POST(req: Request) {
     const sorted = subs ? [...subs].sort((a, b) => b.avg - a.avg) : [];
     return {
       code: s.code,
-      ten: s.name,
       xep_loai: RATING_LABELS[s.rating] ?? s.rating,
+      // khong gui ho ten HS ra AI provider - chi ma HS
       vi_pham: viol?.vi_pham ?? 0,
       khen_thuong: viol?.khen_thuong ?? 0,
       diem_tb: score ?? null,
@@ -301,11 +308,11 @@ export async function POST(req: Request) {
           ? Math.round((act.joined / act.total) * 100)
           : null,
       tu_van_dang_mo: id ? (counselById.get(id) ?? 0) : 0,
-      nhan_xet_nlpc_gan_nhat: id ? (nlpcById.get(id) ?? null) : null,
+      nhan_xet_nlpc_gan_nhat: id ? redactNames(nlpcById.get(id) ?? null) : null,
     };
   });
 
-  const prompt = `Viết nhận xét hạnh kiểm ${term === "hk1" ? "học kỳ I" : term === "hk2" ? "học kỳ II" : "cả năm"} cho từng học sinh THCS dưới đây (JSON): ${JSON.stringify(payload)}.
+  const prompt = `Viết nhận xét rèn luyện ${term === "hk1" ? "học kỳ I" : term === "hk2" ? "học kỳ II" : "cả năm"} cho từng học sinh THCS dưới đây (JSON): ${JSON.stringify(payload)}.
 
 Yêu cầu: mỗi nhận xét 1-2 câu, văn phong giáo viên chủ nhiệm Việt Nam, phù hợp xếp loại, đề cập điểm mạnh và điều cần cố gắng dựa trên số liệu (vi phạm, khen thưởng, điểm TB, môn mạnh/yếu, chuyên cần, sự cố, năng lực-phẩm chất, tham gia hoạt động). Nếu tu_van_dang_mo>0 thì viết nhẹ nhàng, tập trung động viên. Không emoji, không khô khan lặp mẫu.
 

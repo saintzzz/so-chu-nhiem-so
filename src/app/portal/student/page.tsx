@@ -321,7 +321,7 @@ export default async function StudentPortalPage() {
                 tone="primary"
               />
               <StatCard
-                label="Hạnh kiểm"
+                label="Rèn luyện"
                 value={conductRating ?? "-"}
                 tone={conductRating ? "success" : "default"}
               />

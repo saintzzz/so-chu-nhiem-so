@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     .filter((s) => s.tb !== null)
     .sort((a, b) => (b.tb ?? 0) - (a.tb ?? 0));
   const studentAvgs = students
-    .map((s) => ({ ten: s.full_name, tb: avg(byStudent.get(s.id) ?? []) }))
+    .map((s) => ({ ma_hs: s.code ?? "HS", tb: avg(byStudent.get(s.id) ?? []) }))
     .filter((s) => s.tb !== null)
     .sort((a, b) => (b.tb ?? 0) - (a.tb ?? 0));
   const weak = studentAvgs.filter((s) => (s.tb ?? 0) < 5);
@@ -107,8 +107,8 @@ export async function POST(req: Request) {
     si_so: students.length,
     diem_tb_lop: avg(studentAvgs.map((s) => s.tb as number)),
     mon_theo_tb: subjectStats.slice(0, 12),
-    hs_duoi_5: weak.map((s) => ({ ten: s.ten, tb: s.tb })).slice(0, 10),
-    hs_dau_lop: studentAvgs.slice(0, 5).map((s) => ({ ten: s.ten, tb: s.tb })),
+    hs_duoi_5: weak.map((s) => ({ ma_hs: s.ma_hs, tb: s.tb })).slice(0, 10),
+    hs_dau_lop: studentAvgs.slice(0, 5).map((s) => ({ ma_hs: s.ma_hs, tb: s.tb })),
   };
 
   return respondWithAi<{ lines: string[] }>({
@@ -120,20 +120,30 @@ export async function POST(req: Request) {
       "Bạn là trợ lý phân tích kết quả học tập cho GVCN/BGH trường THCS. Nhận xét thực tế, cụ thể theo số liệu. Không emoji.",
     prompt: `Phân tích kết quả học tập lớp từ số liệu (JSON): ${JSON.stringify(facts)}.
 
-Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu tên), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
+Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu mã học sinh), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1200,
     parse: (text) => {
+      const deanon = (s: string) => {
+        let out = s;
+        for (const st of students)
+          if (st.code) out = out.split(st.code).join(st.full_name);
+        return out;
+      };
       try {
         const o = JSON.parse(text) as { lines?: string[] };
         if (Array.isArray(o.lines) && o.lines.length) {
-          return { lines: o.lines.filter((l) => typeof l === "string") };
+          return {
+            lines: o.lines
+              .filter((l) => typeof l === "string")
+              .map(deanon),
+          };
         }
       } catch {
         /* fallthrough */
       }
       const lines = parseLines(text);
-      return lines ? { lines } : null;
+      return lines ? { lines: lines.map(deanon) } : null;
     },
   });
 }

@@ -32,10 +32,10 @@ export async function POST(req: Request) {
 
   const { data: stu } = await supabase
     .from("students")
-    .select("id,full_name")
+    .select("id,full_name,code")
     .eq("class_id", cls.id)
     .eq("status", "active");
-  const students = (stu ?? []) as Pick<Student, "id" | "full_name">[];
+  const students = (stu ?? []) as Pick<Student, "id" | "full_name" | "code">[];
   const ids = students.map((s) => s.id);
 
   const [attRes, conductRes, incRes] = await Promise.all([
@@ -60,7 +60,13 @@ export async function POST(req: Request) {
       .in("status", ["new", "following"]),
   ]);
 
-  const nameOf = new Map(students.map((s) => [s.id, s.full_name]));
+  // gui ma HS thay ho ten ra AI provider (PII minimization); map nguoc khi render
+  const codeOf = new Map(students.map((s) => [s.id, s.code ?? "HS"]));
+  const deanon = (t: string) => {
+    let out = t;
+    for (const s of students) if (s.code) out = out.split(s.code).join(s.full_name);
+    return out;
+  };
   const att = (attRes.data ?? []) as {
     student_id: string;
     status: string;
@@ -83,22 +89,22 @@ export async function POST(req: Request) {
     si_so: students.length,
     vang: att
       .filter((a) => a.status === "excused" || a.status === "unexcused")
-      .map((a) => `${nameOf.get(a.student_id) ?? "?"} (${a.status === "excused" ? "có phép" : "không phép"})`),
+      .map((a) => `${codeOf.get(a.student_id) ?? "?"} (${a.status === "excused" ? "có phép" : "không phép"})`),
     di_muon: att
       .filter((a) => a.status === "late")
-      .map((a) => nameOf.get(a.student_id) ?? "?"),
+      .map((a) => codeOf.get(a.student_id) ?? "?"),
     vi_pham: conduct
       .filter((c) => c.type === "vi_pham")
-      .map((c) => `${nameOf.get(c.student_id) ?? "?"}: ${c.content}`),
+      .map((c) => `${codeOf.get(c.student_id) ?? "?"}: ${c.content}`),
     khen_thuong: conduct
       .filter((c) => c.type === "khen_thuong")
-      .map((c) => `${nameOf.get(c.student_id) ?? "?"}: ${c.content}`),
+      .map((c) => `${codeOf.get(c.student_id) ?? "?"}: ${c.content}`),
     su_co_dang_mo: incidents.map((i) => `${i.type} (${i.severity})`),
   };
 
   const prompt = `Soạn báo cáo ngày của giáo viên chủ nhiệm gửi Ban Giám Hiệu dựa trên số liệu (JSON): ${JSON.stringify(facts)}.
 
-Yêu cầu: 2-4 câu, văn phong báo cáo hành chính giáo dục Việt Nam, nêu sĩ số - chuyên cần - tình hình nổi bật - việc đề xuất BGH hỗ trợ (nếu có). Không emoji, không liệt kê máy móc, không bịa sự kiện ngoài số liệu. Nếu ngày bình thường không có gì đặc biệt thì báo cáo ngắn gọn "lớp ổn định".
+Yêu cầu: 2-4 câu, văn phong báo cáo hành chính giáo dục Việt Nam, nêu sĩ số - chuyên cần - tình hình nổi bật - việc đề xuất BGH hỗ trợ (nếu có). Gọi học sinh bằng mã (HS...) đúng như dữ liệu. Không emoji, không liệt kê máy móc, không bịa sự kiện ngoài số liệu. Nếu ngày bình thường không có gì đặc biệt thì báo cáo ngắn gọn "lớp ổn định".
 
 Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
 
@@ -133,7 +139,8 @@ Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
   try {
     const cleaned = aiRes.text.replace(/```json|```/g, "").trim();
     const obj = JSON.parse(cleaned) as { draft?: string };
-    if (obj.draft?.trim()) return NextResponse.json({ draft: obj.draft.trim() });
+    if (obj.draft?.trim())
+      return NextResponse.json({ draft: deanon(obj.draft.trim()) });
   } catch {
     // fallthrough
   }

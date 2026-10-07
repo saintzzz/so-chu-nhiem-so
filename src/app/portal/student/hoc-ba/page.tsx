@@ -240,7 +240,7 @@ export default async function StudentTranscriptPage() {
         )}
 
         <div>
-          <h2 className="mb-3 text-base font-semibold">Hạnh kiểm</h2>
+          <h2 className="mb-3 text-base font-semibold">Kết quả rèn luyện</h2>
           <DataTable columns={["Học kỳ", "Xếp loại", "Nhận xét"]}>
             {conductRows.map((c) => (
               <tr key={c.id}>
@@ -261,7 +261,7 @@ export default async function StudentTranscriptPage() {
             {conductRows.length === 0 && (
               <tr>
                 <td colSpan={3} className="py-8 text-center text-muted-foreground">
-                  Chưa có đánh giá hạnh kiểm.
+                  Chưa có đánh giá rèn luyện.
                 </td>
               </tr>
             )}

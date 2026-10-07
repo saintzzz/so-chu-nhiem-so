@@ -183,7 +183,7 @@ async function run(req: NextRequest) {
         const cds = condBySid.get(sid) ?? [];
         if (cds.length) {
           lines.push(
-            "  Hạnh kiểm/nhận xét: " +
+            "  Rèn luyện/nhận xét: " +
               cds.map((r) => `${fmtDateVN(r.date)} ${r.content}${r.points ? ` (${r.points}đ)` : ""}`).join("; "),
           );
         }

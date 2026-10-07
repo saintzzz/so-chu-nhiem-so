@@ -37,7 +37,7 @@ export function LoginForm() {
           htmlFor="email"
           className="mb-1.5 block text-sm font-medium"
         >
-          Tên đăng nhập
+          Email
         </label>
         <input
           id="email"

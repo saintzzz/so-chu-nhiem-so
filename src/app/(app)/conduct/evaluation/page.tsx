@@ -130,8 +130,8 @@ export default async function ConductEvaluationPage({
     <div className="space-y-4">
       <PageHeader
         section="Rèn luyện"
-        title="Đánh giá & xếp loại hạnh kiểm"
-        description="Xếp loại hạnh kiểm và nhận xét của học sinh theo học kỳ."
+        title="Đánh giá & xếp loại kết quả rèn luyện"
+        description="Xếp loại kết quả rèn luyện (Tốt/Khá/Đạt/Chưa đạt) và nhận xét của học sinh theo học kỳ - theo TT22/2021."
       />
 
       <div className="flex flex-wrap gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">

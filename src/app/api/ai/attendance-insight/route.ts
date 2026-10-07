@@ -39,11 +39,10 @@ export async function POST(req: Request) {
 
   const { data: studentData } = await supabase
     .from("students")
-    .select("id,full_name")
+    .select("id,full_name,code")
     .eq("class_id", classId)
     .eq("status", "active");
-  const students = (studentData ?? []) as { id: string; full_name: string }[];
-  const nameOf = new Map(students.map((s) => [s.id, s.full_name]));
+  const students = (studentData ?? []) as { id: string; full_name: string; code: string | null }[];
   const ids = students.map((s) => s.id);
   if (!ids.length) {
     return NextResponse.json({ result: { lines: ["Lớp chưa có học sinh."] } });
@@ -74,8 +73,9 @@ export async function POST(req: Request) {
       const dowCount = new Map<number, number>();
       for (const d of v.dow) dowCount.set(d, (dowCount.get(d) ?? 0) + 1);
       const topDow = [...dowCount.entries()].sort((a, b) => b[1] - a[1])[0];
+      const st = students.find((x) => x.id === sid);
       return {
-        ten: nameOf.get(sid) ?? "-",
+        ma_hs: st?.code ?? "HS",
         vang_kp: v.statuses.unexcused ?? 0,
         vang_cp: v.statuses.excused ?? 0,
         muon: v.statuses.late ?? 0,
@@ -102,20 +102,30 @@ export async function POST(req: Request) {
       "Bạn là trợ lý phân tích chuyên cần cho GVCN trường THCS. Chỉ ra pattern cụ thể theo số liệu, không suy đoán nguyên nhân y khoa. Không emoji.",
     prompt: `Phân tích dữ liệu vắng/muộn của học sinh lớp ${(cls as { name?: string }).name} (JSON): ${JSON.stringify(facts)}.
 
-Viết 3-5 nhận xét: ai vắng nhiều nhất, ai có pattern theo ngày trong tuần (VD hay vắng thứ 2), nhóm cần liên hệ phụ huynh ngay, 1-2 đề xuất. Mỗi nhận xét 1 dòng, nêu tên học sinh, không đánh số.`,
+Viết 3-5 nhận xét: ai vắng nhiều nhất, ai có pattern theo ngày trong tuần (VD hay vắng thứ 2), nhóm cần liên hệ phụ huynh ngay, 1-2 đề xuất. Mỗi nhận xét 1 dòng, nêu mã học sinh (ma_hs), không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1000,
     parse: (text) => {
+      const deanon = (s: string) => {
+        let out = s;
+        for (const st of students)
+          if (st.code) out = out.split(st.code).join(st.full_name);
+        return out;
+      };
       try {
         const o = JSON.parse(text) as { lines?: string[] };
         if (Array.isArray(o.lines) && o.lines.length) {
-          return { lines: o.lines.filter((l) => typeof l === "string") };
+          return {
+            lines: o.lines
+              .filter((l) => typeof l === "string")
+              .map(deanon),
+          };
         }
       } catch {
         /* fallthrough */
       }
       const lines = parseLines(text);
-      return lines ? { lines } : null;
+      return lines ? { lines: lines.map(deanon) } : null;
     },
   });
 }

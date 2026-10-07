@@ -20,7 +20,7 @@ const ENTITIES: { table: string; label: string }[] = [
   { table: "attendance_records", label: "Bản ghi chuyên cần" },
   { table: "incidents", label: "Sự cố an toàn" },
   { table: "counseling_cases", label: "Ca tư vấn học sinh" },
-  { table: "conduct_evaluations", label: "Đánh giá hạnh kiểm" },
+  { table: "conduct_evaluations", label: "Đánh giá rèn luyện" },
   { table: "emulation_scores", label: "Điểm thi đua" },
   { table: "kpis", label: "KPI lớp" },
   { table: "announcements", label: "Thông báo" },

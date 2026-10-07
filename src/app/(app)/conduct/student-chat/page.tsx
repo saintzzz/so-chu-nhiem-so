@@ -77,7 +77,7 @@ export default async function StudentChatPage({
       <PageHeader
         section="Rèn luyện"
         title="Trao đổi học sinh"
-        description="Trao đổi trực tiếp với học sinh về rèn luyện và hạnh kiểm."
+        description="Trao đổi trực tiếp với học sinh về kết quả rèn luyện."
       />
 
       {classes.length > 1 && (

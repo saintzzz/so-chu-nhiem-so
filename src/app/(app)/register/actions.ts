@@ -17,7 +17,8 @@ export async function grantParentAccess(input: {
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email))
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     return { error: "Email đăng nhập không hợp lệ." };
   if ((input.password ?? "").length < 8)
     return { error: "Mật khẩu tối thiểu 8 ký tự." };
@@ -58,7 +59,7 @@ export async function grantParentAccess(input: {
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
-    email: input.email.trim().toLowerCase(),
+    email,
     password: input.password,
     email_confirm: true,
     user_metadata: {
@@ -79,7 +80,7 @@ export async function grantParentAccess(input: {
     .from("parents")
     .update({
       profile_id: data.user.id,
-      email: parent.email?.trim() ? parent.email : input.email.trim().toLowerCase(),
+      email: parent.email?.trim() ? parent.email : email,
     })
     .eq("id", parent.id)
     .is("profile_id", null)
@@ -98,7 +99,7 @@ export async function grantParentAccess(input: {
     action: "parent.grant_access",
     entity: "parents",
     entityId: parent.id,
-    payload: { email: input.email.trim().toLowerCase() },
+    payload: { email },
   });
   revalidatePath("/register/roster");
   return {};

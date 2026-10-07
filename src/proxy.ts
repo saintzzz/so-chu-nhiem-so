@@ -6,7 +6,7 @@ import { createServerClient } from "@supabase/ssr";
  * Real authorization is enforced by Server Components + RLS.
  */
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request });
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +17,11 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // cap nhat request.cookies de Server Components doc session moi
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           );
@@ -36,10 +41,17 @@ export async function proxy(request: NextRequest) {
   const isPublicApi =
     pathname === "/api/ai/devin-callback" || pathname.startsWith("/api/cron/");
 
+  // redirect giu nguyen cookie da refresh (ke ca cookie xoa session)
+  const redirectWithCookies = (url: URL) => {
+    const res = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
   if (!user && !isLogin && !isPublicApi) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
   if (!user && isPublicApi) {
     return response;
@@ -47,7 +59,7 @@ export async function proxy(request: NextRequest) {
   if (user && isLogin) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url);
   }
   return response;
 }

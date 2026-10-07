@@ -10,30 +10,52 @@ import type { Profile, Role, School } from "@/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// PostgREST mac dinh tra toi da ~1000 rows/request - can vong lap range
+async function fetchAll<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+) {
+  const out: T[] = [];
+  let incomplete = false;
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await build(from, from + 999);
+    if (error) { incomplete = true; break; }
+    if (!data?.length) break;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return { rows: out, incomplete };
+}
+
 export default async function DeptUsagePage() {
   await requireRoles(["so_gd", "admin"]);
   const supabase = await createClient();
   const admin = createAdminClient();
 
   const [profilesRes, schoolsRes] = await Promise.all([
-    supabase.from("profiles").select("id,full_name,email,role,school_id"),
+    fetchAll<Pick<Profile, "id" | "full_name" | "email" | "role" | "school_id">>(
+      (f, t) =>
+        supabase
+          .from("profiles")
+          .select("id,full_name,email,role,school_id")
+          .range(f, t),
+    ),
     supabase.from("schools").select("id,name"),
   ]);
-  const profiles = (profilesRes.data ?? []) as Pick<
-    Profile,
-    "id" | "full_name" | "email" | "role" | "school_id"
-  >[];
+  const profiles = profilesRes.rows;
   const schools = (schoolsRes.data ?? []) as Pick<School, "id" | "name">[];
   const schoolNameOf = new Map(schools.map((s) => [s.id, s.name]));
 
   // auth.users.last_sign_in_at chi doc duoc qua admin API
   const lastSignIn = new Map<string, string | null>();
+  let authIncomplete = false;
   for (let page = 1; ; page++) {
-    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) { authIncomplete = true; break; }
     const batch = data?.users ?? [];
     for (const u of batch) lastSignIn.set(u.id, u.last_sign_in_at ?? null);
     if (batch.length < 1000) break;
   }
+  const incomplete = profilesRes.incomplete || authIncomplete;
 
   const now = Date.now();
   const within = (iso: string | null | undefined, ms: number) =>
@@ -65,6 +87,11 @@ export default async function DeptUsagePage() {
         title="Hoạt động sử dụng"
         description="Mức độ sử dụng theo trường - số tài khoản, người active 24h/7 ngày, lần đăng nhập gần nhất."
       />
+      {incomplete && (
+        <p className="mb-4 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-600">
+          Dữ liệu chưa đầy đủ - một phần truy vấn thất bại, số liệu có thể thấp hơn thực tế.
+        </p>
+      )}
 
       <DataTable
         columns={["Trường", "Tài khoản", "Active 24h", "Active 7 ngày", "Đăng nhập gần nhất"]}

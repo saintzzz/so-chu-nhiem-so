@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { checkActionRole } from "@/lib/auth";
+import { checkActionRole, getProfile } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 /* ---------- CR-034: provision truong moi cho gate demo 15/10 ---------- */
@@ -49,10 +49,13 @@ export async function createSchool(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["so_gd", "admin"]);
   if (deny) return { error: deny };
+  const profile = await getProfile();
 
   const name = input.name.trim();
   const code = input.code.trim().toUpperCase();
-  if (!name || !code) return { error: "Nhập tên và mã trường." };
+  if (!name || name.length > 200) return { error: "Tên trường trống hoặc quá dài (tối đa 200 ký tự)." };
+  if (!/^[A-Z0-9-]{2,32}$/.test(code))
+    return { error: "Mã trường chỉ gồm chữ HOA, số và dấu - (2-32 ký tự)." };
   if (!LEVELS.includes(input.level as (typeof LEVELS)[number]))
     return { error: "Cấp học không hợp lệ." };
   const adminEmail = input.adminEmail.trim().toLowerCase();
@@ -60,14 +63,20 @@ export async function createSchool(input: {
     return { error: "Email admin trường không hợp lệ." };
   if ((input.adminPassword ?? "").length < 8)
     return { error: "Mật khẩu admin tối thiểu 8 ký tự." };
-  if (!input.adminName.trim()) return { error: "Chưa nhập tên admin trường." };
+  if (!input.adminName.trim() || input.adminName.trim().length > 200)
+    return { error: "Tên admin trường trống hoặc quá dài (tối đa 200 ký tự)." };
 
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const admin = createAdminClient();
 
   const { data: school, error: sErr } = await admin
     .from("schools")
-    .insert({ name, code, level: input.level })
+    .insert({
+      name,
+      code,
+      level: input.level,
+      org_unit_id: profile?.org_unit_id ?? null,
+    })
     .select("id")
     .single();
   if (sErr || !school)
@@ -90,17 +99,24 @@ export async function createSchool(input: {
       const { error } = await admin.from(t).delete().eq("school_id", sid);
       if (error) problems.push(t);
     }
+    const { error: pErr } = await admin
+      .from("profiles")
+      .delete()
+      .eq("school_id", sid);
+    if (pErr) problems.push("profiles");
     const { error } = await admin.from("schools").delete().eq("id", sid);
     if (error) problems.push("schools");
     return problems;
   };
 
   const fail = async (error: string, userId?: string) => {
-    const problems = await cleanup();
+    // xoa auth user TRUOC cleanup - profiles.school_id giu FK toi schools
+    const problems: string[] = [];
     if (userId) {
       const { error: delErr } = await admin.auth.admin.deleteUser(userId);
       if (delErr) problems.push("auth_user");
     }
+    problems.push(...(await cleanup()));
     if (problems.length) {
       console.error("[createSchool] rollback khong day du", sid, problems);
       return {

@@ -41,12 +41,16 @@ export function SchoolsBoard({
   function submit() {
     setMessage(null);
     start(async () => {
-      const r = await createSchool({
-        name, code, level, adminEmail: adminEmail.trim(), adminPassword, adminName, seedDemo,
-      });
-      setMessage(r.error ?? `Đã tạo trường "${name.trim()}" và tài khoản admin ${adminEmail.trim()}.`);
-      if (!r.error) {
-        setName(""); setCode(""); setAdminName(""); setAdminEmail(""); setAdminPassword("");
+      try {
+        const r = await createSchool({
+          name, code, level, adminEmail: adminEmail.trim(), adminPassword, adminName, seedDemo,
+        });
+        setMessage(r.error ?? `Đã tạo trường "${name.trim()}" và tài khoản admin ${adminEmail.trim()}.`);
+        if (!r.error) {
+          setName(""); setCode(""); setAdminName(""); setAdminEmail(""); setAdminPassword("");
+        }
+      } catch {
+        setMessage("Lỗi kết nối tới máy chủ - thử lại.");
       }
     });
   }

@@ -50,8 +50,13 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
 });
 
 export async function requireProfile(): Promise<Profile> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
   const profile = await getProfile();
-  if (!profile) redirect("/login");
+  if (!profile) {
+    // co session nhung khong co profile -> sign out de thoat redirect loop
+    redirect(claimsData?.claims?.sub ? "/api/auth/reset" : "/login");
+  }
   return profile;
 }
 

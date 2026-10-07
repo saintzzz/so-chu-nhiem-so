@@ -167,8 +167,12 @@ export function RosterClient({
     const grantFor = async (pid: string) => {
       if (!grantAccess) return null;
       const email = (linkParent ? accessEmail : newParentEmail).trim();
-      const r = await grantParentAccess({ parentId: pid, email, password: accessPassword });
-      return r.error ?? null;
+      try {
+        const r = await grantParentAccess({ parentId: pid, email, password: accessPassword });
+        return r.error ?? null;
+      } catch {
+        return "Lỗi kết nối tới máy chủ - thử lại.";
+      }
     };
 
     if (!parentId) {

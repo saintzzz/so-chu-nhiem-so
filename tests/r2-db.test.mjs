@@ -39,6 +39,7 @@ const ID = {
   pht0: "20000000-0000-0000-0000-000000000004", // pht campus NULL
   subA: "20000000-0000-0000-0000-000000000005", // gvbm truong A (day thay)
   phA: "20000000-0000-0000-0000-000000000006",  // phu huynh cua HS A
+  toTruongA: "20000000-0000-0000-0000-000000000007", // to_truong truong A (R10)
   classA: "30000000-0000-0000-0000-00000000000a",
   classB: "30000000-0000-0000-0000-00000000000b",
   subjA: "40000000-0000-0000-0000-00000000000a",
@@ -162,6 +163,31 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
       `insert into messages(sender_id, recipient_id, student_id, content)
        values ('${ID.tA}','${ID.phA}',null,'forged sender')`,
       "gia mao sender_id van insert duoc");
+  });
+
+  // ---------- R10: to_truong -> gvbm cung truong (deep-link fix) ----------
+  // Policy branch staff-staff cho phep to_truong nhan cho gvbm - DB test
+  // chung minh insert hop le va recipient doc duoc thread (msg_own).
+  await t.test("msg_send: to_truong cung truong gui cho gvbm duoc (R10)", () => {
+    const out = asUser(ID.toTruongA,
+      `insert into messages(sender_id, recipient_id, student_id, content)
+       values ('${ID.toTruongA}','${ID.subA}',null,'tu to truong') returning 'ok'`);
+    assert.match(out, /ok/,
+      "scn_can_message phai cho to_truong -> gvbm cung truong");
+  });
+
+  await t.test("msg_own: gvbm doc duoc thread voi to_truong (recipient read)", () => {
+    const out = asUser(ID.subA,
+      `select count(*) from messages
+       where sender_id='${ID.toTruongA}' and recipient_id='${ID.subA}'`).trim();
+    assert.equal(out, "1", "recipient khong select duoc tin cua to_truong");
+  });
+
+  await t.test("msg_send: to_truong gui cho staff truong khac bi chan", () => {
+    denied(ID.toTruongA,
+      `insert into messages(sender_id, recipient_id, student_id, content)
+       values ('${ID.toTruongA}','${ID.tB}',null,'cross-tenant to_truong')`,
+      "to_truong van nhan duoc cho gvcn truong B - cross-tenant leak");
   });
 
   // ---------- DEFECT 3: subr_ins forge ----------

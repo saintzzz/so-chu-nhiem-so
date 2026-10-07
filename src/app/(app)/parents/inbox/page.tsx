@@ -3,7 +3,6 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InboxClient } from "@/components/parents/inbox-client";
 import type { Profile, Student } from "@/types";
-import { fmtDateTimeVN } from "@/lib/utils";
 
 interface MessageRow {
   id: string;
@@ -15,21 +14,28 @@ interface MessageRow {
   created_at: string;
 }
 
-function fmtDateTime(iso: string): string {
-  return fmtDateTimeVN(iso);
-}
-
 export default async function InboxPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
-  const { data: msgData } = await supabase
-    .from("messages")
-    .select("*")
-    .eq("recipient_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  const messages = (msgData ?? []) as MessageRow[];
+  // R10-02: trang dau gioi han 50 (desc + tie-break id cho cursor paging);
+  // unread dem bang head:true count query - KHONG suy ra tu cac hang da tai
+  // vi tin cu hon 50 van co the chua doc.
+  const [msgRes, unreadRes] = await Promise.all([
+    supabase
+      .from("messages")
+      .select("*")
+      .eq("recipient_id", profile.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(50),
+    supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("recipient_id", profile.id)
+      .is("read_at", null),
+  ]);
+  const messages = (msgRes.data ?? []) as MessageRow[];
 
   const senderIds = [...new Set(messages.map((m) => m.sender_id))];
   const studentIds = [
@@ -56,7 +62,7 @@ export default async function InboxPage() {
   const students = (studentData ?? []) as Pick<Student, "id" | "full_name">[];
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));
 
-  const unread = messages.filter((m) => !m.read_at).length;
+  const unread = unreadRes.count ?? 0;
 
   return (
     <div>
@@ -66,6 +72,8 @@ export default async function InboxPage() {
         description={`Tin nhắn từ phụ huynh gửi đến giáo viên chủ nhiệm. ${unread} tin chưa đọc.`}
       />
       <InboxClient
+        meId={profile.id}
+        initialHasMore={messages.length === 50}
         messages={messages.map((m) => ({
           id: m.id,
           senderId: m.sender_id,
@@ -75,7 +83,7 @@ export default async function InboxPage() {
             ? (studentName.get(m.student_id) ?? null)
             : null,
           content: m.content,
-          createdAt: fmtDateTime(m.created_at),
+          createdAt: m.created_at,
           read: !!m.read_at,
         }))}
       />

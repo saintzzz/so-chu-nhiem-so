@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
+// R10-03: link thong bao theo role nguoi nhan (helper chia se, test duoc).
+import { messageLinkForRole } from "@/lib/message-link";
 
 export async function sendAnnouncement(input: {
   classId: string;
@@ -129,6 +131,12 @@ export async function replyMessage(input: {
   if (!allowed.has(input.recipientId)) {
     return { error: "Người nhận không liên quan đến học sinh này." };
   }
+  // Role nguoi nhan quyet dinh link thong bao (portal vs inbox nhan vien).
+  const { data: recipient } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", input.recipientId)
+    .maybeSingle();
   const { error } = await supabase.from("messages").insert({
     sender_id: user.id,
     recipient_id: input.recipientId,
@@ -144,7 +152,9 @@ export async function replyMessage(input: {
     type: "message",
     title: "Tin nhắn mới",
     body: input.content.trim().slice(0, 120),
-    link: "/parents/inbox",
+    link: messageLinkForRole(
+      (recipient as { role: string } | null)?.role,
+    ),
   });
   revalidatePath("/parents/inbox");
   return {};

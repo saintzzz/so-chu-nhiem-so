@@ -4,10 +4,15 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn, sortByVietnameseName } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/nav";
+import { STAFF_CHAT_ROLES } from "@/lib/chat";
+import { teacherChatLinkForRole } from "@/lib/message-link";
+import type { Role } from "@/types";
 
 interface ProfileRow {
   id: string;
   full_name: string;
+  role: Role;
 }
 interface TeacherSubjectRow {
   teacher_id: string;
@@ -30,19 +35,42 @@ export default async function TeacherChatPage({
   const peerRole = profile.role === "gvbm" ? "gvcn" : "gvbm";
   const { data: teacherData } = await supabase
     .from("profiles")
-    .select("id,full_name")
+    .select("id,full_name,role")
     .eq("role", peerRole)
     .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
     .order("full_name");
-  const teachers = sortByVietnameseName(
+  let teachers = sortByVietnameseName(
     (teacherData ?? []) as ProfileRow[],
     (t) => t.full_name,
   );
 
+  // R10 fix: notification link tro ?to=<sender>. Sender hop le theo
+  // scn_can_message la MOI role staff cung truong (vd to_truong nhan cho
+  // gvbm), khong chi peerRole mac dinh - resolve them vao danh sach neu
+  // profile la staff cung truong; user truong khac/role khong hop le van
+  // roi vao fallback teachers[0].
+  const requestedTo = typeof sp.to === "string" ? sp.to : null;
+  if (requestedTo && !teachers.some((t) => t.id === requestedTo)) {
+    const { data: extraPeer } = await supabase
+      .from("profiles")
+      .select("id,full_name,role")
+      .eq("id", requestedTo)
+      .eq("school_id", profile.school_id ?? "")
+      .neq("id", profile.id)
+      .in("role", [...STAFF_CHAT_ROLES])
+      .maybeSingle();
+    if (extraPeer) {
+      teachers = sortByVietnameseName(
+        [...teachers, extraPeer as ProfileRow],
+        (t) => t.full_name,
+      );
+    }
+  }
+
   const peerId =
-    typeof sp.to === "string" && teachers.some((t) => t.id === sp.to)
-      ? sp.to
+    requestedTo && teachers.some((t) => t.id === requestedTo)
+      ? requestedTo
       : (teachers[0]?.id ?? "");
   const peer = teachers.find((t) => t.id === peerId);
   const teacherIds = teachers.map((t) => t.id);
@@ -59,6 +87,9 @@ export default async function TeacherChatPage({
       : peerRole === "gvcn" && teacherIds.length
         ? supabase.from("classes").select("name,gvcn_id").in("gvcn_id", teacherIds)
         : Promise.resolve(null);
+  // R10-01: PostgREST cap ~1000 rows - order asc tra ve 1000 tin CU nhat va
+  // che tin moi. Lay trang moi nhat (desc + limit) roi reverse de render
+  // theo thu tu thoi gian; client tai trang cu bang cursor khi can.
   const msgQuery = peerId
     ? supabase
         .from("messages")
@@ -66,11 +97,14 @@ export default async function TeacherChatPage({
         .or(
           `and(sender_id.eq.${profile.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${profile.id})`,
         )
-        .order("created_at")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(100)
     : Promise.resolve({ data: [] });
 
   const [detail, { data: msgData }] = await Promise.all([detailQuery, msgQuery]);
-  const messages = (msgData ?? []) as ChatMessage[];
+  const hasOlder = (msgData ?? []).length === 100;
+  const messages = ((msgData ?? []) as ChatMessage[]).reverse();
 
   const teacherSubjectNames = new Map<string, string[]>();
   if (peerRole === "gvbm" && detail) {
@@ -123,7 +157,7 @@ export default async function TeacherChatPage({
                   <span className="block font-medium">{t.full_name}</span>
                   <span className="block text-xs text-muted-foreground">
                     {(teacherSubjectNames.get(t.id) ?? []).join(", ") ||
-                      (peerRole === "gvbm" ? "GVBM" : "GVCN")}
+                      ROLE_LABELS[t.role]}
                   </span>
                 </Link>
               </li>
@@ -143,6 +177,8 @@ export default async function TeacherChatPage({
             peerId={peer.id}
             peerName={peer.full_name}
             messages={messages}
+            initialHasOlder={hasOlder}
+            notifyLink={teacherChatLinkForRole(peer.role, profile.id)}
           />
         ) : (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

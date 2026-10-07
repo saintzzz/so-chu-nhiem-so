@@ -19,6 +19,11 @@ const { averageScoreBand, yearAverage, lowGradeStudentIds } = await import(
 const { fetchAllRows } = await import(
   join(ROOT, "src/lib/supabase/fetch-all.ts")
 );
+const { olderMessagesPredicate, mergeChatMessages, STAFF_CHAT_ROLES } =
+  await import(join(ROOT, "src/lib/chat.ts"));
+const { messageLinkForRole, teacherChatLinkForRole } = await import(
+  join(ROOT, "src/lib/message-link.ts")
+);
 
 const MIGRATION = read("supabase/migrations/20261105_r2_security_fixes.sql");
 
@@ -1543,4 +1548,218 @@ test("R9-03: cac site da cham deu co console.error + nhan VN co dinh", () => {
     assert.match(src, /console\.error\(/,
       `${f} thieu console.error cho chi tiet loi`);
   }
+});
+
+// --- R10-01: chat history lay trang MOI NHAT + load-older cursor -----------
+// PostgREST cap ~1000 rows/request: .order("created_at") asc khong gioi han
+// tra ve 1000 tin CU nhat, tin moi bi che. Dung desc + limit + reverse.
+const CHAT_PAGES = [
+  "src/app/(app)/academics/teacher-chat/page.tsx",
+  "src/app/(app)/academics/parent-chat/page.tsx",
+  "src/app/(app)/conduct/student-chat/page.tsx",
+];
+
+test("R10-01: 3 chat pages order desc + limit 100 + reverse, khong asc unbounded", () => {
+  for (const f of CHAT_PAGES) {
+    const src = read(f);
+    const q = src.match(/from\("messages"\)[\s\S]*?\.limit\(100\)/);
+    assert.ok(q, `${f}: messages query thieu limit(100)`);
+    assert.match(q[0], /\.order\("created_at", \{ ascending: false \}\)/,
+      `${f}: phai lay trang moi nhat - asc bi cap 1000 tin CU`);
+    assert.match(q[0], /\.order\("id", \{ ascending: false \}\)/,
+      `${f}: can tie-break id cho cursor paging on dinh`);
+    assert.match(src, /\.reverse\(\)/,
+      `${f}: phai reverse trang desc de render chronological`);
+    assert.ok(!/\.order\("created_at"\)/.test(src),
+      `${f}: con order created_at asc mac dinh (tra ve tin cu nhat)`);
+    assert.match(src, /initialHasOlder=\{hasOlder\}/,
+      `${f}: phai truyen initialHasOlder cho ChatThread`);
+    assert.match(src, /notifyLink=/,
+      `${f}: phai truyen notifyLink cho ChatThread`);
+  }
+});
+
+test("R10-01: chat-thread co nut tai tin cu + cursor (created_at, id)", () => {
+  const src = read("src/components/academics/chat-thread.tsx");
+  assert.match(src, /Tải tin nhắn cũ hơn/, "thieu nut tai tin cu");
+  assert.match(src,
+    /import \{[^}]*olderMessagesPredicate[^}]*\} from "@\/lib\/chat"/,
+    "loadOlder phai dung predicate chia se (test duoc) thay vi inline");
+  assert.match(src, /olderMessagesPredicate\(oldest\.created_at, oldest\.id\)/,
+    "cursor phai la tuple (created_at, id)");
+  assert.match(src, /\.limit\(PAGE_SIZE\)/);
+  // Gui tin phai append local - refresh lai server props nap trang moi nhat
+  // va lam mat lich su cu nguoi dung vua tai.
+  assert.ok(!/router\.refresh\(\)/.test(src),
+    "con router.refresh() sau khi gui - mat tin cu da tai");
+  assert.match(src, /mergeChatMessages\(prev, older\)/,
+    "trang cu phai prepend qua mergeChatMessages (dedupe + sort)");
+  assert.match(src, /mergeChatMessages\(prev, \[inserted/,
+    "tin vua gui phai append qua mergeChatMessages");
+});
+
+// --- R10-02: inbox/notifications unread = DB count + load-more -------------
+test("R10-02: inbox + notifications dem unread bang head:true count query", () => {
+  const inbox = read("src/app/(app)/parents/inbox/page.tsx");
+  assert.match(inbox, /count: "exact", head: true/,
+    "inbox phai dem unread bang head count query, khong suy tu hang da tai");
+  assert.match(inbox, /\.is\("read_at", null\)/);
+  assert.match(inbox, /unreadRes\.count/,
+    "description phai dung unreadRes.count (DB-accurate)");
+  const notif = read("src/app/(app)/notifications/page.tsx");
+  assert.match(notif, /count: "exact", head: true/);
+  assert.match(notif, /\.is\("read_at", null\)/);
+  assert.match(notif, /initialUnreadCount=\{unreadRes\.count/,
+    "client phai nhan unread count tu DB, khong derive tu items");
+});
+
+test("R10-02: inbox-client + notifications-client co load-more cursor", () => {
+  for (const f of [
+    "src/components/parents/inbox-client.tsx",
+    "src/components/notifications/notifications-client.tsx",
+  ]) {
+    const src = read(f);
+    assert.match(src, /Xem thêm/, `${f} thieu nut Xem them`);
+    assert.match(src, /olderMessagesPredicate\(/,
+      `${f} phai dung cursor predicate chia se (created_at, id)`);
+    assert.match(src, /\.limit\(PAGE_SIZE\)/, `${f} thieu page size`);
+    assert.match(src, /\.order\("id", \{ ascending: false \}\)/,
+      `${f} thieu tie-break id cho cursor on dinh`);
+  }
+  // notifications: mark-all-read van cap nhat moi hang chua doc (is null) va
+  // unread count phai la state rieng tu DB count, khong derive tu items.
+  const notif = read("src/components/notifications/notifications-client.tsx");
+  assert.match(notif, /\.is\("read_at", null\)/);
+  assert.match(notif, /initialUnreadCount/);
+  assert.ok(!/unread = items\.filter/.test(notif),
+    "unread con derive tu items da tai - sai khi con trang cu");
+});
+
+// --- R10-03: notification link theo role nguoi nhan -------------------------
+test("R10-03: replyMessage resolve link theo role nguoi nhan", () => {
+  const src = read("src/app/(app)/parents/actions.ts");
+  assert.match(src,
+    /import \{ messageLinkForRole \} from "@\/lib\/message-link"/,
+    "helper phai o src/lib de unit-test duoc, khong inline");
+  const body = src.match(/replyMessage[\s\S]*?notifications"\)\.insert\(\{[\s\S]*?\}\)/);
+  assert.ok(body, "khong tim thay notification insert trong replyMessage");
+  assert.ok(!/link: "\/parents\/inbox"/.test(body[0]),
+    "con hardcode link sender-route - phu huynh/HS khong mo duoc");
+  assert.match(body[0], /link: messageLinkForRole\(/);
+  assert.match(src, /from\("profiles"\)[\s\S]*?select\("role"\)[\s\S]*?eq\("id", input\.recipientId\)/,
+    "phai tra role cua recipientId truoc khi insert notification");
+});
+
+test("R10-03: chat-thread dung notifyLink prop, khong doc location.pathname", () => {
+  const src = read("src/components/academics/chat-thread.tsx");
+  assert.ok(!/window\.location\.pathname/.test(src),
+    "con link window.location.pathname - path cua NGUOI GUI, sai cho nguoi nhan");
+  assert.match(src, /notifyLink: string/);
+  assert.match(src, /link: notifyLink/);
+  // Moi trang truyen route ma role cua peer mo duoc.
+  assert.match(read("src/app/(app)/academics/parent-chat/page.tsx"),
+    /notifyLink="\/portal\/parent"/);
+  assert.match(read("src/app/(app)/conduct/student-chat/page.tsx"),
+    /notifyLink="\/portal\/student"/);
+  // teacher-chat deep-link ?to=<sender> chi cho role xem duoc trang - helper
+  // map theo peer.role (to_truong recipient bay gio resolve duoc ?to=).
+  assert.match(read("src/app/(app)/academics/teacher-chat/page.tsx"),
+    /notifyLink=\{teacherChatLinkForRole\(peer\.role, profile\.id\)\}/);
+});
+
+// --- R10 behavioral: predicate + merge + link helpers (executable) --------
+test("R10 behavioral: olderMessagesPredicate dung shape (lt) OR (eq AND id.lt)", () => {
+  const p = olderMessagesPredicate("2026-11-01T08:00:00+00:00", "uuid-1");
+  assert.equal(
+    p,
+    'created_at.lt."2026-11-01T08:00:00+00:00",' +
+      'and(created_at.eq."2026-11-01T08:00:00+00:00",id.lt."uuid-1")',
+    "cursor phai la tuple (created_at, id) - chi lt(created_at) bo sot tin " +
+      "cung timestamp o bien trang",
+  );
+  // Gia tri duoc quote - timestamptz chua '.'/':' la reserved trong or().
+  assert.match(p, /created_at\.lt\."/, "timestamp phai double-quote");
+  // Dung cho ca trang dau: order desc (created_at, id) nguoc voi predicate.
+  const page = read("src/app/(app)/academics/teacher-chat/page.tsx");
+  const q = page.match(/from\("messages"\)[\s\S]*?\.limit\(100\)/);
+  assert.match(q[0], /\.order\("created_at", \{ ascending: false \}\)/);
+  assert.match(q[0], /\.order\("id", \{ ascending: false \}\)/);
+});
+
+test("R10 behavioral: mergeChatMessages dedupe id + chronological invariant", () => {
+  const m = (id, ts) => ({ id, created_at: ts });
+  // Prepend trang cu + append tin gui, dedupe hang trung cursor.
+  const current = [m("c", "2026-01-03T00:00:00"), m("d", "2026-01-04T00:00:00")];
+  const older = [
+    m("a", "2026-01-01T00:00:00"),
+    m("b", "2026-01-02T00:00:00"),
+    m("c", "2026-01-03T00:00:00"), // bien trang trung id
+  ];
+  const merged = mergeChatMessages(current, older);
+  assert.deepEqual(merged.map((x) => x.id), ["a", "b", "c", "d"],
+    "prepend phai dedupe + sort chronological");
+  const sent = m("e", "2026-01-05T00:00:00");
+  const afterSend = mergeChatMessages(merged, [sent]);
+  assert.deepEqual(afterSend.map((x) => x.id), ["a", "b", "c", "d", "e"],
+    "tin vua gui phai append cuoi");
+  // Tie-break id khi created_at trung nhau - khong phu thuoc thu tu input.
+  const t1 = mergeChatMessages([m("b2", "2026-01-01")], [m("a1", "2026-01-01")]);
+  const t2 = mergeChatMessages([m("a1", "2026-01-01")], [m("b2", "2026-01-01")]);
+  assert.deepEqual(t1.map((x) => x.id), ["a1", "b2"]);
+  assert.deepEqual(t2.map((x) => x.id), ["a1", "b2"],
+    "cung created_at phai tie-break bang id, bat bien thu tu goi");
+  // Input khong bi mutate.
+  assert.equal(current.length, 2, "merge khong duoc mutate current");
+});
+
+test("R10 behavioral: messageLinkForRole map dung moi role", () => {
+  assert.equal(messageLinkForRole("phu_huynh"), "/portal/parent");
+  assert.equal(messageLinkForRole("hoc_sinh"), "/portal/student");
+  for (const r of STAFF_CHAT_ROLES) {
+    assert.equal(messageLinkForRole(r), "/parents/inbox",
+      `staff role ${r} phai ve inbox nhan vien`);
+  }
+  for (const r of ["so_gd", "ubnd", "khong_biet", null, undefined]) {
+    assert.equal(messageLinkForRole(r), "/parents/inbox",
+      `role ${r} phai ve default an toan`);
+  }
+});
+
+test("R10 behavioral: teacherChatLinkForRole chi deep-link role xem duoc", () => {
+  for (const r of ["gvcn", "gvbm", "to_truong"]) {
+    assert.equal(
+      teacherChatLinkForRole(r, "S1"),
+      "/academics/teacher-chat?to=S1",
+      `${r} mo duoc teacher-chat - deep-link vao thread`,
+    );
+  }
+  assert.equal(teacherChatLinkForRole("bgh", "S1"), "/parents/inbox",
+    "bgh xem inbox duoc nhung khong vao teacher-chat");
+  for (const r of ["pht", "ke_toan", "admin", "phu_huynh", null]) {
+    assert.equal(teacherChatLinkForRole(r, "S1"), "/notifications",
+      `${r} khong mo duoc teacher-chat/inbox - ve feed notifications`);
+  }
+});
+
+test("R10: teacher-chat resolve ?to= staff cung truong ngoai peer list", () => {
+  const src = read("src/app/(app)/academics/teacher-chat/page.tsx");
+  const block = src.match(/requestedTo[\s\S]*?maybeSingle\(\);/);
+  assert.ok(block, "thieu nhanh resolve ?to= ngoai danh sach peer mac dinh");
+  assert.match(block[0], /\.eq\("school_id", profile\.school_id/,
+    "extra peer phai CUNG TRUONG - khong mo rong cross-tenant");
+  assert.match(block[0], /\.neq\("id", profile\.id\)/,
+    "khong resolve chinh minh lam peer");
+  assert.match(block[0], /\.in\("role", \[\.\.\.STAFF_CHAT_ROLES\]\)/,
+    "extra peer phai la staff role khop scn_can_message");
+  assert.match(src, /import \{ STAFF_CHAT_ROLES \} from "@\/lib\/chat"/);
+  // STAFF_CHAT_ROLES phai khop danh sach role staff-staff trong policy.
+  const mig = read("supabase/migrations/20261105_r2_security_fixes.sql");
+  const branch = mig.match(
+    /role from me\) = any\(array\[('gvcn','gvbm','to_truong','bgh','pht','ke_toan','admin')\]\)/);
+  assert.ok(branch, "policy staff-staff da doi - dong bo STAFF_CHAT_ROLES");
+  assert.deepEqual(
+    [...STAFF_CHAT_ROLES].sort(),
+    branch[1].split(",").map((s) => s.replace(/'/g, "")).sort(),
+    "STAFF_CHAT_ROLES lech voi scn_can_message",
+  );
 });

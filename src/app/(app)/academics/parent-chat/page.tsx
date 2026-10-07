@@ -103,6 +103,8 @@ export default async function ParentChatPage({
       : (messagable[0]?.peerId ?? "");
   const peer = messagable.find((c) => c.peerId === peerId);
 
+  // R10-01: lay trang tin MOI NHAT (desc + limit) roi reverse de render theo
+  // thu tu thoi gian - order asc bi PostgREST cap 1000 tin cu nhat.
   const { data: msgData } = peerId
     ? await supabase
         .from("messages")
@@ -110,9 +112,12 @@ export default async function ParentChatPage({
         .or(
           `and(sender_id.eq.${profile.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${profile.id})`,
         )
-        .order("created_at")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(100)
     : { data: [] };
-  const messages = (msgData ?? []) as ChatMessage[];
+  const hasOlder = (msgData ?? []).length === 100;
+  const messages = ((msgData ?? []) as ChatMessage[]).reverse();
 
   return (
     <div className="space-y-4">
@@ -205,6 +210,8 @@ export default async function ParentChatPage({
             peerName={peer.name}
             studentId={peer.studentId}
             messages={messages}
+            initialHasOlder={hasOlder}
+            notifyLink="/portal/parent"
           />
         ) : (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

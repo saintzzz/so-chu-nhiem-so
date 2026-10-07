@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn, formatDateTime } from "@/lib/utils";
+import { mergeChatMessages, olderMessagesPredicate } from "@/lib/chat";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 export interface ChatMessage {
@@ -17,6 +17,9 @@ export interface ChatMessage {
   created_at: string;
 }
 
+// Trang lich su tai them moi lan bam "Tải tin nhắn cũ hơn".
+const PAGE_SIZE = 100;
+
 /** Generic two-person message thread (GVCN ↔ GVBM / PH / HS). */
 export function ChatThread({
   meId,
@@ -24,29 +27,74 @@ export function ChatThread({
   peerName,
   studentId,
   messages,
+  initialHasOlder = false,
+  notifyLink,
 }: {
   meId: string;
   peerId: string;
   peerName: string;
   studentId?: string | null;
+  /** Trang tin nhắn MỚI NHẤT, đã sắp xếp tăng dần theo thời gian. */
   messages: ChatMessage[];
+  /** Server nap trang moi nhat co gioi han - true neu con lich su cu hon. */
+  initialHasOlder?: boolean;
+  /** Route nguoi NHAN mo khi bam thong bao - theo role cua peer. */
+  notifyLink: string;
 }) {
-  const router = useRouter();
+  const [items, setItems] = useState<ChatMessage[]>(messages);
+  const [hasOlder, setHasOlder] = useState(initialHasOlder);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [content, setContent] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Hai nhom OR duoc PostgREST AND voi nhau: (cap me/peer) AND (cursor).
+  const peerFilter =
+    `and(sender_id.eq.${meId},recipient_id.eq.${peerId}),` +
+    `and(sender_id.eq.${peerId},recipient_id.eq.${meId})`;
+
+  async function loadOlder() {
+    const oldest = items[0];
+    if (!oldest || loadingOlder) return;
+    setLoadingOlder(true);
+    const supabase = createClient();
+    const { data, error: err } = await supabase
+      .from("messages")
+      .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
+      .or(peerFilter)
+      .or(olderMessagesPredicate(oldest.created_at, oldest.id))
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE);
+    setLoadingOlder(false);
+    if (err) {
+      console.error("[chat-thread] load older messages:", err.message);
+      setError("Không tải được tin nhắn cũ - vui lòng thử lại.");
+      return;
+    }
+    const older = (data ?? []) as ChatMessage[];
+    setItems((prev) => mergeChatMessages(prev, older));
+    if (older.length < PAGE_SIZE) setHasOlder(false);
+    setError(null);
+  }
 
   function send() {
     const text = content.trim();
     if (!text) return;
     startTransition(async () => {
       const supabase = createClient();
-      const { error: err } = await supabase.from("messages").insert({
-        sender_id: meId,
-        recipient_id: peerId,
-        student_id: studentId ?? null,
-        content: text,
-      });
+      // Append local thay vi refresh lai server props - refresh se nap trang
+      // moi nhat va lam mat lich su cu vua tai bang "Tải tin nhắn cũ hơn".
+      const { data: inserted, error: err } = await supabase
+        .from("messages")
+        .insert({
+          sender_id: meId,
+          recipient_id: peerId,
+          student_id: studentId ?? null,
+          content: text,
+        })
+        .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
+        .single();
       if (err) {
         console.error("[chat-thread] send message:", err.message);
         setError("Không gửi được tin nhắn - vui lòng thử lại.");
@@ -57,11 +105,13 @@ export function ChatThread({
         type: "message",
         title: "Tin nhắn mới",
         body: text.slice(0, 120),
-        link: window.location.pathname,
+        link: notifyLink,
       });
+      if (inserted) {
+        setItems((prev) => mergeChatMessages(prev, [inserted as ChatMessage]));
+      }
       setContent("");
       setError(null);
-      router.refresh();
     });
   }
 
@@ -71,12 +121,24 @@ export function ChatThread({
         <p className="text-sm font-medium">Trao đổi với {peerName}</p>
       </div>
       <div className="flex max-h-[28rem] min-h-40 flex-col gap-2 overflow-y-auto p-4">
-        {messages.length === 0 && (
+        {hasOlder && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void loadOlder()}
+              disabled={loadingOlder}
+            >
+              {loadingOlder ? "Đang tải…" : "Tải tin nhắn cũ hơn"}
+            </Button>
+          </div>
+        )}
+        {items.length === 0 && (
           <p className="text-sm text-muted-foreground">
             Chưa có tin nhắn nào. Hãy bắt đầu cuộc trao đổi.
           </p>
         )}
-        {messages.map((m) => {
+        {items.map((m) => {
           const mine = m.sender_id === meId;
           return (
             <div

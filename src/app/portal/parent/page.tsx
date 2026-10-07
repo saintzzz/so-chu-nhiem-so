@@ -58,33 +58,35 @@ export default async function ParentPortalPage({
   const supabase = await createClient();
   const sp = await searchParams;
 
-  const { data: parentRow } = await supabase
+  // maybeSingle: 0 row la hop le (PH chua lien ket), chi loi query moi
+  // tinh la loadError - tranh bao "chua co HS" khi lookup that bai.
+  const { data: parentRow, error: parentErr } = await supabase
     .from("parents")
     .select("id,full_name,relationship")
     .eq("profile_id", profile.id)
     .limit(1)
-    .single();
+    .maybeSingle();
   const parent = parentRow as Pick<
     Parent,
     "id" | "full_name" | "relationship"
   > | null;
 
-  const { data: linkRows } = parent
+  const { data: linkRows, error: linkErr } = parent
     ? await supabase
         .from("parent_students")
         .select("parent_id,student_id")
         .eq("parent_id", parent.id)
-    : { data: [] };
+    : { data: [], error: null };
   const links = (linkRows ?? []) as ParentStudentLink[];
   const studentIds = links.map((l) => l.student_id);
 
-  const { data: studentRows } =
+  const { data: studentRows, error: stuErr } =
     studentIds.length > 0
       ? await supabase
           .from("students")
           .select("id,class_id,full_name,code")
           .in("id", studentIds)
-      : { data: [] };
+      : { data: [], error: null };
   const children = (studentRows ?? []) as Pick<
     Student,
     "id" | "class_id" | "full_name" | "code"
@@ -92,7 +94,7 @@ export default async function ParentPortalPage({
   const student =
     children.find((s) => s.id === sp.child) ?? children[0] ?? null;
 
-  const { data: classRows } =
+  const { data: classRows, error: clsErr } =
     children.length > 0
       ? await supabase
           .from("classes")
@@ -101,7 +103,7 @@ export default async function ParentPortalPage({
             "id",
             [...new Set(children.map((c) => c.class_id))],
           )
-      : { data: [] };
+      : { data: [], error: null };
   const classById = new Map(
     ((classRows ?? []) as Pick<
       ClassRoom,
@@ -138,7 +140,7 @@ export default async function ParentPortalPage({
               .eq("parent_id", parent.id)
               .order("scheduled_at", { ascending: false })
               .limit(8)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
         supabase
           .from("exam_sessions")
           .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
@@ -178,16 +180,16 @@ export default async function ParentPortalPage({
           .limit(12),
       ])
     : [
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
       ];
 
   const attRows = (attRes.data ?? []) as Pick<
@@ -298,12 +300,12 @@ export default async function ParentPortalPage({
   };
 
   const teacherIds = [...new Set(appointments.map((a) => a.teacher_id))];
-  const { data: teacherRows } = teacherIds.length
+  const { data: teacherRows, error: teacherErr } = teacherIds.length
     ? await supabase
         .from("profiles")
         .select("id,full_name")
         .in("id", teacherIds)
-    : { data: [] };
+    : { data: [], error: null };
   const teacherNameOf = new Map(
     ((teacherRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((t) => [
       t.id,
@@ -321,12 +323,12 @@ export default async function ParentPortalPage({
   const senderIds = [
     ...new Set([...rawMessages.map((m) => m.sender_id), gvcnId].filter(Boolean)),
   ] as string[];
-  const { data: senderRows } = senderIds.length
+  const { data: senderRows, error: senderErr } = senderIds.length
     ? await supabase
         .from("profiles")
         .select("id,full_name")
         .in("id", senderIds)
-    : { data: [] };
+    : { data: [], error: null };
   const senderNameOf = new Map(
     ((senderRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((p) => [
       p.id,
@@ -347,7 +349,7 @@ export default async function ParentPortalPage({
     activity_date: string;
     status: string;
   }[];
-  const { data: actAttRows } =
+  const { data: actAttRows, error: actAttErr } =
     rawActivities.length > 0 && student
       ? await supabase
           .from("activity_attendance")
@@ -357,7 +359,7 @@ export default async function ParentPortalPage({
             "activity_id",
             rawActivities.map((a) => a.id),
           )
-      : { data: [] };
+      : { data: [], error: null };
   const attByActivity = new Map(
     ((actAttRows ?? []) as { activity_id: string; status: string }[]).map(
       (r) => [r.activity_id, r.status],
@@ -370,11 +372,46 @@ export default async function ParentPortalPage({
     status: attByActivity.get(a.id) ?? null,
   }));
 
+  // Moi query nguon loi -> hien notice thay vi empty-state/so lieu gia.
+  // "Chua co ..." chi render khi query THANH CONG va tra ve 0 row.
+  const srcErrors = Object.entries({
+    parents: parentErr,
+    parent_students: linkErr,
+    students: stuErr,
+    classes: clsErr,
+    attendance_records: attRes.error,
+    grades: gradeRes.error,
+    announcements: annRes.error,
+    appointments: apptRes.error,
+    exam_sessions: examRes.error,
+    cmhs_members: cmhsRes.error,
+    subjects: subjectRes.error,
+    messages: msgRes.error,
+    activities: actRes.error,
+    school_year_events: evRes.error,
+    teachers: teacherErr,
+    senders: senderErr,
+    activity_attendance: actAttErr,
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[portal/parent] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e?.message}`).join("; "),
+    );
+  }
+
   return (
     <div className="theme-fluent min-h-screen bg-background">
       <PortalHeader title="Cổng phụ huynh" userName={profile.full_name} />
 
       <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+        {loadError ? (
+          <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            Không tải được dữ liệu. Vui lòng thử lại.
+          </p>
+        ) : (
+          <>
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
           {student ? (
             <>
@@ -638,6 +675,8 @@ export default async function ParentPortalPage({
                 </ul>
               )}
             </div>
+          </>
+        )}
           </>
         )}
       </main>

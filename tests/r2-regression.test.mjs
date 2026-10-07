@@ -2030,3 +2030,119 @@ test("R12-02: moi caller dung dang function, danh gia tai diem ghi", () => {
   const exp = read("src/app/(app)/register/export/page.tsx");
   assert.match(exp, /defaultPeriod=\{currentMonthVN\(\)\}/);
 });
+
+// --- R13-01: export so chu nhiem khong xuat file tu du lieu thieu ----------
+test("R13-01: export-client loadRows bat error/truncated cua 4 nguon", () => {
+  const src = read("src/components/register/export-client.tsx");
+  const fn = src.match(/async function loadRows\(\)[\s\S]*?\n  \}/);
+  assert.ok(fn, "khong tim thay loadRows");
+  // students + student_groups: loi query phai duoc gan ten va bat.
+  assert.match(fn[0], /error: stuErr/, "students query chua check error");
+  assert.match(fn[0], /error: grpErr/, "student_groups query chua check error");
+  assert.match(fn[0], /if \(stuErr \|\| grpErr\)/,
+    "loi students/groups phai lam loadRows that bai");
+  // grades + attendance fetchAllRows: caller phai nhan error||truncated,
+  // khong duoc destructure chi `rows`.
+  assert.ok(!/rows: gradesData|rows: attData/.test(src),
+    "con destructure chi `rows` - nuot error/truncated");
+  assert.match(src, /gradesRes\.error \|\| gradesRes\.truncated/,
+    "gradesRes chua kiem error/truncated");
+  assert.match(src, /attRes\.error \|\| attRes\.truncated/,
+    "attRes chua kiem error/truncated");
+  // loadRows phai throw de caller khong build file tu data partial.
+  assert.ok((fn[0].match(/throw /g) ?? []).length >= 2,
+    "loadRows phai throw khi students/groups hoac grades/attendance loi");
+  assert.match(fn[0], /console\.error\(/,
+    "loi nguon phai console.error chi tiet");
+});
+
+test("R13-01: exportXlsx/exportPrint catch + nhan co dinh + finally busy", () => {
+  const src = read("src/components/register/export-client.tsx");
+  for (const name of ["exportXlsx", "exportPrint"]) {
+    const body = src.match(
+      new RegExp(`async function ${name}\\(\\)[\\s\\S]*?\\n  \\}`));
+    assert.ok(body, `khong tim thay ${name}`);
+    assert.match(body[0], /await loadRows\(\)/,
+      `${name} phai goi loadRows`);
+    assert.match(body[0], /catch \(e\) \{[\s\S]*?console\.error\([\s\S]*?setMessage\("Không tải đủ dữ liệu để xuất\."\)/,
+      `${name}: catch phai console.error + setMessage nhan co dinh`);
+    assert.match(body[0], /finally \{[\s\S]*?setBusy\(false\)/,
+      `${name} phai reset busy trong finally - button ket khi loi`);
+  }
+  // Loi loadRows phai ngan file/ban in duoc tao ra.
+  const xlsx = src.match(/async function exportXlsx\(\)[\s\S]*?\n  \}/);
+  assert.ok(xlsx && xlsx[0].indexOf("loadRows()") < xlsx[0].indexOf("writeBuffer"),
+    "workbook phai duoc build SAU khi loadRows thanh cong");
+  const print = src.match(/async function exportPrint\(\)[\s\S]*?\n  \}/);
+  assert.ok(print && print[0].indexOf("loadRows()") < print[0].indexOf("window.print"),
+    "window.print phai sau loadRows thanh cong");
+  // Khong echo raw error vao message.
+  assert.ok(!/setMessage\([^)]*\.message/.test(src),
+    "setMessage van nhan raw .message - phai nhan co dinh");
+});
+
+// --- R13-02: portal pages bao loi thay vi "Chua co ..." gia ----------------
+test("R13-02: parent portal check error moi query + notice co dinh", () => {
+  const src = read("src/app/portal/parent/page.tsx");
+  // maybeSingle: single() tra loi PGRST116 cho 0 row - nham thanh loadError
+  // cho PH chua lien ket hop le.
+  const parentQ = src.match(/from\("parents"\)[\s\S]*?\.(single|maybeSingle)\(\)/);
+  assert.ok(parentQ, "thieu parents lookup");
+  assert.match(parentQ[0], /\.maybeSingle\(\)/,
+    "parents lookup phai maybeSingle - single() coi 0 row la loi");
+  // Moi query nguon phai gan loi co ten.
+  for (const e of ["parentErr", "linkErr", "stuErr", "clsErr", "teacherErr",
+                   "senderErr", "actAttErr"]) {
+    assert.match(src, new RegExp(`error: ${e}`),
+      `query chua dat ten loi ${e}`);
+  }
+  // Ca 10 res tu Promise.all deu phai duoc kiem .error.
+  for (const r of ["attRes", "gradeRes", "annRes", "apptRes", "examRes",
+                   "cmhsRes", "subjectRes", "msgRes", "actRes", "evRes"]) {
+    assert.match(src, new RegExp(`${r}\\.error`),
+      `${r}.error chua duoc dua vao srcErrors`);
+  }
+  assert.match(src, /const loadError = srcErrors\.length > 0/,
+    "thieu co loadError tong hop");
+  assert.match(src, /console\.error\(\s*"\[portal\/parent\]/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./,
+    "thieu nhan loi co dinh");
+  // Notice phai nam truoc moi section du lieu - empty-state "Chua co hoc
+  // sinh" chi render trong nhanh loadError === false.
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  const cardIdx = src.indexOf("Chưa có học sinh nào được liên kết");
+  assert.ok(noticeIdx >= 0 && cardIdx > noticeIdx,
+    "notice phai nam truoc empty-state (gate toan bo section)");
+  assert.match(src, /\{loadError \? \(/,
+    "render phai la ternary loadError ? notice : sections");
+});
+
+test("R13-02: hoc-ba page check error 6 nguon + hien notice thay empty-state", () => {
+  const src = read("src/app/portal/student/hoc-ba/page.tsx");
+  const stuQ = src.match(/from\("students"\)[\s\S]*?\.(single|maybeSingle)\(\)/);
+  assert.ok(stuQ, "thieu students lookup");
+  assert.match(stuQ[0], /\.maybeSingle\(\)/,
+    "students lookup phai maybeSingle - single() coi 0 row la loi");
+  for (const e of ["stuErr", "clsErr"]) {
+    assert.match(src, new RegExp(`error: ${e}`),
+      `query chua dat ten loi ${e}`);
+  }
+  for (const r of ["gradeRes", "subjectRes", "conductRes", "attRes"]) {
+    assert.match(src, new RegExp(`${r}\\.error`),
+      `${r}.error chua duoc dua vao srcErrors`);
+  }
+  assert.match(src, /const loadError = srcErrors\.length > 0/);
+  assert.match(src, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./);
+  // Empty-state chi duoc phep sau notice (nam trong nhanh thanh cong).
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  for (const empty of ["Chưa có điểm nào được ghi nhận",
+                       "Chưa có đánh giá rèn luyện"]) {
+    const idx = src.indexOf(empty);
+    assert.ok(idx > noticeIdx,
+      `"${empty}" phai nam trong nhanh thanh cong (sau notice gate)`);
+  }
+  assert.match(src, /\{loadError \? \(/);
+});

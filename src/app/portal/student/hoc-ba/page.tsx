@@ -28,24 +28,25 @@ export default async function StudentTranscriptPage() {
   const profile = await requireRoles(["hoc_sinh"]);
   const supabase = await createClient();
 
-  const { data: studentRow } = await supabase
+  // maybeSingle: 0 row la hop le, chi loi query moi tinh la loadError.
+  const { data: studentRow, error: stuErr } = await supabase
     .from("students")
     .select("id,class_id,full_name,code,dob,gender,national_id")
     .eq("profile_id", profile.id)
     .limit(1)
-    .single();
+    .maybeSingle();
   const student = studentRow as Pick<
     Student,
     "id" | "class_id" | "full_name" | "code" | "dob" | "gender" | "national_id"
   > | null;
 
-  const { data: classRow } = student
+  const { data: classRow, error: clsErr } = student
     ? await supabase
         .from("classes")
         .select("id,name,school_id,grade")
         .eq("id", student.class_id)
-        .single()
-    : { data: null };
+        .maybeSingle()
+    : { data: null, error: null };
   const classroom = classRow as Pick<
     ClassRoom,
     "id" | "name" | "school_id" | "grade"
@@ -72,10 +73,10 @@ export default async function StudentTranscriptPage() {
           .eq("student_id", student.id),
       ])
     : [
-        { data: [] },
-        { data: [] },
-        { data: [] },
-        { data: [] },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
+        { data: [], error: null },
       ];
 
   const subjects = (subjectRes.data ?? []) as {
@@ -138,6 +139,24 @@ export default async function StudentTranscriptPage() {
     if (a.status in attCount) attCount[a.status as keyof typeof attCount]++;
   }
 
+  // Moi query nguon loi -> hien notice thay vi bang/empty-state gia.
+  // "Chua co ..." chi render khi query THANH CONG va tra ve 0 row.
+  const srcErrors = Object.entries({
+    students: stuErr,
+    classes: clsErr,
+    grades: gradeRes.error,
+    subjects: subjectRes.error,
+    conduct_evaluations: conductRes.error,
+    attendance_records: attRes.error,
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[portal/hoc-ba] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e?.message}`).join("; "),
+    );
+  }
+
   return (
     <div className="theme-fluent min-h-screen bg-background">
       <PortalHeader title="Học bạ điện tử" userName={profile.full_name} />
@@ -146,6 +165,12 @@ export default async function StudentTranscriptPage() {
           Về cổng học sinh
         </a>
 
+        {loadError ? (
+          <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+            Không tải được dữ liệu. Vui lòng thử lại.
+          </p>
+        ) : (
+          <>
         <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
           <h1 className="text-lg font-semibold">{student?.full_name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -287,6 +312,8 @@ export default async function StudentTranscriptPage() {
             ))}
           </div>
         </div>
+          </>
+        )}
       </main>
     </div>
   );

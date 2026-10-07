@@ -53,8 +53,13 @@ export function ExportClient({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // Loi/truncated cua BAT KY nguon nao phai lam huy luot xuat - bao cao
+  // xuat tu du lieu thieu (vd 0 vang vi attendance loi) la sai nghiem trong.
   async function loadRows(): Promise<ExportRow[]> {
-    const [{ data: studentsData }, { data: groupsData }] = await Promise.all([
+    const [
+      { data: studentsData, error: stuErr },
+      { data: groupsData, error: grpErr },
+    ] = await Promise.all([
       supabase
         .from("students")
         .select("*")
@@ -62,12 +67,19 @@ export function ExportClient({
         .eq("status", "active"),
       supabase.from("student_groups").select("*").eq("class_id", classId),
     ]);
+    if (stuErr || grpErr) {
+      console.error(
+        "[export-client] students/student_groups:",
+        stuErr?.message ?? grpErr?.message,
+      );
+      throw new Error("load source failed");
+    }
     const students = sortByVietnameseName((studentsData ?? []) as Student[], (s) => s.full_name);
     const groups = (groupsData ?? []) as StudentGroup[];
     const groupMap = new Map(groups.map((g) => [g.id, g.name]));
     const ids = students.map((s) => s.id);
 
-    const [{ rows: gradesData }, { rows: attData }] =
+    const [gradesRes, attRes] =
       ids.length > 0
         ? await Promise.all([
             fetchAllRows<Grade>((f, t) =>
@@ -92,15 +104,25 @@ export function ExportClient({
             ),
           ])
         : [
-            { rows: [] as Grade[] },
-            { rows: [] as { student_id: string; status: string; date: string }[] },
+            { rows: [] as Grade[], error: null, truncated: false },
+            {
+              rows: [] as { student_id: string; status: string; date: string }[],
+              error: null,
+              truncated: false,
+            },
           ];
-    const grades = gradesData;
-    const attendance = attData as {
-      student_id: string;
-      status: string;
-      date: string;
-    }[];
+    if (
+      gradesRes.error || gradesRes.truncated ||
+      attRes.error || attRes.truncated
+    ) {
+      console.error(
+        "[export-client] grades/attendance:",
+        gradesRes.error ?? attRes.error ?? "truncated",
+      );
+      throw new Error("load source failed");
+    }
+    const grades = gradesRes.rows;
+    const attendance = attRes.rows;
 
     return students.map((s) => {
       const gs = grades.filter((g) => g.student_id === s.id);
@@ -138,83 +160,95 @@ export function ExportClient({
   async function exportXlsx() {
     setBusy(true);
     setMessage(null);
-    const data = await loadRows();
-    const ExcelJS = (await import("exceljs")).default;
-    const wb = new ExcelJS.Workbook();
+    try {
+      const data = await loadRows();
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
 
-    // Sheet 1: tổng hợp theo học sinh
-    const ws = wb.addWorksheet("Tổng hợp");
-    const headers = [
-      "Mã HS",
-      "Họ tên",
-      "Tổ",
-      "Điểm TB",
-      "Có mặt",
-      "Vắng CP",
-      "Vắng KP",
-      "Đi muộn",
-      "Điểm tích cực",
-    ];
-    ws.addRow(headers);
-    ws.getRow(1).font = { bold: true };
-    headers.forEach((h, i) => {
-      ws.getColumn(i + 1).width = Math.max(14, h.length + 4);
-    });
-    data.forEach((r) => {
-      ws.addRow([
-        sanitizeSpreadsheetCell(r.code),
-        sanitizeSpreadsheetCell(r.name),
-        sanitizeSpreadsheetCell(r.group),
-        r.avgScore,
-        r.attDetail.filter((a) => a.status === "present").length,
-        r.excused,
-        r.unexcused,
-        r.late,
-        r.points,
-      ]);
-    });
-
-    // Sheet 2: chuyên cần chi tiết theo ngày
-    const ws2 = wb.addWorksheet("Chuyên cần chi tiết");
-    ws2.addRow(["Mã HS", "Họ tên", "Ngày", "Trạng thái"]);
-    ws2.getRow(1).font = { bold: true };
-    ws2.getColumn(1).width = 12;
-    ws2.getColumn(2).width = 28;
-    ws2.getColumn(3).width = 14;
-    ws2.getColumn(4).width = 18;
-    for (const r of data) {
-      for (const a of r.attDetail) {
-        ws2.addRow([
+      // Sheet 1: tổng hợp theo học sinh
+      const ws = wb.addWorksheet("Tổng hợp");
+      const headers = [
+        "Mã HS",
+        "Họ tên",
+        "Tổ",
+        "Điểm TB",
+        "Có mặt",
+        "Vắng CP",
+        "Vắng KP",
+        "Đi muộn",
+        "Điểm tích cực",
+      ];
+      ws.addRow(headers);
+      ws.getRow(1).font = { bold: true };
+      headers.forEach((h, i) => {
+        ws.getColumn(i + 1).width = Math.max(14, h.length + 4);
+      });
+      data.forEach((r) => {
+        ws.addRow([
           sanitizeSpreadsheetCell(r.code),
           sanitizeSpreadsheetCell(r.name),
-          a.date,
-          STATUS_LABEL[a.status] ?? a.status,
+          sanitizeSpreadsheetCell(r.group),
+          r.avgScore,
+          r.attDetail.filter((a) => a.status === "present").length,
+          r.excused,
+          r.unexcused,
+          r.late,
+          r.points,
         ]);
-      }
-    }
+      });
 
-    const cls = classes.find((c) => c.id === classId);
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `so-chu-nhiem-${cls?.name ?? "lop"}-${period}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setMessage(`Đã xuất Excel cho ${data.length} học sinh (2 sheet: tổng hợp + chuyên cần chi tiết).`);
-    setBusy(false);
+      // Sheet 2: chuyên cần chi tiết theo ngày
+      const ws2 = wb.addWorksheet("Chuyên cần chi tiết");
+      ws2.addRow(["Mã HS", "Họ tên", "Ngày", "Trạng thái"]);
+      ws2.getRow(1).font = { bold: true };
+      ws2.getColumn(1).width = 12;
+      ws2.getColumn(2).width = 28;
+      ws2.getColumn(3).width = 14;
+      ws2.getColumn(4).width = 18;
+      for (const r of data) {
+        for (const a of r.attDetail) {
+          ws2.addRow([
+            sanitizeSpreadsheetCell(r.code),
+            sanitizeSpreadsheetCell(r.name),
+            a.date,
+            STATUS_LABEL[a.status] ?? a.status,
+          ]);
+        }
+      }
+
+      const cls = classes.find((c) => c.id === classId);
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `so-chu-nhiem-${cls?.name ?? "lop"}-${period}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setMessage(`Đã xuất Excel cho ${data.length} học sinh (2 sheet: tổng hợp + chuyên cần chi tiết).`);
+    } catch (e) {
+      console.error("[export-client] xlsx:", e);
+      setMessage("Không tải đủ dữ liệu để xuất.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function exportPrint() {
     setBusy(true);
     setMessage(null);
-    const data = await loadRows();
-    setRows(data);
-    setBusy(false);
-    setTimeout(() => window.print(), 100);
+    try {
+      const data = await loadRows();
+      setRows(data);
+      setTimeout(() => window.print(), 100);
+    } catch (e) {
+      console.error("[export-client] print:", e);
+      setMessage("Không tải đủ dữ liệu để xuất.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const clsName = classes.find((c) => c.id === classId)?.name ?? "";

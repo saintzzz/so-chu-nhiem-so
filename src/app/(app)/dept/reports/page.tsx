@@ -90,7 +90,7 @@ export default async function DeptReportsPage() {
     ? await fetchAllRows<{
         student_id: string;
         status: string;
-        students: { class_id: string }[] | null;
+        students: { class_id: string } | { class_id: string }[] | null;
       }>((f, t) =>
         supabase
           .from("attendance_records")
@@ -100,7 +100,7 @@ export default async function DeptReportsPage() {
           .order("id")
           .range(f, t),
       )
-    : { rows: [] as { student_id: string; status: string; students: { class_id: string }[] | null }[], truncated: false };
+    : { rows: [] as { student_id: string; status: string; students: { class_id: string } | { class_id: string }[] | null }[], truncated: false };
 
   // Gom số liệu theo trường
   const per = new Map<
@@ -118,9 +118,10 @@ export default async function DeptReportsPage() {
     if (per.has(t.school_id)) per.get(t.school_id)!.teachers++;
   }
   for (const a of attRows) {
-    const sid = a.students?.[0]?.class_id
-      ? classSchool.get(a.students[0].class_id)
-      : undefined;
+    // PostgREST tra to-one embed la object (khong phai array).
+    const emb = a.students;
+    const cid = Array.isArray(emb) ? emb[0]?.class_id : emb?.class_id;
+    const sid = cid ? classSchool.get(cid) : undefined;
     if (!sid) continue;
     const row = per.get(sid)!;
     row.total++;

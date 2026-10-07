@@ -8,11 +8,18 @@ export { FEATURES } from "@/lib/feature-keys";
 export async function hasFeature(feature: string): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("scn_has_feature", { f: feature });
-  if (error) return true; // fail-open khi loi tam thoi (tranh khoa toan bo)
+  // fail-CLOSED: loi RPC = khong xac dinh duoc quyen -> tu choi (CR-034 fix).
+  // Nen mac dinh van nam trong scn_has_feature (SQL), chi khoa khi rpc that su loi.
+  if (error) return false;
   return Boolean(data);
 }
 
 export async function requireFeature(feature: string) {
   const ok = await hasFeature(feature);
   if (!ok) redirect("/dashboard");
+}
+
+// Server action / API route: tra loi neu user bi deny chuc nang.
+export async function assertFeature(feature: string): Promise<string | null> {
+  return (await hasFeature(feature)) ? null : "Tính năng này đã bị quản trị tắt với tài khoản của bạn.";
 }

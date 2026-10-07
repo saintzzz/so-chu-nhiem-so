@@ -22,6 +22,11 @@ export interface Profile {
   campus_id: string | null;
   org_unit_id: string | null;
   avatar_url: string | null;
+  staff_code: string | null;
+  employment_type: string | null;
+  qualification: string | null;
+  concurrent_roles: string[] | null;
+  last_sign_in_at: string | null;
 }
 
 export interface School {

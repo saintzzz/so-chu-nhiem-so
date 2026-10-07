@@ -155,3 +155,8 @@ export function compareVietnameseName(a: string, b: string): number {
 export function sortByVietnameseName<T>(rows: T[], get: (r: T) => string): T[] {
   return [...rows].sort((x, y) => compareVietnameseName(get(x), get(y)));
 }
+
+/** Loc ky tu dac biet cua PostgREST .or() de tranh filter injection (CR-034). */
+export function sanitizeOrTerm(q: string): string {
+  return q.replace(/[,().\\"\']/g, " ").trim();
+}

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { assertFeature } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
 export async function assignClassCampus(
@@ -280,6 +281,8 @@ export async function updateStaffAccount(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
@@ -288,11 +291,28 @@ export async function updateStaffAccount(
   if (patch.role !== undefined) {
     if (!allowed.includes(patch.role))
       return { error: "Vai trò không hợp lệ." };
+    if (profileId === profile.id)
+      return { error: "Không thể tự đổi vai trò của chính mình." };
     updates.role = patch.role;
   }
-  if (patch.campusId !== undefined) updates.campus_id = patch.campusId;
-  if (patch.departmentId !== undefined)
+  if (patch.campusId) {
+    const { data: c } = await supabase
+      .from("campuses").select("id")
+      .eq("id", patch.campusId).eq("school_id", profile.school_id).maybeSingle();
+    if (!c) return { error: "Cơ sở không thuộc trường." };
+    updates.campus_id = patch.campusId;
+  } else if (patch.campusId === null) {
+    updates.campus_id = null;
+  }
+  if (patch.departmentId) {
+    const { data: d } = await supabase
+      .from("departments").select("id")
+      .eq("id", patch.departmentId).eq("school_id", profile.school_id).maybeSingle();
+    if (!d) return { error: "Tổ chuyên môn không thuộc trường." };
     updates.department_id = patch.departmentId;
+  } else if (patch.departmentId === null) {
+    updates.department_id = null;
+  }
   const { error } = await supabase
     .from("profiles")
     .update(updates)
@@ -404,6 +424,17 @@ export async function saveTimetableEntry(input: {
     };
   }
 
+  if (input.id) {
+    const { data: entry } = await supabase
+      .from("timetable_entries")
+      .select("id,classes(school_id)")
+      .eq("id", input.id)
+      .maybeSingle();
+    const cs = (entry as { classes?: { school_id: string }[] | { school_id: string } | null } | null)?.classes;
+    const entrySchool = Array.isArray(cs) ? cs[0]?.school_id : cs?.school_id;
+    if (!entry || entrySchool !== profile.school_id)
+      return { error: "Tiết học không thuộc trường." };
+  }
   const row = {
     class_id: input.classId,
     subject_id: input.subjectId,
@@ -415,7 +446,12 @@ export async function saveTimetableEntry(input: {
   const { error } = input.id
     ? await supabase.from("timetable_entries").update(row).eq("id", input.id)
     : await supabase.from("timetable_entries").insert(row);
-  if (error) return { error: error.message };
+  if (error)
+    return {
+      error: error.code === "23505"
+        ? "Trùng tiết học (lớp/giáo viên đã có tiết ở khung giờ này)."
+        : error.message,
+    };
   revalidatePath("/schedule/manage");
   return {};
 }
@@ -426,6 +462,17 @@ export async function deleteTimetableEntry(
   const deny = await checkActionRole(["bgh", "pht"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const { data: entry } = await supabase
+    .from("timetable_entries")
+    .select("id,classes(school_id)")
+    .eq("id", id)
+    .maybeSingle();
+  const cs = (entry as { classes?: { school_id: string }[] | { school_id: string } | null } | null)?.classes;
+  const entrySchool = Array.isArray(cs) ? cs[0]?.school_id : cs?.school_id;
+  if (!entry || entrySchool !== profile.school_id)
+    return { error: "Tiết học không thuộc trường." };
   const { error } = await supabase
     .from("timetable_entries")
     .delete()
@@ -469,6 +516,8 @@ export async function createStaffAccount(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!STAFF_ROLES.includes(input.role)) return { error: "Vai trò không hợp lệ." };
@@ -530,6 +579,8 @@ export async function setFeatureGrant(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
@@ -537,13 +588,16 @@ export async function setFeatureGrant(input: {
   if (!input.role && !input.userId) return { error: "Chọn vai trò hoặc người dùng." };
 
   if (input.effect === null) {
-    await supabase
+    // .is() chi nhan null/bool - loc role/user bang eq hoac is(null) theo nhanh
+    let q = supabase
       .from("feature_grants")
       .delete()
       .eq("school_id", profile.school_id)
-      .eq("feature", input.feature)
-      .is("role", input.role ?? null)
-      .is("user_id", input.userId ?? null);
+      .eq("feature", input.feature);
+    q = input.role ? q.eq("role", input.role) : q.is("role", null);
+    q = input.userId ? q.eq("user_id", input.userId) : q.is("user_id", null);
+    const { error } = await q;
+    if (error) return { error: error.message };
   } else {
     const { error } = await supabase.from("feature_grants").upsert(
       {
@@ -657,15 +711,43 @@ export async function updateStaffProfile(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const updates: Record<string, unknown> = {};
   if (input.role) {
     if (!STAFF_ROLES.includes(input.role)) return { error: "Vai trò không hợp lệ." };
+    if (profileId === profile.id)
+      return { error: "Không thể tự đổi vai trò của chính mình." };
     updates.role = input.role;
   }
-  if (input.campusId !== undefined) updates.campus_id = input.campusId;
-  if (input.departmentId !== undefined) updates.department_id = input.departmentId;
+  // CR-034: campus/department phai thuoc truong hien tai
+  const supabase = await createClient();
+  if (input.campusId) {
+    const { data: c } = await supabase
+      .from("campuses")
+      .select("id")
+      .eq("id", input.campusId)
+      .eq("school_id", profile.school_id)
+      .maybeSingle();
+    if (!c) return { error: "Cơ sở không thuộc trường." };
+    updates.campus_id = input.campusId;
+  } else if (input.campusId === null) {
+    updates.campus_id = null;
+  }
+  if (input.departmentId) {
+    const { data: d } = await supabase
+      .from("departments")
+      .select("id")
+      .eq("id", input.departmentId)
+      .eq("school_id", profile.school_id)
+      .maybeSingle();
+    if (!d) return { error: "Tổ chuyên môn không thuộc trường." };
+    updates.department_id = input.departmentId;
+  } else if (input.departmentId === null) {
+    updates.department_id = null;
+  }
   if (input.staffCode !== undefined)
     updates.staff_code = input.staffCode?.trim() || null;
   if (input.employmentType !== undefined) {
@@ -675,11 +757,13 @@ export async function updateStaffProfile(
   }
   if (input.qualification !== undefined)
     updates.qualification = input.qualification?.trim() || null;
-  if (input.concurrentRoles !== undefined)
+  if (input.concurrentRoles !== undefined) {
+    const bad = (input.concurrentRoles ?? []).filter((r) => !STAFF_ROLES.includes(r));
+    if (bad.length) return { error: `Vai trò kiêm nhiệm không hợp lệ: ${bad.join(", ")}` };
     updates.concurrent_roles = input.concurrentRoles;
+  }
   if (!Object.keys(updates).length) return {};
 
-  const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
     .update(updates)
@@ -704,27 +788,24 @@ export async function setTeacherSubjects(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin", "to_truong"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  // chi giao cho GV cung truong
-  const { data: target } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", teacherId)
-    .eq("school_id", profile.school_id)
-    .single();
-  if (!target) return { error: "Không tìm thấy giáo viên." };
-  const { error: del } = await supabase
-    .from("teacher_subjects")
-    .delete()
-    .eq("teacher_id", teacherId);
-  if (del) return { error: del.message };
-  if (subjectIds.length) {
-    const { error: ins } = await supabase
-      .from("teacher_subjects")
-      .insert(subjectIds.map((subject_id) => ({ teacher_id: teacherId, subject_id })));
-    if (ins) return { error: ins.message };
+  // CR-034: RPC atomic - validate truong + scope to truong + xoa/insert trong 1 txn
+  const { error } = await supabase.rpc("scn_set_teacher_subjects", {
+    p_teacher: teacherId,
+    p_subjects: subjectIds,
+  });
+  if (error) {
+    if (error.message.includes("teacher not in school"))
+      return { error: "Không tìm thấy giáo viên." };
+    if (error.message.includes("cung to"))
+      return { error: "Tổ trưởng chỉ chỉnh môn của GV trong tổ mình." };
+    if (error.message.includes("subject not in school"))
+      return { error: "Môn học không thuộc trường." };
+    return { error: error.message };
   }
   logAudit(supabase, {
     action: "school.teacher_subjects",
@@ -768,6 +849,8 @@ export async function listItemAcl(input: {
 }): Promise<{ emails: string[] } | { error: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
   if (deny) return { error: deny };
+  const fDeny = await assertFeature("school.users");
+  if (fDeny) return { error: fDeny };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();

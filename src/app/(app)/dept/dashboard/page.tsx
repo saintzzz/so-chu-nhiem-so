@@ -6,15 +6,8 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, BarChart } from "@/components/charts";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
-import type {
-  AttendanceRecord,
-  ClassRoom,
-  EmulationScore,
-} from "@/types";
+import type { AttendanceRecord, ClassRoom } from "@/types";
 import { currentPeriodVN, isoDateVN, todayVN } from "@/lib/utils";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
-
-const TEACHER_ROLES = ["gvcn", "gvbm", "to_truong"];
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -56,7 +49,6 @@ export default async function DeptDashboardPage() {
         (s) => s.org_unit_id && scopedOrgIds.has(s.org_unit_id),
       )
     : allSchools;
-  const scopedSchoolIds = new Set(scopedSchools.map((s) => s.id));
   const orgName = new Map(orgs.map((o) => [o.id, o.name]));
 
   // Anchor to the newest attendance date so demo stats are never empty.
@@ -70,83 +62,30 @@ export default async function DeptDashboardPage() {
       ?.date ?? todayVN();
   const windowStart = addDays(anchor, -29);
 
-  const { data: scopedClassRows } = await supabase
-    .from("classes")
-    .select("id,name,school_id")
-    .order("name");
-  const classes = ((scopedClassRows ?? []) as Pick<
-    ClassRoom,
-    "id" | "name" | "school_id"
-  >[]).filter((c) => scopedSchoolIds.has(c.school_id));
-  const scopedClassIds = classes.map((c) => c.id);
-
-  const { rows: scopedStudents } = scopedClassIds.length
-    ? await fetchAllRows<{ id: string }>((f, t) =>
-        supabase
-          .from("students")
-          .select("id")
-          .in("class_id", scopedClassIds)
-          .order("id")
-          .range(f, t),
-      )
-    : { rows: [] as { id: string }[] };
-  const scopedStudentIds = scopedStudents.map((s) => s.id);
-
-  const [
-    teachersRes,
-    attTotalRes,
-    attPresentRes,
-    openIncidentsRes,
-    emulationRes,
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .in("role", TEACHER_ROLES)
-      .in("school_id", [...scopedSchoolIds].length ? [...scopedSchoolIds] : ["none"]),
-    scopedStudentIds.length
-      ? supabase
-          .from("attendance_records")
-          .select("id", { count: "exact", head: true })
-          .gte("date", windowStart)
-          .in("student_id", scopedStudentIds)
-      : Promise.resolve({ count: 0 }),
-    scopedStudentIds.length
-      ? supabase
-          .from("attendance_records")
-          .select("id", { count: "exact", head: true })
-          .gte("date", windowStart)
-          .in("status", ["present", "late"])
-          .in("student_id", scopedStudentIds)
-      : Promise.resolve({ count: 0 }),
-    scopedClassIds.length
-      ? supabase
-          .from("incidents")
-          .select("id", { count: "exact", head: true })
-          .in("status", ["new", "following"])
-          .in("class_id", scopedClassIds)
-      : Promise.resolve({ count: 0 }),
-    scopedClassIds.length
-      ? supabase
-          .from("emulation_scores")
-          .select("class_id,score")
-          .eq("period", EMULATION_PERIOD)
-          .in("class_id", scopedClassIds)
-      : Promise.resolve({ data: [] }),
-  ]);
+  // CR-034: aggregate trong Postgres - khong kéo toàn bộ students/classes về app
+  const { data: dash } = await supabase.rpc("scn_dept_dashboard", {
+    p_school_ids: scopedSchools.map((s) => s.id),
+    p_window_start: windowStart,
+    p_period: EMULATION_PERIOD,
+  });
+  const D = (dash ?? {}) as {
+    teachers?: number; classes?: number; students?: number;
+    att_total?: number; att_present?: number; incidents?: number;
+    emulation?: { class_id: string; score: number }[];
+    class_list?: { id: string; name: string; school_id: string }[];
+  };
+  const classes = (D.class_list ?? []) as Pick<ClassRoom, "id" | "name" | "school_id">[];
+  const attTotal = D.att_total ?? 0;
+  const attPresent = D.att_present ?? 0;
+  const openIncidents = D.incidents ?? 0;
+  const teacherCount = D.teachers ?? 0;
+  const studentCount = D.students ?? 0;
 
   const attRate =
-    (attTotalRes.count ?? 0) > 0
-      ? (((attPresentRes.count ?? 0) / (attTotalRes.count ?? 1)) * 100).toFixed(
-          1,
-        ) + "%"
-      : "-";
+    attTotal > 0 ? ((attPresent / attTotal) * 100).toFixed(1) + "%" : "-";
 
   const totals = new Map<string, number>();
-  for (const row of (emulationRes.data ?? []) as Pick<
-    EmulationScore,
-    "class_id" | "score"
-  >[]) {
+  for (const row of D.emulation ?? []) {
     totals.set(row.class_id, (totals.get(row.class_id) ?? 0) + row.score);
   }
   const ranking = classes
@@ -173,8 +112,8 @@ export default async function DeptDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Trường học" value={scopedSchools.length} />
         <StatCard label="Lớp học" value={classes.length} />
-        <StatCard label="Giáo viên" value={teachersRes.count ?? 0} />
-        <StatCard label="Học sinh" value={scopedStudentIds.length} />
+        <StatCard label="Giáo viên" value={teacherCount} />
+        <StatCard label="Học sinh" value={studentCount} />
       </div>
 
       <div className="mt-4">
@@ -197,8 +136,8 @@ export default async function DeptDashboardPage() {
         />
         <StatCard
           label="Sự cố đang mở"
-          value={openIncidentsRes.count ?? 0}
-          tone={(openIncidentsRes.count ?? 0) > 0 ? "warning" : "success"}
+          value={openIncidents}
+          tone={openIncidents > 0 ? "warning" : "success"}
         />
       </div>
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { assertFeature } from "@/lib/permissions";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { validateQuestion } from "@/lib/tvc/question-validate";
 import type { DocContent, MaterialType } from "@/types/tvc";
@@ -16,6 +17,13 @@ import type { DocContent, MaterialType } from "@/types/tvc";
 const TOOL_ROLES = ["gvcn", "gvbm", "to_truong", "bgh", "admin"] as const;
 /** Quản lý YCCĐ của trường: tổ trưởng/BGH/admin (GV vẫn xem + dùng). */
 const STD_ADMIN_ROLES = ["to_truong", "bgh", "admin"] as const;
+
+/** CR-034: chan o tang action - page guard alone khong du. */
+async function featErr(f: string) {
+  const err = await checkActionRole([...TOOL_ROLES]);
+  if (err) return err;
+  return assertFeature(f);
+}
 
 
 
@@ -59,7 +67,7 @@ export interface SaveMaterialInput {
 }
 
 export async function saveMaterial(input: SaveMaterialInput) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio");
   if (err) return { error: err };
   const profile = (await getProfile())!;
   const supabase = await createClient();
@@ -116,7 +124,7 @@ export async function updateMaterialContent(
   content: DocContent,
   title?: string,
 ) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio");
   if (err) return { error: err };
   const profile = (await getProfile())!;
   const supabase = await createClient();
@@ -137,7 +145,7 @@ export async function updateMaterialContent(
 }
 
 export async function deleteMaterial(id: string) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio");
   if (err) return { error: err };
   const profile = (await getProfile())!;
   const supabase = await createClient();
@@ -157,7 +165,7 @@ export async function deleteMaterial(id: string) {
 // ---------- Kiem duyet hoc lieu cap truong (CR-029) ----------
 
 export async function submitMaterialReview(id: string) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio");
   if (err) return { error: err };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("scn_submit_material_review", { mid: id });
@@ -176,6 +184,8 @@ export async function reviewMaterial(
 ) {
   const err = await checkActionRole(["to_truong", "bgh", "admin"]);
   if (err) return { error: err };
+  const fErr = await assertFeature("studio.review");
+  if (fErr) return { error: fErr };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("scn_review_material", {
     mid: id,
@@ -223,14 +233,21 @@ async function allocateQuestionCodes(
   ownerId: string,
   items: { standardIds: string[]; qtype: string }[],
 ): Promise<(string | null)[]> {
-  const [{ data: stds }, { data: existing }] = await Promise.all([
-    supabase.from("tvc_curriculum_standards").select("id,code"),
-    supabase
+  const { data: stds } = await supabase
+    .from("tvc_curriculum_standards")
+    .select("id,code");
+  const existing: { code: string | null }[] = [];
+  for (let off = 0; ; off += 1000) {
+    const { data: page } = await supabase
       .from("tvc_questions")
       .select("code")
       .eq("owner_id", ownerId)
-      .not("code", "is", null),
-  ]);
+      .not("code", "is", null)
+      .range(off, off + 999);
+    if (!page?.length) break;
+    existing.push(...(page as { code: string | null }[]));
+    if (page.length < 1000) break;
+  }
   const codeById = new Map(
     ((stds ?? []) as { id: string; code: string }[]).map((s) => [s.id, s.code]),
   );
@@ -265,6 +282,30 @@ async function allocateQuestionCodes(
   });
 }
 
+// Insert cau hoi kem cap ma; retry khi trung unique (owner_id, code) do race.
+async function insertQuestionsWithCodes(
+  supabase: SupabaseLike,
+  ownerId: string,
+  rows: ({ standardIds: string[]; qtype: string } & Record<string, unknown>)[],
+): Promise<{ error?: string }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const codes = await allocateQuestionCodes(supabase, ownerId, rows);
+    const { error } = await supabase
+      .from("tvc_questions")
+      .insert(
+        rows.map((r, i) => {
+          const row: Record<string, unknown> = { ...r, code: codes[i] };
+          delete row.standardIds;
+          return row;
+        }),
+      );
+    if (!error) return {};
+    if (error.code !== "23505" && !error.message.includes("uq_tvc_questions_owner_code"))
+      return { error: error.message };
+  }
+  return { error: "Trùng mã câu hỏi khi lưu - vui lòng thử lại." };
+}
+
 export interface SaveQuestionInput {
   id?: string;
   stem: string;
@@ -281,7 +322,7 @@ export interface SaveQuestionInput {
 }
 
 export async function saveQuestion(input: SaveQuestionInput) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.questions");
   if (err) return { error: err };
   const vErrs = validateQuestion(input);
   if (vErrs.length) return { error: vErrs.join(" ") };
@@ -313,31 +354,36 @@ export async function saveQuestion(input: SaveQuestionInput) {
     revalidatePath("/studio/questions");
     return { ok: true };
   }
-  const [code] = await allocateQuestionCodes(supabase, profile.id, [input]);
-  const { error } = await supabase.from("tvc_questions").insert({
-    owner_id: profile.id,
-    school_id: profile.school_id ?? null,
-    code,
-    stem: input.stem,
-    context: input.context?.trim() || null,
-    qtype: input.qtype,
-    level: input.level,
-    points: input.points,
-    answer: input.answer,
-    solution: input.solution ?? null,
-    standard_ids: input.standardIds,
-    subject_code: input.subjectCode ?? null,
-    grade: input.grade ?? null,
-    source: "manual",
-    media: input.media ?? [],
-  });
-  if (error) return { error: "Không lưu được câu hỏi." };
+  const { error: insErr } = await insertQuestionsWithCodes(
+    supabase,
+    profile.id,
+    [
+      {
+        owner_id: profile.id,
+        school_id: profile.school_id ?? null,
+        stem: input.stem,
+        context: input.context?.trim() || null,
+        qtype: input.qtype,
+        level: input.level,
+        points: input.points,
+        answer: input.answer,
+        solution: input.solution ?? null,
+        standard_ids: input.standardIds,
+        subject_code: input.subjectCode ?? null,
+        grade: input.grade ?? null,
+        source: "manual",
+        media: input.media ?? [],
+        standardIds: input.standardIds,
+      },
+    ],
+  );
+  if (insErr) return { error: "Không lưu được câu hỏi." };
   revalidatePath("/studio/questions");
   return { ok: true };
 }
 
 export async function deleteQuestion(id: string) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.questions");
   if (err) return { error: err };
   const supabase = await createClient();
   // RLS: owner hoac to_truong/bgh/admin cung truong
@@ -358,7 +404,7 @@ export async function setQuestionReviewState(
   id: string,
   state: "unreviewed" | "approved" | "flagged",
 ) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.review");
   if (err) return { error: err };
   const supabase = await createClient();
   // RLS: owner tu duyet cau minh; to_truong/bgh/admin duyet cau cung truong
@@ -376,7 +422,7 @@ export async function bulkSetQuestionReviewState(
   ids: string[],
   state: "unreviewed" | "approved" | "flagged",
 ) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.review");
   if (err) return { error: err };
   if (!ids.length) return { error: "Chưa chọn câu hỏi." };
   if (ids.length > 200) return { error: "Mỗi lần tối đa 200 câu." };
@@ -401,7 +447,7 @@ export async function bulkSetQuestionReviewState(
 }
 
 export async function listQuestionsChunk(offset: number) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.questions");
   if (err) return { error: err };
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -414,7 +460,7 @@ export async function listQuestionsChunk(offset: number) {
 }
 
 export async function getQuestionDetail(id: string) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.questions");
   if (err) return { error: err };
   const supabase = await createClient();
   // RLS: doc cau hoi cung truong
@@ -438,7 +484,7 @@ export async function getQuestionDetail(id: string) {
 }
 
 export async function importQuestions(rows: SaveQuestionInput[]) {
-  const err = await checkActionRole([...TOOL_ROLES]);
+  const err = await featErr("studio.questions");
   if (err) return { error: err };
   const profile = (await getProfile())!;
   const skipped: string[] = [];
@@ -453,11 +499,11 @@ export async function importQuestions(rows: SaveQuestionInput[]) {
     };
   const supabase = await createClient();
   await ensureTvcProfile();
-  const codes = await allocateQuestionCodes(supabase, profile.id, valid);
-  const { error } = await supabase.from("tvc_questions").insert(
-    valid.map((r, i) => ({
+  const { error } = await insertQuestionsWithCodes(
+    supabase,
+    profile.id,
+    valid.map((r) => ({
       owner_id: profile.id,
-      code: codes[i],
       stem: r.stem,
       context: r.context?.trim() || null,
       qtype: r.qtype,
@@ -471,6 +517,7 @@ export async function importQuestions(rows: SaveQuestionInput[]) {
       source: "imported" as const,
       media: r.media ?? [],
       school_id: profile.school_id ?? null,
+      standardIds: r.standardIds,
     })),
   );
   if (error) return { error: "Import thất bại - kiểm tra template." };

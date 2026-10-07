@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
-import { cn, sortByVietnameseName, todayVN } from "@/lib/utils";
+import { cn, sortByVietnameseName, todayVN, sanitizeOrTerm } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
 import { grantParentAccess } from "@/app/(app)/register/actions";
 import { ROLE_LABELS_BCS, type ClassRoleRow } from "./types";
@@ -149,7 +149,7 @@ export function RosterClient({
     const { data } = await supabase
       .from("parents")
       .select("id,full_name,phone,email,relationship")
-      .or(`full_name.ilike.%${q.trim()}%,phone.ilike.%${q.trim()}%`)
+      .or(`full_name.ilike.%${sanitizeOrTerm(q)}%,phone.ilike.%${sanitizeOrTerm(q)}%`)
       .limit(20);
     if (!data?.length) return;
     setParents((prev) => {

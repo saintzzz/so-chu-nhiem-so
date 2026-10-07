@@ -1,7 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDateTime } from "@/lib/utils";
@@ -9,6 +8,11 @@ import { ROLE_LABELS } from "@/lib/nav";
 import type { Profile, Role, School } from "@/types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// module-level helper de tranh impure-call trong render
+function isWithinMs(iso: string | null | undefined, ms: number): boolean {
+  return !!iso && Date.now() - new Date(iso).getTime() < ms;
+}
 
 // PostgREST mac dinh tra toi da ~1000 rows/request - can vong lap range
 async function fetchAll<T>(
@@ -29,14 +33,15 @@ async function fetchAll<T>(
 export default async function DeptUsagePage() {
   await requireRoles(["so_gd", "admin"]);
   const supabase = await createClient();
-  const admin = createAdminClient();
 
+  // last_sign_in_at duoc trigger dong bo tu auth.users -> profiles
+  // (khoi auth.admin.listUsers cham - thay bang 1 query profiles)
   const [profilesRes, schoolsRes] = await Promise.all([
-    fetchAll<Pick<Profile, "id" | "full_name" | "email" | "role" | "school_id">>(
+    fetchAll<Pick<Profile, "id" | "full_name" | "email" | "role" | "school_id" | "last_sign_in_at">>(
       (f, t) =>
         supabase
           .from("profiles")
-          .select("id,full_name,email,role,school_id")
+          .select("id,full_name,email,role,school_id,last_sign_in_at")
           .range(f, t),
     ),
     supabase.from("schools").select("id,name"),
@@ -44,22 +49,11 @@ export default async function DeptUsagePage() {
   const profiles = profilesRes.rows;
   const schools = (schoolsRes.data ?? []) as Pick<School, "id" | "name">[];
   const schoolNameOf = new Map(schools.map((s) => [s.id, s.name]));
+  const lastSignIn = new Map(profiles.map((p) => [p.id, p.last_sign_in_at ?? null]));
+  const incomplete = profilesRes.incomplete;
 
-  // auth.users.last_sign_in_at chi doc duoc qua admin API
-  const lastSignIn = new Map<string, string | null>();
-  let authIncomplete = false;
-  for (let page = 1; ; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) { authIncomplete = true; break; }
-    const batch = data?.users ?? [];
-    for (const u of batch) lastSignIn.set(u.id, u.last_sign_in_at ?? null);
-    if (batch.length < 1000) break;
-  }
-  const incomplete = profilesRes.incomplete || authIncomplete;
-
-  const now = Date.now();
   const within = (iso: string | null | undefined, ms: number) =>
-    !!iso && now - new Date(iso).getTime() < ms;
+    isWithinMs(iso, ms);
 
   const perSchool = schools.map((s) => {
     const users = profiles.filter((p) => p.school_id === s.id);

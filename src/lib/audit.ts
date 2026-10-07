@@ -15,11 +15,9 @@ export function logAudit(
 ): void {
   void (async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: claimsData } = await supabase.auth.getClaims();
       await supabase.from("audit_logs").insert({
-        actor_id: user?.id ?? null,
+        actor_id: (claimsData?.claims?.sub as string | undefined) ?? null,
         action: input.action,
         entity: input.entity,
         entity_id: input.entityId ?? null,

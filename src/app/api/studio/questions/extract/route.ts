@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
+import { hasFeature } from "@/lib/permissions";
 import { getAiConfig, generateTextDetailed } from "@/lib/ai";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   if (!["gvcn", "gvbm", "to_truong", "bgh", "admin"].includes(profile.role)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio.questions"))) {
+    return NextResponse.json({ error: "Tính năng đã bị quản trị tắt." }, { status: 403 });
   }
 
   const cfg = getAiConfig();

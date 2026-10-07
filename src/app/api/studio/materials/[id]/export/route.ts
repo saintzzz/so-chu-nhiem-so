@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { hasFeature } from "@/lib/permissions";
 import { docToDocx } from "@/lib/tvc/docx";
 import { docToPptx } from "@/lib/tvc/pptx";
 import type { DocContent, Material } from "@/types/tvc";
@@ -46,6 +47,9 @@ export async function GET(
     material.status === "published";
   if (!canView)
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
+  // CR-034: xuat file chiu feature studio.export
+  if (!(await hasFeature("studio.export")))
+    return NextResponse.json({ error: "Tính năng xuất file đã bị quản trị tắt." }, { status: 403 });
 
   const { data: author } = await supabase
     .from("profiles")

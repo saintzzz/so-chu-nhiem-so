@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime, sanitizeOrTerm } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable, Pagination } from "@/components/data-table";
@@ -136,7 +136,7 @@ export default async function AuditPage({
     if (from) query = query.gte("created_at", `${from}T00:00:00`);
     if (to) query = query.lte("created_at", `${to}T23:59:59`);
     if (selectedActor) query = query.eq("actor_id", selectedActor);
-    if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`);
+    if (q) query = query.or(`action.ilike.%${sanitizeOrTerm(q)}%,entity.ilike.%${sanitizeOrTerm(q)}%`);
     const { data, count } = await query.range(
       (page - 1) * PAGE_SIZE,
       page * PAGE_SIZE - 1,
@@ -205,7 +205,7 @@ export default async function AuditPage({
       .order("created_at", { ascending: false });
     if (from) query = query.gte("created_at", `${from}T00:00:00`);
     if (to) query = query.lte("created_at", `${to}T23:59:59`);
-    if (q) query = query.or(`email.ilike.%${q}%,status.ilike.%${q}%`);
+    if (q) query = query.or(`email.ilike.%${sanitizeOrTerm(q)}%,status.ilike.%${sanitizeOrTerm(q)}%`);
     const { data, count } = await query.range(
       (page - 1) * PAGE_SIZE,
       page * PAGE_SIZE - 1,

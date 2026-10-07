@@ -5,6 +5,7 @@ import { fbMatrix } from "@/lib/tvc/fallbacks";
 import { generateDoc } from "@/lib/tvc/ai-json";
 import { fallbackToDevin } from "@/lib/devin";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
+import { hasFeature } from "@/lib/permissions";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
 import { renderFigure } from "@/lib/tvc/figures";
 import type { ToolContext } from "@/lib/tvc/types";
@@ -401,6 +402,10 @@ export async function POST(
     .single();
   if (!profile || !TOOL_ROLES.includes(profile.role)) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
+  }
+  // CR-034: feature grant studio.ai chan o tang route, khong chi page
+  if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio"))) {
+    return NextResponse.json({ error: "Tính năng đã bị quản trị tắt." }, { status: 403 });
   }
   // FK tvc.* -> tvc.profiles: provisiona il profilo tvc al primo uso (CR-023)
   await ensureTvcProfile();

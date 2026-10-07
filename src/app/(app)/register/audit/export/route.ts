@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
-import { todayVN } from "@/lib/utils";
+import { todayVN, sanitizeOrTerm } from "@/lib/utils";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LIMIT = 5000;
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         if (from && DATE_RE.test(from)) query = query.gte("created_at", `${from}T00:00:00`);
         if (to && DATE_RE.test(to)) query = query.lte("created_at", `${to}T23:59:59`);
         if (actor) query = query.eq("actor_id", actor);
-        if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`);
+        if (q) query = query.or(`action.ilike.%${sanitizeOrTerm(q)}%,entity.ilike.%${sanitizeOrTerm(q)}%`);
         return query;
       },
       1000,
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
           .range(f, t);
         if (from && DATE_RE.test(from)) query = query.gte("created_at", `${from}T00:00:00`);
         if (to && DATE_RE.test(to)) query = query.lte("created_at", `${to}T23:59:59`);
-        if (q) query = query.or(`email.ilike.%${q}%,status.ilike.%${q}%`);
+        if (q) query = query.or(`email.ilike.%${sanitizeOrTerm(q)}%,status.ilike.%${sanitizeOrTerm(q)}%`);
         return query;
       },
       1000,

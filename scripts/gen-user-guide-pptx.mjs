@@ -101,6 +101,7 @@ function note(s, txt, y = 6.85) {
     ["Giáo viên bộ môn", "gvbm@demo.scn", "demo1234", "Studio, ngân hàng câu hỏi (không duyệt được)"],
     ["Phụ huynh", "phuhuynh@demo.scn", "demo1234", "Portal PH, sổ liên lạc"],
     ["Học sinh", "hocsinh@demo.scn", "demo1234", "Portal HS, học bạ"],
+    ["Sở GD&ĐT (demo)", "sogd@demo.scn", "demo1234", "Tạo trường + admin trường, dashboard usage xuyên trường"],
   ]);
   note(s, "Test multi-trường: gv001-gv100@{nd|cva|kd}.test / demo1234 - 3 trường, mỗi trường 100 GV (gv001-002: tổ trưởng, gv003: BGH).");
 }
@@ -120,6 +121,7 @@ function note(s, txt, y = 6.85) {
   ]);
   bullets(s, [
     { t: "Phân quyền 3 lớp (CR-030): mặc định theo vai trò → cấu hình theo trường → ghi đè theo từng GV", y: 5.0 },
+    { t: "Sở GD&ĐT / admin hệ thống: quản trị trường (/dept/schools) + giám sát usage (/dept/usage) - không vào nghiệp vụ lớp", y: 5.0 },
   ], { y: 5.0, fontSize: 12.5 });
   note(s, "* Admin có thể tắt xuất file cho từng vai trò/GV trong Ma trận quyền tại /school/users.");
 }
@@ -133,6 +135,8 @@ function note(s, txt, y = 6.85) {
     { sub: ["Đồng bộ tự động với sổ trực tiết (period log); cảnh báo vắng nhiều ngày"] },
     { t: "Trong ngày: sự cố/an toàn (/safety/report), nhận xét hạnh kiểm (/conduct/records)" },
     { t: "Liên lạc PH: /parents/compose - soạn + gửi email cho CMHS (Resend), thông báo toàn lớp" },
+    { t: "Phụ huynh: /register/roster - liên kết PH - HS và cấp tài khoản đăng nhập cổng PH (tick 'Cấp tài khoản', nhập email + mật khẩu)" },
+    { sub: ["PH login vào /portal/parent chỉ thấy đúng con mình (RLS parent_students)"] },
     { t: "Cuối tuần/tháng: báo cáo chuyên cần, hạnh kiểm theo TT22 (HK1/HK2/cả năm tách biệt)" },
     { t: "Sổ CN số: /register/* - sổ theo dõi, ký duyệt, xuất file" },
   ]);
@@ -248,6 +252,22 @@ function note(s, txt, y = 6.85) {
     { t: "ACL dữ liệu: ẩn một câu hỏi/học liệu cụ thể với một GV - GV khác vẫn thấy (RLS level)" },
     { t: "Thống kê nhanh: số GV theo vai trò + loại hợp đồng (đếm cả 'chưa khai báo')" },
   ]);
+}
+
+// ---------- S13b Onboarding truong (CR-034) ----------
+{
+  const s = p.addSlide();
+  slideTitle(s, "ONBOARDING TRƯỜNG MỚI", "Tự phục vụ: Sở GD tạo trường → admin trường tự vận hành");
+  bullets(s, [
+    { t: "Bước 1 - Sở GD/admin hệ thống: /dept/schools → 'Tạo trường'", b: 1 },
+    { sub: ["Nhập tên, mã, cấp học (Tiểu học/THCS/THPT), email + mật khẩu admin trường (vai trò BGH)", "Tick 'Seed dữ liệu mẫu' → hệ thống tự tạo năm học 2026-2027, 2 tổ CM, bộ môn theo cấp, lớp mẫu + HS mẫu", "Lỗi giữa chừng → hệ thống rollback và báo rõ phần chưa dọn - không trường 'nửa vời'"] },
+    { t: "Bước 2 - Admin trường (BGH): đăng nhập → /school/users → '+ Thêm giáo viên'", b: 1 },
+    { sub: ["Tự tạo tài khoản GV/GVCN/tổ trưởng/kế toán trong phạm vi trường mình - không cần đội kỹ thuật", "Import danh sách HS qua Excel tại /records/upload (mã HS, CCCD, họ tên, ngày sinh, giới tính)"] },
+    { t: "Bước 3 - GVCN: /register/roster liên kết PH - HS và cấp tài khoản cổng PH", b: 1 },
+    { t: "Giám sát - Sở GD: /dept/usage", b: 1 },
+    { sub: ["Bảng theo trường: tổng user, active 24h, active 7d, lần đăng nhập gần nhất", "Bảng user: tên, vai trò, trường, last sign-in - đo mức độ dùng của từng trường pilot"] },
+  ]);
+  note(s, "Demo gate 15/10: trường tự đăng nhập dùng thử - quy trình trên là toàn bộ onboarding.");
 }
 
 // ---------- S14 Highlights ----------

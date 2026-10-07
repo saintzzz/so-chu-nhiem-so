@@ -1,8 +1,8 @@
 -- Fixture: schema toi thieu mo phong production de chay
 -- supabase/migrations/20261105_r2_security_fixes.sql +
--- 20261107_r7_substitute_role.sql tren Postgres thuong
--- (khong co Supabase). auth.uid() doc GUC app.uid; set role appuser de RLS
--- co hieu luc (owner/superuser bypass RLS).
+-- 20261107_r7_substitute_role.sql + 20261108_r8_nlpc_atomic.sql tren
+-- Postgres thuong (khong co Supabase). auth.uid() doc GUC app.uid;
+-- set role appuser de RLS co hieu luc (owner/superuser bypass RLS).
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid
 language sql stable
@@ -85,6 +85,25 @@ create table period_absences(
   student_id uuid,
   status text
 );
+-- R8-02: NLPC (danh gia nang luc/pham chat tieu hoc). competency_evaluations
+-- co id; nlpc_comments khong co cot id nhu prod.
+create table competency_evaluations(
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid references students(id),
+  term text,
+  attribute_code text,
+  level text,
+  evaluated_by uuid,
+  created_at timestamptz default now()
+);
+create table nlpc_comments(
+  student_id uuid references students(id),
+  term text,
+  grp text,
+  comment text,
+  evaluated_by uuid,
+  created_at timestamptz default now()
+);
 
 -- Stub cac helper da co tren production (migration chi replace mot so).
 create or replace function public.my_role() returns text
@@ -104,6 +123,26 @@ create or replace function public.scn_is_my_ttentry(tid uuid) returns boolean
 language sql stable security definer set search_path = 'public'
 as $$ select exists(select 1 from timetable_entries t
      where t.id = tid and t.teacher_id = auth.uid()) $$;
+
+-- Stub helper homeroom (prod def: 20260924_cr015_grades_scope.sql) - can cho
+-- policies NLPC.
+create or replace function public.scn_student_in_my_homeroom(sid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from students s join classes c on c.id = s.class_id
+     where s.id = sid and c.gvcn_id = auth.uid()) $$;
+
+-- Stub scope helpers can cho NLPC policies (prod defs: 20260920/20260924) -
+-- migration R2 create or replace len ban co campus/substitute check.
+create or replace function public.scn_student_in_school(sid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from students s join classes c on c.id = s.class_id
+     where s.id = sid and c.school_id = (select my_school_id())) $$;
+
+create or replace function public.scn_student_in_my_teaching(sid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from students s
+     join timetable_entries t on t.class_id = s.class_id
+     where s.id = sid and t.teacher_id = auth.uid()) $$;
 
 -- Stub them cho SELECT policies giong prod (UPDATE/DELETE can row SELECT-
 -- visible truoc khi USING duoc danh gia).
@@ -140,6 +179,8 @@ alter table messages enable row level security;
 alter table substitute_requests enable row level security;
 alter table period_logs enable row level security;
 alter table period_absences enable row level security;
+alter table competency_evaluations enable row level security;
+alter table nlpc_comments enable row level security;
 
 create policy msg_own on messages for select
   using (sender_id = auth.uid() or recipient_id = auth.uid());
@@ -160,7 +201,39 @@ create policy pl_family on period_logs for select
 create policy pa_family on period_absences for select
   using (student_id in (select my_student_ids()));
 
+-- Prod: nlpc_staff_read (20261009) + baseline via student_id (20260920) cho
+-- nlpc_comments; ins/upd/del theo 20260925_cr016_role_scope.sql.
+create policy nlpc_staff_read on competency_evaluations for select
+  using (is_staff() and (scn_is_dept()
+    or student_id in (select my_school_student_ids())));
+create policy nlpc_cmt_staff_read on nlpc_comments for select
+  using (is_staff() and (scn_is_dept()
+    or student_id in (select my_school_student_ids())));
+create policy nlpc_ins on competency_evaluations for insert
+  with check (evaluated_by = auth.uid() and (
+    (my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() in ('gvbm','to_truong') and scn_student_in_my_teaching(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin'));
+create policy nlpc_upd on competency_evaluations for update
+  using (evaluated_by = auth.uid() or my_role() in ('bgh','admin'))
+  with check (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
+create policy nlpc_del on competency_evaluations for delete
+  using (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
+create policy nlpc_cmt_ins on nlpc_comments for insert
+  with check (evaluated_by = auth.uid() and (
+    (my_role()='gvcn' and scn_student_in_my_homeroom(student_id))
+    or (my_role() in ('gvbm','to_truong') and scn_student_in_my_teaching(student_id))
+    or (my_role()='bgh' and scn_student_in_school(student_id)) or my_role()='admin'));
+create policy nlpc_cmt_upd on nlpc_comments for update
+  using (evaluated_by = auth.uid() or my_role() in ('bgh','admin'))
+  with check (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
+create policy nlpc_cmt_del on nlpc_comments for delete
+  using (evaluated_by = auth.uid() or my_role() in ('bgh','admin'));
+
 create role appuser nologin;
+-- Role authenticated ton tai tren Supabase prod - migration grant execute vao
+-- role nay; fixture can no de chay migration verbatim.
+create role authenticated nologin;
 grant usage on schema public, auth to appuser;
 grant select, insert, update, delete on all tables in schema public to appuser;
 

@@ -184,7 +184,6 @@ export default async function ConductEvaluationPage({
           evaluations={(nlpcData ?? []) as NlpcEval[]}
           comments={(nlpcCommentData ?? []) as NlpcCommentRow[]}
           term={term}
-          meId={profile.id}
         />
       ) : null}
     </div>

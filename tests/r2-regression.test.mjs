@@ -736,11 +736,12 @@ test("R7-01: migration 20261107 bat role GV cho substitute_teacher_id", () => {
 });
 
 // --- R7-02: AI routes khong cat ngam du lieu nguon -------------------------
-test("R7-02: 3 AI routes fetchAllRows + tra 500 khi nguon loi", () => {
+test("R7-02: AI routes fetchAllRows + tra 500 khi nguon loi", () => {
   for (const f of [
     "src/app/api/ai/class-analysis/route.ts",
     "src/app/api/ai/comments/route.ts",
     "src/app/api/ai/attendance-insight/route.ts",
+    "src/app/api/ai/dept-brief/route.ts",
   ]) {
     const src = read(f);
     assert.match(src, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/,
@@ -1198,4 +1199,92 @@ test("R7-04: 3 file R7 goc phai co console.error server-side", () => {
     assert.match(src, /console\.error\(/,
       `${f} thieu console.error server-side cho DB error`);
   }
+});
+
+// --- R8-01: dept-brief phan trang het 4 nguon + 500 khi loi -----------------
+test("R8-01: dept-brief fetchAllRows cho schools/classes/students/attendance", () => {
+  const src = read("src/app/api/ai/dept-brief/route.ts");
+  const fetches = (src.match(/fetchAllRows</g) ?? []).length;
+  assert.ok(fetches >= 4,
+    `dept-brief can >=4 fetchAllRows (schools/classes/students/attendance), thay ${fetches}`);
+  const att = src.match(/from\("attendance_records"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(att, "attendance van query .limit(50000) - khong thang PostgREST cap");
+  assert.match(att[0], /students!inner\(class_id\)/,
+    "embed students!inner(class_id) phai giu nguyen");
+  assert.match(att[0], /\.order\("date"\)[\s\S]*?\.order\("id"\)/,
+    "attendance can order on dinh (date, id) cho range paging");
+  assert.match(src, /Không tải đủ dữ liệu nguồn/);
+  assert.match(src, /status: 500/);
+});
+
+// --- R8-02: NLPC luu nguyen tu qua RPC + nhan loi co dinh -------------------
+test("R8-02: nlpc-editor dung scn_save_nlpc rpc, khong echo raw error", () => {
+  const src = read("src/components/conduct/nlpc-editor.tsx");
+  assert.match(src, /supabase\.rpc\("scn_save_nlpc"/);
+  for (const p of ["p_student_ids", "p_term", "p_evals", "p_comments"]) {
+    assert.ok(src.includes(p), `rpc thieu tham so ${p}`);
+  }
+  // Khong con chuoi delete/insert rieng le - loi giua chung mat du lieu.
+  assert.ok(!/\.from\("competency_evaluations"\)[\s\S]*?\.delete\(\)/.test(src),
+    "con delete competency_evaluations rieng le tren client");
+  assert.ok(!/\.from\("nlpc_comments"\)[\s\S]*?\.delete\(\)/.test(src),
+    "con delete nlpc_comments rieng le tren client");
+  assert.ok(!/\.from\("competency_evaluations"\)[\s\S]*?\.insert\(/.test(src),
+    "con insert competency_evaluations rieng le tren client");
+  assert.ok(!/\.from\("nlpc_comments"\)[\s\S]*?\.insert\(/.test(src),
+    "con insert nlpc_comments rieng le tren client");
+  // UI khong hien raw error.message - nhan co dinh, chi tiet console.error.
+  assert.ok(!/setError\([^)]*\.message/.test(src),
+    "setError van nhan raw error.message");
+  assert.match(src, /Không lưu được đánh giá năng lực phẩm chất/);
+  assert.match(src, /console\.error\(/);
+});
+
+test("R8-02: migration scn_save_nlpc invoker + capture drift scn_save_grades", () => {
+  const mig = read("supabase/migrations/20261108_r8_nlpc_atomic.sql");
+  const fn = mig.match(
+    /create or replace function public\.scn_save_nlpc\(p_student_ids uuid\[\], p_term text, p_evals jsonb, p_comments jsonb\)[\s\S]*?\$function\$;/);
+  assert.ok(fn, "thieu function scn_save_nlpc");
+  assert.ok(!/security definer/i.test(fn[0]),
+    "scn_save_nlpc phai SECURITY INVOKER (mac dinh) de RLS enforce authz");
+  assert.match(fn[0],
+    /delete from competency_evaluations\s+where student_id = any\(p_student_ids\) and term = p_term/);
+  assert.match(fn[0],
+    /delete from nlpc_comments\s+where student_id = any\(p_student_ids\) and term = p_term/);
+  assert.match(fn[0],
+    /insert into competency_evaluations[\s\S]*?jsonb_array_elements\(p_evals\)/);
+  assert.match(fn[0],
+    /insert into nlpc_comments[\s\S]*?jsonb_array_elements\(p_comments\)/);
+  // evaluated_by phai la auth.uid() trong function - khong tin JSON client.
+  assert.match(fn[0], /auth\.uid\(\)/,
+    "scn_save_nlpc phai gan evaluated_by = auth.uid()");
+  assert.ok(!/r->>'evaluated_by'/.test(fn[0]),
+    "evaluated_by khong duoc lay tu JSON client");
+  // Drift: scn_save_grades ton tai tren prod nhung khong co migration file -
+  // repo phai capture def hien tai de migration history khop prod.
+  assert.match(mig,
+    /create or replace function public\.scn_save_grades\(p_student_ids uuid\[\], p_subject_id uuid, p_term text, p_rows jsonb\)/);
+  assert.match(mig, /grant execute on function public\.scn_save_nlpc/,
+    "thieu grant execute cho authenticated (pattern cr029/cr030)");
+});
+
+// --- R8-03: leaves page phan trang + notice khi nguon loi -------------------
+test("R8-03: leaves page fetchAllRows attendance + bo qua stats khi loi", () => {
+  const src = read("src/app/(app)/attendance/leaves/page.tsx");
+  assert.match(src,
+    /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  const att = src.match(/from\("attendance_records"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(att, "attendance_records van cap .limit(500) ngam");
+  assert.match(att[0], /\.in\("status", \["excused", "unexcused", "late"\]\)/,
+    "phai giu status filter");
+  assert.match(att[0], /\.order\("date", \{ ascending: false \}\)/);
+  assert.match(att[0], /\.order\("id"\)/,
+    "can tie-break id cho range paging on dinh");
+  assert.match(att[0], /\.gte\("date", from\)/, "giu from filter");
+  assert.match(att[0], /\.lte\("date", to\)/, "giu to filter");
+  assert.match(src, /attRes\.error \|\| attRes\.truncated/,
+    "error/truncated phai duoc bat");
+  assert.match(src, /errors\.length > 0/,
+    "nguon loi phai hien notice thay vi stats/table thieu");
+  assert.ok(!/\.limit\(\d+\)/.test(src), "con .limit() cap ngam");
 });

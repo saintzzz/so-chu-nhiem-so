@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
@@ -67,19 +68,33 @@ export default async function AttendanceLeavesPage({
   const from = fromParam && DATE_RE.test(fromParam) ? fromParam : "";
   const to = toParam && DATE_RE.test(toParam) ? toParam : "";
 
-  let attQuery = ids.length
-    ? supabase
-        .from("attendance_records")
-        .select("*")
-        .in("student_id", ids)
-        .in("status", ["excused", "unexcused", "late"])
-        .order("date", { ascending: false })
-        .limit(500)
-    : null;
-  if (attQuery && from) attQuery = attQuery.gte("date", from);
-  if (attQuery && to) attQuery = attQuery.lte("date", to);
-  const { data: attData } = attQuery ? await attQuery : { data: [] };
-  const records = (attData ?? []) as AttendanceRecord[];
+  // R8-03: cap 500 rows truoc day cat ngam du lieu -> stats + bang sai lech. Doc
+  // het qua fetchAllRows (order date desc + tie-break id); loi/truncated
+  // hien notice thay vi render so lieu thieu.
+  const emptyAtt = { rows: [] as AttendanceRecord[], error: null, truncated: false };
+  const attRes = ids.length
+    ? await fetchAllRows<AttendanceRecord>((f, t) => {
+        let q = supabase
+          .from("attendance_records")
+          .select("*")
+          .in("student_id", ids)
+          .in("status", ["excused", "unexcused", "late"])
+          .order("date", { ascending: false })
+          .order("id");
+        if (from) q = q.gte("date", from);
+        if (to) q = q.lte("date", to);
+        return q.range(f, t);
+      })
+    : emptyAtt;
+  const errors: string[] = [];
+  if (attRes.error || attRes.truncated) {
+    errors.push("attendance_records");
+    console.error(
+      "[attendance/leaves] attendance_records:",
+      attRes.error ?? "truncated",
+    );
+  }
+  const records = attRes.rows;
 
   const rows: LeaveRow[] = records
     .filter((r) => studentById.has(r.student_id))
@@ -116,13 +131,21 @@ export default async function AttendanceLeavesPage({
         params={{ class: selected.id }}
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-3">
-        <StatCard label="Vắng có phép" value={excused} tone="warning" />
-        <StatCard label="Vắng không phép" value={unexcused} tone="error" />
-        <StatCard label="Đi muộn" value={late} tone="warning" />
-      </div>
+      {errors.length > 0 ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải đủ dữ liệu - vui lòng thử lại.
+        </p>
+      ) : (
+        <>
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <StatCard label="Vắng có phép" value={excused} tone="warning" />
+            <StatCard label="Vắng không phép" value={unexcused} tone="error" />
+            <StatCard label="Đi muộn" value={late} tone="warning" />
+          </div>
 
-      <LeavesTable rows={rows} />
+          <LeavesTable rows={rows} />
+        </>
+      )}
     </div>
   );
 }

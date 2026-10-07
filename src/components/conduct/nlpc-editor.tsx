@@ -45,13 +45,11 @@ export function NlpcEditor({
   evaluations,
   comments,
   term,
-  meId,
 }: {
   students: Student[];
   evaluations: NlpcEval[];
   comments: NlpcCommentRow[];
   term: string;
-  meId: string;
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
@@ -111,25 +109,6 @@ export function NlpcEditor({
       const supabase = createClient();
       const studentIds = students.map((s) => s.id);
 
-      const { error: delErr } = await supabase
-        .from("competency_evaluations")
-        .delete()
-        .in("student_id", studentIds)
-        .eq("term", term);
-      if (delErr) {
-        setError(delErr.message);
-        return;
-      }
-      const { error: delComErr } = await supabase
-        .from("nlpc_comments")
-        .delete()
-        .in("student_id", studentIds)
-        .eq("term", term);
-      if (delComErr) {
-        setError(delComErr.message);
-        return;
-      }
-
       const evalRows: Record<string, unknown>[] = [];
       const commentRows: Record<string, unknown>[] = [];
       for (const s of students) {
@@ -138,10 +117,8 @@ export function NlpcEditor({
           if (lv) {
             evalRows.push({
               student_id: s.id,
-              term,
               attribute_code: a.code,
               level: lv,
-              evaluated_by: meId,
             });
           }
         }
@@ -150,31 +127,26 @@ export function NlpcEditor({
           if (c) {
             commentRows.push({
               student_id: s.id,
-              term,
               grp: g.grp,
               comment: c,
-              evaluated_by: meId,
             });
           }
         }
       }
-      if (evalRows.length) {
-        const { error: insErr } = await supabase
-          .from("competency_evaluations")
-          .insert(evalRows);
-        if (insErr) {
-          setError(insErr.message);
-          return;
-        }
-      }
-      if (commentRows.length) {
-        const { error: insErr } = await supabase
-          .from("nlpc_comments")
-          .insert(commentRows);
-        if (insErr) {
-          setError(insErr.message);
-          return;
-        }
+
+      // R8-02: delete+insert nguyen tu qua RPC (SECURITY INVOKER - RLS giu
+      // nguyen enforcement). Loi giua chung khong lam mat du lieu cu nhu
+      // chuoi 4 statement rieng le truoc day.
+      const { error: saveErr } = await supabase.rpc("scn_save_nlpc", {
+        p_student_ids: studentIds,
+        p_term: term,
+        p_evals: evalRows,
+        p_comments: commentRows,
+      });
+      if (saveErr) {
+        console.error("[nlpc-editor] save:", saveErr.message);
+        setError("Không lưu được đánh giá năng lực phẩm chất.");
+        return;
       }
       setSaved(true);
       router.refresh();

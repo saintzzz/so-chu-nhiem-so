@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /**
  * AI báo cáo bằng chữ cho cấp quản lý (Sở/Phòng/UBND) - dùng cho /dept/dashboard.
@@ -18,28 +19,69 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const [{ data: schools }, { data: classes }, { data: students }] =
-    await Promise.all([
-      supabase.from("schools").select("id,name"),
-      supabase.from("classes").select("id,school_id").eq("status", "active"),
-      supabase.from("students").select("id,class_id").eq("status", "active"),
-    ]);
-  const schoolList = (schools ?? []) as { id: string; name: string }[];
-  const classList = (classes ?? []) as { id: string; school_id: string }[];
-  const studentList = (students ?? []) as { id: string; class_id: string }[];
-  const classSchool = new Map(classList.map((c) => [c.id, c.school_id]));
-
-  // Tỷ lệ chuyên cần 30 ngày gần theo trường
+  // R8-01: PostgREST cat ngam ~1000 rows - moi query nguon phan trang het qua
+  // fetchAllRows (order on dinh) va bat error/truncated. AI khong duoc phan
+  // tich tren du lieu thieu -> tra 500 truoc khi generate.
   const cutoff = isoDateVN(new Date(Date.now() - 30 * 86400000));
-  const { data: att } = await supabase
-    .from("attendance_records")
-    .select("status, students!inner(class_id)")
-    .gte("date", cutoff)
-    .limit(50000);
-  const attRows = (att ?? []) as unknown as {
-    status: string;
-    students: { class_id: string } | { class_id: string }[];
-  }[];
+  const [schoolRes, classRes, studentRes, attRes] = await Promise.all([
+    fetchAllRows<{ id: string; name: string }>((f, t) =>
+      supabase.from("schools").select("id,name").order("id").range(f, t),
+    ),
+    fetchAllRows<{ id: string; school_id: string }>((f, t) =>
+      supabase
+        .from("classes")
+        .select("id,school_id")
+        .eq("status", "active")
+        .order("id")
+        .range(f, t),
+    ),
+    fetchAllRows<{ id: string; class_id: string }>((f, t) =>
+      supabase
+        .from("students")
+        .select("id,class_id")
+        .eq("status", "active")
+        .order("id")
+        .range(f, t),
+    ),
+    // Tỷ lệ chuyên cần 30 ngày gần theo trường
+    fetchAllRows<{
+      status: string;
+      students: { class_id: string } | { class_id: string }[];
+    }>((f, t) =>
+      supabase
+        .from("attendance_records")
+        .select("status, students!inner(class_id)")
+        .gte("date", cutoff)
+        .order("date")
+        .order("id")
+        .range(f, t),
+    ),
+  ]);
+
+  const srcErrors: string[] = [];
+  for (const [name, r] of [
+    ["schools", schoolRes],
+    ["classes", classRes],
+    ["students", studentRes],
+    ["attendance_records", attRes],
+  ] as const) {
+    if (r.error || r.truncated) {
+      srcErrors.push(`${name}: ${r.error ?? "truncated"}`);
+    }
+  }
+  if (srcErrors.length) {
+    console.error("[ai/dept-brief] source queries:", srcErrors.join("; "));
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
+
+  const schoolList = schoolRes.rows;
+  const classList = classRes.rows;
+  const studentList = studentRes.rows;
+  const classSchool = new Map(classList.map((c) => [c.id, c.school_id]));
+  const attRows = attRes.rows;
 
   const perSchool = schoolList.map((s) => {
     const cls = classList.filter((c) => c.school_id === s.id);

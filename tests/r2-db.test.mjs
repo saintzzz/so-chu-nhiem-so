@@ -25,6 +25,10 @@ const MIGRATION_R7 = readFileSync(
   join(ROOT, "supabase/migrations/20261107_r7_substitute_role.sql"),
   "utf8",
 );
+const MIGRATION_R8 = readFileSync(
+  join(ROOT, "supabase/migrations/20261108_r8_nlpc_atomic.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -97,10 +101,12 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   assert.ok(ready, "postgres container khong san sang sau 60s");
 
   // 1) fixture, 2) migration verbatim theo thu tu thoi gian (R7 OR REPLACE
-  // scn_subr_refs_in_school cua R2), 3) grant execute cho appuser
+  // scn_subr_refs_in_school cua R2; R8 them scn_save_nlpc/scn_save_grades),
+  // 3) grant execute cho appuser
   psql(FIXTURE);
   psql(MIGRATION);
   psql(MIGRATION_R7);
+  psql(MIGRATION_R8);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -317,6 +323,66 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
     const out = psql(
       `select substitute_teacher_id from substitute_requests where id='a0000000-0000-0000-0000-000000000006'`).trim();
     assert.equal(out, ID.subA, "GV da phan cong khong duoc bi ghi de");
+  });
+
+  // ---------- R8-02: scn_save_nlpc atomic + RLS invoker ----------
+  await t.test("scn_save_nlpc: gvcn luu evals+comments cho HS lop minh", () => {
+    asUser(ID.tA,
+      `select scn_save_nlpc(
+         array['${ID.stuA}']::uuid[], 'hk1',
+         '[{"student_id":"${ID.stuA}","attribute_code":"nlc_tuchu","level":"T","evaluated_by":"${ID.tA}"},
+           {"student_id":"${ID.stuA}","attribute_code":"pc_chamchi","level":"H","evaluated_by":"${ID.tA}"}]'::jsonb,
+         '[{"student_id":"${ID.stuA}","grp":"nlc","comment":"Chu dong hoc tap","evaluated_by":"${ID.tA}"}]'::jsonb)`);
+    const evals = psql(
+      `select count(*) from competency_evaluations where student_id='${ID.stuA}' and term='hk1'`).trim();
+    const cmts = psql(
+      `select count(*) from nlpc_comments where student_id='${ID.stuA}' and term='hk1'`).trim();
+    assert.equal(evals, "2");
+    assert.equal(cmts, "1");
+  });
+
+  await t.test("scn_save_nlpc: goi lai thay the du lieu cu cung term", () => {
+    // 2 evals + 1 comment tu test truoc phai bi delete+insert thay the.
+    asUser(ID.tA,
+      `select scn_save_nlpc(
+         array['${ID.stuA}']::uuid[], 'hk1',
+         '[{"student_id":"${ID.stuA}","attribute_code":"nlc_tuchu","level":"C","evaluated_by":"${ID.tA}"}]'::jsonb,
+         '[]'::jsonb)`);
+    const evals = psql(
+      `select attribute_code || '|' || level from competency_evaluations
+        where student_id='${ID.stuA}' and term='hk1'`).trim();
+    assert.equal(evals, "nlc_tuchu|C", "eval cu khong bi thay the");
+    const cmts = psql(
+      `select count(*) from nlpc_comments where student_id='${ID.stuA}' and term='hk1'`).trim();
+    assert.equal(cmts, "0", "comment cu khong bi xoa");
+  });
+
+  await t.test("scn_save_nlpc: evaluated_by lay tu auth.uid(), khong tin JSON", () => {
+    asUser(ID.tA,
+      `select scn_save_nlpc(
+         array['${ID.stuA}']::uuid[], 'hk1',
+         '[{"student_id":"${ID.stuA}","attribute_code":"pc_trungthuc","level":"T","evaluated_by":"${ID.stuB}"}]'::jsonb,
+         '[]'::jsonb)`);
+    const eb = psql(
+      `select evaluated_by from competency_evaluations
+        where student_id='${ID.stuA}' and term='hk1' and attribute_code='pc_trungthuc'`).trim();
+    assert.equal(eb, ID.tA,
+      "evaluated_by phai la auth.uid(), khong phai gia tri client gui");
+  });
+
+  await t.test("scn_save_nlpc: HS truong khac bi RLS chan, delete rollback", () => {
+    denied(ID.tA,
+      `select scn_save_nlpc(
+         array['${ID.stuA}','${ID.stuB}']::uuid[], 'hk1',
+         '[{"student_id":"${ID.stuB}","attribute_code":"nlc_tuchu","level":"T","evaluated_by":"${ID.tA}"}]'::jsonb,
+         '[]'::jsonb)`,
+      "gvcn truong A van ghi duoc NLPC cho HS truong B - function khong invoker?");
+    // Loi insert phai rollback ca delete - neu khong atomic, row stuA mat.
+    const evals = psql(
+      `select attribute_code || '|' || level from competency_evaluations
+        where student_id='${ID.stuA}' and term='hk1'`).trim();
+    assert.equal(evals, "pc_trungthuc|T",
+      "insert loi nhung delete da commit - khong nguyen tu");
   });
 
   // ---------- R2-10: PHT campus NULL fail-closed ----------

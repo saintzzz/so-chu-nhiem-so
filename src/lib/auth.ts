@@ -52,12 +52,22 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
 export async function requireProfile(): Promise<Profile> {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub;
   const profile = await getProfile();
-  if (!profile) {
+  if (profile) return profile;
+  if (userId) {
+    // Transient PostgREST/RLS loi co the tra null du profile ton tai -
+    // retry mot lan (bypass cache) truoc khi ket luan profile that su thieu.
+    const { data: retry } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (retry) return retry as Profile;
     // co session nhung khong co profile -> sign out de thoat redirect loop
-    redirect(claimsData?.claims?.sub ? "/api/auth/reset" : "/login");
+    redirect("/api/auth/reset");
   }
-  return profile;
+  redirect("/login");
 }
 
 export async function requireRoles(roles: Role[]): Promise<Profile> {

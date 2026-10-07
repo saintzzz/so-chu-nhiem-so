@@ -6,15 +6,15 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, mkdirSync } from "fs";
 
-const BASE = "https://so-chu-nhiem-so-theta.vercel.app";
-const SHOTS = new URL("../docs/qa/screenshots-full/", import.meta.url).pathname;
+const BASE = process.env.BASE_URL ?? "https://sochunhiem.vieschool.com";
+const SHOTS = new URL("../docs/qa/screenshots-full/", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 mkdirSync(SHOTS, { recursive: true });
 
 const env = Object.fromEntries(
   readFileSync(new URL("../.env.local", import.meta.url), "utf8")
     .split("\n")
     .filter((l) => l.includes("=") && !l.startsWith("#"))
-    .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]),
+    .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim().replace(/^"|"$/g, "")]),
 );
 const db = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -111,6 +111,8 @@ const MATRIX = {
   "/dept/reports": ["so_gd", "ubnd"],
   "/dept/users": ["so_gd"],
   "/dept/wards": ["so_gd", "ubnd"],
+  "/dept/schools": ["so_gd"],
+  "/dept/usage": ["so_gd"],
   "/portal/parent": ["phu_huynh"],
   "/portal/student": ["hoc_sinh"],
   "/portal/student/hoc-ba": ["hoc_sinh"],
@@ -631,7 +633,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 {
   const { ctx, p } = await loginCtx("gvcn@demo.scn");
   const { data: appt } = await db.from("appointments").select("id,status")
-    .eq("status", "proposed").limit(1);
+    .eq("status", "proposed");
   await p.goto(`${BASE}/parents/appointments`);
   await settle(p, 1500);
   if (appt?.length) {
@@ -639,8 +641,10 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
     if ((await confirmBtn.count()) > 0) {
       await confirmBtn.click();
       await p.waitForTimeout(2500);
-      const { data: after } = await db.from("appointments").select("status").eq("id", appt[0].id).single();
-      check("W31", "GVCN xac nhan lich hen -> confirmed", after?.status === "confirmed", `status=${after?.status}`);
+      const ids = appt.map((x) => x.id);
+      const { data: after } = await db.from("appointments").select("id,status").in("id", ids);
+      const moved = (after ?? []).filter((x) => x.status === "confirmed").length;
+      check("W31", "GVCN xac nhan lich hen -> confirmed", moved >= 1, `moved=${moved}/${ids.length}`);
     } else check("W31", "GVCN xac nhan lich hen", false, "no confirm btn");
   } else check("W31", "GVCN xac nhan lich hen", true, "khong co proposed");
   await ctx.close();

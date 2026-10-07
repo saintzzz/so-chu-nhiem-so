@@ -2454,3 +2454,118 @@ test("R15-03: exams-board khong doc exam_sessions phia client", () => {
   assert.ok(!/\.from\("exam_sessions"\)\s*\.select\(/.test(src),
     "board con select exam_sessions khong phan trang");
 });
+
+// --- CR-035: KHBD co cau truc ------------------------------------------
+const {
+  emptyKhbd,
+  khbdHasContent,
+  parseKhbd,
+  renderKhbdText,
+} = await import(join(ROOT, "src/lib/khbd.ts"));
+
+test("CR-035: parseKhbd roundtrip va tu choi input hong", () => {
+  const k = emptyKhbd();
+  k.muc_tieu_kien_thuc = "HS nêu được khái niệm phương trình bậc nhất";
+  k.kham_pha.to_chuc = "- GV giao phiếu học tập\n- HS thảo luận nhóm";
+  // roundtrip qua JSON nhu DB jsonb
+  const back = parseKhbd(JSON.parse(JSON.stringify(k)));
+  assert.deepEqual(back, k);
+  // input hong -> null
+  for (const bad of [null, undefined, "x", 42, [], { muc_tieu: "x" }]) {
+    assert.equal(parseKhbd(bad), null, `input hong ${JSON.stringify(bad)} phai null`);
+  }
+  // thieu field -> default "" (khong throw)
+  const partial = parseKhbd({ muc_tieu_kien_thuc: "abc" });
+  assert.equal(partial.muc_tieu_kien_thuc, "abc");
+  assert.equal(partial.khoi_dong.to_chuc, "");
+});
+
+test("CR-035: khbdHasContent chi true khi co it nhat 1 field khac rong", () => {
+  assert.equal(khbdHasContent(emptyKhbd()), false);
+  const k = emptyKhbd();
+  k.van_dung.danh_gia = "  ";
+  assert.equal(khbdHasContent(k), false);
+  k.dieu_chinh = "Rút kinh nghiệm tiết sau";
+  assert.equal(khbdHasContent(k), true);
+});
+
+test("CR-035: renderKhbdText dung bo cuc CV 5512 va bo qua section rong", () => {
+  const k = emptyKhbd();
+  k.muc_tieu_kien_thuc = "K1";
+  k.khoi_dong.muc_tieu = "MT khởi động";
+  k.khoi_dong.to_chuc = "Tổ chức trò chơi";
+  const text = renderKhbdText(k);
+  assert.match(text, /I\. MỤC TIÊU/);
+  assert.match(text, /III\. TIẾN TRÌNH DẠY HỌC/);
+  assert.match(text, /Hoạt động: Khởi động/);
+  assert.ok(!/Luyện tập|Vận dụng/.test(text),
+    "section rong phai bi bo qua trong ban render");
+  assert.ok(!/II\. THIẾT BỊ[\s\S]*Giáo viên:/.test(text),
+    "thiet bi rong khong render nhan field");
+});
+
+test("CR-035: submitLessonPlan validate filePath prefix + size caps", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  assert.match(src,
+    /filePath\.startsWith\(`\$\{profile\.school_id\}\/`\)[\s\S]*?includes\("\.\."\)/,
+    "filePath phai bat dau bang school_id/ va khong chua ..");
+  assert.match(src, /JSON\.stringify\(structured\)\.length > 100_000/,
+    "thieu gioi han kich thuoc content_json");
+  assert.match(src, /input\.week < 1 \|\| input\.week > 45/,
+    "thieu validate tuan");
+});
+
+test("CR-035: review updates co status predicate + bat 0-row", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  // team: submitted, bgh: team_approved - predicate tren UPDATE + .select("id")
+  assert.match(src,
+    /\.eq\("id", planId\)\s*\.eq\("status", "submitted"\)\s*\.select\("id"\)/,
+    "team review update thieu predicate status");
+  assert.match(src,
+    /\.eq\("id", planId\)\s*\.eq\("status", "team_approved"\)\s*\.select\("id"\)/,
+    "bgh update thieu predicate status");
+  assert.match(src, /Giáo án đã được người khác xử lý\./,
+    "thieu nhan bao stale/concurrent review");
+});
+
+test("CR-035: lessonPlanFileUrl kiem record + tenant truoc khi ky URL", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  const fn = src.match(/lessonPlanFileUrl[\s\S]*?createSignedUrl/);
+  assert.ok(fn, "khong tim thay lessonPlanFileUrl");
+  assert.match(fn[0], /\.eq\("file_path", filePath\)/,
+    "phai verify file_path gan voi lesson_plans row cung truong");
+  assert.match(fn[0], /\.eq\("school_id", profile\.school_id/,
+    "phai scope school_id truoc khi ky URL");
+});
+
+test("CR-035: 3 page lesson-plans fetchAllRows + gate loi nguon", () => {
+  for (const p of [
+    "src/app/(app)/academics/lesson-plans/page.tsx",
+    "src/app/(app)/team/lesson-plans/page.tsx",
+    "src/app/(app)/school/approvals/page.tsx",
+  ]) {
+    const src = read(p);
+    assert.match(src, /fetchAllRows</, `${p} chua phan trang fetchAllRows`);
+    assert.match(src, /loadError/, `${p} thieu gate loi nguon`);
+    assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./,
+      `${p} thieu nhan loi co dinh`);
+  }
+  // approvals: activities phai scope theo class_ids (khong co school_id)
+  const ap = read("src/app/(app)/school/approvals/page.tsx");
+  assert.match(ap, /\.in\("class_id", classIds\)/,
+    "activities chua scope theo class_ids cua truong");
+});
+
+test("CR-035: board gioi han file 8MB + don file mo coi khi insert loi", () => {
+  const src = read("src/components/academics/lesson-plan-board.tsx");
+  assert.match(src, /file\.size > 8 \* 1024 \* 1024/, "thieu cap 8MB");
+  assert.match(src,
+    /\.from\("lesson-plans"\)\s*\.remove\(\[filePath\]\)/,
+    "thieu cleanup file mo coi khi submit loi");
+});
+
+test("CR-035: migration them content_json jsonb nullable", () => {
+  const mig = read("supabase/migrations/20261112_cr035_khbd_jsonb.sql");
+  assert.match(mig, /add column if not exists content_json jsonb/i,
+    "migration thieu content_json jsonb");
+});

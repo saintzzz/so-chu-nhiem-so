@@ -8,6 +8,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { AiDraftButton } from "@/components/ai/ai-draft-button";
 import { formatDateTime } from "@/lib/utils";
+import { KhbdEditor, KhbdView } from "@/components/academics/khbd-fields";
+import {
+  emptyKhbd,
+  khbdHasContent,
+  parseKhbd,
+  type KhbdContent,
+} from "@/lib/khbd";
 import {
   submitLessonPlan,
   teamReviewLessonPlan,
@@ -23,6 +30,7 @@ interface Plan {
   periods: string | null;
   title: string;
   content: string | null;
+  content_json?: unknown | null;
   file_path: string | null;
   file_name: string | null;
   status: "draft" | "submitted" | "team_approved" | "approved" | "rejected";
@@ -62,7 +70,7 @@ export function LessonPlanBoard({
   const [week, setWeek] = useState("");
   const [periods, setPeriods] = useState("");
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [khbd, setKhbd] = useState<KhbdContent>(emptyKhbd());
   const [file, setFile] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -81,6 +89,10 @@ export function LessonPlanBoard({
       let filePath: string | undefined;
       let fileName: string | undefined;
       if (file) {
+        if (file.size > 8 * 1024 * 1024) {
+          setErr("File đính kèm quá lớn (tối đa 8MB).");
+          return;
+        }
         const supabase = createClient();
         const safe = file.name.replace(/[^\w.\-]+/g, "_");
         filePath = `${schoolId}/${crypto.randomUUID()}-${safe}`;
@@ -100,15 +112,22 @@ export function LessonPlanBoard({
         week: week ? Number(week) : null,
         periods,
         title,
-        content,
+        content: "",
+        contentJson: khbd,
         filePath,
         fileName,
       });
-      if (r.error) setErr(r.error);
-      else {
+      if (r.error) {
+        // Don file da upload de khong de lai file mo coi trong bucket.
+        if (filePath) {
+          const supabase = createClient();
+          await supabase.storage.from("lesson-plans").remove([filePath]);
+        }
+        setErr(r.error);
+      } else {
         setMsg("Đã nộp giáo án - chờ tổ chuyên môn duyệt.");
         setTitle("");
-        setContent("");
+        setKhbd(emptyKhbd());
         setWeek("");
         setPeriods("");
         setFile(null);
@@ -212,17 +231,7 @@ export function LessonPlanBoard({
               className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring"
             />
           </label>
-          <label className="mt-3 block text-sm">
-            <span className="mb-1 block text-muted-foreground">
-              Nội dung giáo án
-            </span>
-            <AutoGrowTextarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={6}
-              placeholder="Mục tiêu, hoạt động khởi động - khám phá - luyện tập - vận dụng, đồ dùng dạy học..."
-            />
-          </label>
+          <KhbdEditor value={khbd} onChange={setKhbd} />
           <label className="mt-3 block text-sm">
             <span className="mb-1 block text-muted-foreground">
               File đính kèm (docx, pdf, ảnh)
@@ -239,7 +248,7 @@ export function LessonPlanBoard({
               </span>
             )}
           </label>
-          <AiDraftButton<{ content: string }>
+          <AiDraftButton<{ sections: unknown }>
             className="mt-2"
             endpoint="/api/ai/lesson-plan"
             payload={() => ({
@@ -247,9 +256,12 @@ export function LessonPlanBoard({
               subject: subjectName.get(subjectId) ?? "",
               title,
             })}
-            onApply={(r) => setContent(r.content)}
-            label="AI gợi ý dàn ý giáo án"
-            progressLabel="Đang soạn dàn ý..."
+            onApply={(r) => {
+              const k = parseKhbd(r.sections);
+              if (k) setKhbd(k);
+            }}
+            label="AI gợi ý giáo án theo biểu mẫu"
+            progressLabel="Đang soạn giáo án..."
             disabled={!title.trim()}
           />
           <button
@@ -260,20 +272,23 @@ export function LessonPlanBoard({
               !classId ||
               !subjectId ||
               !title.trim() ||
-              (!content.trim() && !file)
+              (!khbdHasContent(khbd) && !file)
             }
             className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             Nộp giáo án
           </button>
-          {(!classId || !subjectId || !title.trim() || (!content.trim() && !file)) && (
+          {(!classId ||
+            !subjectId ||
+            !title.trim() ||
+            (!khbdHasContent(khbd) && !file)) && (
             <p className="mt-1.5 text-xs text-muted-foreground">
               Cần đủ:{" "}
               {[
                 !classId && "lớp",
                 !subjectId && "môn",
                 !title.trim() && "tên bài dạy",
-                !content.trim() && !file && "nội dung hoặc file đính kèm",
+                !khbdHasContent(khbd) && !file && "nội dung hoặc file đính kèm",
               ]
                 .filter(Boolean)
                 .join(", ")}
@@ -310,11 +325,15 @@ export function LessonPlanBoard({
         {plans.map((p) => (
           <tr key={p.id}>
             {mode !== "teacher" && (
-              <td>{p.teacher_id ? (teacherNames[p.teacher_id] ?? "-") : "-"}</td>
+              <td>
+                {p.teacher_id ? (teacherNames[p.teacher_id] ?? "-") : "-"}
+              </td>
             )}
             <td className="font-medium">{p.title}</td>
             <td>{className.get(p.class_id) ?? "-"}</td>
-            <td>{p.subject_id ? (subjectName.get(p.subject_id) ?? "-") : "-"}</td>
+            <td>
+              {p.subject_id ? (subjectName.get(p.subject_id) ?? "-") : "-"}
+            </td>
             <td>
               {p.week ? `Tuần ${p.week}` : "-"}
               {p.periods ? ` · ${p.periods}` : ""}
@@ -331,42 +350,46 @@ export function LessonPlanBoard({
             <td>
               <button
                 type="button"
-                onClick={() =>
-                  setExpanded(expanded === p.id ? null : p.id)
-                }
+                onClick={() => setExpanded(expanded === p.id ? null : p.id)}
                 className="text-sm text-primary hover:underline"
               >
                 {expanded === p.id ? "Thu gọn" : "Xem"}
               </button>
-              {expanded === p.id && (
-                <div className="mt-1 w-[min(42rem,70vw)] whitespace-pre-wrap rounded-lg bg-muted p-3 text-sm text-foreground">
-                  {p.content ? (
-                    p.content
-                  ) : (
-                    <span className="text-muted-foreground">
-                      (Không có nội dung nhập tay)
-                    </span>
-                  )}
-                  {p.file_path && (
-                    <p className="mt-2 border-t border-border pt-2">
-                      <button
-                        type="button"
-                        onClick={() => void openFile(p.file_path!)}
-                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                      >
-                        <Paperclip className="size-3.5" />
-                        {p.file_name ?? "File đính kèm"}
-                      </button>
-                    </p>
-                  )}
-                  {p.review_note && (
-                    <p className="mt-2 border-t border-border pt-1">
-                      <span className="font-medium">Ghi chú duyệt:</span>{" "}
-                      {p.review_note}
-                    </p>
-                  )}
-                </div>
-              )}
+              {expanded === p.id &&
+                (() => {
+                  const k = parseKhbd(p.content_json);
+                  return (
+                    <div className="mt-1 w-[min(42rem,70vw)] rounded-lg bg-muted p-3 text-sm text-foreground">
+                      {k ? (
+                        <KhbdView content={k} />
+                      ) : p.content ? (
+                        <div className="whitespace-pre-wrap">{p.content}</div>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          (Không có nội dung nhập tay)
+                        </span>
+                      )}
+                      {p.file_path && (
+                        <p className="mt-2 border-t border-border pt-2">
+                          <button
+                            type="button"
+                            onClick={() => void openFile(p.file_path!)}
+                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                          >
+                            <Paperclip className="size-3.5" />
+                            {p.file_name ?? "File đính kèm"}
+                          </button>
+                        </p>
+                      )}
+                      {p.review_note && (
+                        <p className="mt-2 border-t border-border pt-1">
+                          <span className="font-medium">Ghi chú duyệt:</span>{" "}
+                          {p.review_note}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
             </td>
             {mode !== "teacher" && (
               <td>

@@ -531,3 +531,25 @@ insert into emulation_criteria(id, school_id, name, max_score, category) values
 insert into emulation_scores(class_id, criterion_id, period, score) values
   ('30000000-0000-0000-0000-00000000000a','d0000000-0000-0000-0000-000000000001','2026-T11',10),
   ('30000000-0000-0000-0000-00000000000a','d0000000-0000-0000-0000-000000000002','2026-T11',8);
+
+-- CR-035: lesson_plans toi thieu (schema gan giong prod) de test cot
+-- content_json jsonb duoc them boi migration 20261112.
+create table lesson_plans(
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid,
+  teacher_id uuid,
+  class_id uuid,
+  subject_id uuid,
+  week int,
+  periods text,
+  title text,
+  content text,
+  file_path text,
+  file_name text,
+  status text default 'submitted',
+  review_note text,
+  team_reviewed_by uuid,
+  reviewed_by uuid,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);

@@ -44,28 +44,42 @@ export async function POST(req: Request) {
   const supabase = await createClient();
 
   if (mode === "outline") {
-    return respondWithAi<{ content: string }>({
+    return respondWithAi<{ sections: unknown }>({
       req,
       supabase,
       profile,
       kind: "lesson-plan-outline",
       system:
-        "Bạn là giáo viên trường phổ thông Việt Nam soạn giáo án theo mô hình hoạt động trải nghiệm (khởi động - khám phá - luyện tập - vận dụng). Chỉ trả về JSON hợp lệ.",
-      prompt: `Soạn dàn ý giáo án:
+        "Bạn là giáo viên trường phổ thông Việt Nam soạn kế hoạch bài dạy theo Công văn 5512 và CTGDPT 2018 (khởi động - khám phá - luyện tập - vận dụng). Chỉ trả về JSON hợp lệ.",
+      prompt: `Soạn giáo án theo biểu mẫu:
 - Môn: ${subject || "chưa rõ"}
 - Bài: ${title}
 
-Yêu cầu: khung giáo án gồm Mục tiêu (kiến thức/năng lực/phẩm chất), Đồ dùng, Hoạt động 4 bước (Khởi động, Khám phá, Luyện tập, Vận dụng) - mỗi phần 2-4 gạch đầu dòng để GV điền chi tiết. Không bịa nội dung bài học cụ thể ngoài tên bài.
+Trả về CHỈ JSON đúng schema sau (moi gia tri la chuoi, khong markdown):
+{"sections": {
+  "muc_tieu_kien_thuc": "...",
+  "muc_tieu_nang_luc": "...",
+  "muc_tieu_pham_chat": "...",
+  "thiet_bi_gv": "...",
+  "thiet_bi_hs": "...",
+  "khoi_dong": {"muc_tieu":"...","to_chuc":"...","san_pham":"...","danh_gia":"..."},
+  "kham_pha": {"muc_tieu":"...","to_chuc":"...","san_pham":"...","danh_gia":"..."},
+  "luyen_tap": {"muc_tieu":"...","to_chuc":"...","san_pham":"...","danh_gia":"..."},
+  "van_dung": {"muc_tieu":"...","to_chuc":"...","san_pham":"...","danh_gia":"..."},
+  "dieu_chinh": "..."
+}}
 
-Trả về CHỈ JSON {"content": "..."} (content là văn bản nhiều dòng), không markdown.`,
-      expectedShape: '{"content": "Dàn ý giáo án nhiều dòng"}',
-      maxTokens: 2500,
+Huong dan: to_chuc viet dang gach dau dong "GV ..." / "HS ..." theo tung buoc. Khong bia noi dung bai hoc ngoai ten bai - neu thieu du kien, viet khung goi y de GV dien.`,
+      expectedShape: '{"sections": {"muc_tieu_kien_thuc": "..."}}',
+      maxTokens: 3500,
       parse: (text) => {
         const o = parseJsonObject(text);
-        if (!o || typeof o.content !== "string" || !o.content.trim()) {
-          return null;
-        }
-        return { content: o.content.trim() };
+        const s =
+          o && typeof o === "object"
+            ? (o as Record<string, unknown>).sections
+            : null;
+        if (!s || typeof s !== "object") return null;
+        return { sections: s };
       },
     });
   }

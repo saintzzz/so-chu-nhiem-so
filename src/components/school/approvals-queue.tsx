@@ -7,6 +7,8 @@ import { formatDateOnly } from "@/lib/utils";
 import { bghDecideLessonPlan } from "@/app/(app)/academics/lesson-plans/actions";
 import { decideSubstituteRequest } from "@/app/(app)/school/substitutes/actions";
 import { reviewActivity } from "@/app/(app)/activities/actions";
+import { KhbdView } from "@/components/academics/khbd-fields";
+import { parseKhbd } from "@/lib/khbd";
 
 interface LpRow {
   id: string;
@@ -16,6 +18,7 @@ interface LpRow {
   subject: string;
   week: number | null;
   content: string | null;
+  content_json?: unknown | null;
 }
 interface SubRow {
   id: string;
@@ -108,7 +111,15 @@ export function ApprovalsQueue({
           Giáo án đã qua tổ duyệt ({lessonPlans.length})
         </h2>
         <DataTable
-          columns={["Bài dạy", "Giáo viên", "Lớp", "Môn", "Tuần", "Nội dung", "Quyết định"]}
+          columns={[
+            "Bài dạy",
+            "Giáo viên",
+            "Lớp",
+            "Môn",
+            "Tuần",
+            "Nội dung",
+            "Quyết định",
+          ]}
         >
           {lessonPlans.map((p) => (
             <tr key={p.id}>
@@ -120,18 +131,26 @@ export function ApprovalsQueue({
               <td>
                 <button
                   type="button"
-                  onClick={() =>
-                    setExpanded(expanded === p.id ? null : p.id)
-                  }
+                  onClick={() => setExpanded(expanded === p.id ? null : p.id)}
                   className="text-sm text-primary hover:underline"
                 >
                   {expanded === p.id ? "Thu gọn" : "Xem"}
                 </button>
-                {expanded === p.id && (
-                  <p className="mt-1 max-w-md whitespace-pre-wrap rounded-lg bg-muted p-2 text-xs text-muted-foreground">
-                    {p.content ?? "-"}
-                  </p>
-                )}
+                {expanded === p.id &&
+                  (() => {
+                    const k = parseKhbd(p.content_json);
+                    return (
+                      <div className="mt-1 max-w-2xl rounded-lg bg-muted p-3 text-xs">
+                        {k ? (
+                          <KhbdView content={k} />
+                        ) : (
+                          <p className="whitespace-pre-wrap text-muted-foreground">
+                            {p.content ?? "-"}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
               </td>
               <td>
                 <Actions
@@ -153,7 +172,10 @@ export function ApprovalsQueue({
           ))}
           {lessonPlans.length === 0 && (
             <tr>
-              <td colSpan={7} className="py-6 text-center text-muted-foreground">
+              <td
+                colSpan={7}
+                className="py-6 text-center text-muted-foreground"
+              >
                 Không có giáo án chờ duyệt.
               </td>
             </tr>
@@ -166,7 +188,16 @@ export function ApprovalsQueue({
           Điều động dạy thay ({substitutes.length})
         </h2>
         <DataTable
-          columns={["Ngày", "Tiết", "Lớp", "Môn", "GV vắng", "GV dạy thay", "Lý do", "Quyết định"]}
+          columns={[
+            "Ngày",
+            "Tiết",
+            "Lớp",
+            "Môn",
+            "GV vắng",
+            "GV dạy thay",
+            "Lý do",
+            "Quyết định",
+          ]}
         >
           {substitutes.map((r) => (
             <tr key={r.id}>
@@ -175,8 +206,14 @@ export function ApprovalsQueue({
               <td className="font-medium">{r.className}</td>
               <td>{r.subject}</td>
               <td>{r.absent}</td>
-              <td>{r.substitute ?? <span className="text-muted-foreground">Chưa chọn</span>}</td>
-              <td className="max-w-48 text-muted-foreground">{r.reason ?? "-"}</td>
+              <td>
+                {r.substitute ?? (
+                  <span className="text-muted-foreground">Chưa chọn</span>
+                )}
+              </td>
+              <td className="max-w-48 text-muted-foreground">
+                {r.reason ?? "-"}
+              </td>
               <td>
                 <Actions
                   disabled={!r.substitute}
@@ -198,7 +235,10 @@ export function ApprovalsQueue({
           ))}
           {substitutes.length === 0 && (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-muted-foreground">
+              <td
+                colSpan={8}
+                className="py-6 text-center text-muted-foreground"
+              >
                 Không có yêu cầu điều động chờ duyệt.
               </td>
             </tr>
@@ -210,7 +250,9 @@ export function ApprovalsQueue({
         <h2 className="mb-2 text-sm font-semibold">
           Kế hoạch hoạt động ({activities.length})
         </h2>
-        <DataTable columns={["Hoạt động", "Lớp", "Ngày", "Mô tả", "Quyết định"]}>
+        <DataTable
+          columns={["Hoạt động", "Lớp", "Ngày", "Mô tả", "Quyết định"]}
+        >
           {activities.map((a) => (
             <tr key={a.id}>
               <td className="font-medium">{a.title}</td>
@@ -225,7 +267,10 @@ export function ApprovalsQueue({
                     run(() => reviewActivity(a.id, true), "Đã duyệt hoạt động.")
                   }
                   onReject={() =>
-                    run(() => reviewActivity(a.id, false), "Đã trả về hoạt động.")
+                    run(
+                      () => reviewActivity(a.id, false),
+                      "Đã trả về hoạt động.",
+                    )
                   }
                 />
               </td>
@@ -233,7 +278,10 @@ export function ApprovalsQueue({
           ))}
           {activities.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-muted-foreground">
+              <td
+                colSpan={5}
+                className="py-6 text-center text-muted-foreground"
+              >
                 Không có hoạt động chờ duyệt.
               </td>
             </tr>

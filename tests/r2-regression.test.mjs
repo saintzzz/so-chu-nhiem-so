@@ -2146,3 +2146,192 @@ test("R13-02: hoc-ba page check error 6 nguon + hien notice thay empty-state", (
   }
   assert.match(src, /\{loadError \? \(/);
 });
+
+// --- R14-01: editor thay-the-toan-bo cam khi nguon loi/thieu --------------
+// grades + evaluation pages mount editor ma save() goi RPC replace-all
+// (scn_save_grades/scn_save_nlpc) - read loi + save = xoa sach du lieu cu.
+test("R14-01: grades page check moi loi nguon + gate GradesEditor", () => {
+  const src = read("src/app/(app)/academics/grades/page.tsx");
+  // Moi query nguon phai gan loi co ten (classes/subjects/schools/students).
+  for (const e of ["classErr", "subjectErr", "schoolErr", "studentErr"]) {
+    assert.match(src, new RegExp(`error: ${e}`),
+      `query chua dat ten loi ${e}`);
+  }
+  // teaching (timetable_entries) + lop kiem day cua gvcn cung la nguon.
+  assert.match(src, /teachRes\.error/, "teaching query chua check error");
+  assert.match(src, /missingErr/, "lop kiem day chua check error");
+  // grades doc bang fetchAllRows (co the vuot PostgREST cap) - caller phai
+  // check CA error LAN truncated: truncate = du lieu thieu = cam editor.
+  assert.match(src, /fetchAllRows<GradeRow>\(\(f, t\) =>[\s\S]*?from\("grades"\)[\s\S]*?\.order\("id"\)[\s\S]*?\.range\(f, t\)/,
+    "grades query phai dung fetchAllRows + order id on dinh");
+  assert.match(src, /gradesRes\.error/, "gradesRes.error chua duoc kiem");
+  assert.match(src, /gradesRes\.truncated/, "gradesRes.truncated chua duoc kiem");
+  assert.match(src, /const loadError = srcErrors\.length > 0/);
+  assert.match(src, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./);
+  assert.match(src, /\{loadError \? \(/);
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  const editorIdx = src.indexOf("<GradesEditor");
+  assert.ok(noticeIdx >= 0 && editorIdx > noticeIdx,
+    "GradesEditor phai nam trong nhanh thanh cong sau notice gate");
+});
+
+test("R14-01: evaluation page check 6 nguon + gate ca 2 editor", () => {
+  const src = read("src/app/(app)/conduct/evaluation/page.tsx");
+  for (const e of ["classErr", "schoolErr", "studentErr"]) {
+    assert.match(src, new RegExp(`error: ${e}`),
+      `query chua dat ten loi ${e}`);
+  }
+  // Ca 3 list nguon (evaluations/competency/comments) deu la input cho
+  // editor replace-all -> fetchAllRows + check error lan truncated.
+  for (const t of ["conduct_evaluations", "competency_evaluations",
+                   "nlpc_comments"]) {
+    assert.match(src, new RegExp(
+      `fetchAllRows<[A-Za-z]+>\\(\\(f, t\\) =>[\\s\\S]*?from\\("${t}"\\)[\\s\\S]*?\\.range\\(f, t\\)`),
+      `${t} phai dung fetchAllRows`);
+  }
+  for (const r of ["evalRes", "nlpcRes", "nlpcCommentRes"]) {
+    assert.match(src, new RegExp(`${r}\\.error`), `${r}.error chua kiem`);
+    assert.match(src, new RegExp(`${r}\\.truncated`), `${r}.truncated chua kiem`);
+  }
+  assert.match(src, /const loadError = srcErrors\.length > 0/);
+  assert.match(src, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./);
+  assert.match(src, /\{loadError \? \(/);
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  for (const ed of ["<ConductEvaluationEditor", "<NlpcEditor"]) {
+    assert.ok(src.indexOf(ed) > noticeIdx,
+      `${ed} phai nam trong nhanh thanh cong sau notice gate`);
+  }
+});
+
+test("R14-01: sibling editor pages (seating/history/roster/users) gate editor tren loi", () => {
+  // Cung ho: RPC replace-all (scn_save_seating / scn_restore_seating /
+  // scn_set_class_role / scn_set_teacher_subjects) ma page bo qua loi
+  // query nguon.
+  for (const [file, comp] of [
+    ["src/app/(app)/register/seating/page.tsx", "<SeatingGrid"],
+    ["src/app/(app)/register/seating-history/page.tsx", "<SeatingHistoryClient"],
+    ["src/app/(app)/register/roster/page.tsx", "<RosterClient"],
+    ["src/app/(app)/school/users/page.tsx", "<UsersBoard"],
+  ]) {
+    const src = read(file);
+    assert.match(src, /const loadError = srcErrors\.length > 0/,
+      `${file} thieu co loadError tong hop`);
+    assert.match(src, /console\.error\(/,
+      `${file} loi nguon phai console.error chi tiet`);
+    assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./,
+      `${file} thieu nhan loi co dinh`);
+    assert.match(src, /\{loadError \? \(/, `${file} render phai la ternary`);
+    const noticeIdx = src.indexOf("Không tải được dữ liệu");
+    assert.ok(noticeIdx >= 0 && src.indexOf(comp) > noticeIdx,
+      `${comp} phai nam trong nhanh thanh cong sau notice gate`);
+  }
+});
+
+// --- R14-02: assignments-board dung RPC nguyen tu cho teacher_subjects ----
+test("R14-02: assignments-board goi setTeacherSubjects, bo delete+insert raw", () => {
+  const src = read("src/components/school/assignments-board.tsx");
+  assert.ok(!src.includes('.from("teacher_subjects")'),
+    "board con truy cap teacher_subjects truc tiep - phai qua server action");
+  assert.match(src, /import \{[^}]*setTeacherSubjects[^}]*\} from "@\/app\/\(app\)\/school\/actions"/,
+    "thieu import setTeacherSubjects tu school/actions");
+  const fn = src.match(/function saveTeacherSubjects\(\)[\s\S]*?\n  \}/);
+  assert.ok(fn, "khong tim thay saveTeacherSubjects");
+  assert.match(fn[0], /startTransition\(async \(\) => \{/,
+    "save phai chay trong startTransition");
+  assert.match(fn[0], /await setTeacherSubjects\(/,
+    "phai goi server action setTeacherSubjects");
+  assert.match(fn[0], /flash\(false,/, "loi phai flash(false, ...)");
+  assert.match(fn[0], /flash\(true,/, "thanh cong phai flash(true, ...)");
+});
+
+// --- R14-03: assignments page phan trang + gate board tren loi nguon ------
+test("R14-03: assignments page fetchAllRows + check 5 nguon + gate board", () => {
+  const src = read("src/app/(app)/school/assignments/page.tsx");
+  // teacher_subjects khong co id - order theo khoa kep on dinh.
+  assert.match(src, /fetchAllRows<[\s\S]*?from\("teacher_subjects"\)[\s\S]*?\.order\("teacher_id"\)[\s\S]*?\.order\("subject_id"\)[\s\S]*?\.range\(f, t\)/,
+    "teacher_subjects phai fetchAllRows + order teacher_id,subject_id");
+  assert.match(src, /fetchAllRows<[\s\S]*?from\("timetable_entries"\)[\s\S]*?\.order\("id"\)[\s\S]*?\.range\(f, t\)/,
+    "timetable_entries phai fetchAllRows + order id");
+  for (const r of ["tsRes", "ttRes"]) {
+    assert.match(src, new RegExp(`${r}\\.error`), `${r}.error chua kiem`);
+    assert.match(src, new RegExp(`${r}\\.truncated`), `${r}.truncated chua kiem`);
+  }
+  for (const r of ["classRes", "teacherRes", "subjectRes"]) {
+    assert.match(src, new RegExp(`${r}\\.error`), `${r}.error chua kiem`);
+  }
+  assert.match(src, /const loadError = srcErrors\.length > 0/);
+  assert.match(src, /console\.error\(/,
+    "loi nguon phai console.error chi tiet server-side");
+  assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./);
+  const noticeIdx = src.indexOf("Không tải được dữ liệu");
+  assert.ok(noticeIdx >= 0 && src.indexOf("<AssignmentsBoard") > noticeIdx,
+    "AssignmentsBoard phai nam trong nhanh thanh cong sau notice gate");
+});
+
+// --- R14-04: getAccessibleClasses phai tra loi cho caller -----------------
+// Truoc day helper nuot error cua classes + timetable_entries -> 9 page
+// register hien "chua duoc phan cong" hoac mount editor tren dsach rong.
+test("R14-04: getAccessibleClasses tra {classes,error} + paginate timetable", () => {
+  const src = read("src/components/register/server-utils.tsx");
+  assert.match(src,
+    /Promise<(AccessibleClasses|\{ classes: ClassRoom\[\]; error: string \| null \})>/,
+    "getAccessibleClasses phai tra { classes, error }");
+  assert.match(src, /error: string \| null/,
+    "kieu tra ve phai co error: string | null");
+  // Branch scoped (bgh/admin/so_gd) capture error cua classes query.
+  assert.match(src, /error: error\?\.message \?\? null/,
+    "scoped branch chua tra error.message");
+  // Branch gvcn: homeroom query loi -> return error ngay.
+  assert.match(src, /error: homeroomErr/,
+    "homeroom classes query chua check error");
+  // timetable_entries embed co the vuot PostgREST cap -> fetchAllRows,
+  // caller helper phai check ca error lan truncated.
+  assert.match(src,
+    /fetchAllRows<[\s\S]*?from\("timetable_entries"\)[\s\S]*?\.range\(f, t\)/,
+    "timetable_entries phai dung fetchAllRows");
+  assert.match(src, /taughtRes\.error/, "taughtRes.error chua duoc kiem");
+  assert.match(src, /taughtRes\.truncated/, "taughtRes.truncated chua duoc kiem");
+  // Khong con tra ve bare array.
+  assert.ok(
+    !/return \(data \?\? \[\]\) as ClassRoom\[\];|return list;/.test(src),
+    "helper con tra ve bare ClassRoom[]");
+});
+
+test("R14-04: 9 callers tieu thu error cua getAccessibleClasses", () => {
+  const callers = [
+    "src/app/(app)/register/plans/page.tsx",
+    "src/app/(app)/register/roster/page.tsx",
+    "src/app/(app)/register/signoff/page.tsx",
+    "src/app/(app)/register/lock-records/page.tsx",
+    "src/app/(app)/register/kpi/page.tsx",
+    "src/app/(app)/register/seating-history/page.tsx",
+    "src/app/(app)/register/suggestions/page.tsx",
+    "src/app/(app)/register/seating/page.tsx",
+    "src/app/(app)/register/export/page.tsx",
+  ];
+  for (const file of callers) {
+    const src = read(file);
+    assert.match(src, /getAccessibleClasses\(profile\)/,
+      `${file} thieu loi goi helper`);
+    assert.ok(
+      !/getAccessibleClasses\(profile\)\)\.filter|const classes = await getAccessibleClasses/.test(src),
+      `${file} con dung ket qua nhu bare array`);
+    assert.match(src, /classesErr/,
+      `${file} chua nhan error tu helper (classesErr)`);
+    assert.match(src, /console\.error\(/,
+      `${file} phai console.error chi tiet loi nguon`);
+    assert.match(src,
+      /Không tải được dữ liệu\. Vui lòng thử lại\.|<LoadErrorNotice/,
+      `${file} thieu notice co dinh khi nguon classes loi`);
+    // Empty-state "chua duoc phan cong" chi duoc render khi KHONG co loi.
+    if (/EmptyClassNotice/.test(src)) {
+      assert.match(src,
+        /classesErr \?[\s\S]*?LoadErrorNotice[\s\S]*?:[\s\S]*?EmptyClassNotice|classesErr \?[\s\S]*?<p className="rounded-xl border border-l-4 border-l-error[\s\S]*?:[\s\S]*?EmptyClassNotice/,
+        `${file}: EmptyClassNotice phai la nhanh error===null`);
+    }
+  }
+});

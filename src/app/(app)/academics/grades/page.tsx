@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { requireRoles } from "@/lib/auth";
 import { sortByVietnameseName } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -71,46 +72,52 @@ export default async function GradesPage({
         .select("class_id,subject_id")
         .eq("teacher_id", profile.id)
     : null;
-  const [{ data: classData }, { data: subjectData }, { data: schoolData }, teachRes] =
-    await Promise.all([
-      classQuery.order("name"),
-      supabase
-        .from("subjects")
-        .select("id,name,assessment_method")
-        .eq("school_id", profile.school_id ?? "")
-        .order("name"),
-      profile.school_id
-        ? supabase
-            .from("schools")
-            .select("level")
-            .eq("id", profile.school_id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-      teachQuery ?? Promise.resolve({ data: null }),
-    ]);
+  const [
+    { data: classData, error: classErr },
+    { data: subjectData, error: subjectErr },
+    { data: schoolData, error: schoolErr },
+    teachRes,
+  ] = await Promise.all([
+    classQuery.order("name"),
+    supabase
+      .from("subjects")
+      .select("id,name,assessment_method")
+      .eq("school_id", profile.school_id ?? "")
+      .order("name"),
+    profile.school_id
+      ? supabase
+          .from("schools")
+          .select("level")
+          .eq("id", profile.school_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    teachQuery ?? Promise.resolve({ data: null, error: null }),
+  ]);
   const schoolLevel =
     (schoolData?.level as "th" | "thcs" | "thpt" | "lien_cap" | undefined) ??
     "thcs";
   let classes = (classData ?? []) as ClassRow[];
   let subjects = (subjectData ?? []) as SubjectRow[];
-  const teaching = (teachRes?.data ?? null) as
+  const teaching = (teachRes.data ?? null) as
     | { class_id: string; subject_id: string }[]
     | null;
+  let missingErr: { message: string } | null = null;
   if (teaching) {
     const taughtClassIds = new Set(teaching.map((t) => t.class_id));
     if (profile.role === "gvcn") {
       // GVCN kiem day: them lop minh day vao picker (ngoai lop CN)
-      const missing = taughtClassIds.size
+      const { data: missingData, error: mErr } = taughtClassIds.size
         ? await supabase
             .from("classes")
             .select("id,name")
             .in("id", [...taughtClassIds])
             .eq("status", "active")
-        : { data: [] };
+        : { data: [], error: null };
+      missingErr = mErr;
       const have = new Set(classes.map((c) => c.id));
       classes = [
         ...classes,
-        ...((missing.data ?? []) as ClassRow[]).filter((c) => !have.has(c.id)),
+        ...((missingData ?? []) as ClassRow[]).filter((c) => !have.has(c.id)),
       ].sort((a, b) => a.name.localeCompare(b.name));
     } else {
       // gvbm/to_truong: chi lop + mon minh day
@@ -153,35 +160,62 @@ export default async function GradesPage({
       ? sp.term
       : "hk1";
 
-  const { data: studentData } = classId
+  const { data: studentData, error: studentErr } = classId
     ? await supabase
         .from("students")
         .select("id,code,national_id,full_name,dob")
         .eq("class_id", classId)
         .eq("status", "active")
         .order("full_name")
-    : { data: [] };
+    : { data: [], error: null };
   const students = sortByVietnameseName(
     (studentData ?? []) as StudentRow[],
     (s) => s.full_name,
   );
 
   const studentIds = students.map((s) => s.id);
-  const { data: gradeData } =
+  // R14-01: grades co the vuot PostgREST cap (so HS x so cot diem) ->
+  // fetchAllRows; error||truncated = du lieu thieu, phai chan editor vi
+  // scn_save_grades la replace-all (luu tren nguon thieu = xoa diem cu).
+  const gradesRes =
     studentIds.length && subjectId
-      ? await supabase
-          .from("grades")
-          .select(
-            "id,student_id,assessment_type,score,result,comment,level,seq,subtype",
-          )
-          .in("student_id", studentIds)
-          .eq("subject_id", subjectId)
-          .eq("term", term)
-      : { data: [] };
-  const grades = (gradeData ?? []) as GradeRow[];
+      ? await fetchAllRows<GradeRow>((f, t) =>
+          supabase
+            .from("grades")
+            .select(
+              "id,student_id,assessment_type,score,result,comment,level,seq,subtype",
+            )
+            .in("student_id", studentIds)
+            .eq("subject_id", subjectId)
+            .eq("term", term)
+            .order("id")
+            .range(f, t),
+        )
+      : { rows: [] as GradeRow[], error: null, truncated: false };
+  const grades = gradesRes.rows;
 
   const className = classes.find((c) => c.id === classId)?.name ?? "";
   const subjectName = subject?.name ?? "";
+
+  // R14-01: bat cu query nguon nao loi (hoac bi truncate) -> khoa editor.
+  // scn_save_grades la replace-all: mount editor tren du lieu thieu roi bam
+  // Luu se xoa sach diem hien co cua ca lop.
+  const srcErrors = Object.entries({
+    classes: classErr?.message ?? null,
+    subjects: subjectErr?.message ?? null,
+    schools: schoolErr?.message ?? null,
+    timetable_entries: teachRes.error?.message ?? null,
+    classes_teaching: missingErr?.message ?? null,
+    students: studentErr?.message ?? null,
+    grades: gradesRes.error ?? (gradesRes.truncated ? "truncated" : null),
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[academics/grades] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e}`).join("; "),
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -248,7 +282,11 @@ export default async function GradesPage({
         )}
       </div>
 
-      {classId && subjectId ? (
+      {loadError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải được dữ liệu. Vui lòng thử lại.
+        </p>
+      ) : classId && subjectId ? (
         <GradesEditor
           key={`${classId}-${subjectId}-${term}`}
           students={students}

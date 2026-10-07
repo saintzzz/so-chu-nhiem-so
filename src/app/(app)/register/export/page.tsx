@@ -4,15 +4,19 @@ import { ExportClient } from "@/components/register/export-client";
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
 } from "@/components/register/server-utils";
 import { currentMonthVN } from "@/components/register/types";
 
 export default async function ExportPage() {
   const profile = await requireRoles(["gvcn"]);
   // So chu nhiem chi thuoc lop minh chu nhiem - lop dang day khong xuat.
-  const classes = (await getAccessibleClasses(profile)).filter(
-    (c) => c.gvcn_id === profile.id,
-  );
+  const { classes: accessibleClasses, error: classesErr } =
+    await getAccessibleClasses(profile);
+  const classes = accessibleClasses.filter((c) => c.gvcn_id === profile.id);
+  if (classesErr) {
+    console.error("[register/export] classes:", classesErr);
+  }
 
   return (
     <>
@@ -21,7 +25,9 @@ export default async function ExportPage() {
         title="Xuất sổ chủ nhiệm"
         description="Xuất dữ liệu sổ chủ nhiệm (học sinh, điểm, chuyên cần) ra Excel hoặc bản in."
       />
-      {classes.length === 0 ? (
+      {classesErr ? (
+        <LoadErrorNotice />
+      ) : classes.length === 0 ? (
         <EmptyClassNotice />
       ) : (
         <ExportClient

@@ -6,6 +6,7 @@ import { RosterClient } from "@/components/register/roster-client";
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
   pickClass,
 } from "@/components/register/server-utils";
 import type { ClassRoleRow } from "@/components/register/types";
@@ -20,9 +21,12 @@ export default async function RosterPage({
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  const { classes, error: classesErr } = await getAccessibleClasses(profile);
   const cls = pickClass(classes, classParam);
 
+  if (classesErr) {
+    console.error("[register/roster] classes:", classesErr);
+  }
   if (!cls) {
     return (
       <>
@@ -30,12 +34,15 @@ export default async function RosterPage({
           section="Sổ chủ nhiệm"
           title="Danh sách học sinh & Tổ"
         />
-        <EmptyClassNotice />
+        {classesErr ? <LoadErrorNotice /> : <EmptyClassNotice />}
       </>
     );
   }
 
-  const [{ data: studentsData }, { data: groupsData }] = await Promise.all([
+  const [
+    { data: studentsData, error: studentsErr },
+    { data: groupsData, error: groupsErr },
+  ] = await Promise.all([
     supabase
       .from("students")
       .select("*")
@@ -52,7 +59,7 @@ export default async function RosterPage({
   const students = (studentsData ?? []) as Student[];
   const groups = (groupsData ?? []) as StudentGroup[];
 
-  const { data: rolesData } =
+  const { data: rolesData, error: rolesErr } =
     students.length > 0
       ? await supabase
           .from("class_roles")
@@ -61,10 +68,10 @@ export default async function RosterPage({
             "student_id",
             students.map((s) => s.id),
           )
-      : { data: [] };
+      : { data: [], error: null };
   const roles = (rolesData ?? []) as ClassRoleRow[];
 
-  const { data: linkData } =
+  const { data: linkData, error: linkErr } =
     students.length > 0
       ? await supabase
           .from("parent_students")
@@ -73,19 +80,19 @@ export default async function RosterPage({
             "student_id",
             students.map((s) => s.id),
           )
-      : { data: [] };
+      : { data: [], error: null };
   const parentLinks = (linkData ?? []) as {
     student_id: string;
     parent_id: string;
   }[];
 
   const linkedParentIds = [...new Set(parentLinks.map((l) => l.parent_id))];
-  const { data: parentsData } = linkedParentIds.length
+  const { data: parentsData, error: parentsErr } = linkedParentIds.length
     ? await supabase
         .from("parents")
         .select("id,full_name,phone,email,relationship")
         .in("id", linkedParentIds)
-    : { data: [] };
+    : { data: [], error: null };
   const parents = (parentsData ?? []) as {
     id: string;
     full_name: string;
@@ -93,6 +100,25 @@ export default async function RosterPage({
     email: string | null;
     relationship: string | null;
   }[];
+
+  // R14-01: roster la editor (scn_set_class_role replace chuc danh tung HS,
+  // chia to, lien ket PH) - mount tren nguon loi/thieu cho phep ghi de sai.
+  // Bat cu loi nao -> khoa editor, hien notice.
+  const srcErrors = Object.entries({
+    classes_source: classesErr,
+    students: studentsErr?.message ?? null,
+    student_groups: groupsErr?.message ?? null,
+    class_roles: rolesErr?.message ?? null,
+    parent_students: linkErr?.message ?? null,
+    parents: parentsErr?.message ?? null,
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[register/roster] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e}`).join("; "),
+    );
+  }
 
   return (
     <>
@@ -102,15 +128,21 @@ export default async function RosterPage({
         description={`Lớp ${cls.name} · ${students.length} học sinh · ${groups.length} tổ`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/roster" />
-      <RosterClient
-        key={cls.id}
-        classId={cls.id}
-        students={students}
-        groups={groups}
-        roles={roles}
-        parents={parents}
-        parentLinks={parentLinks}
-      />
+      {loadError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải được dữ liệu. Vui lòng thử lại.
+        </p>
+      ) : (
+        <RosterClient
+          key={cls.id}
+          classId={cls.id}
+          students={students}
+          groups={groups}
+          roles={roles}
+          parents={parents}
+          parentLinks={parentLinks}
+        />
+      )}
     </>
   );
 }

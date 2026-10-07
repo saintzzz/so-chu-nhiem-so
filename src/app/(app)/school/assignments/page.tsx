@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { AssignmentsBoard } from "@/components/school/assignments-board";
@@ -33,13 +34,10 @@ export default async function AssignmentsPage() {
   const profile = await requireRoles(["bgh"]);
   const supabase = await createClient();
 
-  const [
-    { data: classData },
-    { data: teacherData },
-    { data: tsData },
-    { data: subjectData },
-    { data: ttData },
-  ] = await Promise.all([
+  // R14-03: teacher_subjects + timetable_entries la full-table select co
+  // the vuot PostgREST cap -> fetchAllRows. Truncate teacher_subjects =
+  // editor thieu lien ket -> Luu se xoa cac mon khong duoc tai.
+  const [classRes, teacherRes, tsRes, subjectRes, ttRes] = await Promise.all([
     supabase
       .from("classes")
       .select("id,name,grade,gvcn_id")
@@ -53,25 +51,53 @@ export default async function AssignmentsPage() {
       .eq("school_id", profile.school_id ?? "")
       .in("role", ["gvcn", "gvbm", "to_truong"])
       .order("full_name"),
-    supabase.from("teacher_subjects").select("teacher_id,subject_id"),
+    fetchAllRows<TeacherSubjectRow>((f, t) =>
+      supabase
+        .from("teacher_subjects")
+        .select("teacher_id,subject_id")
+        .order("teacher_id")
+        .order("subject_id")
+        .range(f, t),
+    ),
     supabase
       .from("subjects")
       .select("id,name")
       .eq("school_id", profile.school_id ?? "")
       .order("name"),
-    supabase
-      .from("timetable_entries")
-      .select("class_id,subject_id,teacher_id"),
+    fetchAllRows<TimetableRow>((f, t) =>
+      supabase
+        .from("timetable_entries")
+        .select("class_id,subject_id,teacher_id")
+        .order("id")
+        .range(f, t),
+    ),
   ]);
 
-  const classes = (classData ?? []) as ClassRow[];
-  const teachers = (teacherData ?? []) as TeacherRow[];
-  const teacherSubjects = (tsData ?? []) as TeacherSubjectRow[];
-  const subjects = (subjectData ?? []) as SubjectRow[];
+  const classes = (classRes.data ?? []) as ClassRow[];
+  const teachers = (teacherRes.data ?? []) as TeacherRow[];
+  const teacherSubjects = tsRes.rows;
+  const subjects = (subjectRes.data ?? []) as SubjectRow[];
+
+  // Bat cu query nguon nao loi (hoac bi truncate) -> khoa board: editor
+  // ghi de trang thai phan cong, mount tren du lieu thieu se xoa sai.
+  const srcErrors = Object.entries({
+    classes: classRes.error?.message ?? null,
+    profiles: teacherRes.error?.message ?? null,
+    teacher_subjects: tsRes.error ?? (tsRes.truncated ? "truncated" : null),
+    subjects: subjectRes.error?.message ?? null,
+    timetable_entries: ttRes.error ?? (ttRes.truncated ? "truncated" : null),
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[school/assignments] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e}`).join("; "),
+    );
+  }
 
   // distinct (class, subject) pairs with current teacher
   const pairMap = new Map<string, string | null>();
-  for (const t of (ttData ?? []) as TimetableRow[]) {
+  for (const t of ttRes.rows) {
     const key = `${t.class_id}|${t.subject_id}`;
     if (!pairMap.has(key)) pairMap.set(key, t.teacher_id);
   }
@@ -93,13 +119,19 @@ export default async function AssignmentsPage() {
         title="AI gợi ý phân công giảng dạy"
         buttonLabel="Đề xuất phân công"
       />
-      <AssignmentsBoard
-        classes={classes}
-        teachers={teachers}
-        subjects={subjects}
-        teacherSubjects={teacherSubjects}
-        pairs={pairs}
-      />
+      {loadError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải được dữ liệu. Vui lòng thử lại.
+        </p>
+      ) : (
+        <AssignmentsBoard
+          classes={classes}
+          teachers={teachers}
+          subjects={subjects}
+          teacherSubjects={teacherSubjects}
+          pairs={pairs}
+        />
+      )}
     </div>
   );
 }

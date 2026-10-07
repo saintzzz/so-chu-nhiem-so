@@ -6,6 +6,7 @@ import { KpiClient } from "@/components/register/kpi-client";
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
   pickClass,
 } from "@/components/register/server-utils";
 import type { Kpi } from "@/components/register/types";
@@ -19,9 +20,12 @@ export default async function KpiPage({
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  const { classes, error: classesErr } = await getAccessibleClasses(profile);
   const cls = pickClass(classes, classParam);
 
+  if (classesErr) {
+    console.error("[register/kpi] classes:", classesErr);
+  }
   if (!cls) {
     return (
       <>
@@ -29,7 +33,7 @@ export default async function KpiPage({
           section="Sổ chủ nhiệm"
           title="Đăng ký chỉ tiêu hiệu suất"
         />
-        <EmptyClassNotice />
+        {classesErr ? <LoadErrorNotice /> : <EmptyClassNotice />}
       </>
     );
   }

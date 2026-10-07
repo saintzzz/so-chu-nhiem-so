@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { setTeacherSubjects } from "@/app/(app)/school/actions";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { sortByVietnameseName } from "@/lib/utils";
@@ -117,29 +118,15 @@ export function AssignmentsBoard({
 
   function saveTeacherSubjects() {
     startTransition(async () => {
-      const supabase = createClient();
-      const { error: delErr } = await supabase
-        .from("teacher_subjects")
-        .delete()
-        .eq("teacher_id", tsTeacher);
-      if (delErr) {
-        console.error("[assignments] clear teacher_subjects:", delErr.message);
-        flash(false, "Không lưu được môn phụ trách - vui lòng thử lại.");
+      // R14-02: server action goi RPC scn_set_teacher_subjects - xoa/insert
+      // trong 1 transaction phia DB (kem role + school scope check). Luong cu
+      // delete roi insert tren client: insert loi = GV mat het mon phu trach.
+      const res = await setTeacherSubjects(tsTeacher, [
+        ...(tsDraft[tsTeacher] ?? []),
+      ]);
+      if (res.error) {
+        flash(false, res.error);
         return;
-      }
-      const rows = [...(tsDraft[tsTeacher] ?? [])].map((subject_id) => ({
-        teacher_id: tsTeacher,
-        subject_id,
-      }));
-      if (rows.length) {
-        const { error: insErr } = await supabase
-          .from("teacher_subjects")
-          .insert(rows);
-        if (insErr) {
-          console.error("[assignments] insert teacher_subjects:", insErr.message);
-          flash(false, "Không lưu được môn phụ trách - vui lòng thử lại.");
-          return;
-        }
       }
       flash(true, "Đã lưu môn phụ trách.");
     });

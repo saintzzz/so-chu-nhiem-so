@@ -6,6 +6,7 @@ import { SeatingHistoryClient } from "@/components/register/seating-history-clie
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
   pickClass,
 } from "@/components/register/server-utils";
 import type { SeatingChart } from "@/types";
@@ -19,9 +20,12 @@ export default async function SeatingHistoryPage({
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  const { classes, error: classesErr } = await getAccessibleClasses(profile);
   const cls = pickClass(classes, classParam);
 
+  if (classesErr) {
+    console.error("[register/seating-history] classes:", classesErr);
+  }
   if (!cls) {
     return (
       <>
@@ -29,12 +33,12 @@ export default async function SeatingHistoryPage({
           section="Sổ chủ nhiệm"
           title="Lịch sử phiên bản sơ đồ"
         />
-        <EmptyClassNotice />
+        {classesErr ? <LoadErrorNotice /> : <EmptyClassNotice />}
       </>
     );
   }
 
-  const { data } = await supabase
+  const { data, error: chartsErr } = await supabase
     .from("seating_charts")
     .select("*")
     .eq("class_id", cls.id)
@@ -42,6 +46,20 @@ export default async function SeatingHistoryPage({
     .order("version", { ascending: false });
 
   const charts = (data ?? []) as SeatingChart[];
+
+  // R14-01: scn_restore_seating lat current nguyen tu nhung danh sach phien
+  // ban loi/thieu -> hien sai lich su. Loi nguon -> notice thay vi editor.
+  const srcErrors = Object.entries({
+    classes_source: classesErr,
+    seating_charts: chartsErr?.message ?? null,
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[register/seating-history] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e}`).join("; "),
+    );
+  }
 
   return (
     <>
@@ -51,7 +69,13 @@ export default async function SeatingHistoryPage({
         description={`Lớp ${cls.name} · ${charts.length} phiên bản đã lưu`}
       />
       <ClassChips classes={classes} selectedId={cls.id} href="/register/seating-history" />
-      <SeatingHistoryClient key={cls.id} charts={charts} />
+      {loadError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải được dữ liệu. Vui lòng thử lại.
+        </p>
+      ) : (
+        <SeatingHistoryClient key={cls.id} charts={charts} />
+      )}
     </>
   );
 }

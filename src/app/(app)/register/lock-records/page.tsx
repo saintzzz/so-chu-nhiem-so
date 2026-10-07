@@ -2,7 +2,10 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { LockRecordsClient } from "@/components/register/lock-records-client";
-import { getAccessibleClasses } from "@/components/register/server-utils";
+import {
+  getAccessibleClasses,
+  LoadErrorNotice,
+} from "@/components/register/server-utils";
 import type { Signoff } from "@/components/register/types";
 
 export default async function LockRecordsPage() {
@@ -10,9 +13,14 @@ export default async function LockRecordsPage() {
   const supabase = await createClient();
 
   // Chi lop chu nhiem moi duoc nop so - lop dang day khong nam trong pham vi.
-  const classes = (await getAccessibleClasses(profile)).filter(
+  const { classes: accessibleClasses, error: classesErr } =
+    await getAccessibleClasses(profile);
+  const classes = accessibleClasses.filter(
     (c) => profile.role !== "gvcn" || c.gvcn_id === profile.id,
   );
+  if (classesErr) {
+    console.error("[register/lock-records] classes:", classesErr);
+  }
   const classIds = classes.map((c) => c.id);
   const classNames = new Map(classes.map((c) => [c.id, c.name]));
 
@@ -41,13 +49,17 @@ export default async function LockRecordsPage() {
             : "Nộp sổ học bạ lớp mình lên Ban Giám Hiệu để duyệt & khóa theo kỳ."
         }
       />
-      <LockRecordsClient
-        signoffs={signoffs}
-        classes={classes.map((c) => ({ id: c.id, name: c.name }))}
-        classNames={Object.fromEntries(classNames)}
-        profileId={profile.id}
-        role={profile.role === "bgh" ? "bgh" : "gvcn"}
-      />
+      {classesErr ? (
+        <LoadErrorNotice />
+      ) : (
+        <LockRecordsClient
+          signoffs={signoffs}
+          classes={classes.map((c) => ({ id: c.id, name: c.name }))}
+          classNames={Object.fromEntries(classNames)}
+          profileId={profile.id}
+          role={profile.role === "bgh" ? "bgh" : "gvcn"}
+        />
+      )}
     </>
   );
 }

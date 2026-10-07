@@ -6,6 +6,7 @@ import { SeatingGrid } from "@/components/register/seating-grid";
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
   pickClass,
 } from "@/components/register/server-utils";
 import { currentMonthVN, prevMonthVN } from "@/components/register/types";
@@ -20,9 +21,12 @@ export default async function SeatingPage({
   const { class: classParam, praise } = await searchParams;
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  const { classes, error: classesErr } = await getAccessibleClasses(profile);
   const cls = pickClass(classes, classParam);
 
+  if (classesErr) {
+    console.error("[register/seating] classes:", classesErr);
+  }
   if (!cls) {
     return (
       <>
@@ -30,7 +34,7 @@ export default async function SeatingPage({
           section="Sổ chủ nhiệm"
           title="Sơ đồ lớp"
         />
-        <EmptyClassNotice />
+        {classesErr ? <LoadErrorNotice /> : <EmptyClassNotice />}
       </>
     );
   }
@@ -41,7 +45,10 @@ export default async function SeatingPage({
   const currentMonth = `${curMonth}-01`;
   const prevMonth = `${prevMonthVN()}-01`;
 
-  const [{ data: chartsData }, { data: studentsData }] = await Promise.all([
+  const [
+    { data: chartsData, error: chartsErr },
+    { data: studentsData, error: studentsErr },
+  ] = await Promise.all([
     supabase
       .from("seating_charts")
       .select("*")
@@ -60,14 +67,14 @@ export default async function SeatingPage({
   const students = (studentsData ?? []) as Student[];
 
   const studentIds = students.map((s) => s.id);
-  const { data: praiseData } = studentIds.length
+  const { data: praiseData, error: praiseErr } = studentIds.length
     ? await supabase
         .from("conduct_records")
         .select("student_id,points,content,date")
         .eq("type", "khen_thuong")
         .in("student_id", studentIds)
         .order("date", { ascending: false })
-    : { data: [] };
+    : { data: [], error: null };
   const praiseReasons = new Map<string, string>();
   for (const r of (praiseData ?? []) as {
     student_id: string;
@@ -87,6 +94,23 @@ export default async function SeatingPage({
     charts.find((c) => c.month === prevMonth) ??
     null;
 
+  // R14-01: scn_save_seating ghi phien ban moi lam current - editor mount
+  // tren nguon loi/thieu (students/charts) roi bam Luu se dat mot so do
+  // sai len current. Bat cu loi nao -> khoa editor, hien notice.
+  const srcErrors = Object.entries({
+    classes_source: classesErr,
+    seating_charts: chartsErr?.message ?? null,
+    students: studentsErr?.message ?? null,
+    conduct_records: praiseErr?.message ?? null,
+  }).filter(([, e]) => e);
+  const loadError = srcErrors.length > 0;
+  if (loadError) {
+    console.error(
+      "[register/seating] load:",
+      srcErrors.map(([k, e]) => `${k}: ${e}`).join("; "),
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -100,18 +124,24 @@ export default async function SeatingPage({
         href="/register/seating"
         params={praise === "1" ? { praise: "1" } : {}}
       />
-      <SeatingGrid
-        key={cls.id}
-        classId={cls.id}
-        className={cls.name}
-        month={currentMonth}
-        currentVersion={current?.version ?? 0}
-        initialLayout={current?.layout ?? null}
-        previousLayout={previous?.layout ?? null}
-        students={students}
-        initialPraise={praise === "1"}
-        praiseReasons={Object.fromEntries(praiseReasons)}
-      />
+      {loadError ? (
+        <p className="rounded-xl border border-l-4 border-l-error border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Không tải được dữ liệu. Vui lòng thử lại.
+        </p>
+      ) : (
+        <SeatingGrid
+          key={cls.id}
+          classId={cls.id}
+          className={cls.name}
+          month={currentMonth}
+          currentVersion={current?.version ?? 0}
+          initialLayout={current?.layout ?? null}
+          previousLayout={previous?.layout ?? null}
+          students={students}
+          initialPraise={praise === "1"}
+          praiseReasons={Object.fromEntries(praiseReasons)}
+        />
+      )}
     </>
   );
 }

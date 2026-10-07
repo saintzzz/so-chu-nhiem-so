@@ -6,6 +6,7 @@ import { SuggestionsClient } from "@/components/register/suggestions-client";
 import {
   EmptyClassNotice,
   getAccessibleClasses,
+  LoadErrorNotice,
   pickClass,
 } from "@/components/register/server-utils";
 import type { TaskRow } from "@/components/register/types";
@@ -19,9 +20,12 @@ export default async function SuggestionsPage({
   const { class: classParam } = await searchParams;
   const supabase = await createClient();
 
-  const classes = await getAccessibleClasses(profile);
+  const { classes, error: classesErr } = await getAccessibleClasses(profile);
   const cls = pickClass(classes, classParam);
 
+  if (classesErr) {
+    console.error("[register/suggestions] classes:", classesErr);
+  }
   if (!cls) {
     return (
       <>
@@ -29,7 +33,7 @@ export default async function SuggestionsPage({
           section="Sổ chủ nhiệm"
           title="Gợi ý công việc (AI)"
         />
-        <EmptyClassNotice />
+        {classesErr ? <LoadErrorNotice /> : <EmptyClassNotice />}
       </>
     );
   }

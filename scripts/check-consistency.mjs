@@ -15,7 +15,7 @@ const env = Object.fromEntries(
   readFileSync(resolve(root, ".env.local"), "utf8")
     .split("\n")
     .filter((l) => l.includes("="))
-    .map((l) => l.split("=", 2).map((s) => s.trim())),
+    .map((l) => l.split("=", 2).map((s) => s.trim().replace(/^"|"$/g, ""))),
 );
 const supabase = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL,
@@ -168,7 +168,7 @@ function walk(dir, out = []) {
   return out;
 }
 const srcFiles = walk(resolve(root, "src")).map((p) => [p, readFileSync(p, "utf8")]);
-const rel = (p) => p.split("/src/")[1];
+const rel = (p) => p.replace(/\\/g, "/").split("/src/")[1];
 
 // Files intentionally ordered by something other than student given name —
 // each entry must be justified. Add here ONLY for non-directory listings.

@@ -301,6 +301,8 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Quản trị",
       children: [
         { label: "Quản trị người dùng", href: "/dept/users" },
+        { label: "Quản lý trường", href: "/dept/schools" },
+        { label: "Hoạt động sử dụng", href: "/dept/usage" },
         { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
         { label: "Quản trị dữ liệu", href: "/dept/data" },
         { label: "Đơn vị hành chính", href: "/dept/wards" },
@@ -315,6 +317,8 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Quản trị",
       children: [
         { label: "Quản trị người dùng", href: "/dept/users" },
+        { label: "Quản lý trường", href: "/dept/schools" },
+        { label: "Hoạt động sử dụng", href: "/dept/usage" },
         { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
       ],
     },

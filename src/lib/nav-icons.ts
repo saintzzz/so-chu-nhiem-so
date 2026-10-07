@@ -161,6 +161,8 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "Radar cảnh báo sớm": Radar,
   "Phân công năm học": UserCog,
   "Quản trị người dùng": UserCog,
+  "Quản lý trường": Building2,
+  "Hoạt động sử dụng": Activity,
   "Dashboard cấp Sở Giáo dục và Đào tạo": BarChart3,
   "Quản trị dữ liệu": Database,
   // CR-011 - feature parity

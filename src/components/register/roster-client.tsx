@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { logAudit } from "@/lib/audit";
+import { grantParentAccess } from "@/app/(app)/register/actions";
 import { ROLE_LABELS_BCS, type ClassRoleRow } from "./types";
 import type { Student, StudentGroup } from "@/types";
 
@@ -50,6 +51,9 @@ export function RosterClient({
   const [newParentPhone, setNewParentPhone] = useState("");
   const [newParentEmail, setNewParentEmail] = useState("");
   const [newParentRel, setNewParentRel] = useState("cha");
+  const [grantAccess, setGrantAccess] = useState(false);
+  const [accessPassword, setAccessPassword] = useState("");
+  const [accessEmail, setAccessEmail] = useState("");
   const [tab, setTab] = useState<"list" | "groups">("list");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -159,6 +163,14 @@ export function RosterClient({
     let parentId = linkParent;
     setBusy(true);
     setMessage(null);
+
+    const grantFor = async (pid: string) => {
+      if (!grantAccess) return null;
+      const email = (linkParent ? accessEmail : newParentEmail).trim();
+      const r = await grantParentAccess({ parentId: pid, email, password: accessPassword });
+      return r.error ?? null;
+    };
+
     if (!parentId) {
       if (!newParentName.trim()) {
         setMessage("Chọn phụ huynh có sẵn hoặc nhập tên phụ huynh mới.");
@@ -189,12 +201,26 @@ export function RosterClient({
         },
       ]);
       setLinks((ls) => [...ls, { student_id: linkStudent, parent_id: parentId }]);
-      setLinkStudent("");
-      setLinkParent("");
-      setNewParentName("");
-      setNewParentPhone("");
-      setNewParentEmail("");
-      setMessage("Đã tạo phụ huynh và liên kết với học sinh.");
+      const gErr = await grantFor(parentId);
+      if (gErr) {
+        // giữ lựa chọn để sửa email/mật khẩu và thử cấp lại
+        setLinkParent(parentId);
+        setAccessEmail(newParentEmail.trim());
+        setMessage(`Đã tạo phụ huynh và liên kết, nhưng cấp tài khoản lỗi: ${gErr}`);
+      } else {
+        setLinkStudent("");
+        setLinkParent("");
+        setNewParentName("");
+        setNewParentPhone("");
+        setNewParentEmail("");
+        setAccessPassword("");
+        setAccessEmail("");
+        setMessage(
+          grantAccess
+            ? "Đã tạo phụ huynh, liên kết và cấp tài khoản đăng nhập."
+            : "Đã tạo phụ huynh và liên kết với học sinh.",
+        );
+      }
       logAudit(supabase, {
         action: "Tạo + liên kết phụ huynh",
         entity: "parent_students",
@@ -204,25 +230,54 @@ export function RosterClient({
       setBusy(false);
       return;
     }
-    const { error } = await supabase
-      .from("parent_students")
-      .insert({ parent_id: parentId, student_id: linkStudent });
-    if (!error) {
-      setLinks((ls) => [...ls, { student_id: linkStudent, parent_id: parentId }]);
+    const alreadyLinked = links.some(
+      (l) => l.student_id === linkStudent && l.parent_id === parentId,
+    );
+    let didInsert = false;
+    if (!alreadyLinked) {
+      const { error } = await supabase
+        .from("parent_students")
+        .insert({ parent_id: parentId, student_id: linkStudent });
+      if (error && error.code !== "23505") {
+        setMessage("Không thể liên kết. Vui lòng thử lại.");
+        setBusy(false);
+        return;
+      }
+      didInsert = !error;
+      if (didInsert) {
+        setLinks((ls) => [...ls, { student_id: linkStudent, parent_id: parentId }]);
+        logAudit(supabase, {
+          action: "Liên kết phụ huynh - học sinh",
+          entity: "parent_students",
+          entityId: linkStudent,
+          payload: { parent_id: parentId },
+        });
+      }
+    }
+    const gErr = await grantFor(parentId);
+    if (gErr) {
+      setMessage(
+        alreadyLinked
+          ? `Cấp tài khoản lỗi: ${gErr}`
+          : `Đã liên kết, nhưng cấp tài khoản lỗi: ${gErr}`,
+      );
+    } else {
       setLinkStudent("");
       setLinkParent("");
       setNewParentName("");
       setNewParentPhone("");
+      setAccessPassword("");
+      setAccessEmail("");
       setNewParentEmail("");
-      setMessage("Đã liên kết phụ huynh với học sinh.");
-      logAudit(supabase, {
-        action: "Liên kết phụ huynh - học sinh",
-        entity: "parent_students",
-        entityId: linkStudent,
-        payload: { parent_id: parentId },
-      });
-    } else {
-      setMessage("Không thể liên kết. Có thể liên kết đã tồn tại.");
+      setMessage(
+        alreadyLinked
+          ? grantAccess
+            ? "Đã cấp tài khoản đăng nhập cho phụ huynh."
+            : "Liên kết phụ huynh - học sinh đã tồn tại."
+          : grantAccess
+            ? "Đã liên kết và cấp tài khoản đăng nhập cho phụ huynh."
+            : "Đã liên kết phụ huynh với học sinh.",
+      );
     }
     setBusy(false);
   }
@@ -530,18 +585,73 @@ export function RosterClient({
               <input
                 value={newParentEmail}
                 onChange={(e) => setNewParentEmail(e.target.value)}
-                placeholder="Email (nhận thông báo)"
+                placeholder={grantAccess ? "Email đăng nhập *" : "Email (nhận thông báo)"}
                 type="email"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
+              {grantAccess && newParentEmail &&
+                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newParentEmail.trim()) && (
+                <p className="mt-1 text-xs text-error">Email đăng nhập không hợp lệ.</p>
+              )}
             </div>
           )}
         </div>
+        <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={grantAccess}
+            onChange={(e) => setGrantAccess(e.target.checked)}
+          />
+          Cấp tài khoản đăng nhập cổng phụ huynh cho phụ huynh này
+        </label>
+        {grantAccess && (
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            {linkParent && (
+              <div>
+                <input
+                  value={accessEmail}
+                  onChange={(e) => setAccessEmail(e.target.value)}
+                  placeholder="Email đăng nhập *"
+                  type="email"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+                {accessEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(accessEmail.trim()) && (
+                  <p className="mt-1 text-xs text-error">Email đăng nhập không hợp lệ.</p>
+                )}
+              </div>
+            )}
+            <div>
+              <input
+                value={accessPassword}
+                onChange={(e) => setAccessPassword(e.target.value)}
+                placeholder="Mật khẩu (tối thiểu 8 ký tự) *"
+                type="password"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+              {accessPassword && accessPassword.length < 8 && (
+                <p className="mt-1 text-xs text-error">Mật khẩu tối thiểu 8 ký tự.</p>
+              )}
+            </div>
+            {!linkParent && (
+              <p className="text-xs text-muted-foreground md:col-span-2">
+                Email đăng nhập dùng ô Email phụ huynh phía trên.
+              </p>
+            )}
+          </div>
+        )}
         <div className="mt-3">
           <Button
             size="sm"
             onClick={linkParentToStudent}
-            disabled={busy || !linkStudent}
+            disabled={
+              busy ||
+              !linkStudent ||
+              (grantAccess &&
+                (accessPassword.length < 8 ||
+                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+                    (linkParent ? accessEmail : newParentEmail).trim(),
+                  )))
+            }
           >
             <UserPlus /> Liên kết
           </Button>

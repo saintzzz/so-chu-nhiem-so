@@ -20,7 +20,7 @@ export const TOOLS: ToolDef[] = [
       { key: "subject", label: "Môn học", type: "subject", required: true },
       { key: "grade", label: "Khối lớp", type: "grade", required: true },
       { key: "standard_ids", label: "Bài học / YCCĐ", type: "standard", required: true },
-      { key: "lesson", label: "Tên bài dạy", type: "text", placeholder: "VD: Phép cộng các số nguyên" },
+      { key: "lesson", label: "Tên bài dạy", type: "text", placeholder: "VD: Phép cộng các số nguyên", help: "Tên bài quyết định chủ đề nội dung sinh ra - để trống sẽ tự suy ra từ YCCĐ đã chọn." },
       { key: "duration", label: "Thời lượng", type: "select", default: "1 tiết", options: [
         { value: "1 tiết", label: "1 tiết (45')" },
         { value: "2 tiết", label: "2 tiết" },
@@ -141,6 +141,7 @@ export const TOOLS: ToolDef[] = [
         { value: "12", label: "12 slide" },
         { value: "16", label: "16 slide" },
       ]},
+      { key: "material_id", label: "Bám sát giáo án đã lưu", type: "select", help: "Chọn KHBD đã soạn - slide sẽ dùng lại nguyên câu hỏi/bài tập và đúng tiến trình của giáo án." },
     ],
     buildPrompt: PROMPTS["DC-06"],
     fallback: fb.fbSlides,

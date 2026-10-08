@@ -65,6 +65,15 @@ export function ToolRunner({
   const [standards, setStandards] = useState<CurriculumStandard[]>([]);
   const [matrixOptions, setMatrixOptions] = useState<{ id: string; title: string }[]>([]);
   const [tplOptions, setTplOptions] = useState<{ id: string; name: string }[]>([]);
+  const [lpOptions, setLpOptions] = useState<
+    {
+      id: string;
+      title: string;
+      subject_code: string | null;
+      grade: number | null;
+      standard_ids: string[] | null;
+    }[]
+  >([]);
   const [selectedStd, setSelectedStd] = useState<string[]>(
     fromMaterial?.standardIds ?? [],
   );
@@ -92,6 +101,11 @@ export function ToolRunner({
       fetch("/api/studio/context?kind=matrices")
         .then((r) => r.json())
         .then((d) => setMatrixOptions(d.data ?? []));
+    }
+    if (tool.code === "DC-06") {
+      fetch("/api/studio/context?kind=lesson_plans")
+        .then((r) => r.json())
+        .then((d) => setLpOptions(d.data ?? []));
     }
     if (tool.code === "DC-01") {
       fetch("/api/studio/context?kind=khbd_templates")
@@ -308,13 +322,23 @@ export function ToolRunner({
                   type="checkbox"
                   className="mt-1"
                   checked={selectedStd.includes(s.id)}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setSelectedStd((prev) =>
                       e.target.checked
                         ? [...prev, s.id]
                         : prev.filter((x) => x !== s.id),
-                    )
-                  }
+                    );
+                    // Tu dien ten bai tu bai hoc cua YCCD khi GV chua nhap
+                    if (
+                      e.target.checked &&
+                      s.lesson_ref &&
+                      tool.fields.some((f) => f.key === "lesson")
+                    ) {
+                      setValues((v) =>
+                        v.lesson?.trim() ? v : { ...v, lesson: s.lesson_ref },
+                      );
+                    }
+                  }}
                 />
                 <span>
                   <span className="font-mono text-xs text-primary">{s.code}</span>{" "}
@@ -331,14 +355,38 @@ export function ToolRunner({
             ? matrixOptions.map((m) => ({ value: m.id, label: m.title }))
             : f.key === "khbd_template"
               ? tplOptions.map((t) => ({ value: t.id, label: t.name }))
-              : (f.options ?? []);
+              : f.key === "material_id"
+                ? lpOptions.map((m) => ({
+                    value: m.id,
+                    label: `${m.title}${m.grade ? ` - Lớp ${m.grade}` : ""}`,
+                  }))
+                : (f.options ?? []);
         return (
           <select
             className={inputCls}
             value={values[f.key] ?? ""}
-            onChange={(e) => set(f.key, e.target.value)}
+            onChange={(e) => {
+              set(f.key, e.target.value);
+              // DC-06: chon giao an nguon -> tu dien mon/khoi/YCCD cua giao an
+              if (f.key === "material_id" && e.target.value) {
+                const m = lpOptions.find((x) => x.id === e.target.value);
+                if (m) {
+                  setValues((v) => ({
+                    ...v,
+                    material_id: m.id,
+                    ...(m.subject_code ? { subject: m.subject_code } : {}),
+                    ...(m.grade ? { grade: String(m.grade) } : {}),
+                  }));
+                  if (m.standard_ids?.length) setSelectedStd(m.standard_ids);
+                }
+              }
+            }}
           >
-            <option value="">- Chọn -</option>
+            {f.key === "material_id" ? (
+              <option value="">- Không gắn giáo án -</option>
+            ) : (
+              <option value="">- Chọn -</option>
+            )}
             {opts.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -417,7 +465,9 @@ export function ToolRunner({
             </div>
           )}
           <div className="mt-4 space-y-4">
-            {tool.fields.map((f) => (
+            {tool.fields
+              .filter((f) => !(fromMaterial && f.key === "material_id"))
+              .map((f) => (
               <div key={f.key}>
                 <label className="text-sm font-medium">
                   {f.label}

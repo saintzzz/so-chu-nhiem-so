@@ -50,6 +50,7 @@ export const PROMPTS: Record<
     system: SYS_BASE,
     prompt: `${base(ctx)}
 Biên soạn KẾ HOẠCH BÀI DẠY cho bài "${input.lesson || "theo YCCĐ trên"}" theo đúng khung Công văn 5512.
+TÊN BÀI DẠY LÀ CHỦ ĐỀ TRUNG TÂM: toàn bộ nội dung, câu hỏi, bài tập, sản phẩm trong giáo án phải xoay quanh đúng bài này. Các YCCĐ đã chọn là mục tiêu cần đạt CỦA bài - không được suy rộng sang nội dung bài khác hay viết chung chung cho cả chủ đề. Nếu không có tên bài, suy ra tên bài từ YCCĐ và ghi vào title.
 Biểu mẫu hoạt động: ${
       (ctx.extra?.khbdTemplate as { name?: string; activities?: { name: string; minutes?: number; hint?: string }[]; include_review?: boolean; include_signoff?: boolean } | undefined)
         ?.activities?.map((a) => a.name)

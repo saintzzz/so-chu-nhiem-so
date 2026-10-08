@@ -70,3 +70,15 @@ Console sạch — 2 error duy nhất ghi nhận là negative test cố ý (`fmt
 - A-03 chưa có audio TTS thật (transcript có, nút Nghe chưa nối)
 - 55 duplicate stems (~0,3%) odd-one-out trùng tổ hợp
 - `ngu_van` grade range 1-12 chưa tách cấp
+
+---
+
+## Bổ sung 2026-10-09 - CR-044 (3 fix từ feedback prod)
+
+| Fix | Evidence |
+|---|---|
+| Editor focus mất chữ | `doc-editor.tsx`: `focus:bg-background` (=#0b1224) → `focus:bg-white`. Verify computed: focus input trong `.a4-sheet` = bg `rgb(255,255,255)`, color `rgb(15,23,42)` - đọc được. |
+| Tên bài dạy không bám content | `prompts.ts` DC-01 thêm quy tắc "TÊN BÀI DẠY LÀ CHỦ ĐỀ TRUNG TÂM"; auto-fill `lesson` từ `lesson_ref`; help text. Verify: gen KHBD "Phép cộng có nhớ trong phạm vi 1000" → title + mục tiêu đều đúng bài. |
+| DC-06 chọn KHBD trong form | Context API `kind=lesson_plans` mới; field `material_id` "Bám sát giáo án đã lưu"; chọn → auto-fill subject/grade/standard_ids. Verify: chọn KHBD lớp 5 → toan/lớp 5/9 YCCĐ tick sẵn. Ẩn khi đã vào qua `?from=`. |
+
+Gates: tsc ✅ eslint ✅ check-consistency all PASS ✅

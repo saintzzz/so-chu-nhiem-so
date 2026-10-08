@@ -77,6 +77,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: data ?? [] });
   }
 
+  // DC-06 (CR-044): chon KHBD da luu lam nguon sinh slide ngay trong form
+  if (kind === "lesson_plans") {
+    const { data } = await supabase
+      .from("tvc_materials")
+      .select("id, title, subject_code, grade, standard_ids")
+      .eq("type", "lesson_plan")
+      .eq("author_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    return NextResponse.json({ data: data ?? [] });
+  }
+
   if (kind === "khbd_templates") {
     const { data } = await supabase
       .from("tvc_khbd_templates")

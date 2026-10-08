@@ -25,13 +25,13 @@ function TexPreview({ text, display = false }: { text: string; display?: boolean
     if (!html) return null;
     return (
       <div
-        className="relative mt-0.5 overflow-x-auto rounded bg-muted/40 px-2 py-1"
+        className="relative mt-0.5 overflow-x-auto rounded bg-slate-100 px-2 py-1"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
   }
   return (
-    <div className="mt-0.5 rounded bg-muted/40 px-2 py-1 text-sm text-muted-foreground">
+    <div className="mt-0.5 rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
       <MathText text={text} />
     </div>
   );
@@ -66,8 +66,10 @@ export function DocEditor({
     setDoc({ [listKey]: list });
   };
 
+  // a4-sheet la giay trang chu den co dinh - KHONG dung token theme
+  // (bg-background/muted la mau toi tren dark theme -> chu den chim nen).
   const inp =
-    "w-full rounded border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-border focus:border-primary focus:bg-background";
+    "w-full rounded border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-slate-300 focus:border-sky-500 focus:bg-white";
   const ta = `${inp} resize-y leading-relaxed`;
 
   const renderBlock = (listKey: "sections" | "appendix", si: number, b: DocBlock, bi: number) => {
@@ -130,7 +132,7 @@ export function DocEditor({
               }
             />
             {b.items.filter((it) => HAS_TEX.test(it)).length > 0 && (
-              <div className="mt-0.5 rounded bg-muted/40 px-2 py-1 text-sm text-muted-foreground">
+              <div className="mt-0.5 rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
                 <ul className="list-disc pl-5">
                   {b.items.map((it, i) => (
                     <li key={i}>

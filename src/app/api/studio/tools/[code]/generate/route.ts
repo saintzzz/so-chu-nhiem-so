@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TOOL_MAP } from "@/lib/tvc/registry";
 import { fbMatrix } from "@/lib/tvc/fallbacks";
 import { generateDoc } from "@/lib/tvc/ai-json";
+import { sanitizeKhbdDoc } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
@@ -739,8 +740,11 @@ export async function POST(
     }
   }
 
-  const doc = ai.doc ?? tool.fallback(input, ctx);
-  const provider = ai.doc ? ai.provider : "rule-based";
+  // CR-037: DC-01 loc section lac de (dap an/phieu bai tap bi AI them vao
+  // giao an); doc AI thieu khung bat buoc -> rule-based fallback.
+  const aiDoc = code === "DC-01" && ai.doc ? sanitizeKhbdDoc(ai.doc) : ai.doc;
+  const doc = aiDoc ?? tool.fallback(input, ctx);
+  const provider = aiDoc ? ai.provider : "rule-based";
 
   await supabase.from("tvc_generations").insert({
     user_id: user.id,

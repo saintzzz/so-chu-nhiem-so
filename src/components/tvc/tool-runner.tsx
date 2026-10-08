@@ -7,6 +7,7 @@ import type { CurriculumStandard, DocContent, Subject } from "@/types/tvc";
 import { DocEditor } from "./doc-editor";
 import { DocRender } from "./doc-render";
 import { saveMaterial } from "@/lib/tvc/actions";
+import { sanitizeKhbdDoc } from "@/lib/tvc/khbd-doc";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
 import { Sparkles, Save, Loader2, Users } from "lucide-react";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
@@ -154,8 +155,11 @@ export function ToolRunner({
         aiJob.start(data.jobId, data.sessionUrl, {
           onDone: (res: unknown) => {
             const d = res as DocContent;
-            if (d && typeof d.title === "string" && Array.isArray(d.sections)) {
-              setDoc(d);
+            const ok = d && typeof d.title === "string" && Array.isArray(d.sections);
+            // CR-037: async path cung loc section lac de cho DC-01
+            const clean = ok && tool.code === "DC-01" ? sanitizeKhbdDoc(d) : ok ? d : null;
+            if (clean) {
+              setDoc(clean);
               setDocTabs(null);
               setProvider("fallback-engine");
             } else {

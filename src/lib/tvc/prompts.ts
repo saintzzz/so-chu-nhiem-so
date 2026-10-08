@@ -49,16 +49,28 @@ export const PROMPTS: Record<
   "DC-01": (input, ctx) => ({
     system: SYS_BASE,
     prompt: `${base(ctx)}
-Hãy biên soạn KẾ HOẠCH BÀI DẠY cho bài "${input.lesson || "theo YCCĐ trên"}" theo biểu mẫu: ${
+Biên soạn KẾ HOẠCH BÀI DẠY cho bài "${input.lesson || "theo YCCĐ trên"}" theo đúng khung Công văn 5512.
+Biểu mẫu hoạt động: ${
       (ctx.extra?.khbdTemplate as { name?: string; activities?: { name: string; minutes?: number; hint?: string }[]; include_review?: boolean; include_signoff?: boolean } | undefined)
         ?.activities?.map((a) => a.name)
         .join(" - ") || "Khởi động - Khám phá - Luyện tập - Vận dụng"
-    }.
-1. Mục tiêu (kiến thức bám YCCĐ, năng lực chung + đặc thù, phẩm chất)
-2. Thiết bị dạy học và học liệu
-3. Tiến trình: đúng tên các hoạt động của biểu mẫu trên, mỗi hoạt động gồm mục tiêu + các bước tổ chức cụ thể có vai trò GV/HS rõ ràng
-4. Phụ lục: bảng dự kiến sản phẩm và phương án đánh giá từng hoạt động; cuối giáo án có mục "ĐIỀU CHỈNH SAU BÀI DẠY" để trống và bảng ký duyệt tổ trưởng/người soạn.
-Thời lượng: ${input.duration || "1 tiết"}. ${input.note ? `Yêu cầu thêm: ${input.note}` : ""}
+    }. Thời lượng: ${input.duration || "1 tiết"}.
+
+CẤU TRÚC BẮT BUỘC của sections (đúng thứ tự, đúng tiêu đề):
+1. "I. MỤC TIÊU" - heading con "1. Kiến thức" (list bám sát YCCĐ đã chọn), "2. Năng lực" (năng lực chung + năng lực đặc thù cụ thể của môn), "3. Phẩm chất".
+2. "II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU" - liệt kê đồ dùng/học liệu cho GV và HS, cụ thể theo bài (không ghi chung chung).
+3. "III. TIẾN TRÌNH DẠY HỌC" - sau đó MỖI hoạt động của biểu mẫu là MỘT section riêng, tiêu đề "Hoạt động <n>. <Tên hoạt động> (<số phút> phút)". Trong mỗi section hoạt động BẮT BUỘC đủ 5 nhãn theo thứ tự:
+   a) Mục tiêu (heading level 3)
+   b) Nội dung (heading level 3)
+   c) Tổ chức hoạt động - BẮT BUỘC dạng table gồm 2 cột ["Hoạt động của giáo viên và học sinh", "Nội dung"], mỗi bước 1 dòng (vai trò GV và HS nêu rõ trong cột 1, sản phẩm/kiến thức tương ứng cột 2)
+   d) Sản phẩm (heading level 3 - sản phẩm HS phải đạt sau hoạt động)
+   đ) Đánh giá (heading level 3 - cách GV đánh giá/quan sát sản phẩm)
+4. "IV. ĐIỀU CHỈNH SAU BÀI DẠY" - để trống (một para gạch chấm).
+5. "KÝ DUYỆT" - table 2 cột ["TỔ TRƯỞNG KIỂM TRA", "NGƯỜI SOẠN"], 1 dòng "(Ký và ghi rõ họ tên)".
+appendix CHỈ 1 section: "PHỤ LỤC: DỰ KIẾN SẢN PHẨM VÀ ĐÁNH GIÁ" - table ["Hoạt động", "Sản phẩm học sinh", "Phương án đánh giá"].
+
+TUYỆT ĐỐI KHÔNG sinh: phiếu bài tập, phiếu học tập, đáp án, hướng dẫn chấm, bài tập về nhà, đề kiểm tra - giáo án không chứa các nội dung đó (chúng thuộc công cụ khác).
+Mỗi bước tổ chức phải cụ thể, viết được hành động của GV và HS (không ghi "GV tổ chức hoạt động").${input.note ? ` Yêu cầu thêm của giáo viên: ${input.note}` : ""}
 Viết đầy đủ, thực tế, dùng được ngay - không viết khung trống.`,
   }),
 

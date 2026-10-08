@@ -2681,3 +2681,64 @@ test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", ()
   assert.ok(!cls[0].includes('"active"'),
     "lop archived van co the con activity pending - khong duoc loc status=active");
 });
+
+// ===== CR-037: Studio DC-01 KHBD quality - sanitizer + prompt + wiring =====
+const { sanitizeKhbdDoc } = await import(
+  join(ROOT, "src/lib/tvc/khbd-doc.ts")
+);
+
+const KHBD_OK = {
+  title: "Bai test",
+  meta: { subject: "Toan" },
+  sections: [
+    { title: "I. MUC TIEU", blocks: [{ kind: "list", items: ["KT"] }] },
+    { title: "II. THIET BI DAY HOC VA HOC LIEU", blocks: [{ kind: "para", text: "May chieu" }] },
+    { title: "III. TIEN TRINH DAY HOC", blocks: [{ kind: "para", text: "4 hoat dong" }, { kind: "para", text: "Khoi dong" }] },
+    { title: "IV. DIEU CHINH SAU BAI DAY", blocks: [{ kind: "para", text: "..." }] },
+    { title: "KY DUYET", blocks: [{ kind: "para", text: "Ban giam hieu" }] },
+  ],
+};
+
+test("CR-037: sanitizer giu doc hop le, loai DAP AN + PHIEU HOC TAP", () => {
+  const dirty = {
+    ...KHBD_OK,
+    sections: [
+      ...KHBD_OK.sections,
+      { title: "DAP AN", blocks: [{ kind: "para", text: "1A 2B" }] },
+      { title: "PHIEU HOC TAP SO 1", blocks: [{ kind: "para", text: "BT" }] },
+      { title: "PHU LUC", blocks: [{ kind: "para", text: "x" }] },
+    ],
+  };
+  const out = sanitizeKhbdDoc(dirty);
+  assert.ok(out, "doc hop le khong duoc bi loai");
+  const titles = out.sections.map((s) => s.title).join("|");
+  assert.ok(!/DAP AN|PHIEU|PHU LUC/i.test(titles), `con section lac de: ${titles}`);
+});
+
+test("CR-037: sanitizer bo doc AI rong/lac de hoan toan -> fallback", () => {
+  assert.equal(sanitizeKhbdDoc({ title: "x", sections: [] }), null);
+  assert.equal(sanitizeKhbdDoc(null), null);
+  assert.equal(sanitizeKhbdDoc({ sections: [{ title: "DAP AN", blocks: [] }] }), null);
+  // Chi co 1 trong 3 section bat buoc -> loai
+  const thin = { ...KHBD_OK, sections: [KHBD_OK.sections[0]] };
+  assert.equal(sanitizeKhbdDoc(thin), null);
+});
+
+test("CR-037: appendix AI sinh bi loai khoi KHBD", () => {
+  const dirty = {
+    ...KHBD_OK,
+    appendix: [{ title: "PHIEU BAI TAP", blocks: [{ kind: "para", text: "..." }] }],
+  };
+  const out = sanitizeKhbdDoc(dirty);
+  assert.ok(!out.appendix || out.appendix.length === 0, "appendix lac de phai bi loai");
+});
+
+test("CR-037: route + prompt + fallback dung khung CV 5512", () => {
+  const route = read("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(route, /sanitizeKhbdDoc/, "route DC-01 phai qua sanitizer truoc khi tra doc");
+  const prompt = read("src/lib/tvc/prompts.ts");
+  assert.match(prompt, /Hoạt động của giáo viên và học sinh/, "prompt phai yeu cau cot GV-HS");
+  assert.match(prompt, /TUYỆT ĐỐI KHÔNG sinh/, "prompt phai cam phieu bai tap/dap an");
+  const fb = read("src/lib/tvc/fallbacks.ts");
+  assert.match(fb, /Đánh giá|đánh giá/, "fallback phai co phan danh gia");
+});

@@ -46,41 +46,101 @@ const DEFAULT_KHBD: KhbdTpl = {
   include_review: true,
   include_signoff: true,
 };
-const KHBD_STEPS: Record<string, string[]> = {
+// CR-037: cau truc moi hoat dong theo CV 5512 - cac buoc to chuc kem
+// noi dung/san pham tuong ung (cot 2 cua bang).
+interface KhbdStep {
+  act: string;
+  content: string;
+}
+const KHBD_STEPS: Record<string, KhbdStep[]> = {
   "Khởi động": [
-    "Giáo viên nêu câu hỏi/tình huống mở đầu liên quan trực tiếp đến nội dung bài.",
-    "Học sinh suy nghĩ, trả lời theo ý kiến cá nhân.",
-    "Giáo viên dẫn dắt vào bài mới.",
+    {
+      act: "GV nêu câu hỏi/tình huống mở đầu gắn trực tiếp với nội dung bài học; HS suy nghĩ, trả lời theo ý kiến cá nhân.",
+      content: "Câu hỏi/tình huống mở đầu của bài học",
+    },
+    {
+      act: "GV gọi 2-3 HS phát biểu, nhận xét câu trả lời, dẫn dắt vào bài mới.",
+      content: "Đáp án mở của HS - GV định hướng vào bài",
+    },
   ],
   "Khám phá": [
-    "Học sinh đọc thông tin, quan sát ví dụ/tình huống do giáo viên chuẩn bị.",
-    "Thảo luận nhóm đôi/nhóm 4 theo nhiệm vụ trong phiếu học tập.",
-    "Đại diện nhóm trình bày, nhóm khác nhận xét bổ sung.",
-    "Giáo viên chốt kiến thức trọng tâm, ghi bảng.",
+    {
+      act: "GV tổ chức HS đọc thông tin, quan sát ví dụ/tình huống; HS làm việc cá nhân ghi nhận thông tin.",
+      content: "Tư liệu/ví dụ khám phá của bài học",
+    },
+    {
+      act: "HS thảo luận nhóm đôi/nhóm 4 theo nhiệm vụ; GV quan sát, hỗ trợ nhóm gặp khó khăn.",
+      content: "Kết quả thảo luận nhóm của HS",
+    },
+    {
+      act: "Đại diện nhóm trình bày, nhóm khác nhận xét bổ sung; GV chốt kiến thức trọng tâm, ghi bảng.",
+      content: "Kiến thức trọng tâm được chốt trên bảng",
+    },
   ],
   "Luyện tập": [
-    "Học sinh làm bài tập cá nhân mức Biết - Hiểu.",
-    "Đổi bài chấm chéo theo đáp án giáo viên cung cấp.",
-    "Giáo viên chữa lỗi sai phổ biến trước lớp.",
+    {
+      act: "HS làm bài tập cá nhân mức Biết - Hiểu; GV bao quát lớp, giúp HS yếu.",
+      content: "Bài làm cá nhân của HS",
+    },
+    {
+      act: "HS đổi bài chấm chéo theo đáp án GV cung cấp; GV chữa lỗi sai phổ biến trước lớp.",
+      content: "Kết quả chấm chéo và lỗi sai được sửa",
+    },
   ],
   "Vận dụng": [
-    "Giáo viên giao nhiệm vụ vận dụng gắn bối cảnh thực tế.",
-    "Học sinh thực hiện, trình bày sản phẩm.",
-    "Giáo viên nhận xét, dặn dò chuẩn bị bài sau.",
+    {
+      act: "GV giao nhiệm vụ vận dụng gắn bối cảnh thực tế; HS thực hiện cá nhân/nhóm và trình bày sản phẩm.",
+      content: "Sản phẩm vận dụng của HS",
+    },
+    {
+      act: "GV nhận xét sản phẩm, dặn dò chuẩn bị bài sau.",
+      content: "Nhận xét tổng kết và hướng dẫn về nhà",
+    },
   ],
+};
+const KHBD_PRODUCT: Record<string, string> = {
+  "Khởi động": "Câu trả lời/chia sẻ ban đầu của HS về tình huống mở đầu.",
+  "Khám phá": "Kết quả thảo luận và ghi chép kiến thức trọng tâm của bài.",
+  "Luyện tập": "Bài tập hoàn chỉnh trong vở, đã được chấm chéo và sửa lỗi.",
+  "Vận dụng": "Sản phẩm vận dụng liên hệ thực tế của HS.",
+};
+const KHBD_ASSESS: Record<string, string> = {
+  "Khởi động": "GV quan sát mức độ tham gia, ghi nhận HS tích cực phát biểu.",
+  "Khám phá": "GV đánh giá qua sản phẩm nhóm, câu trả lời trình bày và mức độ chính xác của kiến thức chốt.",
+  "Luyện tập": "GV đánh giá qua bài làm cá nhân và kết quả chấm chéo; ghi nhận HS cần hỗ trợ thêm.",
+  "Vận dụng": "GV nhận xét sản phẩm vận dụng, đánh giá khả năng liên hệ kiến thức với thực tế.",
 };
 export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
   const stds = stdList(ctx);
   const title = input.lesson || ctx.standards[0]?.lesson_ref || "Bài dạy";
   const tpl = (ctx.extra?.khbdTemplate as KhbdTpl | undefined) ?? DEFAULT_KHBD;
-  const act = (name: string, goal: string, steps: string[]): DocSection => ({
-    title: `Hoạt động ${name}`,
-    blocks: [
-      { kind: "para", text: `Mục tiêu: ${goal}` },
-      { kind: "para", text: "Tổ chức thực hiện:" },
-      { kind: "list", items: steps, ordered: true },
-    ],
-  });
+  // CR-037: moi hoat dong du 5 muc a)-d) + bang to chuc 2 cot theo CV 5512
+  const act = (a: KhbdTpl["activities"][number], i: number, goal: string, content: string): DocSection => {
+    const steps = KHBD_STEPS[a.name] ?? [
+      { act: "GV tổ chức hoạt động theo nhiệm vụ đã thiết kế; HS thực hiện cá nhân/nhóm và trình bày kết quả.", content },
+      { act: "GV nhận xét, chốt ý chính của hoạt động.", content },
+    ];
+    const base = a.name.replace(/^Hoạt động\s*/i, "");
+    return {
+      title: `Hoạt động ${i + 1}. ${base}${a.minutes ? ` (${a.minutes} phút)` : ""}`,
+      blocks: [
+        { kind: "heading", level: 3, text: "a) Mục tiêu" },
+        { kind: "para", text: goal },
+        { kind: "heading", level: 3, text: "b) Nội dung" },
+        { kind: "para", text: content },
+        { kind: "heading", level: 3, text: "c) Tổ chức hoạt động" },
+        {
+          kind: "table",
+          header: ["Hoạt động của giáo viên và học sinh", "Nội dung"],
+          rows: steps.map((s) => [s.act, s.content]),
+        },
+        { kind: "heading", level: 3, text: "d) Sản phẩm" },
+        { kind: "para", text: KHBD_PRODUCT[base] ?? "Sản phẩm học tập của HS sau hoạt động." },
+        { kind: "heading", level: 3, text: "đ) Đánh giá" },
+        { kind: "para", text: KHBD_ASSESS[base] ?? "GV quan sát, nhận xét và ghi nhận kết quả của HS." },
+      ],
+    };
+  };
   return {
     title: `KẾ HOẠCH BÀI DẠY - ${title.toUpperCase()}`,
     meta: [
@@ -135,16 +195,15 @@ export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
       },
       ...tpl.activities.map((a, i) =>
         act(
-          `${i + 1}. ${a.name}${a.minutes ? ` (${a.minutes} phút)` : ""}`,
+          a,
+          i,
           a.hint ||
             (a.name === "Khám phá"
               ? `Hình thành kiến thức mới: ${stdDesc(ctx)}.`
               : "Thực hiện nhiệm vụ học tập của hoạt động."),
-          KHBD_STEPS[a.name] ?? [
-            "Giáo viên tổ chức hoạt động theo nhiệm vụ đã thiết kế.",
-            "Học sinh thực hiện cá nhân/nhóm, trình bày kết quả.",
-            "Giáo viên nhận xét, chốt ý chính.",
-          ],
+          a.name === "Khám phá"
+            ? `Nội dung trọng tâm: ${stdDesc(ctx)}.`
+            : `Nội dung hoạt động ${a.name} của bài "${title}".`,
         ),
       ),
       ...(tpl.include_review

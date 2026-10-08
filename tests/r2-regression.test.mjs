@@ -2460,6 +2460,7 @@ const {
   emptyKhbd,
   khbdHasContent,
   parseKhbd,
+  parseKhbdStrict,
   renderKhbdText,
 } = await import(join(ROOT, "src/lib/khbd.ts"));
 
@@ -2500,8 +2501,10 @@ test("CR-035: renderKhbdText dung bo cuc CV 5512 va bo qua section rong", () => 
   assert.match(text, /Hoạt động: Khởi động/);
   assert.ok(!/Luyện tập|Vận dụng/.test(text),
     "section rong phai bi bo qua trong ban render");
-  assert.ok(!/II\. THIẾT BỊ[\s\S]*Giáo viên:/.test(text),
-    "thiet bi rong khong render nhan field");
+  assert.ok(!/II\. THIẾT BỊ/.test(text),
+    "thiet bi rong khong render ca heading section");
+  // hoan toan rong -> chuoi rong (khong con heading treo)
+  assert.equal(renderKhbdText(emptyKhbd()), "");
 });
 
 test("CR-035: submitLessonPlan validate filePath prefix + size caps", () => {
@@ -2564,6 +2567,25 @@ test("CR-035: board gioi han file 8MB + don file mo coi khi insert loi", () => {
     "thieu cleanup file mo coi khi submit loi");
 });
 
+test("CR-035: parseKhbdStrict tu choi sections thieu/sai kieu", () => {
+  const full = emptyKhbd();
+  full.muc_tieu_kien_thuc = "K1";
+  // day du cau truc -> pass
+  assert.ok(parseKhbdStrict(JSON.parse(JSON.stringify(full))));
+  // Codex R3: {"sections":{muc_tieu_kien_thuc:"x", khoi_dong:42}} khong duoc
+  // tin hop le du co 1 field dung - nguoc lai user nhan plan gan nhu rong.
+  assert.equal(parseKhbdStrict({ muc_tieu_kien_thuc: "x", khoi_dong: 42 }), null);
+  assert.equal(parseKhbdStrict({ muc_tieu_kien_thuc: "x" }), null);
+  assert.equal(parseKhbdStrict({}), null);
+  assert.equal(parseKhbdStrict(null), null);
+  const missingAct = JSON.parse(JSON.stringify(full));
+  delete missingAct.kham_pha;
+  assert.equal(parseKhbdStrict(missingAct), null, "thieu 1 hoat dong phai reject");
+  const badField = JSON.parse(JSON.stringify(full));
+  delete badField.luyen_tap.danh_gia;
+  assert.equal(parseKhbdStrict(badField), null, "hoat dong thieu field phai reject");
+});
+
 test("CR-035: migration them content_json jsonb nullable", () => {
   const mig = read("supabase/migrations/20261112_cr035_khbd_jsonb.sql");
   assert.match(mig, /add column if not exists content_json jsonb/i,
@@ -2571,10 +2593,10 @@ test("CR-035: migration them content_json jsonb nullable", () => {
 });
 
 // --- CR-035 codex round: 3 finding tu Codex Cloud review -------------------
-test("CR-035/Codex: AI route validate sections bang parseKhbd", () => {
+test("CR-035/Codex: AI route validate sections bang parseKhbdStrict", () => {
   const src = read("src/app/api/ai/lesson-plan/route.ts");
-  assert.match(src, /parseKhbd\(s\)/,
-    "route phai parse sections qua parseKhbd - sections:{} khong duoc tin hop le");
+  assert.match(src, /parseKhbdStrict\(s\)/,
+    "route phai parse strict - sections:{} hoac field sai kieu khong duoc tin hop le");
   assert.match(src, /khbdHasContent\(k\)/,
     "route phai tu choi khbd rong - client se tu thanh cong voi plan trong");
   // Fallback bat dong bo (devin-callback) bo qua parse cua route:
@@ -2583,6 +2605,8 @@ test("CR-035/Codex: AI route validate sections bang parseKhbd", () => {
   assert.ok(shape?.[1].includes('"van_dung"') && shape?.[1].includes('"dieu_chinh"'),
     "expectedShape phai la schema KHBD day du, khong phai ban tom tat");
   const board = read("src/components/academics/lesson-plan-board.tsx");
+  assert.match(board, /parseKhbdStrict\(r\.sections\)/,
+    "onApply phai parse strict - async result chua qua route parse");
   assert.match(board, /khbdHasContent\(k\)/,
     "onApply phai kiem khbdHasContent - async result chua qua route parse");
 });
@@ -2600,6 +2624,18 @@ test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {
   assert.equal(hist[2], "300", "maxRows lich su phai la 300");
   assert.match(src, /Chỉ hiển thị 300 giáo án đã xử lý mới nhất/,
     "thieu note khi lich su bi cap");
+});
+
+test("CR-035/Codex: bucket lesson-plans co DELETE policy scope truong", () => {
+  // Board don file mo coi bang remove() tu client - neu bucket chi co
+  // INSERT/SELECT thi delete bi tu choi ngam -> file mo coi tich luy.
+  const migs = readdirSync(join(ROOT, "supabase/migrations"))
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => read(`supabase/migrations/${f}`))
+    .join("\n");
+  assert.match(migs,
+    /for delete to authenticated[\s\S]*?bucket_id = 'lesson-plans'|bucket_id = 'lesson-plans'[\s\S]*?for delete to authenticated/,
+    "thieu DELETE policy cho bucket lesson-plans - orphan cleanup khong chay duoc");
 });
 
 test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", () => {

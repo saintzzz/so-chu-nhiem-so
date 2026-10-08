@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
-import { khbdHasContent, parseKhbd } from "@/lib/khbd";
+import { khbdHasContent, parseKhbdStrict } from "@/lib/khbd";
 
 /**
  * AI hỗ trợ giáo án:
@@ -80,9 +80,9 @@ Huong dan: to_chuc viet dang gach dau dong "GV ..." / "HS ..." theo tung buoc. K
           o && typeof o === "object"
             ? (o as Record<string, unknown>).sections
             : null;
-        // Validate dung schema KHBD - {"sections":{}} hoac field sai kieu
-        // khong duoc tin la thanh cong (client se tu plan rong).
-        const k = parseKhbd(s);
+        // Strict: moi field phai dung kieu - {"sections":{}} hoac
+        // khoi_dong:42 bi tu choi, khong dien "" roi tin thanh cong.
+        const k = parseKhbdStrict(s);
         if (!k || !khbdHasContent(k)) return null;
         return { sections: k };
       },

@@ -102,6 +102,36 @@ export function khbdHasContent(k: KhbdContent): boolean {
   );
 }
 
+/**
+ * Parse nghiem cho output AI: moi field scalar phai la string va moi
+ * hoat dong phai la object co du 4 field string - thieu/sai kieu -> null.
+ * Khac parseKhbd (lenient, dien "" cho field thieu de doc duoc legacy data).
+ */
+export function parseKhbdStrict(raw: unknown): KhbdContent | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const scalars = [
+    "muc_tieu_kien_thuc",
+    "muc_tieu_nang_luc",
+    "muc_tieu_pham_chat",
+    "thiet_bi_gv",
+    "thiet_bi_hs",
+    "dieu_chinh",
+  ] as const;
+  if (scalars.some((k) => typeof o[k] !== "string")) return null;
+  for (const { key } of KHBD_ACTIVITIES) {
+    const a = o[key];
+    if (!a || typeof a !== "object") return null;
+    const rec = a as Record<string, unknown>;
+    if (
+      KHBD_ACTIVITY_FIELDS.some(({ key: f }) => typeof rec[f] !== "string")
+    ) {
+      return null;
+    }
+  }
+  return parseKhbd(o);
+}
+
 /** Render KHBD co cau truc ra text phang - mirror cho cot `content`. */
 export function renderKhbdText(k: KhbdContent): string {
   const lines: string[] = [];
@@ -113,22 +143,36 @@ export function renderKhbdText(k: KhbdContent): string {
     if (v.trim()) lines.push(`${label}: ${v.trim()}`);
   };
 
-  sec("I. MỤC TIÊU");
-  field("1. Kiến thức", k.muc_tieu_kien_thuc);
-  field("2. Năng lực", k.muc_tieu_nang_luc);
-  field("3. Phẩm chất", k.muc_tieu_pham_chat);
-  sec("II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU");
-  field("1. Giáo viên", k.thiet_bi_gv);
-  field("2. Học sinh", k.thiet_bi_hs);
-  sec("III. TIẾN TRÌNH DẠY HỌC");
-  for (const { key, label } of KHBD_ACTIVITIES) {
-    const a = k[key];
-    if (!Object.values(a).some((v) => v.trim())) continue;
-    sec(`Hoạt động: ${label.replace(/^Hoạt động \d: /, "")}`);
-    field("a) Mục tiêu", a.muc_tieu);
-    field("b) Tổ chức thực hiện", a.to_chuc);
-    field("c) Sản phẩm", a.san_pham);
-    field("d) Đánh giá", a.danh_gia);
+  // Chi render heading khi section co noi dung - heading rong nhu loi bo cuc.
+  if (
+    [k.muc_tieu_kien_thuc, k.muc_tieu_nang_luc, k.muc_tieu_pham_chat].some(
+      (v) => v.trim(),
+    )
+  ) {
+    sec("I. MỤC TIÊU");
+    field("1. Kiến thức", k.muc_tieu_kien_thuc);
+    field("2. Năng lực", k.muc_tieu_nang_luc);
+    field("3. Phẩm chất", k.muc_tieu_pham_chat);
+  }
+  if ([k.thiet_bi_gv, k.thiet_bi_hs].some((v) => v.trim())) {
+    sec("II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU");
+    field("1. Giáo viên", k.thiet_bi_gv);
+    field("2. Học sinh", k.thiet_bi_hs);
+  }
+  const hasActivity = KHBD_ACTIVITIES.some(({ key }) =>
+    Object.values(k[key]).some((v) => v.trim()),
+  );
+  if (hasActivity) {
+    sec("III. TIẾN TRÌNH DẠY HỌC");
+    for (const { key, label } of KHBD_ACTIVITIES) {
+      const a = k[key];
+      if (!Object.values(a).some((v) => v.trim())) continue;
+      sec(`Hoạt động: ${label.replace(/^Hoạt động \d: /, "")}`);
+      field("a) Mục tiêu", a.muc_tieu);
+      field("b) Tổ chức thực hiện", a.to_chuc);
+      field("c) Sản phẩm", a.san_pham);
+      field("d) Đánh giá", a.danh_gia);
+    }
   }
   if (k.dieu_chinh.trim()) {
     sec("IV. ĐIỀU CHỈNH SAU BÀI DẠY");

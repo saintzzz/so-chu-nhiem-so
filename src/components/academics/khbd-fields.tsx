@@ -13,9 +13,6 @@ import {
   type KhbdContent,
 } from "@/lib/khbd";
 
-const fieldCls =
-  "w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-ring";
-
 function Edit({
   label,
   value,

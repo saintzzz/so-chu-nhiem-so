@@ -13,6 +13,7 @@ import {
   emptyKhbd,
   khbdHasContent,
   parseKhbd,
+  parseKhbdStrict,
   type KhbdContent,
 } from "@/lib/khbd";
 import {
@@ -260,7 +261,7 @@ export function LessonPlanBoard({
               // Codex R2: ket qua fallback bat dong bo bo qua parse cua
               // route - validate lai truoc khi dien (sections:{} se tu
               // nhu "thanh cong" voi plan rong neu chi parseKhbd).
-              const k = parseKhbd(r.sections);
+              const k = parseKhbdStrict(r.sections);
               if (k && khbdHasContent(k)) setKhbd(k);
               else setErr("AI chưa tạo được dàn ý. Vui lòng thử lại.");
             }}

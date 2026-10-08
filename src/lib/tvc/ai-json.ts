@@ -66,18 +66,27 @@ export async function generateDoc(
   system: string,
   prompt: string,
 ): Promise<{ doc: DocContent | null; provider: string | null; error: string | null }> {
-  const r = await generateTextDetailed(prompt, {
-    system,
-    maxTokens: 8192,
-    temperature: 0.7,
-    // CR-042: doc day du (KHBD 40KB+) can >25s - 25s mac dinh lam AI luon
-    // timeout -> ban khung. 55s van nam trong gioi han function 60s.
-    timeoutMs: 55000,
-  });
-  if (!r.text) return { doc: null, provider: r.provider, error: r.error };
-  const parsed = extractJson<DocContent>(r.text);
-  if (!parsed || !isDocContent(parsed)) {
-    return { doc: null, provider: r.provider, error: "bad_json" };
+  // CR-042: KHBD day du ~8-12k output tokens - cap 8192 cat ngang JSON.
+  // 2 lan thu (tong <=110s trong maxDuration 120s): model doi khi viet
+  // sai cu phap JSON ngau nhien, retry re hon nhieu so voi ban khung.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await generateTextDetailed(
+      attempt === 0
+        ? prompt
+        : `${prompt}\n\nLUU Y BAT BUOC: output truoc bi loi cu phap JSON. Tra ve JSON hop le tuyet doi - dong du ngoac, du dau phay giua cac phan tu, khong tao chuoi ky tu lap dai.`,
+      {
+        system,
+        maxTokens: 16384,
+        temperature: 0.7,
+        // 25s mac dinh khong du cho doc 40KB+ - 55s/lan van trong budget route.
+        timeoutMs: 55000,
+      },
+    );
+    if (!r.text) return { doc: null, provider: r.provider, error: r.error };
+    const parsed = extractJson<DocContent>(r.text);
+    if (parsed && isDocContent(parsed)) {
+      return { doc: parsed, provider: r.provider, error: null };
+    }
   }
-  return { doc: parsed, provider: r.provider, error: null };
+  return { doc: null, provider: null, error: "bad_json" };
 }

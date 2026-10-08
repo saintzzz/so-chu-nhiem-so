@@ -65,7 +65,7 @@ CẤU TRÚC BẮT BUỘC của sections (đúng thứ tự, đúng tiêu đề):
    c) Tổ chức hoạt động - BẮT BUỘC dạng table gồm 2 cột ["Hoạt động của giáo viên và học sinh", "Nội dung"], mỗi bước 1 dòng. Cột 1 nêu rõ hành động GV và HS. Cột 2 BẮT BUỘC viết nguyên văn sản phẩm: câu hỏi GV đặt + đáp án/kết quả dự kiến của HS (ví dụ "P(x) + Q(x) = 4x^2 - 2x - 4"), kiến thức cần chốt ghi đầy đủ (định nghĩa, công thức, quy tắc - không ghi "kiến thức trọng tâm").
    d) Sản phẩm (heading level 3 - sản phẩm HS phải đạt sau hoạt động, nêu cụ thể: đáp án câu hỏi/bài tập, nội dung cần ghi vở)
    đ) Đánh giá (heading level 3 - cách GV đánh giá/quan sát sản phẩm, theo tiêu chí nào)
-4. "IV. ĐIỀU CHỈNH SAU BÀI DẠY" - để trống (một para gạch chấm).
+4. "IV. ĐIỀU CHỈNH SAU BÀI DẠY" - để trống, một para duy nhất ghi đúng "................................................" (khoảng 50 dấu chấm, KHÔNG viết chuỗi dài hơn).
 5. "KÝ DUYỆT" - table 2 cột ["TỔ TRƯỞNG KIỂM TRA", "NGƯỜI SOẠN"], 1 dòng "(Ký và ghi rõ họ tên)".
 appendix CHỈ 1 section: "PHỤ LỤC: DỰ KIẾN SẢN PHẨM VÀ ĐÁNH GIÁ" - table ["Hoạt động", "Sản phẩm học sinh", "Phương án đánh giá"], cột sản phẩm ghi cụ thể (không ghi "bài làm cá nhân").
 

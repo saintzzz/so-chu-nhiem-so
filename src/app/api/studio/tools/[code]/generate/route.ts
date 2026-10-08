@@ -759,7 +759,7 @@ export async function POST(
   const { system, prompt } = tool.buildPrompt(input, ctx);
   const ai = await generateDoc(system, prompt);
 
-  if (!ai.doc && ai.error === "quota") {
+  if (!ai.doc && (ai.error === "quota" || ai.error === "bad_json")) {
     const job = await fallbackToDevin({
       supabase,
       kind: `tvc-tool:${code}`,

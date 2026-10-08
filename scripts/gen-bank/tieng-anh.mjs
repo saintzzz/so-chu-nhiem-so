@@ -69,8 +69,8 @@ function* oddOneOut(r, bank, stdId, grade, n) {
     const t = pick(r, themes);
     const words = [...bank[t]].sort(() => r() - 0.5).slice(0, 3);
     const odd = pick(r, otherThemes(bank, t));
-    const opts = [...words, odd];
-    yield Q(stdId, grade, "biet", mc("Khoanh tròn từ khác loại (Odd one out):", opts, opts.indexOf(odd)));
+    const opts = [...words, odd].sort(() => r() - 0.5);
+    yield Q(stdId, grade, "biet", mc(`Từ nào khác loại trong nhóm: ${opts.join(", ")}?`, opts, opts.indexOf(odd)));
   }
 }
 // fill blank voi cau truc
@@ -147,6 +147,9 @@ function* a331(r) {
   const pairs = [["pen", "bút"], ["book", "sách"], ["cat", "con mèo"], ["red", "màu đỏ"], ["school", "trường học"], ["father", "bố"], ["dog", "con chó"], ["blue", "màu xanh dương"]];
   for (const [w, v] of pairs)
     yield Q("ANH3.3.1", 3, "biet", mcAuto(r, `Từ "${w}" có nghĩa là:`, v, pairs.filter((x) => x[1] !== v).map((x) => x[1])));
+  yield Q("ANH3.3.1", 3, "hieu", sa('Đọc: "My name is Lan. I am eight. I have a red bag." - How old is Lan?', "eight / 8", "She is eight."));
+  yield Q("ANH3.3.1", 3, "hieu", sa('Đọc: "This is my cat. It is black. It is small." - What colour is the cat?', "black", "It is black."));
+  yield Q("ANH3.3.1", 3, "van_dung", sa('Đọc: "My name is Lan. I am eight. I have a red bag." - What does Lan have?', "a red bag", "She has a red bag."));
 }
 function* a341(r) {
   // ANH3.4.1 viet dung theo mau, dien tu
@@ -166,6 +169,11 @@ function* a341(r) {
 function* a351(r) {
   // ANH3.5.1 tu vung chu de + cau truc This is/I like
   yield* oddOneOut(r, W3, "ANH3.5.1", 3, 12);
+  const vn3 = { cat: "con mèo", dog: "con chó", pen: "bút", book: "sách", ruler: "thước", red: "màu đỏ", blue: "màu xanh dương", school: "trường học", father: "bố", mother: "mẹ", bird: "con chim", fish: "con cá" };
+  for (const [en, vi] of Object.entries(vn3)) {
+    yield Q("ANH3.5.1", 3, "biet", sa(`Viết từ tiếng Anh có nghĩa là "${vi}".`, en, `"${vi}" = ${en}`));
+    yield Q("ANH3.5.1", 3, "hieu", sa(`Từ "${en}" nghĩa là gì?`, vi, `${en} = ${vi}`));
+  }
   yield* fillMc(r, "ANH3.5.1", 3, [
     ["Chọn câu đúng:", "This is my book.", ["This are my book.", "This is my books.", "These is my book."]],
     ["Điền từ: \"I ___ cats.\"", "like", ["likes", "am", "is"]],
@@ -218,6 +226,9 @@ function* a431(r) {
   const pairs = [["subject", "môn học"], ["favourite", "yêu thích"], ["hospital", "bệnh viện"], ["weather", "thời tiết"], ["breakfast", "bữa sáng"], ["clock", "đồng hồ"], ["garden", "vườn"], ["market", "chợ"]];
   for (const [w, v] of pairs)
     yield Q("ANH4.3.1", 4, "biet", mcAuto(r, `Từ "${w}" có nghĩa là:`, v, pairs.filter((x) => x[1] !== v).map((x) => x[1])));
+  yield Q("ANH4.3.1", 4, "hieu", sa('Đọc: "My name is Minh. I am a student at Nguyen Trai Primary School. I go to school from Monday to Friday. My favourite subject is English." - What is his favourite subject?', "English", "His favourite subject is English."));
+  yield Q("ANH4.3.1", 4, "hieu", sa('Đọc: "Hi, I am Hoa. My family has four people: my father, my mother, my brother and me. My father is a doctor. My mother is a teacher." - What is her mother\'s job?', "teacher / a teacher", "She is a teacher."));
+  yield Q("ANH4.3.1", 4, "van_dung", sa('Đọc: "It is Sunday today. I do not go to school. I go to the zoo with my family. I can see monkeys, tigers and elephants there." - Where does he go?', "the zoo / to the zoo", "He goes to the zoo."));
 }
 function* a441(r) {
   // ANH4.4.1 viet cau/doan theo huong dan
@@ -234,6 +245,15 @@ function* a441(r) {
   ], 12);
   yield Q("ANH4.4.1", 4, "van_dung", tl("Viết 3-4 câu giới thiệu về gia đình em (tên, nghề nghiệp của bố mẹ).",
     "Mẫu: My name is ___. There are ___ people in my family. My father is a ___. My mother is a ___. I love my family."));
+  const saW = [
+    ['Viết lại câu đúng: "she like cat."', "She likes cats."],
+    ['Viết lại câu đúng: "i go to school on monday."', "I go to school on Monday."],
+    ['Sắp xếp thành câu: "is / teacher / my / a / mother."', "My mother is a teacher."],
+    ['Viết nghề nghiệp của người làm việc ở trường học (bằng tiếng Anh).', "teacher"],
+    ['Viết câu trả lời: "What do you do on Sunday?" (dùng từ gợi ý: play)', "I play (football/...) on Sunday."],
+  ];
+  for (const [s, c] of saW)
+    yield Q("ANH4.4.1", 4, "hieu", sa(s, c, `Đáp án: ${c}`));
 }
 function* a451(r) {
   // ANH4.5.1 tu vung chu diem lop 4
@@ -243,6 +263,16 @@ function* a451(r) {
     ["Điền từ: \"She is a ___. She works in a hospital.\"", "doctor", ["teacher", "farmer", "student"]],
     ["Điền từ: \"What is the ___ like today? - It's sunny.\"", "weather", ["day", "time", "sky"]],
     ["Điền từ: \"I ___ like noodles.\" (phủ định)", "don't", ["doesn't", "am not", "isn't"]],
+  ].map(([s, c, w]) => [s, c, w, undefined]));
+  // TLN: dich tu EN <-> VI
+  const vn = { doctor: "bác sĩ", teacher: "giáo viên", nurse: "y tá", farmer: "nông dân", driver: "tài xế", worker: "công nhân", school: "trường học", hospital: "bệnh viện", library: "thư viện", market: "chợ", breakfast: "bữa sáng", weather: "thời tiết", Monday: "thứ hai", sunny: "nắng", rainy: "mưa", noodles: "mì", chicken: "thịt gà", milk: "sữa" };
+  for (const [en, vi] of Object.entries(vn)) {
+    yield Q("ANH4.5.1", 4, "biet", sa(`Viết từ tiếng Anh có nghĩa là "${vi}".`, en, `"${vi}" = ${en}`));
+    yield Q("ANH4.5.1", 4, "hieu", sa(`Từ "${en}" nghĩa là gì?`, vi, `${en} = ${vi}`));
+  }
+  yield* fillMc(r, "ANH4.5.1", 4, [
+    ["Chọn từ đúng nghĩa 'thư viện':", "library", ["hospital", "market", "cinema"]],
+    ["Chọn từ đúng nghĩa 'thứ bảy':", "Saturday", ["Sunday", "Friday", "Monday"]],
   ].map(([s, c, w]) => [s, c, w, undefined]));
 }
 
@@ -287,6 +317,8 @@ function* a531(r) {
   const pairs = [["dentist", "nha sĩ"], ["travel", "du lịch/đi lại"], ["future", "tương lai"], ["abroad", "nước ngoài"], ["seafood", "hải sản"], ["grandparents", "ông bà"], ["museum", "bảo tàng"], ["engineer", "kỹ sư"]];
   for (const [w, v] of pairs)
     yield Q("ANH5.3.1", 5, "biet", mcAuto(r, `Từ "${w}" có nghĩa là:`, v, pairs.filter((x) => x[1] !== v).map((x) => x[1])));
+  yield Q("ANH5.3.1", 5, "hieu", sa('Đọc: "Mai had a toothache yesterday. She could not go to school. Her mother took her to the dentist. Now she feels better." - Who took Mai to the dentist?', "her mother", "Her mother took her."));
+  yield Q("ANH5.3.1", 5, "van_dung", sa('Đọc: "Mai had a toothache yesterday. She could not go to school. Her mother took her to the dentist. Now she feels better." - Why did Mai not go to school?', "a toothache / she had a toothache", "Because she had a toothache."));
 }
 function* a541(r) {
   // ANH5.4.1 viet doan ve ban than/gia dinh, thu
@@ -307,6 +339,11 @@ function* a541(r) {
 function* a551(r) {
   // ANH5.5.1 tu vung chu diem lop 5
   yield* oddOneOut(r, W5, "ANH5.5.1", 5, 15);
+  const vn5 = { dentist: "nha sĩ", pilot: "phi công", engineer: "kỹ sư", museum: "bảo tàng", beach: "bãi biển", headache: "đau đầu", fever: "sốt", plane: "máy bay", train: "tàu hỏa", grandparents: "ông bà", festival: "lễ hội", seafood: "hải sản" };
+  for (const [en, vi] of Object.entries(vn5)) {
+    yield Q("ANH5.5.1", 5, "biet", sa(`Viết từ tiếng Anh có nghĩa là "${vi}".`, en, `"${vi}" = ${en}`));
+    yield Q("ANH5.5.1", 5, "hieu", sa(`Từ "${en}" nghĩa là gì?`, vi, `${en} = ${vi}`));
+  }
   yield* fillMc(r, "ANH5.5.1", 5, [
     ["Điền từ: \"A ___ flies a plane.\"", "pilot", ["doctor", "farmer", "teacher"]],
     ["Điền từ: \"You should see a dentist when you have a ___\"", "toothache", ["fever dream", "bicycle", "birthday"]],

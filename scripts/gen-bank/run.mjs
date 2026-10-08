@@ -27,9 +27,14 @@ const stds = await (await fetch(
   `${SUPA}/rest/v1/tvc_curriculum_standards?select=id,code,grade,subject_code&grade=lte.5&order=subject_code,grade,code`,
   { headers: hdr })).json();
 const [q0] = await (await fetch(`${SUPA}/rest/v1/tvc_questions?select=owner_id,school_id&limit=1`, { headers: hdr })).json();
-const existing = await (await fetch(
-  `${SUPA}/rest/v1/tvc_questions?select=stem&grade=lte.5`, { headers: hdr })).json();
-const seen = new Set(existing.map((x) => norm(x.stem)));
+const seen = new Set();
+for (let off = 0; ; off += 1000) {
+  const page = await (await fetch(
+    `${SUPA}/rest/v1/tvc_questions?select=stem&grade=lte.5&offset=${off}&limit=1000`,
+    { headers: hdr })).json();
+  for (const x of page) seen.add(norm(x.stem));
+  if (page.length < 1000) break;
+}
 
 const GENS = {};
 for (const [code, val] of Object.entries(TOAN_GEN)) GENS[code] = { gen: val[0], wrap: "tuple" };

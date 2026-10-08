@@ -75,7 +75,7 @@ function* v121(r) {
     ["bó đũa", "bó nũa"], ["lá sen", "ná sen"], ["gà mái", "gà mải"], ["bé gái", "bé gải"],
     ["con cua", "con cùa"], ["mái nhà", "mải nhà"], ["quả na", "quả la"], ["bàn tay", "bàn tai"]];
   for (const [right, wrong] of pairs)
-    yield Q("TVIET1.2.1", 1, "hieu", mcAuto(r, `Từ nào viết đúng chính tả?`, right, [wrong, right[0] + "x", "không từ nào"]));
+    yield Q("TVIET1.2.1", 1, "hieu", mcAuto(r, `Từ nào viết đúng chính tả: "${right}" hay "${wrong}"?`, right, [wrong, right[0] + "x", "không từ nào"]));
   const fills2 = [
     ["hoa h___", "ồng", "hoa hồng"], ["con c___", "ò", "con cò"], ["m___ ong", "ật", "mật ong"],
     ["qu___ bóng", "ả", "quả bóng"], ["b___ cát", "ãi", "bãi cát"], ["nh___ lá", "ỏ", "nhỏ lá"],
@@ -116,8 +116,8 @@ function* v141(r) {
   for (let i = 0; i < 15; i++) {
     const cat = pick(r, [["sự vật", TU_SU_VAT], ["hoạt động", TU_HOAT_DONG], ["đặc điểm", TU_DAC_DIEM]]);
     const others = [["sự vật", TU_SU_VAT], ["hoạt động", TU_HOAT_DONG], ["đặc điểm", TU_DAC_DIEM]].filter((x) => x[0] !== cat[0]);
-    yield Q("TVIET1.4.1", 1, "biet", mcAuto(r, `Từ nào chỉ ${cat[0]}?`,
-      pick(r, cat[1]), others.map((x) => pick(r, x[1]))));
+    const ok = pick(r, cat[1]), ws = others.map((x) => pick(r, x[1]));
+    yield Q("TVIET1.4.1", 1, "biet", mcAuto(r, `Trong nhóm từ: ${[ok, ...ws].join(", ")} - từ nào chỉ ${cat[0]}?`, ok, ws));
   }
   const vanWords = [["bàn", "an"], ["mèo", "eo"], ["hoa", "oa"], ["bút", "ut"], ["sách", "ách"], ["chim", "im"]];
   for (const [w, v] of vanWords)
@@ -136,7 +136,7 @@ function* v211(r) {
   ];
   for (const x of texts)
     yield Q("TVIET2.1.1", 2, "hieu", tf4(`Đọc đoạn sau và xác định đúng/sai: "${x.t}"`, x.items.map(([t, ok]) => ({ t, ok }))));
-  yield* docHieu(r, 2, "TVIET2.1.1", Q, tf4, DH2);
+  yield* docHieu(r, 2, "TVIET2.1.1", Q, tf4, DH2, { mcAuto, sa });
 }
 function* v221(r) {
   // TVIET2.2.1 viet chinh ta doan - phan biet am/van kho
@@ -146,7 +146,7 @@ function* v221(r) {
     ["bánh rán", "bánh gián"], ["xách xe", "sách xe"], ["chú ý", "trú ý"], ["no nê", "lo le"],
   ];
   for (const [right, wrong] of pairs)
-    yield Q("TVIET2.2.1", 2, "biet", mcAuto(r, `Từ nào viết đúng chính tả?`, right, [wrong, "cả hai đều đúng", "cả hai đều sai"]));
+    yield Q("TVIET2.2.1", 2, "biet", mcAuto(r, `Từ nào viết đúng chính tả: "${right}" hay "${wrong}"?`, right, [wrong, "cả hai đều đúng", "cả hai đều sai"]));
   const fills = [
     ["con gi__", "an", "con gián", ["an", "ang", "am"]],
     ["sông ng__", "òi", "sông ngòi", ["oi", "òi", "oy"]],
@@ -183,7 +183,8 @@ function* v241(r) {
   for (let i = 0; i < 12; i++) {
     const cat = pick(r, [["sự vật", TU_SU_VAT], ["hoạt động", TU_HOAT_DONG], ["đặc điểm", TU_DAC_DIEM]]);
     const others = [["sự vật", TU_SU_VAT], ["hoạt động", TU_HOAT_DONG], ["đặc điểm", TU_DAC_DIEM]].filter((x) => x[0] !== cat[0]);
-    yield Q("TVIET2.4.1", 2, "biet", mcAuto(r, `Từ nào chỉ ${cat[0]}?`, pick(r, cat[1]), others.map((x) => pick(r, x[1]))));
+    const ok = pick(r, cat[1]), ws = others.map((x) => pick(r, x[1]));
+    yield Q("TVIET2.4.1", 2, "biet", mcAuto(r, `Trong nhóm từ: ${[ok, ...ws].join(", ")} - từ nào chỉ ${cat[0]}?`, ok, ws));
   }
   const stems = [
     ["Câu 'Em là học sinh lớp 2.' thuộc kiểu câu nào?", "Ai là gì?", ["Ai làm gì?", "Ai thế nào?", "Câu cảm"]],
@@ -205,7 +206,7 @@ function* v311(r) {
   ];
   for (const x of texts)
     yield Q("TVIET3.1.1", 3, "hieu", tf4(`Đọc đoạn sau và xác định đúng/sai: "${x.t}"`, x.items.map(([t, ok]) => ({ t, ok }))));
-  yield* docHieu(r, 3, "TVIET3.1.1", Q, tf4, DH3);
+  yield* docHieu(r, 3, "TVIET3.1.1", Q, tf4, DH3, { mcAuto, sa });
 }
 function* v312(r) {
   // TVIET3.1.2 dieu bo hanh dong nhan vat, chi tiet
@@ -225,7 +226,7 @@ function* v321(r) {
     ["trung thu", "chung thu"], ["xe đạp", "xe đạp"], ["nước sôi", "nước xôi"],
   ];
   for (const [right, wrong] of pairs)
-    yield Q("TVIET3.2.1", 3, "biet", mcAuto(r, `Từ nào viết đúng chính tả?`, right, [wrong, "cả hai đúng", "cả hai sai"]));
+    yield Q("TVIET3.2.1", 3, "biet", mcAuto(r, `Từ nào viết đúng chính tả: "${right}" hay "${wrong}"?`, right, [wrong, "cả hai đúng", "cả hai sai"]));
   const fills = [
     ["__ị vả", "th", "thị vả", ["s", "x", "th"]],
     ["con __i", "ch", "con chim", ["tr", "ch", "s"]],
@@ -264,6 +265,18 @@ function* v341(r) {
   for (const [a, b] of TRAI_NGHIA)
     yield Q("TVIET3.4.1", 3, "biet", mcAuto(r, `Từ nào trái nghĩa với "${a}"?`, b,
       TRAI_NGHIA.filter((x) => x[1] !== b).map((x) => x[1])));
+  for (const [a, b] of DONG_NGHIA)
+    yield Q("TVIET3.4.1", 3, "hieu", sa(`Viết một từ đồng nghĩa với "${a}".`, b, `Từ đồng nghĩa với "${a}": ${b}`));
+  for (const [a, b] of TRAI_NGHIA)
+    yield Q("TVIET3.4.1", 3, "hieu", sa(`Viết từ trái nghĩa với "${a}".`, b, `Từ trái nghĩa với "${a}": ${b}`));
+  const capTN = [
+    ["Tìm và viết lại cặp từ trái nghĩa trong câu: 'Người lớn giúp đỡ trẻ nhỏ.'", "lớn - nhỏ"],
+    ["Tìm và viết lại cặp từ trái nghĩa trong câu: 'Đường lên dốc khó, xuống dốc dễ.'", "lên - xuống (khó - dễ)"],
+    ["Tìm và viết lại cặp từ trái nghĩa trong câu: 'Ngày hè dài, đêm hè ngắn.'", "dài - ngắn (ngày - đêm)"],
+    ["Tìm và viết lại cặp từ trái nghĩa trong câu: 'Đèn mở khi trời tắt.'", "mở - tắt"],
+  ];
+  for (const [s, c] of capTN)
+    yield Q("TVIET3.4.1", 3, "van_dung", sa(s, c, `Cặp từ trái nghĩa: ${c}.`));
   const stems = [
     ["Trong câu 'Nụ hoa xinh như ngôi sao.', từ dùng để so sánh là:", "như", ["xinh", "hoa", "sao"]],
     ["Câu nào có hình ảnh so sánh?", "Tiếng suối trong như tiếng hát xa.", ["Tiếng suối chảy.", "Suối ở trong rừng.", "Tiếng suối to."]],
@@ -284,7 +297,7 @@ function* v411(r) {
   ];
   for (const x of texts)
     yield Q("TVIET4.1.1", 4, "hieu", tf4(`Đọc đoạn sau và xác định đúng/sai: "${x.t}"`, x.items.map(([t, ok]) => ({ t, ok }))));
-  yield* docHieu(r, 4, "TVIET4.1.1", Q, tf4, DH4);
+  yield* docHieu(r, 4, "TVIET4.1.1", Q, tf4, DH4, { mcAuto, sa });
 }
 function* v412(r) {
   // TVIET4.1.2 thoi gian, dia diem, tac dung trong chuyen
@@ -349,6 +362,16 @@ function* v441(r) {
     ["Trong câu 'Con mèo nằm ngủ.', vị ngữ là:", "nằm ngủ", ["Con mèo", "mèo", "nằm"]],
   ];
   for (const [s, c, w] of stems) yield Q("TVIET4.4.1", 4, "hieu", mcAuto(r, s, c, w));
+  // TLN: tim tu loai trong cau
+  const saItems = [
+    ["Ghi lại danh từ trong câu: 'Con mèo nằm ngủ trên bàn.'", "mèo, bàn", "Danh từ: con mèo, bàn."],
+    ["Ghi lại động từ trong câu: 'Các bạn chơi đá cầu.'", "chơi, đá", "Động từ: chơi, đá."],
+    ["Ghi lại tính từ trong câu: 'Bông hoa thật đẹp.'", "đẹp", "Tính từ: đẹp."],
+    ["Đặt một câu hỏi với từ 'bao giờ'.", "(Câu hỏi dùng 'bao giờ')", "Mẫu: Bao giờ em đi học?"],
+    ["Ghi lại chủ ngữ trong câu: 'Mẹ em nấu cơm.'", "Mẹ em", "Chủ ngữ: Mẹ em."],
+    ["Ghi lại vị ngữ trong câu: 'Trời hôm nay rất nắng.'", "rất nắng", "Vị ngữ: rất nắng."],
+  ];
+  for (const [s, c, sol] of saItems) yield Q("TVIET4.4.1", 4, "van_dung", sa(s, c, sol));
 }
 
 // ============================================================
@@ -362,7 +385,7 @@ function* v511(r) {
   ];
   for (const x of texts)
     yield Q("TVIET5.1.1", 5, "hieu", tf4(`Đọc đoạn sau và xác định đúng/sai: "${x.t}"`, x.items.map(([t, ok]) => ({ t, ok }))));
-  yield* docHieu(r, 5, "TVIET5.1.1", Q, tf4, DH5);
+  yield* docHieu(r, 5, "TVIET5.1.1", Q, tf4, DH5, { mcAuto, sa });
 }
 function* v512(r) {
   // TVIET5.1.2 van ban tuong tuong vs nguoi that viec that
@@ -417,6 +440,14 @@ function* v541(r) {
   for (const [tn, nghia] of THANH_NGU)
     yield Q("TVIET5.4.1", 5, "hieu", mcAuto(r, `Thành ngữ "${tn}" có nghĩa là:`, nghia,
       THANH_NGU.filter((x) => x[1] !== nghia).map((x) => x[1])));
+  const saItems = [
+    ["Viết một từ láy có nghĩa là tươi đẹp, phát triển tốt.", "tươi tốt", "Từ láy: tươi tốt."],
+    ["Ghi lại đại từ trong câu: 'Tôi đi học.'", "Tôi", "Đại từ: Tôi."],
+    ["Ghi lại quan hệ từ trong câu: 'Vì trời mưa nên em ở nhà.'", "vì ... nên", "Quan hệ từ: vì - nên."],
+    ["Viết một thành ngữ nói về lòng biết ơn.", "uống nước nhớ nguồn", "Thành ngữ: uống nước nhớ nguồn."],
+    ["Ghi lại từ ghép trong câu: 'Nhà cửa sạch sẽ.'", "nhà cửa", "Từ ghép: nhà cửa."],
+  ];
+  for (const [s, c, sol] of saItems) yield Q("TVIET5.4.1", 5, "van_dung", sa(s, c, sol));
 }
 
 export const TVIET_GEN = {

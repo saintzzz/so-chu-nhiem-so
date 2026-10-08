@@ -15,13 +15,26 @@ const VAT = ["con mèo", "con chó", "con gà", "con chim", "con thỏ", "con c�
 const NOI = ["vườn nhà", "công viên", "bờ sông", "sân trường", "quê ngoại", "bãi biển"];
 const HOA = ["hoa hồng", "hoa cúc", "hoa mai", "hoa đào", "hoa sen", "hoa phượng"];
 
-export function* docHieu(r, grade, stdId, Q, tf4, templates) {
+export function* docHieu(r, grade, stdId, Q, tf4, templates, helpers) {
+  const ALL_NAMES = NAM.concat(NU);
   for (const tpl of templates) {
     for (let v = 0; v < tpl.variants; v++) {
       const slots = tpl.slots(r);
+      const text = tpl.t(slots);
       yield Q(stdId, grade, "hieu", tf4(
-        `Đọc đoạn sau và xác định đúng/sai: "${tpl.t(slots)}"`,
+        `Đọc đoạn sau và xác định đúng/sai: "${text}"`,
         tpl.items(slots).map(([t, ok]) => ({ t, ok }))));
+      // MC: nhan vat trong doan (co 3/4 mau)
+      if (slots.n && helpers?.mcAuto && (v + tpl.variants) % 3 === 0)
+        yield Q(stdId, grade, "biet", helpers.mcAuto(r,
+          `Đọc đoạn: "${text}" - Nhân vật trong đoạn là ai?`,
+          slots.n, ALL_NAMES.filter((x) => x !== slots.n).slice(0, 3)));
+      // TLN: cau hoi theo slot (neu mau dinh nghia)
+      if (tpl.sa && helpers?.sa && v % 2 === 0)
+        for (const [qf, af] of tpl.sa.slice(0, 2))
+          yield Q(stdId, grade, "hieu", helpers.sa(
+            `Đọc đoạn: "${text}" - ${qf(slots)}`, af(slots),
+            `Theo đoạn văn: ${af(slots)}`));
     }
   }
 }
@@ -38,6 +51,7 @@ export const DH2 = [
       [`${s.v} rất ngoan.`, true],
       [`${s.n} không đi học.`, false],
     ],
+    sa: [[(x) => `Con vật nhà ${x.n} nuôi là gì?`, (x) => x.v], [(x) => `${x.n} cho nó ăn khi nào?`, () => `buổi sáng`]],
   },
   {
     variants: 6,
@@ -49,6 +63,7 @@ export const DH2 = [
       [`${s.n} cắm hoa trong lọ.`, true],
       [`${s.h} chưa nở.`, false],
     ],
+    sa: [[(x) => `Loài hoa ${x.n} ngắm là gì?`, (x) => x.h], [(x) => `${x.n} đem hoa về cắm ở đâu?`, () => `trong lọ`]],
   },
   {
     variants: 6,
@@ -60,6 +75,7 @@ export const DH2 = [
       [`${s.v} bỏ chạy khi ${s.n} gọi.`, false],
       [`${s.v} màu trắng.`, true],
     ],
+    sa: [[(x) => `${x.v} của ${x.n} màu gì?`, () => `trắng`], [(x) => `${x.v} thích ăn gì?`, () => `cà rốt và rau xanh`]],
   },
 ];
 
@@ -75,6 +91,7 @@ export const DH3 = [
       [`Đoạn văn tả cảnh buổi tối.`, false],
       [`Gió thổi rất mạnh.`, false],
     ],
+    sa: [[(x) => `Cánh hoa được so sánh với gì?`, (x) => x.ss], [(x) => `${x.h} nở lúc nào?`, () => `sáng sớm`]],
   },
   {
     variants: 6,
@@ -86,6 +103,7 @@ export const DH3 = [
       [`${s.n} không thích các con vật.`, false],
       [`${s.n} vuốt ve chúng mỗi ngày.`, true],
     ],
+    sa: [[(x) => `${x.v} sinh được mấy con?`, () => `ba`], [(x) => `Các con vật được so sánh với gì?`, (x) => x.ss]],
   },
   {
     variants: 6,
@@ -97,6 +115,7 @@ export const DH3 = [
       [`Các bạn chơi vào giờ học.`, false],
       [`Khi vào lớp các bạn tiếc nuối.`, true],
     ],
+    sa: [[(x) => `Các bạn chơi trò gì?`, (x) => x.do], [(x) => `Các bạn chơi ở đâu?`, (x) => x.noi]],
   },
 ];
 
@@ -112,6 +131,7 @@ export const DH4 = [
       [`Không khí ở đây ô nhiễm.`, false],
       [`${s.n} thấy buồn phiền.`, false],
     ],
+    sa: [[(x) => `${x.n} đi dạo lúc nào?`, (x) => x.tg], [(x) => `${x.n} đi ra đâu?`, (x) => x.noi]],
   },
   {
     variants: 6,
@@ -123,6 +143,7 @@ export const DH4 = [
       [`${s.n} và ${s.v} là đôi bạn thân.`, true],
       [`${s.n} không chăm sóc ${s.v}.`, false],
     ],
+    sa: [[(x) => `Ai tặng ${x.n} ${x.v}?`, () => `bà ngoại`], [(x) => `${x.n} nhận quà khi nào?`, () => `năm ngoái`]],
   },
   {
     variants: 6,
@@ -134,6 +155,7 @@ export const DH4 = [
       [`Lớp ${s.n} vỡ òa vui sướng.`, true],
       [`Giải do gia đình ${s.n} tổ chức.`, false],
     ],
+    sa: [[(x) => `Trường tổ chức giải gì?`, (x) => x.tr], [(x) => `Lớp ${x.n} đoạt giải gì?`, () => `giải nhất`]],
   },
 ];
 
@@ -149,6 +171,7 @@ export const DH5 = [
       [`Bài học: giữ gìn môi trường là việc của mọi người.`, true],
       [`${s.n} thấy việc này vô ích.`, false],
     ],
+    sa: [[(x) => `Các bạn làm việc gì ở ${x.noi}?`, (x) => x.cong], [(x) => `Bài học rút ra là gì?`, () => `giữ gìn môi trường là việc của mọi người`]],
   },
   {
     variants: 6,
@@ -160,6 +183,7 @@ export const DH5 = [
       [`Câu chuyện ca ngợi đức tính ${s.bh}.`, true],
       [`${s.n} thành công ngay từ đầu.`, false],
     ],
+    sa: [[(x) => `${x.n} tập luyện trong bao lâu?`, () => `một năm`], [(x) => `Câu chuyện ca ngợi đức tính gì?`, (x) => x.bh]],
   },
   {
     variants: 6,
@@ -171,5 +195,6 @@ export const DH5 = [
       [`${s.n} là người trung thực.`, true],
       [`Túi ${s.qua} của ${s.n}.`, false],
     ],
+    sa: [[(x) => `${x.n} nhặt được gì?`, (x) => `một túi ${x.qua}`], [(x) => `${x.n} làm gì với đồ nhặt được?`, () => `trả lại cho người đánh mất`]],
   },
 ];

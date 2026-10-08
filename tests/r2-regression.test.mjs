@@ -2640,6 +2640,8 @@ test("CR-035/Codex: bucket lesson-plans co DELETE policy chi cho chu file", () =
   assert.match(del[0], /bucket_id = 'lesson-plans'/, "policy phai scope bucket");
   assert.match(del[0], /owner_id = auth\.uid\(\)::text/,
     "policy phai gioi han chu file - delete rong truong la cross-user data loss");
+  assert.match(del[0], /not exists[\s\S]*?lesson_plans lp where lp\.file_path = name/,
+    "file da gan vao lesson_plans khong duoc xoa - xoa bang chung duyet");
 });
 
 test("CR-035/Codex: query phan trang co tiebreaker order(id) on dinh", () => {

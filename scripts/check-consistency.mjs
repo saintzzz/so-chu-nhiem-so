@@ -9,6 +9,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { execFileSync } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(
@@ -307,6 +308,19 @@ for (const [p, src] of srcFiles) {
     }
   }
   check("db:migration-version-unique", dupes.length, dupes.join(" | "));
+}
+
+// CR-039: nav<->route access audit - moi nav href phai nam trong quyen
+// cua role (requireRoles). Static, khong can DB.
+try {
+  execFileSync("node", [resolve(root, "scripts/check-nav-access.mjs")], {
+    stdio: "pipe",
+  });
+  check("code:nav-access", 0);
+} catch (e) {
+  const out = String(e.stdout ?? "").split("\n")
+    .filter((l) => l.includes("FAIL]")).slice(0, 6).join(" | ");
+  check("code:nav-access", 1, out || "check-nav-access.mjs loi");
 }
 
 console.log("\n" + (failures.length

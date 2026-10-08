@@ -1,9 +1,14 @@
 # Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số
 
-Phiên bản: 1.1 · Ngày: 23/09/2026
-Địa chỉ hệ thống: https://so-chu-nhiem-so-theta.vercel.app
+Phiên bản: 1.2 · Ngày: 08/10/2026
+Địa chỉ hệ thống: https://sochunhiem.vieschool.com
 
 Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
+
+Tài liệu liên quan trong cùng thư mục:
+
+- `KHOI-TAO-TRUONG-MOI.md` - hướng dẫn đưa trường mới lên hệ thống từ con số 0 (kèm file Excel import `docs/templates/khoi-tao-truong.xlsx`).
+- `KICH-BAN-DEMO.md` + `KICH-BAN-DEMO.pptx` - kịch bản demo theo luồng vai trò, dạng slide trình chiếu.
 
 ---
 
@@ -17,7 +22,14 @@ Bộ dữ liệu demo gồm 3 trường có cơ cấu nhân sự sát thực t�
 
 ![Màn hình đăng nhập](images/01-login.png)
 
-Sau đăng nhập, hệ thống tự chuyển đến trang chủ theo vai trò. Thanh bên trái là menu chức năng được phân quyền riêng cho vai trò của bạn. Góc trên phải: tìm nhanh (Ctrl+K), thông báo, tài khoản, đăng xuất.
+Sau đăng nhập, hệ thống tự chuyển đến trang chủ theo vai trò. Thanh bên trái là menu chức năng được phân quyền riêng cho vai trò của bạn - chỉ những chức năng bạn được phép truy cập mới hiển thị; truy cập trực tiếp link không thuộc quyền sẽ bị đẩy về trang chủ. Góc trên phải: tìm nhanh (Ctrl+K), thông báo, tài khoản, đăng xuất.
+
+**Vai trò kiêm nhiệm (multi-role)**: một người có thể giữ nhiều vai trò cùng lúc - thực tế GVCN luôn kiêm dạy bộ môn, Hiệu trưởng có thể kiêm dạy. Khi đó:
+
+- Thanh trên cùng hiển thị đủ các vai trò, vd `Giáo viên chủ nhiệm · Giáo viên bộ môn · Tổ trưởng chuyên môn`.
+- Menu trái là **hợp của mọi vai trò** (vai trò chính đứng trước), đã lọc trùng - chỉ hiện chức năng ít nhất một vai trò của bạn được phép.
+- Quyền truy cập tính trên toàn bộ vai trò: GVCN kiêm tổ trưởng vào được mục Tổ chuyên môn như tổ trưởng thường.
+- BGH gán vai trò kiêm nhiệm tại trang **Nhân sự → Tài khoản** (ô "Vai trò kiêm nhiệm" khi tạo/sửa tài khoản).
 
 ### Thông báo
 
@@ -195,8 +207,12 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Trợ lý điều hành (AI)**: chat hỏi đáp trên số liệu thật của trường.
 - **Thời khóa biểu**: xem mọi lớp + **Tải template / Import Excel** để xếp TKB hàng loạt (định dạng ô `Môn|GV|Phòng`).
 - **Ký duyệt sổ chủ nhiệm**: **Tạo đợt ký** mở kỳ ký cho tất cả lớp → với từng sổ GVCN đã nộp: **Ký duyệt** hoặc **Từ chối** (bắt buộc nhập lý do - GVCN nhận thông báo kèm lý do để sửa và nộp lại). Nhiều sổ chờ: **Ký duyệt tất cả**. Chỉ BGH/admin ký được - GVCN không tự ký sổ của mình.
-- **Phân công năm học** (`school/assignments`): chỉ BGH/admin phân công GVCN và lớp.
+- **Phân công năm học** (`school/assignments`): chỉ BGH/admin phân công GVCN và lớp + môn dạy của GV.
+- **Tài khoản giáo viên** (`school/users`): tạo/sửa tài khoản cán bộ - họ tên, email, mật khẩu, vai trò chính, **vai trò kiêm nhiệm** (GVCN kiêm GVBM/tổ trưởng...), mã nhân viên, loại hợp đồng, cơ sở, tổ chuyên môn; khối "Tổ chuyên môn - môn học" gán môn phụ trách cho từng tổ và trưởng tổ. Chỉ BGH/admin.
+- **Cơ sở** (`school/campuses`): khai báo cơ sở chính/phân hiệu - quyết định phạm vi của PHT.
 - **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ**, **Sự cố toàn trường** (đánh dấu đã báo cáo).
+
+> Khởi tạo trường mới từ đầu (tài khoản, cơ sở, tổ, lớp, HS, PH, TKB): xem `KHOI-TAO-TRUONG-MOI.md` kèm file Excel `docs/templates/khoi-tao-truong.xlsx`.
 
 ![Dashboard BGH](images/21-bgh-dashboard.png)
 ![Trung tâm phê duyệt](images/22-bgh-approvals.png)
@@ -220,6 +236,7 @@ Kế toán chỉ tiếp cận dữ liệu hành chính - tài chính, **không**
 ## 6. Sở GD&ĐT / UBND cấp xã
 
 - **Dashboard cấp Sở/địa bàn UBND xã**: tổng hợp các trường - quy mô, tỷ lệ chuyên cần, sự cố, cảnh báo; nút **AI bản tin** tổng hợp. (Theo chính quyền địa phương 2 cấp - Phòng GD&ĐT cấp huyện đã bãi bỏ từ 1/7/2025.)
+- **Quản lý trường** (`dept/schools`): tạo trường mới - hệ thống tự tạo năm học hiện tại, tổ chuyên môn mặc định, bộ môn theo cấp học và tài khoản BGH đầu tiên.
 - **Quản trị người dùng** (Sở): tài khoản các trường.
 - **Quản trị dữ liệu** (Sở): kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/phụ huynh, liên kết mồ côi.
 

@@ -261,8 +261,9 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Học sinh & chất lượng",
+      // CR-016/ROLE-MATRIX: pht khong tiep can ho so chi tiet HS -> khong
+      // co muc "Hoc sinh toan truong" (school/students chi cho bgh/admin).
       children: [
-        { label: "Học sinh toàn trường", href: "/school/students" },
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },

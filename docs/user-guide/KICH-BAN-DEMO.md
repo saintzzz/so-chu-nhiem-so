@@ -26,11 +26,11 @@ Mỗi trường có đủ nhân sự thực tế: Hiệu trưởng + Phó hiệu
 
 | Vai trò | Tài khoản | Nhân sự - bối cảnh |
 |---|---|---|
-| Hiệu trưởng ND | bgh@demo.scn | Nguyễn Văn Hải - THCS Nguyễn Du |
-| PHT cơ sở 2 ND | pht@demo.scn | Lê Minh Đức - chỉ thấy các lớp A3 |
-| Tổ trưởng ND | totruong@demo.scn | Lê Thị Hồng Hạnh - Tổ Toán-Tự nhiên |
-| GVCN ND | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán |
-| GVBM ND | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN |
+| Hiệu trưởng ND | bgh@demo.scn | Nguyễn Văn Hải - THCS Nguyễn Du, kiêm dạy (`bgh`+`gvbm`) |
+| PHT cơ sở 2 ND | pht@demo.scn | Lê Minh Đức - chỉ thấy các lớp A3, kiêm dạy (`pht`+`gvbm`) |
+| Tổ trưởng ND | totruong@demo.scn | Lê Thị Hồng Hạnh - Tổ Toán-Tự nhiên, kiêm dạy (`to_truong`+`gvbm`) |
+| GVCN ND | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (`gvcn`+`gvbm`+`to_truong`) |
+| GVBM ND | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (đơn vai trò) |
 | Kế toán ND | ketoan@demo.scn | Phạm Thu Trang |
 | Phụ huynh | phuhuynh@demo.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo lớp 8A2 |
 | Học sinh | hocsinh@demo.scn | Nguyễn Gia Bảo - lớp 8A2 |
@@ -46,7 +46,12 @@ Các GV còn lại của từng trường login bằng email dạng `ten.vt@nd.s
 
 ### Luồng A - GVCN một ngày làm việc (gvcn@demo.scn, ~10 phút)
 
-1. **Dashboard** (`/dashboard/gvcn`): thấy lớp 8A2 - sĩ số, tỷ lệ chuyên cần, cảnh báo sớm, việc cần xử lý.
+Mở đầu bằng điểm nhấn **vai trò kiêm nhiệm** (CR-038): cô Lan Anh đăng
+nhập thấy topbar "Giáo viên chủ nhiệm - Giáo viên bộ môn - Tổ trưởng
+chuyên môn" và menu gộp đủ 3 vai trò (mục "Tổ chuyên môn" xuất hiện do
+cô là tổ trưởng Tổ Toán - Tự nhiên).
+
+1. **Dashboard** (`/dashboard/gvcn`): thấy lớp 8A2 - sĩ số, tỷ lệ chuyên cần, cảnh báo sớm, việc cần xử lý; các lớp cô đang dạy Toán hiện kèm.
 2. **Điểm danh** (`/attendance`): lớp 8A2 đã có dữ liệu chuyên cần các ngày trước; điểm danh hôm nay, đánh vắng 1 em → kiểm chứng đồng bộ sang sổ đầu bài và thông báo PH.
 3. **Sổ điểm** (`/academics/grades`): lớp 8A2 đã có điểm miệng/15'/GK các môn; nhập thêm điểm môn Toán (Lan Anh dạy Toán 8A2).
 4. **Sổ đầu bài** (`/register`): xem TKB, ghi nhật ký tiết dạy; sơ đồ chỗ ngồi đã có sẵn.
@@ -58,7 +63,7 @@ Các GV còn lại của từng trường login bằng email dạng `ten.vt@nd.s
 
 1. `totruong@demo.scn` → **Tổ chuyên môn** (`/dept`): thấy GV trong Tổ Toán-TN, giáo án chờ duyệt của cô Lan Anh → xem bản cấu trúc CV 5512 → **Duyệt** (hoặc trả về kèm nhận xét).
 2. `bgh@demo.scn` → **Phê duyệt** (`/school/approvals`): giáo án `team_approved` hiện trong hàng chờ → **Duyệt** → trạng thái `approved`, GV nhận thông báo.
-3. Điểm nhấn: tổ trưởng chỉ thấy giáo án của GV trong tổ mình; BGH thấy toàn trường.
+3. Điểm nhấn: tổ trưởng chỉ thấy giáo án của GV trong tổ mình; BGH thấy toàn trường. Cô Lan Anh (đang là GVCN) cũng mở được `/team/lesson-plans` vì kiêm tổ trưởng - menu "Tổ chuyên môn" chỉ xuất hiện khi có vai trò đó.
 
 ### Luồng C - Điều hành trường (bgh@demo.scn + pht@demo.scn, ~8 phút)
 
@@ -87,6 +92,24 @@ Các GV còn lại của từng trường login bằng email dạng `ten.vt@nd.s
 2. Tổ trưởng `totruong.cva@demo.scn` duyệt giáo án tổ Khối 1-2.
 3. `bgh.cva@demo.scn` xem dashboard 15 lớp.
 
+### Luồng G - Vai trò kiêm nhiệm (CR-038, ~4 phút)
+
+Thực tế trường VN: GVCN luôn kiêm dạy bộ môn, tổ trưởng vẫn đứng lớp,
+PHT/Hiệu trưởng vẫn dạy. Hệ thống hỗ trợ bằng "vai trò kiêm nhiệm".
+
+| Tài khoản | Vai trò | Demo nhanh |
+|---|---|---|
+| `gvcn@demo.scn` | gvcn + gvbm + to_truong | Topbar 3 nhãn; menu gộp đủ Chuyên cần + Tổ chuyên môn; vào được `/team/lesson-plans` duyệt giáo án tổ mình |
+| `totruong@demo.scn` | to_truong + gvbm | Menu Tổ chuyên môn + Giảng dạy bộ môn; nhập điểm lớp mình dạy |
+| `pht@demo.scn` | pht + gvbm | Điều hành cơ sở 2 + menu giảng dạy của GV |
+| `bgh@demo.scn` | bgh + gvbm | Toàn quyền BGH + công cụ soạn học liệu của GV |
+| `gvbm@demo.scn` | gvbm thuần | Menu gọn chỉ phần giảng dạy; vào `/team/*` bị chặn - chứng minh quyền vẫn giữ |
+
+Phân quyền kiêm nhiệm được quản trị tại `/school/users` (BGH tick vai
+trò kiêm nhiệm; chỉ vai trò nhân sự được chọn, `admin` không thể kiêm).
+Menu và quyền được tính từ "vai trò chính + kiêm nhiệm" ở mọi tầng
+(UI, server action, RLS database).
+
 ## 4. Kiểm chứng phân quyền nhanh (security smoke)
 
 | Kiểm tra | Cách demo | Kỳ vọng |
@@ -96,6 +119,7 @@ Các GV còn lại của từng trường login bằng email dạng `ten.vt@nd.s
 | GVBM không có quyền CN | `gvbm@demo.scn` vào route GVCN-only | Redirect về home GVBM |
 | PH chỉ thấy con mình | `phuhuynh@demo.scn` | Chỉ hồ sơ em Nguyễn Gia Bảo |
 | UBND read-only | `ubnd@demo.scn` | Không có nút ghi |
+| Menu theo quyền | Soi menu từng tài khoản | Mỗi role chỉ thấy chức năng mình được cấp (kiểm chứng tự động: `node scripts/check-nav-access.mjs`) |
 
 ## 5. Ghi chú vận hành
 

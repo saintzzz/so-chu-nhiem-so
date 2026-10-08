@@ -45,16 +45,16 @@ export default async function StudioLiteratureDetail({
         <div className="flex gap-2">
           <CopyTextButton text={text.content} label="Sao chép văn bản" />
           <Link
-            href="/studio/V-02"
+            href={`/studio/V-02?lit=${text.id}`}
             className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
           >
-            Mở V-02 để sinh câu hỏi
+            Sinh câu hỏi từ văn bản này
           </Link>
         </div>
       </div>
       {use && (
         <div className="mt-4 rounded-lg border border-primary/40 bg-secondary px-4 py-3 text-sm">
-          Bấm &quot;Sao chép văn bản&quot;, sau đó mở công cụ V-02 và dán vào ô &quot;Văn bản&quot;.
+          Bấm &quot;Sinh câu hỏi từ văn bản này&quot; - công cụ V-02 tự điền sẵn văn bản vào ô &quot;Văn bản&quot;.
         </div>
       )}
       <article className="a4-sheet mt-4 text-[15px]">

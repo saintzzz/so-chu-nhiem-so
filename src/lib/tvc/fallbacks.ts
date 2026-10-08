@@ -344,8 +344,8 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
     ? {
         multiple_choice: ["biet", "hieu", "biet", "hieu", "van_dung"],
         true_false_4: ["biet", "hieu", "van_dung"],
-        short_answer: ["hieu", "van_dung"],
-        essay: ["van_dung", "van_dung_cao"],
+        short_answer: ["hieu", "van_dung", "van_dung_cao"],
+        essay: ["van_dung_cao", "van_dung"],
       }
     : {
         multiple_choice: ["biet", "hieu", "biet", "van_dung"],
@@ -363,8 +363,11 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
       const pts = Math.round((share * typeWeight[qtype] / totalWeight) * 4) / 4;
       if (pts <= 0) return;
       const count = Math.max(1, Math.round(pts / unit[qtype]));
+      // Offset (si + ti): moi dang thuc bat dau o muc khac nhau nen ma tran
+      // luon phu du cac muc nhan thuc ke ca khi chi chon 1 YCCD (truoc day
+      // si=0 lam ca ma tran chi co biet/hieu/van_dung - thieu muc 4 TT22).
       const cyc = typeLevelCycle[qtype];
-      const level = cyc[si % cyc.length];
+      const level = cyc[(si + ti) % cyc.length];
       cells.push({ standard_id: s.id, standard_code: s.code, level, qtype, count, points: pts });
       spec.push({
         standard_id: s.id,
@@ -376,7 +379,6 @@ export function fbMatrix(input: Input, ctx: ToolContext): MatrixResult {
         count,
         points: pts,
       });
-      void ti;
     });
   });
 

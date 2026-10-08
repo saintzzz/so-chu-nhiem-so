@@ -14,7 +14,7 @@ export default async function ToolPage({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; matrix?: string; lit?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
   await requireFeature("studio");
@@ -73,6 +73,27 @@ export default async function ToolPage({
     }
   }
 
+  // Deep-link giua cac tool trong cung chuoi cong viec:
+  //   DC-02 -> DC-03: ?matrix=<tvc_matrices.id> chon san ma tran
+  //   V-01  -> V-02 : ?lit=<tvc_literature_texts.id> dien san van ban
+  const initialValues: Record<string, string> = {};
+  if (code === "DC-03" && sp.matrix) {
+    const { data: mx } = await supabase
+      .from("tvc_matrices")
+      .select("id")
+      .eq("id", sp.matrix)
+      .single();
+    if (mx) initialValues.matrix_id = mx.id;
+  }
+  if (code === "V-02" && sp.lit) {
+    const { data: lit } = await supabase
+      .from("tvc_literature_texts")
+      .select("content")
+      .eq("id", sp.lit)
+      .single();
+    if (lit?.content) initialValues.text = lit.content;
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <Link
@@ -94,6 +115,7 @@ export default async function ToolPage({
         tool={toClientTool(tool)}
         defaultSubject={defaultSubject}
         fromMaterial={fromMaterial}
+        initialValues={initialValues}
       />
     </div>
   );

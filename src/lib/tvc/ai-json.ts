@@ -88,6 +88,30 @@ export function sectionsLookEnglish(doc: DocContent): boolean {
   return total === 0 || vn / total < 0.04;
 }
 
+/** Loc block rong model hay them vao (para/note/heading khong text, list khong item). */
+function cleanDoc(doc: DocContent): DocContent {
+  const clean = (blocks: DocContent["sections"][0]["blocks"]) =>
+    (blocks ?? []).filter(
+      (b) =>
+        !(
+          ((b.kind === "para" || b.kind === "note" || b.kind === "heading") &&
+            !b.text?.trim()) ||
+          (b.kind === "list" && !(b.items ?? []).some((i) => i?.trim()))
+        ),
+    );
+  return {
+    ...doc,
+    sections: (doc.sections ?? []).map((s) => ({
+      ...s,
+      blocks: clean(s.blocks),
+    })),
+    appendix: (doc.appendix ?? []).map((s) => ({
+      ...s,
+      blocks: clean(s.blocks),
+    })),
+  };
+}
+
 export async function generateDoc(
   system: string,
   prompt: string,
@@ -112,7 +136,7 @@ export async function generateDoc(
     if (!r.text) return { doc: null, provider: r.provider, error: r.error };
     const parsed = extractJson<DocContent>(r.text);
     if (parsed && isDocContent(parsed) && (opts?.validate?.(parsed) ?? true)) {
-      return { doc: parsed, provider: r.provider, error: null };
+      return { doc: cleanDoc(parsed), provider: r.provider, error: null };
     }
   }
   return { doc: null, provider: null, error: "bad_json" };

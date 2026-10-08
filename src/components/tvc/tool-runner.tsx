@@ -26,6 +26,7 @@ export function ToolRunner({
   tool,
   defaultSubject,
   fromMaterial,
+  initialValues,
 }: {
   tool: ToolClientDef;
   defaultSubject?: string;
@@ -37,6 +38,8 @@ export function ToolRunner({
     grade: number | null;
     standardIds: string[];
   } | null;
+  // Deep-link giua cac tool: ?matrix=<id> cho DC-03, ?lit=<id> cho V-02.
+  initialValues?: Record<string, string>;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -51,6 +54,7 @@ export function ToolRunner({
       if (fromMaterial.subject) v.subject = fromMaterial.subject;
       if (fromMaterial.grade) v.grade = String(fromMaterial.grade);
     }
+    Object.assign(v, initialValues);
     return v;
   });
   const [coValues, setCoValues] = useState<Record<string, string>>({});
@@ -75,6 +79,7 @@ export function ToolRunner({
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedMatrixId, setSavedMatrixId] = useState<string | null>(null);
   const aiJob = useTvcAiJob();
 
   // Load subjects + matrices on mount
@@ -247,6 +252,7 @@ export function ToolRunner({
       return;
     }
     setSavedId(res.id!);
+    if (res.matrixId) setSavedMatrixId(res.matrixId);
   };
 
   const fieldEl = (f: ToolField) => {
@@ -497,12 +503,24 @@ export function ToolRunner({
               </p>
             )}
             {savedId ? (
-              <button
-                onClick={() => router.push(`/studio/library/${savedId}`)}
-                className="mt-3 w-full rounded-lg border border-success bg-emerald-400/15 py-2 text-sm font-semibold text-emerald-300"
-              >
-                Đã lưu - Mở trong thư viện
-              </button>
+              <>
+                <button
+                  onClick={() => router.push(`/studio/library/${savedId}`)}
+                  className="mt-3 w-full rounded-lg border border-success bg-emerald-400/15 py-2 text-sm font-semibold text-emerald-300"
+                >
+                  Đã lưu - Mở trong thư viện
+                </button>
+                {savedMatrixId && (
+                  <button
+                    onClick={() =>
+                      router.push(`/studio/DC-03?matrix=${savedMatrixId}`)
+                    }
+                    className="mt-2 w-full rounded-lg border bg-background py-2 text-sm font-semibold hover:bg-muted"
+                  >
+                    Sinh đề từ ma trận này
+                  </button>
+                )}
+              </>
             ) : (
               <button
                 onClick={save}

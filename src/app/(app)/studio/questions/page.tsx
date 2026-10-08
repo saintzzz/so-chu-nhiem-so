@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { ArrowLeft } from "lucide-react";
 import { requireRoles } from "@/lib/auth";
 import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -49,6 +51,12 @@ export default async function StudioQuestionsPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
+      <Link
+        href="/studio"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" /> Tất cả công cụ
+      </Link>
       <PageHeader
         section="Công cụ số giáo viên"
         title="Ngân hàng câu hỏi"

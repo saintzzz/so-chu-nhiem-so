@@ -4,7 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { LiteratureText } from "@/types/tvc";
-import { Copy } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 import { LiteratureImport, LiteratureExport } from "@/components/tvc/literature-import";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +33,12 @@ export default async function StudioLiteraturePage({
 
   return (
     <div className="mx-auto max-w-6xl">
+      <Link
+        href="/studio"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" /> Tất cả công cụ
+      </Link>
       <PageHeader
         section="Công cụ số giáo viên"
         title="Kho ngữ liệu ngoài SGK"

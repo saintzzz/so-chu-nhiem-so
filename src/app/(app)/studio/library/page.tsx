@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Material } from "@/types/tvc";
 import { subjectNameToCode } from "@/lib/tvc/subject-code";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
-import { FolderOpen } from "lucide-react";
+import { ArrowLeft, FolderOpen } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
 
@@ -83,6 +83,12 @@ export default async function StudioLibraryPage({
 
   return (
     <div className="mx-auto max-w-6xl">
+      <Link
+        href="/studio"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" /> Tất cả công cụ
+      </Link>
       <PageHeader
         section="Công cụ số giáo viên"
         title="Thư viện của tôi"

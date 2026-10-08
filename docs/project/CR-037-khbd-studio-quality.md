@@ -90,5 +90,7 @@ Tool DC-01 (`Biên soạn kế hoạch bài dạy`) sinh DocContent qua prompt g
 ### Trạng thái acceptance criteria
 
 - AC-1..AC-5: đạt (E2E trên chạy nhánh rule-based vì local không có AI key;
-  nhánh AI được bảo vệ bởi sanitize + test behavior; verify AI-path trên
-  prod sau deploy).
+  nhánh AI được bảo vệ bởi sanitize + test behavior).
+- Prod verify (commit 78b914b, deploy READY): login -> /studio/DC-01 ->
+  Ngữ văn lớp 6 + biểu mẫu CV 5512 -> render đúng I-IV + 4 HĐ đủ a,b,c,d,đ
+  + KÝ DUYỆT + PHỤ LỤC đánh giá; không section lạc đề; 0 console errors.

@@ -16,6 +16,10 @@ import { hasAnyRole } from "@/lib/roles";
 
 const TOOL_ROLES: Role[] = ["gvcn", "gvbm", "to_truong", "bgh", "admin"];
 
+// CR-042: sinh doc dai bang AI can >60s khi plan cho phep; khong anh huong
+// neu Vercel cap thap hon (mac dinh van 60s, AI timeout 55s van vua).
+export const maxDuration = 120;
+
 interface MatrixCell {
   standard_id: string;
   standard_code?: string;

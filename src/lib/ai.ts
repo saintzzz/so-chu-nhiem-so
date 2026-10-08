@@ -60,6 +60,8 @@ interface GenerateOptions {
   temperature?: number;
   /** File đính kèm (ảnh/PDF base64) - hiện chỉ Gemini hỗ trợ. */
   inline?: { data: string; mimeType: string };
+  /** Timeout ms cho 1 lan goi provider (mac dinh 25s; doc dai dung 55s). */
+  timeoutMs?: number;
 }
 
 export type AiErrorKind = "no_key" | "quota" | "error";
@@ -80,6 +82,17 @@ function classifyStatus(status: number, body: string): AiErrorKind {
   ) {
     return "quota";
   }
+  // CR-042: 503 "high demand"/UNAVAILABLE cung la loi dung luong tam thoi -
+  // cho di duong engine du phong thay vi roi thang vao ban khung rule-based.
+  if (
+    status === 503 ||
+    status === 529 ||
+    b.includes("unavailable") ||
+    b.includes("overloaded") ||
+    b.includes("high demand")
+  ) {
+    return "quota";
+  }
   return "error";
 }
 
@@ -92,7 +105,7 @@ async function callGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${cfg.key}`,
     {
       method: "POST",
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...(opts.system
@@ -144,7 +157,7 @@ async function callOpenAI(
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${cfg.key}`,
@@ -178,7 +191,7 @@ async function callAnthropic(
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
     headers: {
       "Content-Type": "application/json",
       "x-api-key": cfg.key,
@@ -242,8 +255,12 @@ export async function generateTextDetailed(
       if (r.error === "error") continue; // lỗi mạng/500 - thử provider khác
       if (r.error === "quota") continue; // hết quota - thử provider khác
       break;
-    } catch {
-      lastError = "error";
+    } catch (e) {
+      // CR-042: AbortSignal timeout khi doc sinh dai -> nhu "quota" (qua tai
+      // tam thoi) de route day sang engine du phong thay vi ban khung.
+      const isTimeout =
+        e instanceof DOMException && e.name === "TimeoutError";
+      lastError = isTimeout ? "quota" : "error";
       lastProvider = cfg.provider;
       continue;
     }

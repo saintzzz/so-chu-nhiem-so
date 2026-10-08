@@ -70,6 +70,9 @@ export async function generateDoc(
     system,
     maxTokens: 8192,
     temperature: 0.7,
+    // CR-042: doc day du (KHBD 40KB+) can >25s - 25s mac dinh lam AI luon
+    // timeout -> ban khung. 55s van nam trong gioi han function 60s.
+    timeoutMs: 55000,
   });
   if (!r.text) return { doc: null, provider: r.provider, error: r.error };
   const parsed = extractJson<DocContent>(r.text);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { NAV } from "@/lib/nav";
@@ -65,7 +66,9 @@ export function CommandPalette({
     }
   };
 
-  return (
+  // Header dung backdrop-blur -> fixed positioning bi scope vao header.
+  // Render qua portal len body de overlay phu toan viewport.
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/30 pt-24"
       onClick={onClose}
@@ -128,6 +131,7 @@ export function CommandPalette({
           ))}
         </ul>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

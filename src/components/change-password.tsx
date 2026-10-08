@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { KeyRound, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -28,7 +29,11 @@ export function ChangePasswordButton({ compact = false }: { compact?: boolean })
           <span className="hidden sm:inline">Đổi mật khẩu</span>
         </button>
       )}
-      {open && <ChangePasswordDialog onClose={() => setOpen(false)} />}
+      {open &&
+        createPortal(
+          <ChangePasswordDialog onClose={() => setOpen(false)} />,
+          document.body,
+        )}
     </>
   );
 }

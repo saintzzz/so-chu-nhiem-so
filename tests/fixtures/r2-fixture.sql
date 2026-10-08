@@ -6,6 +6,31 @@
 -- auth.uid() doc GUC app.uid; set role appuser de RLS co hieu luc
 -- (owner/superuser bypass RLS).
 create schema if not exists auth;
+-- CR-038: tvc.review_material + scn_has_feature duoc migration tao lai.
+create schema if not exists tvc;
+create table tvc.materials(
+  id uuid primary key default gen_random_uuid(),
+  school_id uuid,
+  author_id uuid,
+  title text,
+  status text,
+  review_note text,
+  updated_at timestamptz default now()
+);
+create table tvc.reviews(
+  material_id uuid,
+  reviewer_id uuid,
+  layer int,
+  status text,
+  notes text
+);
+create table feature_grants(
+  school_id uuid,
+  user_id uuid,
+  role text,
+  feature text,
+  effect text
+);
 create or replace function auth.uid() returns uuid
 language sql stable
 as $$ select nullif(current_setting('app.uid', true), '')::uuid $$;
@@ -14,7 +39,14 @@ create table profiles(
   id uuid primary key,
   role text not null,
   school_id uuid,
-  campus_id uuid
+  campus_id uuid,
+  department_id uuid,
+  org_unit_id uuid,
+  concurrent_roles text[] not null default '{}'
+);
+create table teacher_subjects(
+  teacher_id uuid,
+  subject_id uuid
 );
 create table classes(
   id uuid primary key,
@@ -181,6 +213,12 @@ create or replace function public.my_role() returns text
 language sql stable security definer set search_path = 'public'
 as $$ select role from profiles where id = auth.uid() $$;
 
+-- CR-038: role chinh || concurrent_roles (stub giong prod).
+create or replace function public.my_roles() returns text[]
+language sql stable security definer set search_path = 'public'
+as $$ select array[role]::text[] || coalesce(concurrent_roles, '{}'::text[])
+     from profiles where id = auth.uid() $$;
+
 create or replace function public.my_school_id() returns uuid
 language sql stable security definer set search_path = 'public'
 as $$ select school_id from profiles where id = auth.uid() $$;
@@ -229,6 +267,14 @@ language sql stable security definer set search_path = 'public'
 as $$ select exists(select 1 from students s
      join timetable_entries t on t.class_id = s.class_id
      where s.id = sid and t.teacher_id = auth.uid()) $$;
+
+-- Stub cho scn_can_write_grade (CR-038) - prod check theo teacher_subjects +
+-- timetable; fixture gan theo timetable entry cua lop hoc sinh + mon.
+create or replace function public.scn_i_teach_student_subject(sid uuid, subid uuid) returns boolean
+language sql stable security definer set search_path = 'public'
+as $$ select exists(select 1 from students s
+     join timetable_entries t on t.class_id = s.class_id
+     where s.id = sid and t.teacher_id = auth.uid() and t.subject_id = subid) $$;
 
 -- Stub them cho SELECT policies giong prod (UPDATE/DELETE can row SELECT-
 -- visible truoc khi USING duoc danh gia).
@@ -553,3 +599,12 @@ create table lesson_plans(
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- CR-038: probe policy viet dang scalar-subquery -> Postgres deparse ra
+-- ( SELECT ( SELECT my_role() ...) ...) (double-wrap) de test rewrite loop.
+create table if not exists public.cr038_wrap_probe (id int primary key, note text);
+alter table public.cr038_wrap_probe enable row level security;
+create policy wrap_probe_a on public.cr038_wrap_probe for select
+  using ((select my_role()) = 'gvcn');
+create policy wrap_probe_b on public.cr038_wrap_probe for select
+  using ((select (select my_role())) in ('bgh','admin'));

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
 import { khbdHasContent, parseKhbdStrict } from "@/lib/khbd";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI hỗ trợ giáo án:
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (
     !profile ||
-    !["gvcn", "gvbm", "to_truong", "bgh", "pht"].includes(profile.role)
+    !hasAnyRole(profile, ["gvcn", "gvbm", "to_truong", "bgh", "pht"])
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }

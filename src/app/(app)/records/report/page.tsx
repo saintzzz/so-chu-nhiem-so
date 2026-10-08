@@ -10,6 +10,7 @@ import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { Sparkles } from "lucide-react";
 import { averageByStudent } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasRole } from "@/lib/roles";
 
 interface ClassStats {
   id: string;
@@ -29,7 +30,7 @@ export default async function RecordsReportPage() {
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

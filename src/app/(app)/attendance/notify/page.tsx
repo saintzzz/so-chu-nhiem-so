@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
 import { DataTable } from "@/components/data-table";
 import { NotifyForm } from "@/components/attendance/notify-form";
+import { hasRole } from "@/lib/roles";
 
 export default async function AttendanceNotifyPage({
   searchParams,
@@ -21,7 +22,7 @@ export default async function AttendanceNotifyPage({
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

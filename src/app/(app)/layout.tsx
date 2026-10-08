@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireProfile, STAFF_ROLES } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 export default async function AppLayout({
   children,
@@ -8,8 +9,8 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireProfile();
-  if (!STAFF_ROLES.includes(profile.role)) {
-    redirect("/portal/" + (profile.role === "phu_huynh" ? "parent" : "student"));
+  if (!hasAnyRole(profile, STAFF_ROLES)) {
+    redirect("/portal/" + (hasRole(profile, "phu_huynh") ? "parent" : "student"));
   }
   return <AppShell profile={profile}>{children}</AppShell>;
 }

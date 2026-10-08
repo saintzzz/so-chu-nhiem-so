@@ -32,7 +32,7 @@ export default async function TimetableManagePage({
         .from("profiles")
         .select("id,full_name")
         .eq("school_id", sid)
-        .in("role", ["gvcn", "gvbm", "to_truong"]),
+        .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"),
     ]);
   const classes = (clsRaw ?? []) as Pick<ClassRoom, "id" | "name" | "grade">[];
   const subjects = (subRaw ?? []) as Pick<Subject, "id" | "name">[];

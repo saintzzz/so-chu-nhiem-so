@@ -13,6 +13,7 @@ import type {
 } from "@/types";
 import { currentPeriodVN, currentSemesterVN, isoDateVN, todayVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasRole } from "@/lib/roles";
 
 const KPI_SUBMITTED = new Set(["submitted", "approved", "locked", "done"]);
 
@@ -50,7 +51,7 @@ export default async function SchoolDashboardPage() {
   >[];
   // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách; chưa phân công campus
   // thì fail-closed - không được đọc toàn trường.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     classes = profile.campus_id
       ? classes.filter((c) => c.campus_id === profile.campus_id)
       : [];

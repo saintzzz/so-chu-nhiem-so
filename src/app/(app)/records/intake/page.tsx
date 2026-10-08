@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { NewClassForm } from "@/components/records/new-class-form";
+import { hasRole } from "@/lib/roles";
 
 const CLASS_STATUS: Record<
   ClassRoom["status"],
@@ -22,7 +23,7 @@ export default async function RecordsIntakePage() {
 
   // Lớp do GVCN phụ trách; BGH xem toàn bộ lớp của trường
   let classQuery = supabase.from("classes").select("*").order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
@@ -97,7 +98,7 @@ export default async function RecordsIntakePage() {
         section="Hồ sơ lớp học"
         title="Tiếp nhận lớp / danh sách lớp"
         description={
-          profile.role === "gvcn"
+          hasRole(profile, "gvcn")
             ? "Các lớp bạn đang làm chủ nhiệm trong năm học hiện tại."
             : "Danh sách lớp của trường trong năm học hiện tại."
         }

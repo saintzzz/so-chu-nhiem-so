@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
+import { hasRole } from "@/lib/roles";
 
 export default async function DeptFacilitiesPage() {
   const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
@@ -18,7 +19,7 @@ export default async function DeptFacilitiesPage() {
     parent_id: string | null;
   }[];
   let scopedOrgIds: Set<string> | null = null;
-  if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (hasRole(profile, "ubnd") && profile.org_unit_id) {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 

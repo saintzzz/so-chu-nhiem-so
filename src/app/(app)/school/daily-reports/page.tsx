@@ -7,6 +7,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { Campus, ClassRoom, DailyReport } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function SchoolDailyReportsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -21,7 +22,7 @@ export default async function SchoolDailyReportsPage() {
   let classes = (classData ?? []) as ClassRoom[];
 
   // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách; chưa gán campus -> fail-closed.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     classes = profile.campus_id
       ? classes.filter((c) => c.campus_id === profile.campus_id)
       : [];

@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 interface SuggestedTask {
   title: string;
@@ -12,7 +13,7 @@ interface SuggestedTask {
 
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || profile.role !== "gvcn") {
+  if (!profile || !hasRole(profile, "gvcn")) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let classId: string | undefined;

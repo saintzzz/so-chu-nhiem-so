@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { hasRole } from "@/lib/roles";
 
 export interface SupportPlanPair {
   studentId: string;
@@ -45,7 +46,7 @@ export async function createSupportPlans(
   }[]) {
     const cls = Array.isArray(s.classes) ? s.classes[0] : s.classes;
     if (!cls || cls.school_id !== profile.school_id) continue;
-    if (profile.role === "gvcn" && cls.gvcn_id !== profile.id) continue;
+    if (hasRole(profile, "gvcn") && cls.gvcn_id !== profile.id) continue;
     allowed.set(s.id, s.class_id);
   }
   if (allowed.size !== studentIds.length) {

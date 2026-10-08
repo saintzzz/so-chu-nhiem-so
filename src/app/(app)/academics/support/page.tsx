@@ -10,6 +10,7 @@ import {
 } from "@/components/academics/support-plan-board";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -60,7 +61,7 @@ export default async function SupportPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   const { data: classData } = await classQuery.order("name");

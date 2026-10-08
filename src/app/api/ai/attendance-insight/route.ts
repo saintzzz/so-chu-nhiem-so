@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasAnyRole } from "@/lib/roles";
 
 const WEEKDAY = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
@@ -11,7 +12,7 @@ const WEEKDAY = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let classId = "";

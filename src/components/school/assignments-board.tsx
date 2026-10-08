@@ -18,6 +18,7 @@ interface TeacherRow {
   id: string;
   full_name: string;
   role: string;
+  concurrent_roles: string[] | null;
 }
 interface SubjectRow {
   id: string;
@@ -80,9 +81,14 @@ export function AssignmentsBoard({
     () => new Map(teachers.map((t) => [t.id, t.full_name])),
     [teachers],
   );
+  // GVBM phai co phan mon; GVCN/to_truong (ke ca kiem nhiem) mien khai bao.
   const qualified = (subjectId: string) =>
     teachers.filter(
-      (t) => tsDraft[t.id]?.has(subjectId) || t.role !== "gvbm",
+      (t) =>
+        tsDraft[t.id]?.has(subjectId) ||
+        [t.role, ...(t.concurrent_roles ?? [])].some(
+          (r) => r === "gvcn" || r === "to_truong",
+        ),
     );
 
   function flash(ok: boolean, msg: string) {

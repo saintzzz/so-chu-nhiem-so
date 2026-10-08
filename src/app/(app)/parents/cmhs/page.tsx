@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { CmhsBoard } from "@/components/parents/cmhs-board";
+import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -34,7 +35,7 @@ export default async function CmhsPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   const { data: classData } = await classQuery.order("name");

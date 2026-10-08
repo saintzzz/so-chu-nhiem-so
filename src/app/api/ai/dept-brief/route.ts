@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI báo cáo bằng chữ cho cấp quản lý (Sở/Phòng/UBND) - dùng cho /dept/dashboard.
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (
     !profile ||
-    !["so_gd", "ubnd", "admin"].includes(profile.role)
+    !hasAnyRole(profile, ["so_gd", "ubnd", "admin"])
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }

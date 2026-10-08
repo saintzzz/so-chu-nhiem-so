@@ -8,6 +8,7 @@ import { subjectNameToCode } from "@/lib/tvc/subject-code";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { FolderOpen } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function StudioLibraryPage({
   const materials = (data as Partial<Material>[]) ?? [];
 
   // Reviewer xem hoc lieu truong dang cho duyet
-  const isReviewer = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const isReviewer = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   const { data: pendingData } = isReviewer
     ? await supabase
         .from("tvc_materials")
@@ -56,7 +57,7 @@ export default async function StudioLibraryPage({
 
   // CR-033: to truong uu tien mon cua to minh truoc, mon khac xep sau
   let deptSubjectCodes: string[] = [];
-  if (profile.role === "to_truong" && profile.department_id) {
+  if (hasRole(profile, "to_truong") && profile.department_id) {
     const { data: dept } = await supabase
       .from("departments")
       .select("subject_ids")

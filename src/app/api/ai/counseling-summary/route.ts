@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { hasAnyRole } from "@/lib/roles";
 
 interface CounselingDraft {
   summary: string;
@@ -15,7 +16,7 @@ interface CounselingDraft {
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let issue = "";

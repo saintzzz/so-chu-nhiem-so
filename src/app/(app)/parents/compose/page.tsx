@@ -4,8 +4,9 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ComposeForm } from "@/components/parents/compose-form";
-import type { Announcement, ClassRoom, Profile, Student } from "@/types";
+import type { Announcement, ClassRoom, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
+import { hasAnyRole } from "@/lib/roles";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -13,9 +14,9 @@ async function scopedClasses(
   supabase: Supabase,
   profile: Profile,
 ): Promise<ClassRoom[]> {
-  const wideRoles = ["bgh", "so_gd", "admin", "to_truong"];
+  const wideRoles: Role[] = ["bgh", "so_gd", "admin", "to_truong"];
   let query = supabase.from("classes").select("*").order("name");
-  if (wideRoles.includes(profile.role)) {
+  if (hasAnyRole(profile, wideRoles)) {
     if (profile.school_id) query = query.eq("school_id", profile.school_id);
   } else {
     query = query.eq("gvcn_id", profile.id);

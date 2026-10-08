@@ -10,6 +10,7 @@ import type {
   SubstituteRequest,
   TimetableEntry,
 } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function SubstitutesPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -39,7 +40,7 @@ export default async function SubstitutesPage() {
       .from("profiles")
       .select("id,full_name,role")
       .eq("school_id", sid)
-      .in("role", ["gvbm", "gvcn", "to_truong"]),
+      .or("role.in.(gvbm,gvcn,to_truong),concurrent_roles.ov.{gvbm,gvcn,to_truong}"),
   ]);
 
   const classes = (classData ?? []) as ClassRoom[];
@@ -50,7 +51,7 @@ export default async function SubstitutesPage() {
   );
   // PHT chỉ thao tác lớp thuộc cơ sở phụ trách; chưa gán campus -> fail-closed.
   const scopedClasses =
-    profile.role === "pht"
+    hasRole(profile, "pht")
       ? profile.campus_id
         ? classes.filter((c) => c.campus_id === profile.campus_id)
         : []
@@ -121,7 +122,7 @@ export default async function SubstitutesPage() {
           }))}
           teacherSubjects={teacherSubjects}
           teachers={teachers.map((t) => ({ id: t.id, name: t.full_name }))}
-          canDecide={profile.role === "bgh" || profile.role === "pht"}
+          canDecide={hasRole(profile, "bgh") || hasRole(profile, "pht")}
           canCreate
         />
       )}

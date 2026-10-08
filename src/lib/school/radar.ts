@@ -11,6 +11,7 @@ import type {
   Profile,
   Student,
 } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
@@ -108,7 +109,7 @@ export async function buildRadarData(
     "id" | "name" | "campus_id"
   >[];
   // PHT chưa phân công campus -> fail-closed, không đọc toàn trường.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     classes = profile.campus_id
       ? classes.filter((c) => c.campus_id === profile.campus_id)
       : [];

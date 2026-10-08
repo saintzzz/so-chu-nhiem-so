@@ -43,7 +43,7 @@ export async function createIncident(input: {
     .from("profiles")
     .select("id,role,campus_id")
     .eq("school_id", profile.school_id ?? "")
-    .in("role", ["bgh", "pht"]);
+    .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}");
   let incidentCampusId: string | null = null;
   if (input.classId) {
     const { data: cls } = await supabase

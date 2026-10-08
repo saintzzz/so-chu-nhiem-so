@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn, sortByVietnameseName } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -30,7 +31,7 @@ export default async function StudentChatPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

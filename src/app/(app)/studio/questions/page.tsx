@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Question, Subject } from "@/types/tvc";
 import { QuestionBank } from "@/components/tvc/question-bank";
 import { subjectNameToCode } from "@/lib/tvc/subject-code";
+import { hasAnyRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +59,8 @@ export default async function StudioQuestionsPage() {
         subjects={(subs as Subject[]) ?? []}
         total={undefined}
         meId={profile.id}
-        isReviewer={["to_truong", "bgh", "admin"].includes(profile.role)}
-        isAdmin={["bgh", "admin"].includes(profile.role)}
+        isReviewer={hasAnyRole(profile, ["to_truong", "bgh", "admin"])}
+        isAdmin={hasAnyRole(profile, ["bgh", "admin"])}
         schoolId={profile.school_id ?? undefined}
         deptSubjectCodes={deptSubjectCodes}
       />

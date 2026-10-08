@@ -8,6 +8,7 @@ import { CampusManager } from "@/components/school/campus-manager";
 import { Tt15Form } from "@/components/school/tt15-form";
 import { formatDateTime } from "@/lib/utils";
 import type { Campus, ClassRoom, Tt15Evaluation } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 const KIND_LABEL: Record<Campus["kind"], string> = {
   main: "Cơ sở chính",
@@ -132,7 +133,7 @@ export default async function CampusesPage() {
         Tự đánh giá kiểm định chất lượng giáo dục theo từng cơ sở - 5 nhóm
         tiêu chuẩn, tổng 100 điểm.
       </p>
-      {profile.role === "bgh" && (
+      {hasRole(profile, "bgh") && (
         <Tt15Form campuses={campuses.map((c) => ({ id: c.id, name: c.name }))} />
       )}
       <DataTable

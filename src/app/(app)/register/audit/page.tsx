@@ -7,6 +7,7 @@ import { DataTable, Pagination } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import type { AuditLog } from "@/components/register/types";
 import type { ClassRoom, Profile, Student } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 const PAGE_SIZE = 50;
 
@@ -80,7 +81,7 @@ export default async function AuditPage({
   // Classes the viewer is allowed to see - drives student/class filters.
   // Runs in parallel with the staff list - the two are independent.
   let classQuery = supabase.from("classes").select("*").order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

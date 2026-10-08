@@ -4,17 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { NAV } from "@/lib/nav";
+import { mergedNav } from "@/lib/nav";
 import type { Role } from "@/types";
 
 export function CommandPalette({
   open,
   onClose,
-  role,
+  roles,
 }: {
   open: boolean;
   onClose: () => void;
-  role: Role;
+  roles: Role[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -23,13 +23,13 @@ export function CommandPalette({
 
   const items = useMemo(() => {
     const flat: { label: string; href: string; section: string }[] = [];
-    for (const s of NAV[role] ?? []) {
+    for (const s of mergedNav(roles)) {
       if (s.href) flat.push({ label: s.label, href: s.href, section: "" });
       for (const c of s.children ?? [])
         flat.push({ label: c.label, href: c.href, section: s.label });
     }
     return flat;
-  }, [role]);
+  }, [roles]);
 
   const filtered = items.filter((i) =>
     (i.label + i.section).toLowerCase().includes(query.toLowerCase()),

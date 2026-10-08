@@ -32,6 +32,10 @@ export const STAFF_ROLES: Role[] = [
 /** Vai trò lãnh đạo cấp trường (BGH + PHT phụ trách cơ sở). */
 export const SCHOOL_LEADER_ROLES: Role[] = ["bgh", "pht"];
 
+// CR-038: helpers pure nam o src/lib/roles.ts (client-safe) - re-export.
+export { CONCURRENT_ELIGIBLE, effectiveRoles, hasRole, hasAnyRole } from "@/lib/roles";
+import { hasAnyRole } from "@/lib/roles";
+
 /**
  * Deduped per-request via React cache() - layout + page + actions share one
  * auth.getUser() + profiles lookup instead of repeating Supabase roundtrips.
@@ -72,7 +76,7 @@ export async function requireProfile(): Promise<Profile> {
 
 export async function requireRoles(roles: Role[]): Promise<Profile> {
   const profile = await requireProfile();
-  if (!roles.includes(profile.role)) redirect(ROLE_HOME[profile.role]);
+  if (!hasAnyRole(profile, roles)) redirect(ROLE_HOME[profile.role]);
   return profile;
 }
 
@@ -80,7 +84,7 @@ export async function requireRoles(roles: Role[]): Promise<Profile> {
 export async function checkActionRole(roles: Role[]): Promise<string | null> {
   const profile = await getProfile();
   if (!profile) return "Phiên đăng nhập đã hết hạn.";
-  if (!roles.includes(profile.role))
+  if (!hasAnyRole(profile, roles))
     return "Bạn không có quyền thực hiện thao tác này.";
   return null;
 }

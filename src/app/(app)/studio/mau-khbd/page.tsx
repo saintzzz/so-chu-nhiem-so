@@ -3,6 +3,7 @@ import { requireRoles } from "@/lib/auth";
 import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { KhbdTemplatesManager } from "@/components/tvc/khbd-templates-manager";
+import { hasAnyRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function StudioKhbdTemplatesPage() {
     .order("is_default", { ascending: false })
     .order("name");
 
-  const canManage = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const canManage = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader

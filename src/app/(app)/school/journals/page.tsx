@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fmtDateVN } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 export default async function SchoolJournalsPage({
   searchParams,
@@ -24,7 +25,7 @@ export default async function SchoolJournalsPage({
     .eq("status", "active")
     .order("name");
   // PHT chỉ xem sổ đầu bài của phân hiệu mình phụ trách; chưa gán campus -> fail-closed.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     qCls = qCls.eq(
       "campus_id",
       profile.campus_id ?? "00000000-0000-0000-0000-000000000000",

@@ -46,6 +46,10 @@ const MIGRATION_CR35 = readFileSync(
   join(ROOT, "supabase/migrations/20261112_cr035_khbd_jsonb.sql"),
   "utf8",
 );
+const MIGRATION_CR38 = readFileSync(
+  join(ROOT, "supabase/migrations/20261116_cr038_multi_role.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -136,7 +140,9 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   psql(MIGRATION_R12);
   psql(MIGRATION_R15);
   psql(MIGRATION_CR35);
+  psql(MIGRATION_CR38);
   psql("grant execute on all functions in schema public to appuser");
+  psql("grant usage on schema tvc to appuser; grant execute on all functions in schema tvc to appuser");
 
   const asUser = (uid, stmt) =>
     psql(`set role appuser; set app.uid='${uid}'; ${stmt}`);
@@ -843,5 +849,155 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
     const old = psql(
       `select content_json is null from lesson_plans where title='Bai cu'`);
     assert.equal(old.trim(), "t");
+  });
+
+  // ---------- CR-038: multi-role ----------
+  await t.test("my_roles tra ve role chinh + concurrent_roles", () => {
+    psql(`insert into profiles(id, role, school_id, concurrent_roles)
+      values ('20000000-0000-0000-0000-000000000099','to_truong',
+              '${ID.schoolA}','{gvcn,gvbm}')`);
+    const out = asUser("20000000-0000-0000-0000-000000000099",
+      "select array_to_string(my_roles(), ',')");
+    assert.ok(out.includes("to_truong") && out.includes("gvcn") && out.includes("gvbm"),
+      `my_roles phai gom ca 3 role: ${out}`);
+  });
+
+  await t.test("DO block da rewrite het policy my_role() -> my_roles()", () => {
+    const leftover = psql(
+      `select count(*) from pg_policies
+        where (qual like '%my_role()%' or with_check like '%my_role()%')`);
+    assert.equal(leftover.trim(), "0",
+      "con policy dung my_role() sau migration - rewrite chua chay");
+    const rewritten = psql(
+      `select count(*) from pg_policies where qual like '%my_roles()%' or with_check like '%my_roles()%'`);
+    assert.ok(+rewritten.trim() > 0, "phai co policy dung my_roles()");
+  });
+
+  await t.test("concurrent_roles check chan role khong eligible", () => {
+    assert.throws(
+      () => psql(`insert into profiles(id, role, school_id, concurrent_roles)
+        values ('20000000-0000-0000-0000-000000000098','gvcn',
+                '${ID.schoolA}','{admin}')`),
+      undefined, "admin khong duoc la concurrent role");
+    // Non-staff primary khong duoc gan concurrent staff role (escalation).
+    assert.throws(
+      () => psql(`insert into profiles(id, role, school_id, concurrent_roles)
+        values ('20000000-0000-0000-0000-000000000095','phu_huynh',
+                '${ID.schoolA}','{gvcn}')`),
+      undefined, "phu_huynh khong duoc kiem nhiem gvcn");
+  });
+
+  await t.test("GVBM kiem GVCN ghi duoc diem danh lop chu nhiem", () => {
+    // multiA: primary gvbm + concurrent gvcn, la gvcn_id cua lop 9Z.
+    // Truoc CR-038 policy att_ins chi check my_role()='gvcn' -> denied.
+    psql(`insert into profiles(id, role, school_id, concurrent_roles)
+      values ('20000000-0000-0000-0000-000000000097','gvbm',
+              '${ID.schoolA}','{gvcn}')`);
+    psql(`insert into classes(id, school_id, gvcn_id, name)
+      values ('30000000-0000-0000-0000-00000000009c','${ID.schoolA}',
+              '20000000-0000-0000-0000-000000000097','9Z')`);
+    psql(`insert into students(id, class_id, full_name)
+      values ('60000000-0000-0000-0000-00000000009c',
+              '30000000-0000-0000-0000-00000000009c','HS Multi')`);
+    asUser("20000000-0000-0000-0000-000000000097",
+      `insert into attendance_records(student_id, date, status)
+       values ('60000000-0000-0000-0000-00000000009c','2026-11-09','present')`);
+    assert.equal(
+      psql(`select count(*) from attendance_records
+            where student_id='60000000-0000-0000-0000-00000000009c'`).trim(),
+      "1", "gvcn concurrent khong ghi duoc chuyen can lop minh");
+  });
+
+  await t.test("GVBM don (khong concurrent) bi chan du la gvcn_id lop", () => {
+    // gvcn_id khong du tu - phai co 'gvcn' trong role set.
+    psql(`insert into profiles(id, role, school_id)
+      values ('20000000-0000-0000-0000-000000000096','gvbm','${ID.schoolA}')`);
+    psql(`insert into classes(id, school_id, gvcn_id, name)
+      values ('30000000-0000-0000-0000-00000000009d','${ID.schoolA}',
+              '20000000-0000-0000-0000-000000000096','9Y')`);
+    psql(`insert into students(id, class_id, full_name)
+      values ('60000000-0000-0000-0000-00000000009d',
+              '30000000-0000-0000-0000-00000000009d','HS Single')`);
+    denied("20000000-0000-0000-0000-000000000096",
+      `insert into attendance_records(student_id, date, status)
+       values ('60000000-0000-0000-0000-00000000009d','2026-11-09','present')`,
+      "gvbm khong concurrent ghi duoc chuyen can");
+  });
+
+  await t.test("scn_can_write_grade theo role set (gvcn concurrent)", () => {
+    // multiA (gvbm+{gvcn}) duoc viet diem HS lop CN minh qua nhanh gvcn.
+    const ok = asUser("20000000-0000-0000-0000-000000000097",
+      `select scn_can_write_grade('60000000-0000-0000-0000-00000000009c','${ID.subjA}')`);
+    assert.equal(ok.trim(), "t",
+      "gvcn concurrent khong viet duoc diem lop CN");
+    // gvbm don (96) khong day mon do -> false du la gvcn_id lop.
+    const no = asUser("20000000-0000-0000-0000-000000000096",
+      `select scn_can_write_grade('60000000-0000-0000-0000-00000000009d','${ID.subjA}')`);
+    assert.equal(no.trim(), "f",
+      "gvbm khong concurrent viet duoc diem");
+  });
+
+  await t.test("escalation guard chan user tu gan concurrent_roles", () => {
+    // GVCN tA tu update concurrent_roles cua minh -> trigger chan.
+    denied(ID.tA,
+      `update profiles set concurrent_roles='{bgh}'
+       where id='${ID.tA}'`,
+      "user tu gan concurrent_roles - escalation guard khong hoat dong");
+    assert.equal(
+      psql(`select cardinality(concurrent_roles) from profiles where id='${ID.tA}'`).trim(),
+      "0", "concurrent_roles da bi ghi du trigger");
+    // BGH duoc gan (actor bgh nam trong allowed list).
+    asUser(ID.bghA,
+      `update profiles set concurrent_roles='{gvbm}'
+       where id='${ID.toTruongA}'`);
+    assert.equal(
+      psql(`select concurrent_roles::text from profiles where id='${ID.toTruongA}'`).trim(),
+      "{gvbm}", "bgh khong gan duoc concurrent_roles cho staff");
+    // GVCN khong duoc gan cho nguoi khac.
+    denied(ID.tA,
+      `update profiles set concurrent_roles='{}'
+       where id='${ID.toTruongA}'`,
+      "gvcn sua duoc concurrent_roles cua nguoi khac");
+  });
+
+  await t.test("scn_has_feature theo role set + deny thang", () => {
+    // to_truong concurrent (gvbm+{to_truong}) duoc studio.review.
+    psql(`insert into profiles(id, role, school_id, concurrent_roles)
+      values ('20000000-0000-0000-0000-000000000094','gvbm',
+              '${ID.schoolA}','{to_truong}')`);
+    let out = asUser("20000000-0000-0000-0000-000000000094",
+      "select scn_has_feature('studio.review')");
+    assert.equal(out.trim(), "t",
+      "to_truong concurrent khong duoc studio.review");
+    // Role-level grant deny tren to_truong -> deny thang du gvcn allow.
+    psql(`insert into feature_grants(school_id, role, feature, effect)
+      values ('${ID.schoolA}','to_truong','studio.review','deny'),
+             ('${ID.schoolA}','gvbm','studio.review','allow')`);
+    out = asUser("20000000-0000-0000-0000-000000000094",
+      "select scn_has_feature('studio.review')");
+    assert.equal(out.trim(), "f",
+      "grant deny tren 1 role khong chan duoc - escalation qua role thoang hon");
+    psql(`delete from feature_grants`);
+  });
+
+  await t.test("tvc.review_material: to_truong concurrent duyet tang 1", () => {
+    psql(`insert into profiles(id, role, school_id, concurrent_roles)
+      values ('20000000-0000-0000-0000-000000000094','gvbm',
+              '${ID.schoolA}','{to_truong}')
+      on conflict (id) do nothing`);
+    psql(`insert into tvc.materials(id, school_id, author_id, title, status)
+      values ('e0000000-0000-0000-0000-000000000001','${ID.schoolA}','${ID.subA}','TL1','in_review')`);
+    const out = asUser("20000000-0000-0000-0000-000000000094",
+      `select tvc.review_material('e0000000-0000-0000-0000-000000000001','approve','ok')->>'ok'`);
+    assert.equal(out.trim(), "true",
+      "to_truong concurrent khong duyet duoc - " + out);
+    assert.equal(
+      psql(`select status from tvc.materials where id='e0000000-0000-0000-0000-000000000001'`).trim(),
+      "totruong_ok", "status sau to duyet sai");
+    // GVBM don khong duyet duoc.
+    const no = asUser(ID.subA,
+      `select tvc.review_material('e0000000-0000-0000-0000-000000000001','approve','')->>'error'`);
+    assert.match(no, /quyền|trạng thái/,
+      "gvbm duyet duoc hoc lieu");
   });
 });

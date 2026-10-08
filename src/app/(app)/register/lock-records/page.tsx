@@ -7,6 +7,7 @@ import {
   LoadErrorNotice,
 } from "@/components/register/server-utils";
 import type { Signoff } from "@/components/register/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function LockRecordsPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -16,7 +17,7 @@ export default async function LockRecordsPage() {
   const { classes: accessibleClasses, error: classesErr } =
     await getAccessibleClasses(profile);
   const classes = accessibleClasses.filter(
-    (c) => profile.role !== "gvcn" || c.gvcn_id === profile.id,
+    (c) => !hasRole(profile, "gvcn") || c.gvcn_id === profile.id,
   );
   if (classesErr) {
     console.error("[register/lock-records] classes:", classesErr);
@@ -41,10 +42,10 @@ export default async function LockRecordsPage() {
       <PageHeader
         section="Sổ chủ nhiệm"
         title={
-          profile.role === "bgh" ? "Duyệt & khóa sổ học bạ" : "Nộp sổ học bạ"
+          hasRole(profile, "bgh") ? "Duyệt & khóa sổ học bạ" : "Nộp sổ học bạ"
         }
         description={
-          profile.role === "bgh"
+          hasRole(profile, "bgh")
             ? "Duyệt và khóa sổ học bạ các lớp đã nộp theo kỳ - sau khi khóa, dữ liệu không thể chỉnh sửa."
             : "Nộp sổ học bạ lớp mình lên Ban Giám Hiệu để duyệt & khóa theo kỳ."
         }
@@ -57,7 +58,7 @@ export default async function LockRecordsPage() {
           classes={classes.map((c) => ({ id: c.id, name: c.name }))}
           classNames={Object.fromEntries(classNames)}
           profileId={profile.id}
-          role={profile.role === "bgh" ? "bgh" : "gvcn"}
+          role={hasRole(profile, "bgh") ? "bgh" : "gvcn"}
         />
       )}
     </>

@@ -8,6 +8,7 @@ import { ChartCard, BarChart } from "@/components/charts";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import type { AttendanceRecord, ClassRoom } from "@/types";
 import { currentPeriodVN, isoDateVN, todayVN } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -32,7 +33,7 @@ export default async function DeptDashboardPage() {
   }[];
 
   let scopedOrgIds: Set<string> | null = null;
-  if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (hasRole(profile, "ubnd") && profile.org_unit_id) {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
@@ -98,7 +99,7 @@ export default async function DeptDashboardPage() {
       <PageHeader
         section="Quản trị"
         title={
-          profile.role === "so_gd" || profile.role === "admin"
+          hasRole(profile, "so_gd") || hasRole(profile, "admin")
             ? "Dashboard cấp Sở Giáo dục và Đào tạo"
             : `Dashboard ${orgName.get(profile.org_unit_id ?? "") ?? "đơn vị"}`
         }

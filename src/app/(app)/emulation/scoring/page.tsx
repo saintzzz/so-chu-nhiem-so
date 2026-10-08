@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { ScoringGrid } from "@/components/emulation/scoring-grid";
 import type { ScoreCell } from "@/components/emulation/scoring-grid";
 import { currentPeriodVN } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 interface CriterionRow {
   id: string;
@@ -53,7 +54,7 @@ export default async function EmulationScoringPage() {
           .range(f, t),
       ),
       // GVCN chỉ chấm lớp chủ nhiệm của mình; BGH chấm tất cả.
-      profile.role === "gvcn"
+      hasRole(profile, "gvcn")
         ? supabase.from("classes").select("id").eq("gvcn_id", profile.id)
         : Promise.resolve({ data: [] }),
     ]);
@@ -76,7 +77,7 @@ export default async function EmulationScoringPage() {
   }
 
   const editableClassIds =
-    profile.role === "gvcn"
+    hasRole(profile, "gvcn")
       ? ((ownRaw ?? []) as { id: string }[]).map((c) => c.id)
       : (classesRaw ?? []).map((c: { id: string }) => c.id);
 

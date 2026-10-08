@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { todayVN } from "@/lib/utils";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 /**
  * AI gộp báo cáo ngày của tất cả lớp thành 1 bản tin cho BGH/PHT.
@@ -10,7 +11,7 @@ import { todayVN } from "@/lib/utils";
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let date = todayVN();
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     campus_id: string | null;
   }[];
   // PHT chưa gán campus -> fail-closed, không tổng hợp toàn trường.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     classes = profile.campus_id
       ? classes.filter((c) => c.campus_id === profile.campus_id)
       : [];

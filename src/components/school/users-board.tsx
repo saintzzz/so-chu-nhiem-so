@@ -11,6 +11,7 @@ import {
 import { UserGrantRow } from "./feature-permissions";
 import { compareVietnameseName } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/nav";
+import { CONCURRENT_ELIGIBLE } from "@/lib/roles";
 import type { Role } from "@/types";
 
 interface UserRow {
@@ -88,7 +89,7 @@ export function UsersBoard({
   const [detail, setDetail] = useState<
     Record<
       string,
-      { staffCode: string; employmentType: string; qualification: string; concurrentRoles: string; subjects: string[] }
+      { staffCode: string; employmentType: string; qualification: string; concurrentRoles: string[]; subjects: string[] }
     >
   >({});
 
@@ -104,7 +105,7 @@ export function UsersBoard({
         staffCode: u.staff_code ?? "",
         employmentType: u.employment_type ?? "",
         qualification: u.qualification ?? "",
-        concurrentRoles: (u.concurrent_roles ?? []).join(", "),
+        concurrentRoles: u.concurrent_roles ?? [],
         subjects: teacherSubjects[u.id] ?? [],
       }
     );
@@ -413,12 +414,32 @@ export function UsersBoard({
                               placeholder="VD: ThS Giáo dục tiểu học"
                               onChange={(e) => setDraft(u.id, { qualification: e.target.value })} />
                           </label>
-                          <label className="text-xs text-muted-foreground">
-                            Kiêm nhiệm (phân cách bởi dấu phẩy)
-                            <input className={`${inputCls} mt-1 block w-52`} value={d.concurrentRoles}
-                              placeholder="VD: Tổ phó, BCH công đoàn"
-                              onChange={(e) => setDraft(u.id, { concurrentRoles: e.target.value })} />
-                          </label>
+                          <div className="text-xs text-muted-foreground">
+                            <p className="mb-1">Vai trò kiêm nhiệm (multi-role)</p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {CONCURRENT_ELIGIBLE.filter((r) => r !== u.role).map((r) => {
+                                const on = d.concurrentRoles.includes(r);
+                                return (
+                                  <button
+                                    key={r}
+                                    type="button"
+                                    className={`rounded-full border px-2.5 py-1 text-xs ${
+                                      on ? "border-primary bg-primary-bg text-primary" : "hover:bg-muted"
+                                    }`}
+                                    onClick={() =>
+                                      setDraft(u.id, {
+                                        concurrentRoles: on
+                                          ? d.concurrentRoles.filter((x) => x !== r)
+                                          : [...d.concurrentRoles, r],
+                                      })
+                                    }
+                                  >
+                                    {ROLE_LABELS[r]}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                           <button
                             className="rounded-lg border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
                             disabled={pending}
@@ -427,10 +448,7 @@ export function UsersBoard({
                                 staffCode: d.staffCode || null,
                                 employmentType: d.employmentType || null,
                                 qualification: d.qualification || null,
-                                concurrentRoles: d.concurrentRoles
-                                  .split(",")
-                                  .map((s) => s.trim())
-                                  .filter(Boolean),
+                                concurrentRoles: d.concurrentRoles,
                               })
                             }
                           >

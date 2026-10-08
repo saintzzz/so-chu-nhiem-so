@@ -9,6 +9,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { ChartCard, BarChart } from "@/components/charts";
 import { AttendanceRangeNav } from "@/components/attendance/date-controls";
+import { hasRole } from "@/lib/roles";
 
 interface AttDayRow {
   date: string;
@@ -46,7 +47,7 @@ export default async function AttendanceHistoryPage({
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

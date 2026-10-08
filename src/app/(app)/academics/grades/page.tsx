@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
 import { ClassReportExport } from "@/components/academics/class-report-export";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -62,11 +63,11 @@ export default async function GradesPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   // gvcn/gvbm/to_truong: lay them lop minh duoc phan cong day (timetable_entries)
-  const teachQuery = ["gvcn", "gvbm", "to_truong"].includes(profile.role)
+  const teachQuery = hasAnyRole(profile, ["gvcn", "gvbm", "to_truong"])
     ? supabase
         .from("timetable_entries")
         .select("class_id,subject_id")
@@ -104,7 +105,7 @@ export default async function GradesPage({
   let missingErr: { message: string } | null = null;
   if (teaching) {
     const taughtClassIds = new Set(teaching.map((t) => t.class_id));
-    if (profile.role === "gvcn") {
+    if (hasRole(profile, "gvcn")) {
       // GVCN kiem day: them lop minh day vao picker (ngoai lop CN)
       const { data: missingData, error: mErr } = taughtClassIds.size
         ? await supabase
@@ -134,7 +135,7 @@ export default async function GradesPage({
 
   // GVCN xem lop kiem day (khong phai CN): chi mon minh day lop do,
   // tranh chon mon khong day -> RLS chan khi luu
-  if (profile.role === "gvcn" && teaching && classId) {
+  if (hasRole(profile, "gvcn") && teaching && classId) {
     const isHomeroom = (classData ?? []).some(
       (c) => (c as ClassRow).id === classId,
     );

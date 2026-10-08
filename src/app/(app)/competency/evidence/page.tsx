@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { EvidenceForm } from "@/components/competency/evidence-form";
+import { hasRole } from "@/lib/roles";
 
 interface YearRow {
   id: string;
@@ -69,7 +70,7 @@ export default async function EvidencePage() {
   return (
     <>
       <PageHeader
-        section={profile.role === "gvcn" ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
+        section={hasRole(profile, "gvcn") ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
         title="Minh chứng & đánh giá cuối năm"
         description={
           year

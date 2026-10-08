@@ -18,12 +18,13 @@ const TEACHER_CHAT_VIEWER_ROLES = new Set(["gvcn", "gvbm", "to_truong"]);
  * feed /notifications de it nhat doc duoc noi dung thay vi bi redirect loop.
  */
 export function teacherChatLinkForRole(
-  role: string | null | undefined,
+  roles: (string | null | undefined)[],
   senderId: string,
 ): string {
-  if (role && TEACHER_CHAT_VIEWER_ROLES.has(role)) {
+  const rs = roles.filter((r): r is string => Boolean(r));
+  if (rs.some((r) => TEACHER_CHAT_VIEWER_ROLES.has(r))) {
     return `/academics/teacher-chat?to=${senderId}`;
   }
-  if (role === "bgh") return "/parents/inbox";
+  if (rs.includes("bgh")) return "/parents/inbox";
   return "/notifications";
 }

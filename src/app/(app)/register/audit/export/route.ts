@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { todayVN, sanitizeOrTerm } from "@/lib/utils";
 import { sanitizeSpreadsheetCell } from "@/lib/excel";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LIMIT = 5000;
@@ -14,7 +15,7 @@ const LIMIT = 5000;
  */
 export async function GET(req: NextRequest) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh"])) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   const sp = req.nextUrl.searchParams;
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
     header = ["created_at", "week_start", "email", "status", "run_id", "attempts", "error"];
   } else {
     let classQuery = supabase.from("classes").select("id");
-    if (profile.role === "gvcn") classQuery = classQuery.eq("gvcn_id", profile.id);
+    if (hasRole(profile, "gvcn")) classQuery = classQuery.eq("gvcn_id", profile.id);
     else if (profile.school_id) classQuery = classQuery.eq("school_id", profile.school_id);
     const { data: cls, error: clsErr } = await classQuery;
     if (clsErr) {

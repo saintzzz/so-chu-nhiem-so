@@ -379,11 +379,11 @@ async function seedSchool(cfg, demo) {
   });
 
   // BGH + ke toan
-  const bghPht = demo.bgh ? await ensureUser(demo.bgh.email, mkMeta("bgh", { full_name: demo.bgh.name, campus_id: mainCampus })) : null;
+  const bghPht = demo.bgh ? await ensureUser(demo.bgh.email, mkMeta("bgh", { full_name: demo.bgh.name, campus_id: mainCampus, concurrent_roles: ["gvbm"] })) : null;
   demoMail[demo.bgh?.email] = bghPht;
   let phtUid = null;
   if (demo.pht) {
-    phtUid = await ensureUser(demo.pht.email, mkMeta("pht", { full_name: demo.pht.name, campus_id: cs2 ?? mainCampus }));
+    phtUid = await ensureUser(demo.pht.email, mkMeta("pht", { full_name: demo.pht.name, campus_id: cs2 ?? mainCampus, concurrent_roles: ["gvbm"] }));
     demoMail[demo.pht.email] = phtUid;
   }
   const pht2Name = vnName("nu");
@@ -437,7 +437,7 @@ async function seedSchool(cfg, demo) {
         } else if (demo.gvbm && subj === demo.gvbm.subject && !demoMail[demo.gvbm.email]) {
           name = demo.gvbm.name; email = demo.gvbm.email;
         } else { name = vnName(chance(0.55) ? "nu" : "nam"); email = teacherEmail(name, tag); }
-        const uid = await ensureUser(email, mkMeta(role, { full_name: name, department_id: deptIds[deptIdx].id, campus_id: mainCampus }));
+        const uid = await ensureUser(email, mkMeta(role, { full_name: name, department_id: deptIds[deptIdx].id, campus_id: mainCampus, concurrent_roles: role === "gvcn" ? ["gvbm"] : [] }));
         if (email.endsWith("@demo.scn")) demoMail[email] = uid;
         teachers.push({ uid, role, deptIdx, subjects: [sName], campus: mainCampus });
       }
@@ -456,7 +456,7 @@ async function seedSchool(cfg, demo) {
       const isDemo = i === Math.floor(cfg.classes.length / 2) && demo.gvcn;
       const name = isDemo ? demo.gvcn.name : vnName(chance(0.8) ? "nu" : "nam");
       const email = isDemo ? demo.gvcn.email : teacherEmail(name, tag);
-      const uid = await ensureUser(email, mkMeta("gvcn", { full_name: name, department_id: deptIds[deptIdxFor(grade)].id, campus_id: mainCampus }));
+      const uid = await ensureUser(email, mkMeta("gvcn", { full_name: name, department_id: deptIds[deptIdxFor(grade)].id, campus_id: mainCampus, concurrent_roles: ["gvbm"] }));
       if (isDemo) demoMail[demo.gvcn.email] = uid;
       teachers.push({ uid, role: "gvcn", deptIdx: deptIdxFor(grade), subjects: subs, campus: mainCampus });
     }
@@ -479,6 +479,10 @@ async function seedSchool(cfg, demo) {
       if (tt.subjects.length) teachers.push({ uid: tt.uid, role: "to_truong", deptIdx: deptIds.findIndex((d) => d.id === tt.deptId), subjects: [tt.subjects[0]], campus: mainCampus });
     }
   }
+
+  // CR-038: lanh dao kiem day (PHT: GDCD/Dao duc, HT: Lich su/LS&DL) - bo qua neu mon khong co
+  if (phtUid) teachers.push({ uid: phtUid, role: "pht", deptIdx: 0, subjects: ["Giáo dục công dân", "Đạo đức"], campus: mainCampus });
+  if (demo.bgh && bghPht) teachers.push({ uid: bghPht, role: "bgh", deptIdx: 0, subjects: ["Lịch sử và Địa lý", "Lịch sử"], campus: mainCampus });
 
   // teacher_subjects
   const tsRows = [];
@@ -513,6 +517,14 @@ async function seedSchool(cfg, demo) {
   for (const c of classes) {
     if (c.campus_id === cs2 && c.gvcn_id)
       await sb.from("profiles").update({ campus_id: cs2 }).eq("id", c.gvcn_id);
+  }
+  // CR-038: demo GVCN kiem truong to chuyen mon (multi-role showcase)
+  if (demoGvcnUid) {
+    const { data: dg } = await sb.from("profiles").select("department_id").eq("id", demoGvcnUid).single();
+    if (dg?.department_id) {
+      await sb.from("departments").update({ head_id: demoGvcnUid }).eq("id", dg.department_id);
+      await sb.from("profiles").update({ concurrent_roles: ["gvbm", "to_truong"] }).eq("id", demoGvcnUid);
+    }
   }
 
   // ----- students + groups + parents -----

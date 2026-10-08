@@ -59,12 +59,12 @@ export default async function StaffPage() {
       .from("profiles")
       .select("id,role,campus_id,full_name")
       .eq("school_id", sid)
-      .in("role", ["bgh", "pht"]),
+      .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}"),
     supabase
       .from("profiles")
       .select("id,full_name,email,role")
       .eq("school_id", sid)
-      .in("role", ["gvcn", "gvbm"]),
+      .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"),
     supabase.from("teacher_subjects").select("teacher_id,subject_id"),
     supabase.from("subjects").select("id,name").eq("school_id", sid),
   ]);

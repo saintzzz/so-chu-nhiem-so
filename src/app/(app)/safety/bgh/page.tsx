@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BghTable } from "@/components/safety/bgh-table";
 import type { ClassRoom, Incident, Student } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
+import { hasRole } from "@/lib/roles";
 
 function fmtDateTime(iso: string): string {
   return fmtDateTimeVN(iso);
@@ -20,7 +21,7 @@ export default async function SafetyBghPage() {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
   // PHT chưa gán campus -> fail-closed, không xem lớp toàn trường.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     classQuery = classQuery.eq(
       "campus_id",
       profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
@@ -88,7 +89,7 @@ export default async function SafetyBghPage() {
         <StatCard label="Đã báo cáo Ban Giám Hiệu" value={reported} tone="success" />
       </div>
       <BghTable
-        canToggle={profile.role === "bgh"}
+        canToggle={hasRole(profile, "bgh")}
         rows={incidents.map((i) => ({
           id: i.id,
           occurredAt: fmtDateTime(i.occurred_at),

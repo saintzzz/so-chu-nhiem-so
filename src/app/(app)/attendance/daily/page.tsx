@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
 import { DailyRoster, type RosterRow } from "@/components/attendance/daily-roster";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
+import { hasRole } from "@/lib/roles";
 
 export default async function AttendanceDailyPage({
   searchParams,
@@ -26,7 +27,7 @@ export default async function AttendanceDailyPage({
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

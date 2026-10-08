@@ -4,13 +4,14 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { NAV, ROLE_LABELS } from "@/lib/nav";
+import { mergedNav, ROLE_LABELS } from "@/lib/nav";
+import { effectiveRoles } from "@/lib/roles";
 import type { Profile } from "@/types";
 import { CommandPalette } from "@/components/command-palette";
 import { ChangePasswordButton } from "@/components/change-password";
 
-function breadcrumb(pathname: string, role: Profile["role"]) {
-  for (const s of NAV[role] ?? []) {
+function breadcrumb(pathname: string, sections: ReturnType<typeof mergedNav>) {
+  for (const s of sections) {
     if (s.href && pathname.startsWith(s.href))
       return { section: s.label, page: null };
     for (const c of s.children ?? []) {
@@ -31,7 +32,8 @@ export function Topbar({
   const pathname = usePathname();
   const router = useRouter();
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const crumbs = breadcrumb(pathname, profile.role);
+  const roles = effectiveRoles(profile);
+  const crumbs = breadcrumb(pathname, mergedNav(roles));
   const initials = profile.full_name
     .split(" ")
     .map((w) => w[0])
@@ -93,7 +95,7 @@ export function Topbar({
           <Bell className="size-5" />
         </button>
         <span className="hidden rounded-md bg-primary-bg px-2 py-1 text-xs font-medium text-primary lg:inline">
-          {ROLE_LABELS[profile.role]}
+          {roles.map((r) => ROLE_LABELS[r]).join(" · ")}
         </span>
         <span
           className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
@@ -114,7 +116,7 @@ export function Topbar({
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        role={profile.role}
+        roles={roles}
       />
     </header>
   );

@@ -354,10 +354,12 @@ test("R2-10: moi surface PHT fail-closed khi campus_id null", () => {
   ];
   for (const f of files) {
     const src = read(f);
-    const idx = src.indexOf('profile.role === "pht"');
+    // CR-038: pht check theo role set (hasRole) - concurrent pht cung bi
+    // gioi han campus.
+    const idx = src.indexOf('hasRole(profile, "pht")');
     assert.ok(idx >= 0, `${f}: thieu dieu kien pht`);
     const guard = src.slice(idx, idx + 400);
-    assert.ok(!/role === "pht" && profile\.campus_id/.test(guard),
+    assert.ok(!/hasRole\(profile, "pht"\) && profile\.campus_id/.test(guard),
       `${f}: van fail-open khi campus_id null`);
   }
   // RLS fail-closed o DB
@@ -717,11 +719,13 @@ test("R7-01: validateSubTeacher dung chung o create/decide/assign", () => {
   assert.ok(calls >= 3,
     `can >=3 call site (create+decide+assign), thay ${calls}`);
   // Helper phai kiem cung school + role GV
-  const fn = act.match(/validateSubTeacher[\s\S]*?return \{ teacher: teacher/);
+  const fn = act.match(/validateSubTeacher[\s\S]*?error: null,\s*\}/);
   assert.ok(fn, "khong tim thay than helper");
   assert.match(fn[0], /\.eq\("school_id", schoolId\)/);
   assert.match(fn[0], /TEACHER_LINK_ROLES\.has/,
     "helper phai chan role khong phai GV (bgh/pht/ke_toan)");
+  // CR-038: GV kiem nhiem (concurrent_roles) cung duoc tinh la GV.
+  assert.match(fn[0], /concurrent_roles/);
   // assignSubstitute khong con inline check trung lap (dung helper).
   const assign = act.match(/assignSubstitute[\s\S]*?revalidatePath/);
   assert.ok(assign);
@@ -1667,7 +1671,7 @@ test("R10-03: chat-thread dung notifyLink prop, khong doc location.pathname", ()
   // teacher-chat deep-link ?to=<sender> chi cho role xem duoc trang - helper
   // map theo peer.role (to_truong recipient bay gio resolve duoc ?to=).
   assert.match(read("src/app/(app)/academics/teacher-chat/page.tsx"),
-    /notifyLink=\{teacherChatLinkForRole\(peer\.role, profile\.id\)\}/);
+    /notifyLink=\{teacherChatLinkForRole\(\s*\[peer\.role,/);
 });
 
 // --- R10 behavioral: predicate + merge + link helpers (executable) --------
@@ -1731,15 +1735,21 @@ test("R10 behavioral: messageLinkForRole map dung moi role", () => {
 test("R10 behavioral: teacherChatLinkForRole chi deep-link role xem duoc", () => {
   for (const r of ["gvcn", "gvbm", "to_truong"]) {
     assert.equal(
-      teacherChatLinkForRole(r, "S1"),
+      teacherChatLinkForRole([r], "S1"),
       "/academics/teacher-chat?to=S1",
       `${r} mo duoc teacher-chat - deep-link vao thread`,
     );
   }
-  assert.equal(teacherChatLinkForRole("bgh", "S1"), "/parents/inbox",
+  // CR-038: role set - concurrent viewer role cung duoc deep-link.
+  assert.equal(
+    teacherChatLinkForRole(["bgh", "gvcn"], "S1"),
+    "/academics/teacher-chat?to=S1",
+    "bgh kiem gvcn phai deep-link duoc",
+  );
+  assert.equal(teacherChatLinkForRole(["bgh"], "S1"), "/parents/inbox",
     "bgh xem inbox duoc nhung khong vao teacher-chat");
   for (const r of ["pht", "ke_toan", "admin", "phu_huynh", null]) {
-    assert.equal(teacherChatLinkForRole(r, "S1"), "/notifications",
+    assert.equal(teacherChatLinkForRole([r], "S1"), "/notifications",
       `${r} khong mo duoc teacher-chat/inbox - ve feed notifications`);
   }
 });
@@ -1752,8 +1762,10 @@ test("R10: teacher-chat resolve ?to= staff cung truong ngoai peer list", () => {
     "extra peer phai CUNG TRUONG - khong mo rong cross-tenant");
   assert.match(block[0], /\.neq\("id", profile\.id\)/,
     "khong resolve chinh minh lam peer");
-  assert.match(block[0], /\.in\("role", \[\.\.\.STAFF_CHAT_ROLES\]\)/,
+  assert.match(block[0], /role\.in\.\([^)]*gvcn[^)]*\)|STAFF_CHAT_ROLES/,
     "extra peer phai la staff role khop scn_can_message");
+  // CR-038: extra peer resolve theo ca concurrent_roles.
+  assert.match(block[0], /concurrent_roles/);
   assert.match(src, /import \{ STAFF_CHAT_ROLES \} from "@\/lib\/chat"/);
   // STAFF_CHAT_ROLES phai khop danh sach role staff-staff trong policy.
   const mig = read("supabase/migrations/20261105_r2_security_fixes.sql");
@@ -2741,4 +2753,83 @@ test("CR-037: route + prompt + fallback dung khung CV 5512", () => {
   assert.match(prompt, /TUYỆT ĐỐI KHÔNG sinh/, "prompt phai cam phieu bai tap/dap an");
   const fb = read("src/lib/tvc/fallbacks.ts");
   assert.match(fb, /Đánh giá|đánh giá/, "fallback phai co phan danh gia");
+});
+
+// ===== CR-038: multi-role (concurrent_roles) - role set helpers + wiring =====
+const { effectiveRoles, hasRole, hasAnyRole, CONCURRENT_ELIGIBLE } = await import(
+  join(ROOT, "src/lib/roles.ts")
+);
+const { mergedNav, NAV } = await import(join(ROOT, "src/lib/nav.ts"));
+
+test("CR-038: effectiveRoles gop role chinh + concurrent hop le", () => {
+  const p = { role: "gvcn", concurrent_roles: ["gvbm", "to_truong"] };
+  const rs = effectiveRoles(p);
+  assert.deepEqual(rs, ["gvcn", "gvbm", "to_truong"]);
+  // Dedupe + loc gia tri khong hop le + null an toan
+  assert.deepEqual(
+    effectiveRoles({ role: "gvbm", concurrent_roles: ["gvbm", "admin", "x"] }),
+    ["gvbm"],
+  );
+  assert.deepEqual(effectiveRoles({ role: "bgh", concurrent_roles: null }), ["bgh"]);
+  assert.ok(hasRole(p, "to_truong") && hasAnyRole(p, ["to_truong", "bgh"]));
+  assert.ok(!hasRole({ role: "gvcn", concurrent_roles: null }, "to_truong"));
+  assert.ok(!CONCURRENT_ELIGIBLE.includes("admin"), "admin khong duoc kiem nhiem");
+});
+
+test("CR-038: mergedNav gop section cua nhieu role, khong trung item", () => {
+  const nav = mergedNav(["gvcn", "to_truong"]);
+  const flat = nav.flatMap((s) => (s.children ?? []).map((c) => c.href));
+  assert.ok(flat.some((h) => h.startsWith("/team")), "thieu nav to truong");
+  assert.ok(flat.length > 0, "nav rong");
+  assert.equal(new Set(flat).size, flat.length, "nav bi trung href");
+  // Don role -> dung NAV goc
+  const only = mergedNav(["gvcn"]);
+  assert.equal(only.length, NAV.gvcn.length);
+});
+
+test("CR-038: migration co my_roles, check constraint, guard escalation", () => {
+  const mig = read("supabase/migrations/20261116_cr038_multi_role.sql");
+  assert.match(mig, /function public\.my_roles\(\) returns text\[\]/);
+  assert.match(mig, /concurrent_roles <@ array\['gvcn','gvbm','to_truong','bgh','pht'\]/);
+  assert.match(mig, /new\.concurrent_roles is distinct from old\.concurrent_roles/,
+    "profiles_no_priv_escalation phai guard concurrent_roles");
+  assert.match(mig, /my_role\(\) thành|my_roles\(\) @>|my_roles\(\) &&/);
+  assert.match(mig, /trg_profiles_no_priv_escalation/);
+});
+
+test("CR-038: requireRoles/checkActionRole dung tap role hieu luc", () => {
+  const auth = read("src/lib/auth.ts");
+  assert.match(auth, /hasAnyRole\(profile, roles\)/,
+    "route/action guard phai check effective roles, khong chi primary");
+  const appShell = read("src/components/app-shell.tsx");
+  assert.match(appShell, /effectiveRoles\(profile\)/);
+  assert.doesNotMatch(read("src/components/command-palette.tsx"), /NAV\[/,
+    "palette phai dung mergedNav");
+  assert.doesNotMatch(read("src/components/sidebar-nav.tsx"), /NAV\[/,
+    "sidebar phai dung mergedNav");
+});
+
+test("CR-038: users board chon concurrent_roles bang checkbox, khong free text", () => {
+  const board = read("src/components/school/users-board.tsx");
+  assert.doesNotMatch(board, /concurrentRoles\s*:\s*d\.concurrentRoles\s*\.split/,
+    "con khong duoc parse free-text");
+  assert.match(board, /CONCURRENT_ELIGIBLE/);
+  const actions = read("src/app/(app)/school/actions.ts");
+  assert.match(actions, /CONCURRENT_ELIGIBLE\.includes/,
+    "server phai validate concurrent_roles theo eligible list");
+});
+
+test("CR-038: khong con .in(\"role\"/.eq(\"role\" loc concurrent o cac query staff", () => {
+  const files = [
+    "src/app/(app)/academics/exams/page.tsx",
+    "src/app/(app)/schedule/manage/page.tsx",
+    "src/app/(app)/team/teachers/page.tsx",
+    "src/app/(app)/school/substitutes/page.tsx",
+    "src/app/(app)/school/staff/page.tsx",
+  ];
+  for (const f of files) {
+    const s = read(f);
+    assert.doesNotMatch(s, /\.in\("role"/, `${f} con .in("role") bo sot concurrent`);
+    assert.doesNotMatch(s, /\.eq\("role"/, `${f} con .eq("role") bo sot concurrent`);
+  }
 });

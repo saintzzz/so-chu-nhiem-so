@@ -10,6 +10,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
+import { hasRole } from "@/lib/roles";
 
 interface AttRow {
   student_id: string;
@@ -37,7 +38,7 @@ export default async function AttendanceTrackingPage({
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

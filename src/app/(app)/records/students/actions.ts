@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { hasRole } from "@/lib/roles";
 
 export interface StudentRecordPatch {
   full_name?: string;
@@ -60,7 +61,7 @@ export async function updateStudentRecord(
   if (!cls || cls.school_id !== profile.school_id) {
     return { updated: 0, error: "Học sinh không thuộc trường của bạn." };
   }
-  if (profile.role === "gvcn" && cls.gvcn_id !== profile.id) {
+  if (hasRole(profile, "gvcn") && cls.gvcn_id !== profile.id) {
     return {
       updated: 0,
       error: "Chỉ được sửa hồ sơ học sinh lớp bạn chủ nhiệm.",

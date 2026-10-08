@@ -10,6 +10,7 @@ import {
   type LeaveRow,
 } from "@/components/attendance/leaves-table";
 import { AttendanceRangeNav } from "@/components/attendance/date-controls";
+import { hasRole } from "@/lib/roles";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,7 +32,7 @@ export default async function AttendanceLeavesPage({
     .select("*")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

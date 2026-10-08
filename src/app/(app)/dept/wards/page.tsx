@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
+import { hasRole } from "@/lib/roles";
 
 const ORG_TYPE: Record<string, string> = {
   so: "Sở Giáo dục và Đào tạo",
@@ -28,7 +29,7 @@ export default async function DeptWardsPage() {
 
   // Phạm vi: so_gd thấy tất cả đơn vị con; ubnd chỉ mình.
   let visible: typeof orgs;
-  if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (hasRole(profile, "ubnd") && profile.org_unit_id) {
     visible = orgs.filter((o) => o.id === profile.org_unit_id);
   } else {
     visible = orgs;

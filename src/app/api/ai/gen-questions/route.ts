@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { hasAnyRole } from "@/lib/roles";
 
 interface GenQuestion {
   question: string;
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (
     !profile ||
-    !["gvcn", "gvbm", "to_truong", "bgh"].includes(profile.role)
+    !hasAnyRole(profile, ["gvcn", "gvbm", "to_truong", "bgh"])
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }

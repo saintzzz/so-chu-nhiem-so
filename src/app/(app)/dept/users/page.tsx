@@ -41,7 +41,8 @@ export default async function DeptUsersPage({
         .from("profiles")
         .select("id,full_name,email,role,school_id")
         .order("full_name");
-      if (activeRole) q = q.eq("role", activeRole);
+      if (activeRole)
+        q = q.or(`role.eq.${activeRole},concurrent_roles.cs.{${activeRole}}`);
       return q;
     })(),
     supabase.from("schools").select("id,name"),

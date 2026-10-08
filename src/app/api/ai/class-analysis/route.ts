@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI nhận xét kết quả học tập của lớp - dùng cho /academics/analysis.
@@ -11,7 +12,7 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let classId = "";

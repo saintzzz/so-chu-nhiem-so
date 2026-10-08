@@ -8,6 +8,7 @@ import {
 } from "@/components/register/server-utils";
 import type { Signoff } from "@/components/register/types";
 import type { Profile } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function SignoffPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -17,7 +18,7 @@ export default async function SignoffPage() {
   const { classes: accessibleClasses, error: classesErr } =
     await getAccessibleClasses(profile);
   const classes = accessibleClasses.filter(
-    (c) => profile.role !== "gvcn" || c.gvcn_id === profile.id,
+    (c) => !hasRole(profile, "gvcn") || c.gvcn_id === profile.id,
   );
   if (classesErr) {
     console.error("[register/signoff] classes:", classesErr);
@@ -60,9 +61,9 @@ export default async function SignoffPage() {
     <>
       <PageHeader
         section="Sổ chủ nhiệm"
-        title={profile.role === "bgh" ? "Ký duyệt sổ chủ nhiệm" : "Nộp sổ chủ nhiệm"}
+        title={hasRole(profile, "bgh") ? "Ký duyệt sổ chủ nhiệm" : "Nộp sổ chủ nhiệm"}
         description={
-          profile.role === "bgh"
+          hasRole(profile, "bgh")
             ? "Xem và ký duyệt sổ chủ nhiệm các lớp đã nộp theo kỳ."
             : "Nộp sổ chủ nhiệm lớp mình lên Ban Giám Hiệu để ký duyệt theo kỳ."
         }
@@ -77,7 +78,7 @@ export default async function SignoffPage() {
           signerNames={Object.fromEntries(signers)}
           profileId={profile.id}
           profileName={profile.full_name}
-          role={profile.role === "bgh" ? "bgh" : "gvcn"}
+          role={hasRole(profile, "bgh") ? "bgh" : "gvcn"}
         />
       )}
     </>

@@ -5,6 +5,7 @@ import { getAiConfig, generateTextDetailed } from "@/lib/ai";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
 import { fallbackToDevin } from "@/lib/devin";
+import { hasAnyRole } from "@/lib/roles";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB
 const MAX_TEXT = 200_000;
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (!profile)
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  if (!["gvcn", "gvbm", "to_truong", "bgh", "admin"].includes(profile.role)) {
+  if (!hasAnyRole(profile, ["gvcn", "gvbm", "to_truong", "bgh", "admin"])) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
   if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio.questions"))) {

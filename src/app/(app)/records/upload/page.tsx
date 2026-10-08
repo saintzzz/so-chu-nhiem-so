@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StudentUploader } from "@/components/records/student-uploader";
 import { AiExtract } from "@/components/records/ai-extract";
+import { hasRole } from "@/lib/roles";
 
 export default async function RecordsUploadPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -13,7 +14,7 @@ export default async function RecordsUploadPage() {
     .select("id,name")
     .eq("status", "active")
     .order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

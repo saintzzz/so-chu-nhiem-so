@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * Trợ lý AI cho Ban Giám Hiệu - trả lời dựa trên số liệu thật của trường.
@@ -11,7 +12,7 @@ import { todayVN } from "@/lib/utils";
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["bgh", "pht", "admin"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["bgh", "pht", "admin"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
   const body = (await req.json()) as { question?: string };
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
       .from("profiles")
       .select("id")
       .eq("school_id", sid)
-      .in("role", ["gvcn", "gvbm", "to_truong"]),
+      .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"),
   ]);
 
   const attRows = (att ?? []) as { status: string }[];

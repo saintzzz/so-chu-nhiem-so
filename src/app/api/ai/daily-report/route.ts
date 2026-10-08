@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
 import type { Student } from "@/types";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 /**
  * AI soạn nháp báo cáo ngày cho GVCN.
@@ -11,7 +12,7 @@ import type { Student } from "@/types";
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
   const body = (await req.json()) as { classId?: string; date?: string };
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     .eq("id", body.classId)
     .maybeSingle();
   if (!cls) return NextResponse.json({ error: "Lớp không tồn tại." }, { status: 404 });
-  if (profile.role === "gvcn" && cls.gvcn_id !== profile.id) {
+  if (hasRole(profile, "gvcn") && cls.gvcn_id !== profile.id) {
     return NextResponse.json({ error: "Bạn không chủ nhiệm lớp này." }, { status: 403 });
   }
 

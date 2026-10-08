@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { SelfAssessmentForm } from "@/components/competency/self-assessment-form";
+import { hasRole } from "@/lib/roles";
 
 interface YearRow {
   id: string;
@@ -53,11 +54,11 @@ export default async function SelfAssessmentPage() {
   return (
     <>
       <PageHeader
-        section={profile.role === "gvcn" ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
+        section={hasRole(profile, "gvcn") ? "Năng lực giáo viên chủ nhiệm" : "Năng lực giáo viên"}
         title="Tự đánh giá & kế hoạch"
         description={
           year
-            ? `Đánh giá năng lực ${profile.role === "gvcn" ? "chủ nhiệm" : "giảng dạy"} năm học ${year.name}`
+            ? `Đánh giá năng lực ${hasRole(profile, "gvcn") ? "chủ nhiệm" : "giảng dạy"} năm học ${year.name}`
             : "Chưa có năm học hiện tại"
         }
         actions={<StatusBadge label={status.label} tone={status.tone} />}

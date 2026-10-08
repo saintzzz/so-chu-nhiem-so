@@ -6,6 +6,7 @@ import type { Profile } from "@/types";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Topbar } from "@/components/topbar";
 import { domainThemeFor } from "@/lib/domain-theme";
+import { effectiveRoles } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 export function AppShell({
@@ -15,6 +16,7 @@ export function AppShell({
   profile: Profile;
   children: React.ReactNode;
 }) {
+  const roles = effectiveRoles(profile);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = domainThemeFor();
@@ -58,7 +60,7 @@ export function AppShell({
             )}
           </button>
         </div>
-        <SidebarNav role={profile.role} collapsed={collapsed} />
+        <SidebarNav roles={roles} collapsed={collapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -94,7 +96,7 @@ export function AppShell({
               </button>
             </div>
             <SidebarNav
-              role={profile.role}
+              roles={roles}
               collapsed={false}
               onNavigate={() => setMobileOpen(false)}
             />

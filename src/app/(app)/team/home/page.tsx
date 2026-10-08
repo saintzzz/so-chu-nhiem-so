@@ -40,7 +40,7 @@ export default async function TeamHomePage() {
     .from("profiles")
     .select("id,full_name,role")
     .eq("department_id", profile.department_id ?? "")
-    .in("role", ["gvcn", "gvbm", "to_truong"]);
+    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}");
   const members = (memberRows ?? []) as Pick<
     Profile,
     "id" | "full_name" | "role"

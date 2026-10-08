@@ -7,6 +7,7 @@ import type { Material } from "@/types/tvc";
 import { MaterialActions } from "@/components/tvc/material-actions";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { ArrowLeft } from "lucide-react";
+import { effectiveRoles, hasAnyRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function StudioMaterialPage({
   if (!material) notFound();
   // RLS da loc: chi doc duoc cua minh / hoc lieu xuat ban / cung truong (staff)
 
-  const isReviewer = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const isReviewer = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   const { data: revs } =
     material.author_id === profile.id || isReviewer
       ? await supabase
@@ -73,7 +74,7 @@ export default async function StudioMaterialPage({
       <MaterialActions
         material={material}
         meId={profile.id}
-        myRole={profile.role}
+        myRoles={effectiveRoles(profile)}
         reviews={revs ?? []}
       />
     </div>

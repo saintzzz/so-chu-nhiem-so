@@ -20,7 +20,7 @@ export default async function TeamTeachersPage() {
     .from("profiles")
     .select("id,full_name,email,role")
     .eq("department_id", profile.department_id ?? "")
-    .in("role", ["gvcn", "gvbm"])
+    .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}")
     .order("full_name");
   const teachers = (teacherRows ?? []) as Pick<
     Profile,

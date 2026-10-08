@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { ClassRoom, Profile } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 interface AccessibleClasses {
   classes: ClassRoom[];
@@ -20,9 +21,9 @@ export async function getAccessibleClasses(
 ): Promise<AccessibleClasses> {
   const supabase = await createClient();
   const scoped =
-    profile.role === "bgh" ||
-    profile.role === "admin" ||
-    profile.role === "so_gd";
+    hasRole(profile, "bgh") ||
+    hasRole(profile, "admin") ||
+    hasRole(profile, "so_gd");
   if (scoped) {
     const { data, error } = await supabase
       .from("classes")

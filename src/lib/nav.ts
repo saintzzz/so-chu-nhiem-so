@@ -340,3 +340,35 @@ export const ROLE_LABELS: Record<Role, string> = {
   hoc_sinh: "Học sinh",
   admin: "Quản trị hệ thống",
 };
+
+/**
+ * CR-038: gop menu cua nhieu role - section trung label merge children,
+ * item trung href bo bot. Thu tu theo thu tu role (primary truoc).
+ */
+export function mergedNav(roles: Role[]): NavSection[] {
+  const out: NavSection[] = [];
+  const byLabel = new Map<string, NavSection>();
+  const seenHref = new Set<string>();
+  for (const role of roles) {
+    for (const sec of NAV[role] ?? []) {
+      const key = sec.href ?? sec.label;
+      let target = byLabel.get(key);
+      if (!target) {
+        target = { label: sec.label, children: [] };
+        if (sec.href && !seenHref.has(sec.href)) {
+          target.href = sec.href;
+          seenHref.add(sec.href);
+        }
+        byLabel.set(key, target);
+        out.push(target);
+      }
+      for (const c of sec.children ?? []) {
+        if (seenHref.has(c.href)) continue;
+        seenHref.add(c.href);
+        (target.children ??= []).push(c);
+      }
+    }
+  }
+  // Section khong co href ma children da bi role khac hap thu -> bo.
+  return out.filter((s) => s.href || (s.children?.length ?? 0) > 0);
+}

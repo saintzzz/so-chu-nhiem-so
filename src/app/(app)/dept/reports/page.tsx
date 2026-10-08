@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import type { AttendanceRecord } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -28,7 +29,7 @@ export default async function DeptReportsPage() {
   }[];
 
   let scopedOrgIds: Set<string> | null = null;
-  if (profile.role === "ubnd" && profile.org_unit_id) {
+  if (hasRole(profile, "ubnd") && profile.org_unit_id) {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
@@ -71,7 +72,7 @@ export default async function DeptReportsPage() {
   const { data: teacherRows } = await supabase
     .from("profiles")
     .select("id,school_id")
-    .in("role", ["gvcn", "gvbm", "to_truong"])
+    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}")
     .in("school_id", scopedSchoolIds.size ? [...scopedSchoolIds] : ["none"]);
 
   const { data: latestAtt } = await supabase

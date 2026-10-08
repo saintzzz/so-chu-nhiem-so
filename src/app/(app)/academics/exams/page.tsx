@@ -4,6 +4,7 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { PageHeader } from "@/components/page-header";
 import { ExamsBoard } from "@/components/exams/exams-board";
 import { QuestionGen } from "@/components/exams/question-gen";
+import { hasRole } from "@/lib/roles";
 
 interface ExamRow {
   id: string;
@@ -54,7 +55,7 @@ export default async function ExamsPage({
     supabase
       .from("profiles")
       .select("id,full_name")
-      .in("role", ["gvcn", "gvbm", "to_truong", "bgh"])
+      .or("role.in.(gvcn,gvbm,to_truong,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,bgh}")
       .eq("school_id", profile.school_id ?? "")
       .order("full_name"),
     supabase.from("schools").select("id").limit(1),
@@ -115,7 +116,7 @@ export default async function ExamsPage({
   }
   const sessions = sessionsRes.rows;
 
-  const canEdit = profile.role === "gvcn" || profile.role === "bgh";
+  const canEdit = hasRole(profile, "gvcn") || hasRole(profile, "bgh");
   const loadError = srcErrors.length > 0;
 
   return (

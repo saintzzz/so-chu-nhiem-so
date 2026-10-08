@@ -15,6 +15,7 @@ interface TeacherRow {
   id: string;
   full_name: string;
   role: string;
+  concurrent_roles: string[] | null;
 }
 interface TeacherSubjectRow {
   teacher_id: string;
@@ -47,9 +48,11 @@ export default async function AssignmentsPage() {
       .order("name"),
     supabase
       .from("profiles")
-      .select("id,full_name,role")
+      .select("id,full_name,role,concurrent_roles")
       .eq("school_id", profile.school_id ?? "")
-      .in("role", ["gvcn", "gvbm", "to_truong"])
+      .or(
+        "role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}",
+      )
       .order("full_name"),
     fetchAllRows<TeacherSubjectRow>((f, t) =>
       supabase

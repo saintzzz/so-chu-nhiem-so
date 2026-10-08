@@ -4,22 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { NAV } from "@/lib/nav";
+import { mergedNav } from "@/lib/nav";
 import { SECTION_ICONS, ITEM_ICONS, FALLBACK_ICON } from "@/lib/nav-icons";
 import type { Role } from "@/types";
 import { cn } from "@/lib/utils";
 
 export function SidebarNav({
-  role,
+  roles,
   collapsed,
   onNavigate,
 }: {
-  role: Role;
+  roles: Role[];
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const sections = NAV[role] ?? [];
+  const sections = mergedNav(roles);
   const [open, setOpen] = useState<string | null>(
     sections.find((s) =>
       s.children?.some((c) => pathname.startsWith(c.href)),

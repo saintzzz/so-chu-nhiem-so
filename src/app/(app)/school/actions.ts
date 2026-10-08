@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { CONCURRENT_ELIGIBLE } from "@/lib/roles";
+import type { Role } from "@/types";
 import { assertFeature } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
@@ -822,9 +824,12 @@ export async function updateStaffProfile(
   if (input.qualification !== undefined)
     updates.qualification = input.qualification?.trim() || null;
   if (input.concurrentRoles !== undefined) {
-    const bad = (input.concurrentRoles ?? []).filter((r) => !STAFF_ROLES.includes(r));
+    // CR-038: chi nhom role co the dung lop duoc kiem nhiem
+    const bad = (input.concurrentRoles ?? []).filter(
+      (r) => !CONCURRENT_ELIGIBLE.includes(r as Role),
+    );
     if (bad.length) return { error: `Vai trò kiêm nhiệm không hợp lệ: ${bad.join(", ")}` };
-    updates.concurrent_roles = input.concurrentRoles;
+    updates.concurrent_roles = [...new Set(input.concurrentRoles)];
   }
   if (!Object.keys(updates).length) return {};
 

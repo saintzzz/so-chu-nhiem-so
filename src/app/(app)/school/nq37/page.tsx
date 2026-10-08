@@ -39,9 +39,11 @@ export default async function Nq37Page() {
         .eq("school_id", sid),
       supabase
         .from("profiles")
-        .select("id,role,campus_id")
+        .select("id,role,campus_id,concurrent_roles")
         .eq("school_id", sid)
-        .in("role", ["gvcn", "gvbm", "to_truong", "pht", "bgh"]),
+        .or(
+          "role.in.(gvcn,gvbm,to_truong,pht,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,pht,bgh}",
+        ),
     ]);
   const campuses = (cpRaw ?? []) as Pick<Campus, "id" | "name" | "kind">[];
   const classes = (clsRaw ?? []) as { id: string; campus_id: string | null }[];
@@ -55,11 +57,18 @@ export default async function Nq37Page() {
     id: string;
     role: string;
     campus_id: string | null;
+    concurrent_roles: string[] | null;
   }[];
+  const rolesOf = (p: { role: string; concurrent_roles: string[] | null }) => [
+    p.role,
+    ...(p.concurrent_roles ?? []),
+  ];
   const teachers = profiles.filter((p) =>
-    ["gvcn", "gvbm", "to_truong"].includes(p.role),
+    rolesOf(p).some((r) => ["gvcn", "gvbm", "to_truong"].includes(r)),
   );
-  const leaders = profiles.filter((p) => ["bgh", "pht"].includes(p.role));
+  const leaders = profiles.filter((p) =>
+    rolesOf(p).some((r) => ["bgh", "pht"].includes(r)),
+  );
 
   const rows = campuses.map((cp) => {
     const clsCount = classes.filter((c) => c.campus_id === cp.id).length;
@@ -75,7 +84,7 @@ export default async function Nq37Page() {
     const missing = REQUIRED_POSITIONS.filter((p) => !haveStd.has(p.key));
     const needPht = cp.kind !== "main";
     const hasPht = leaders.some(
-      (l) => l.role === "pht" && l.campus_id === cp.id,
+      (l) => rolesOf(l).includes("pht") && l.campus_id === cp.id,
     );
     const ratio = clsCount > 0 ? teacherCount / clsCount : null;
     return {

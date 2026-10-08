@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { ConductRecordForm } from "@/components/conduct/record-form";
+import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -54,7 +55,7 @@ export default async function ConductRecordsPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   const { data: classData } = await classQuery.order("name");

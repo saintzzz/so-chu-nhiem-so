@@ -11,8 +11,10 @@ import { referencesMissingContext } from "@/lib/tvc/question-validate";
 import { renderFigure } from "@/lib/tvc/figures";
 import type { ToolContext } from "@/lib/tvc/types";
 import type { CurriculumStandard, DocContent, Question, Subject } from "@/types/tvc";
+import type { Role } from "@/types";
+import { hasAnyRole } from "@/lib/roles";
 
-const TOOL_ROLES = ["gvcn", "gvbm", "to_truong", "bgh", "admin"];
+const TOOL_ROLES: Role[] = ["gvcn", "gvbm", "to_truong", "bgh", "admin"];
 
 interface MatrixCell {
   standard_id: string;
@@ -398,10 +400,10 @@ export async function POST(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, school_id, full_name")
+    .select("id, role, school_id, full_name, concurrent_roles")
     .eq("id", user.id)
     .single();
-  if (!profile || !TOOL_ROLES.includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, TOOL_ROLES)) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
   // CR-034: feature grant studio.ai chan o tang route, khong chi page

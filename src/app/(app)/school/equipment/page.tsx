@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EquipmentBoard } from "@/components/school/equipment-board";
 import type { Campus } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function EquipmentPage() {
   const profile = await requireRoles(["bgh", "pht", "ke_toan"]);
@@ -56,7 +57,7 @@ export default async function EquipmentPage() {
       <EquipmentBoard
         items={items}
         campuses={(cpRaw ?? []) as Pick<Campus, "id" | "name">[]}
-        canDelete={profile.role === "bgh" || profile.role === "ke_toan"}
+        canDelete={hasRole(profile, "bgh") || hasRole(profile, "ke_toan")}
       />
     </div>
   );

@@ -87,7 +87,7 @@ export async function submitLessonPlan(input: {
   const { data: heads } = await supabase
     .from("profiles")
     .select("id")
-    .eq("role", "to_truong")
+    .or("role.eq.to_truong,concurrent_roles.cs.{to_truong}")
     .eq("school_id", profile.school_id ?? "");
   const rows = ((heads ?? []) as { id: string }[]).map((p) => ({
     profile_id: p.id,
@@ -189,7 +189,7 @@ export async function teamReviewLessonPlan(
     const { data: leaders } = await supabase
       .from("profiles")
       .select("id")
-      .in("role", ["bgh", "pht"])
+      .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}")
       .eq("school_id", profile.school_id ?? "");
     const rows = ((leaders ?? []) as { id: string }[]).map((p) => ({
       profile_id: p.id,

@@ -6,6 +6,7 @@ import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent, semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { NLPC_ATTRIBUTES } from "@/lib/nlpc";
+import { hasAnyRole } from "@/lib/roles";
 
 interface StudentInput {
   code: string;
@@ -22,7 +23,7 @@ const RATING_LABELS: Record<string, string> = {
 
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let classId: string | undefined;

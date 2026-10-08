@@ -10,6 +10,7 @@ import {
   type NlpcEval,
   type NlpcCommentRow,
 } from "@/components/conduct/nlpc-editor";
+import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
   id: string;
@@ -57,7 +58,7 @@ export default async function ConductEvaluationPage({
     .from("classes")
     .select("id,name")
     .eq("status", "active");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   const [{ data: classData, error: classErr }, { data: schoolData, error: schoolErr }] =

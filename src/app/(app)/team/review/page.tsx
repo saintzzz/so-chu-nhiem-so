@@ -34,7 +34,7 @@ export default async function TeamReviewPage() {
     .from("profiles")
     .select("id,full_name")
     .eq("department_id", profile.department_id ?? "")
-    .in("role", ["gvcn", "gvbm", "to_truong"]);
+    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}");
   const teachers = (teacherRows ?? []) as Pick<Profile, "id" | "full_name">[];
   const teacherIds = teachers.map((t) => t.id);
   const teacherNameOf = new Map(teachers.map((t) => [t.id, t.full_name]));

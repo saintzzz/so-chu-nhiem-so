@@ -13,6 +13,7 @@ import {
   type StudentSummaryRow,
 } from "@/components/records/students-explorer";
 import { averageByStudent } from "@/lib/tt22";
+import { hasRole } from "@/lib/roles";
 
 const ROLE_LABEL: Record<string, string> = {
   lop_truong: "Lớp trưởng",
@@ -46,7 +47,7 @@ export default async function RecordsStudentsPage({
   const supabase = await createClient();
 
   let classQuery = supabase.from("classes").select("*").order("name");
-  if (profile.role === "gvcn") {
+  if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);

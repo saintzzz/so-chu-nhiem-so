@@ -6,6 +6,7 @@ import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
 // R10-03: link thong bao theo role nguoi nhan (helper chia se, test duoc).
 import { messageLinkForRole } from "@/lib/message-link";
+import { hasRole } from "@/lib/roles";
 
 export async function sendAnnouncement(input: {
   classId: string;
@@ -112,7 +113,7 @@ export async function replyMessage(input: {
   if (!st || !stuCls || stuCls.school_id !== profile?.school_id) {
     return { error: "Học sinh không thuộc trường của bạn." };
   }
-  if (profile?.role === "gvcn" && stuCls.gvcn_id !== profile.id) {
+  if ((profile && hasRole(profile, "gvcn")) && stuCls.gvcn_id !== profile.id) {
     return { error: "Chỉ trả lời tin nhắn về học sinh lớp bạn chủ nhiệm." };
   }
   // Người nhận phải là phụ huynh của học sinh này hoặc chính học sinh.

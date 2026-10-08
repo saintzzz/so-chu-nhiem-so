@@ -8,11 +8,13 @@ import { ROLE_LABELS } from "@/lib/nav";
 import { STAFF_CHAT_ROLES } from "@/lib/chat";
 import { teacherChatLinkForRole } from "@/lib/message-link";
 import type { Role } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 interface ProfileRow {
   id: string;
   full_name: string;
   role: Role;
+  concurrent_roles: string[] | null;
 }
 interface TeacherSubjectRow {
   teacher_id: string;
@@ -32,11 +34,11 @@ export default async function TeacherChatPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const peerRole = profile.role === "gvbm" ? "gvcn" : "gvbm";
+  const peerRole = hasRole(profile, "gvbm") ? "gvcn" : "gvbm";
   const { data: teacherData } = await supabase
     .from("profiles")
-    .select("id,full_name,role")
-    .eq("role", peerRole)
+    .select("id,full_name,role,concurrent_roles")
+    .or(`role.eq.${peerRole},concurrent_roles.cs.{${peerRole}}`)
     .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
     .order("full_name");
@@ -54,11 +56,13 @@ export default async function TeacherChatPage({
   if (requestedTo && !teachers.some((t) => t.id === requestedTo)) {
     const { data: extraPeer } = await supabase
       .from("profiles")
-      .select("id,full_name,role")
+      .select("id,full_name,role,concurrent_roles")
       .eq("id", requestedTo)
       .eq("school_id", profile.school_id ?? "")
       .neq("id", profile.id)
-      .in("role", [...STAFF_CHAT_ROLES])
+      .or(
+        `role.in.(${[...STAFF_CHAT_ROLES].join(",")}),concurrent_roles.ov.{${[...STAFF_CHAT_ROLES].join(",")}}`,
+      )
       .maybeSingle();
     if (extraPeer) {
       teachers = sortByVietnameseName(
@@ -178,7 +182,10 @@ export default async function TeacherChatPage({
             peerName={peer.full_name}
             messages={messages}
             initialHasOlder={hasOlder}
-            notifyLink={teacherChatLinkForRole(peer.role, profile.id)}
+            notifyLink={teacherChatLinkForRole(
+              [peer.role, ...(peer.concurrent_roles ?? [])],
+              profile.id,
+            )}
           />
         ) : (
           <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

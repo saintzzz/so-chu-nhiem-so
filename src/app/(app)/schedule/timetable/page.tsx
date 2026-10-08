@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
 import { cn, PERIODS } from "@/lib/utils";
+import { hasRole, hasAnyRole } from "@/lib/roles";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
 
@@ -38,7 +39,7 @@ export default async function TimetablePage({
     .eq("status", "active")
     .order("name", { ascending: true });
   // PHT chỉ xem TKB các lớp thuộc cơ sở mình phụ trách; chưa gán campus -> fail-closed.
-  if (profile.role === "pht") {
+  if (hasRole(profile, "pht")) {
     allClassesQuery = allClassesQuery.eq(
       "campus_id",
       profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
@@ -61,7 +62,7 @@ export default async function TimetablePage({
   const ownClasses = (ownClsRaw ?? []) as ClassRow[];
   const ownClsIds = new Set(ownClasses.map((c) => c.id));
 
-  const isTeacher = ["gvcn", "gvbm", "to_truong"].includes(profile.role);
+  const isTeacher = hasAnyRole(profile, ["gvcn", "gvbm", "to_truong"]);
   // Giáo viên xem TKB các lớp chủ nhiệm + lớp đang dạy; BGH/PHT xem toàn
   // trường/cơ sở theo quyền.
   const taughtIds = new Set(
@@ -135,7 +136,7 @@ export default async function TimetablePage({
   }
 
   // BGH-only: full reference data for Excel template + import.
-  const isBgh = profile.role === "bgh";
+  const isBgh = hasRole(profile, "bgh");
   let subjects: { id: string; name: string }[] = [];
   let teachers: { id: string; name: string }[] = [];
   let allEntries: {
@@ -153,7 +154,7 @@ export default async function TimetablePage({
         supabase
           .from("profiles")
           .select("id,full_name")
-          .in("role", ["gvcn", "gvbm", "to_truong", "bgh"])
+          .or("role.in.(gvcn,gvbm,to_truong,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,bgh}")
           .eq("school_id", profile.school_id ?? "")
           .order("full_name"),
         supabase

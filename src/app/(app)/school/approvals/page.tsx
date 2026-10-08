@@ -12,6 +12,7 @@ import type {
   Subject,
   SubstituteRequest,
 } from "@/types";
+import { hasRole } from "@/lib/roles";
 
 export default async function ApprovalsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -106,7 +107,7 @@ export default async function ApprovalsPage() {
 
   // PHT chỉ duyệt trong phạm vi cơ sở phụ trách; chưa gán campus -> fail-closed.
   const scopedIds =
-    profile.role === "pht"
+    hasRole(profile, "pht")
       ? new Set(
           classes
             .filter(

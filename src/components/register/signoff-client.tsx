@@ -53,7 +53,7 @@ export function SignoffClient({
     const { data } = await supabase
       .from("profiles")
       .select("id")
-      .eq("role", "bgh");
+      .or("role.eq.bgh,concurrent_roles.cs.{bgh}");
     const rows = ((data ?? []) as { id: string }[]).filter(
       (p) => p.id !== profileId,
     );

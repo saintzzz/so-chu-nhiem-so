@@ -56,7 +56,7 @@ export async function saveDailyReport(input: {
     const { data: leaders } = await supabase
       .from("profiles")
       .select("id")
-      .in("role", ["bgh", "pht"])
+      .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}")
       .eq("school_id", profile.school_id ?? "");
     const rows = ((leaders ?? []) as { id: string }[])
       .filter((p) => p.id !== profile.id)

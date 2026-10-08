@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI tóm tắt sổ đầu bài - dùng cho /schedule/period-log.
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
   const profile = await getProfile();
   if (
     !profile ||
-    !["gvcn", "gvbm", "to_truong", "bgh", "pht"].includes(profile.role)
+    !hasAnyRole(profile, ["gvcn", "gvbm", "to_truong", "bgh", "pht"])
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }

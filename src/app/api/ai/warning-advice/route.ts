@@ -3,11 +3,12 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
+import { hasAnyRole } from "@/lib/roles";
 
 /** AI đề xuất xử lý cho một cảnh báo sớm - ghi lại vào early_warnings.suggestion */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
   const body = (await req.json()) as { warningId?: string };

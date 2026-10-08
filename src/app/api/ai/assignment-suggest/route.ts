@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI gợi ý phân công giảng dạy - dùng cho /school/assignments.
@@ -9,7 +10,7 @@ import { respondWithAi, parseLines } from "@/lib/ai-route";
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   const supabase = await createClient();
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
       .from("profiles")
       .select("id,full_name,role")
       .eq("school_id", sid)
-      .in("role", ["gvcn", "gvbm"]),
+      .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"),
     supabase.from("teacher_subjects").select("teacher_id,subject_id"),
     supabase.from("subjects").select("id,name").eq("school_id", sid),
     supabase

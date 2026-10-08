@@ -66,13 +66,16 @@ export async function createSubstituteRequest(input: {
     // Link GV toi trang so dau bai dung ngay duoc phan cong thay the.
     const { data: targetProfiles } = await supabase
       .from("profiles")
-      .select("id,role")
+      .select("id,role,concurrent_roles")
       .in("id", [...targets]);
     const roleOf = new Map(
-      ((targetProfiles ?? []) as { id: string; role: string }[]).map((p) => [
-        p.id,
-        p.role,
-      ]),
+      (
+        (targetProfiles ?? []) as {
+          id: string;
+          role: string;
+          concurrent_roles: string[] | null;
+        }[]
+      ).map((p) => [p.id, [p.role, ...(p.concurrent_roles ?? [])]]),
     );
     await supabase.from("notifications").insert(
       [...targets].map((id) => ({
@@ -91,8 +94,8 @@ export async function createSubstituteRequest(input: {
 // Role nao vao duoc /schedule/period-log (page requireRoles gvcn/gvbm/to_truong)
 // thi link toi ngay duoc day thay; approver giu link trang dieu dong.
 const TEACHER_LINK_ROLES = new Set(["gvcn", "gvbm", "to_truong"]);
-function subNotificationLink(role: string | undefined, date: string): string {
-  return role && TEACHER_LINK_ROLES.has(role)
+function subNotificationLink(roles: string[] | undefined, date: string): string {
+  return roles?.some((r) => TEACHER_LINK_ROLES.has(r))
     ? `/schedule/period-log?date=${date}`
     : "/school/substitutes";
 }
@@ -108,12 +111,12 @@ async function validateSubTeacher(
   teacherId: string,
   schoolId: string,
 ): Promise<{
-  teacher: { id: string; role: string } | null;
+  teacher: { id: string; role: string; concurrent_roles: string[] | null } | null;
   error: string | null;
 }> {
   const { data: teacher } = await supabase
     .from("profiles")
-    .select("id,role")
+    .select("id,role,concurrent_roles")
     .eq("id", teacherId)
     .eq("school_id", schoolId)
     .maybeSingle();
@@ -121,14 +124,21 @@ async function validateSubTeacher(
     return { teacher: null, error: "Giáo viên không thuộc trường của bạn." };
   }
   // Cung danh sach role voi picker o page.tsx - khong gan ke toan/nhan vien
-  // khac lam GV day thay.
-  if (!TEACHER_LINK_ROLES.has((teacher as { role: string }).role)) {
+  // khac lam GV day thay. CR-038: concurrent_roles cung tinh (bgh kiem gvbm).
+  const tRoles = [
+    teacher.role,
+    ...((teacher as { concurrent_roles?: string[] }).concurrent_roles ?? []),
+  ];
+  if (!tRoles.some((r) => TEACHER_LINK_ROLES.has(r))) {
     return {
       teacher: null,
       error: "Người được phân công phải là giáo viên.",
     };
   }
-  return { teacher: teacher as { id: string; role: string }, error: null };
+  return {
+    teacher: teacher as { id: string; role: string; concurrent_roles: string[] | null },
+    error: null,
+  };
 }
 
 export async function decideSubstituteRequest(
@@ -199,13 +209,16 @@ export async function decideSubstituteRequest(
   if (targets.size) {
     const { data: targetProfiles } = await supabase
       .from("profiles")
-      .select("id,role")
+      .select("id,role,concurrent_roles")
       .in("id", [...targets]);
     const roleOf = new Map(
-      ((targetProfiles ?? []) as { id: string; role: string }[]).map((p) => [
-        p.id,
-        p.role,
-      ]),
+      (
+        (targetProfiles ?? []) as {
+          id: string;
+          role: string;
+          concurrent_roles: string[] | null;
+        }[]
+      ).map((p) => [p.id, [p.role, ...(p.concurrent_roles ?? [])]]),
     );
     await supabase.from("notifications").insert(
       [...targets].map((id) => ({
@@ -294,7 +307,10 @@ export async function assignSubstitute(
     type: "substitute",
     title: "Bạn được phân công dạy thay",
     body: `Ngày ${req.date} tiết ${req.period}`,
-    link: subNotificationLink(teacher.role, req.date as string),
+    link: subNotificationLink(
+      [teacher.role, ...(teacher.concurrent_roles ?? [])],
+      req.date as string,
+    ),
   });
   revalidatePath("/school/substitutes");
   return {};

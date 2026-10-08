@@ -4,6 +4,7 @@ import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import type { CurriculumStandard, Subject } from "@/types/tvc";
 import { StandardsManager } from "@/components/tvc/standards-manager";
+import { hasAnyRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function StudioYccdPage() {
     supabase.from("tvc_subjects").select("*").order("code"),
   ]);
 
-  const canManage = ["to_truong", "bgh", "admin"].includes(profile.role);
+  const canManage = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader

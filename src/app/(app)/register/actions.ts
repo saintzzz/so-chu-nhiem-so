@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { hasRole } from "@/lib/roles";
 
 /* ---------- CR-034: cap tai khoan dang nhap cho phu huynh ---------- */
 
@@ -50,7 +51,7 @@ export async function grantParentAccess(input: {
     .select("id,school_id,gvcn_id")
     .in("id", (studs ?? []).map((s) => s.class_id));
   const allowed =
-    profile.role === "gvcn"
+    hasRole(profile, "gvcn")
       ? (classes ?? []).some((c) => c.gvcn_id === profile.id)
       : (classes ?? []).some((c) => c.school_id === profile.school_id);
   if (!allowed)

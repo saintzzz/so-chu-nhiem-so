@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole } from "@/lib/auth";
 import type { Activity, Profile } from "@/types";
+import { hasAnyRole } from "@/lib/roles";
 
 async function getContext() {
   const supabase = await createClient();
@@ -72,7 +73,7 @@ export async function reviewActivity(
 ): Promise<{ error?: string }> {
   const { supabase, user, profile } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
-  if (!profile || !["bgh", "pht", "admin"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["bgh", "pht", "admin"])) {
     return { error: "Chỉ Ban Giám Hiệu mới có quyền phê duyệt." };
   }
   // R2-09: conditional update phai kiem rows affected - nguoi thua trong

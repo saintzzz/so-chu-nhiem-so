@@ -24,12 +24,12 @@ const btnPrimary =
 export function MaterialActions({
   material,
   meId,
-  myRole,
+  myRoles,
   reviews = [],
 }: {
   material: Material;
   meId?: string;
-  myRole?: string;
+  myRoles?: string[];
   reviews?: { layer: number; status: string; notes: string | null; created_at: string }[];
 }) {
   const router = useRouter();
@@ -44,10 +44,11 @@ export function MaterialActions({
     isAuthor &&
     ["personal", "draft", "rejected", "withdrawn"].includes(material.status);
   const canSubmit = isAuthor && canEdit;
+  const isToTruong = myRoles?.includes("to_truong") ?? false;
+  const isBgh = myRoles?.some((r) => ["bgh", "admin"].includes(r)) ?? false;
   const canReview =
-    (myRole === "to_truong" && material.status === "in_review") ||
-    (["bgh", "admin"].includes(myRole ?? "") &&
-      ["in_review", "totruong_ok"].includes(material.status));
+    (isToTruong && material.status === "in_review") ||
+    (isBgh && ["in_review", "totruong_ok"].includes(material.status));
 
   const save = () =>
     start(async () => {
@@ -111,7 +112,9 @@ export function MaterialActions({
                 act(() => reviewMaterial(material.id, "approve", note));
               }}
             >
-              {myRole === "to_truong" ? "Tổ duyệt" : "BGH duyệt - xuất bản"}
+              {isToTruong && material.status === "in_review"
+                ? "Tổ duyệt"
+                : "BGH duyệt - xuất bản"}
             </button>
             <button
               className={`${btn} text-destructive`}

@@ -3,13 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { hasAnyRole } from "@/lib/roles";
 
 /**
  * AI tóm tắt tuần/kỳ thi đua giữa các lớp - dùng cho /emulation/ranking.
  */
 export async function POST(req: Request) {
   const profile = await getProfile();
-  if (!profile || !["gvcn", "bgh", "pht"].includes(profile.role)) {
+  if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let period = "";

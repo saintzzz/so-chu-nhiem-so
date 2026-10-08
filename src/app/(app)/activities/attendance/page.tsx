@@ -3,7 +3,8 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { compareVietnameseName } from "@/lib/utils";
 import { AttendanceRoster } from "@/components/activities/attendance-roster";
-import type { Activity, ClassRoom, Profile, Student } from "@/types";
+import type { Activity, ClassRoom, Profile, Student, Role } from "@/types";
+import { hasAnyRole } from "@/lib/roles";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -18,9 +19,9 @@ async function scopedClasses(
   supabase: Supabase,
   profile: Profile,
 ): Promise<ClassRoom[]> {
-  const wideRoles = ["bgh", "so_gd", "admin", "to_truong"];
+  const wideRoles: Role[] = ["bgh", "so_gd", "admin", "to_truong"];
   let query = supabase.from("classes").select("*").order("name");
-  if (wideRoles.includes(profile.role)) {
+  if (hasAnyRole(profile, wideRoles)) {
     if (profile.school_id) query = query.eq("school_id", profile.school_id);
   } else {
     query = query.eq("gvcn_id", profile.id);

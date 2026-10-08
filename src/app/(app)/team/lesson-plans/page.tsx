@@ -23,6 +23,7 @@ export default async function TeamLessonPlansPage() {
         .eq("school_id", sid)
         .eq("status", "active")
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<Pick<Subject, "id" | "name">>((f, t) =>
@@ -31,6 +32,7 @@ export default async function TeamLessonPlansPage() {
         .select("id,name")
         .eq("school_id", sid)
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<LessonPlan>((f, t) =>
@@ -40,6 +42,7 @@ export default async function TeamLessonPlansPage() {
         .eq("school_id", sid)
         .eq("status", "submitted")
         .order("created_at", { ascending: false })
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<Pick<Profile, "id" | "full_name">>((f, t) =>
@@ -48,6 +51,7 @@ export default async function TeamLessonPlansPage() {
         .select("id,full_name")
         .eq("school_id", sid)
         .order("full_name")
+        .order("id")
         .range(f, t),
     ),
   ]);
@@ -59,6 +63,7 @@ export default async function TeamLessonPlansPage() {
         .eq("school_id", sid)
         .neq("status", "submitted")
         .order("created_at", { ascending: false })
+        .order("id")
         .range(f, t),
     1000,
     300,

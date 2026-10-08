@@ -21,6 +21,7 @@ export default async function LessonPlansPage() {
         .eq("school_id", sid)
         .eq("status", "active")
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<Pick<Subject, "id" | "name">>((f, t) =>
@@ -29,6 +30,7 @@ export default async function LessonPlansPage() {
         .select("id,name")
         .eq("school_id", sid)
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<LessonPlan>(
@@ -38,6 +40,7 @@ export default async function LessonPlansPage() {
           .select("*")
           .eq("teacher_id", profile.id)
           .order("created_at", { ascending: false })
+          .order("id")
           .range(f, t),
       1000,
       300,

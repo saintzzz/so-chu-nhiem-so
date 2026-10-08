@@ -29,6 +29,7 @@ export default async function ApprovalsPage() {
         .select("*")
         .eq("school_id", sid)
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<Subject>((f, t) =>
@@ -37,6 +38,7 @@ export default async function ApprovalsPage() {
         .select("*")
         .eq("school_id", sid)
         .order("name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<Pick<Profile, "id" | "full_name">>((f, t) =>
@@ -45,6 +47,7 @@ export default async function ApprovalsPage() {
         .select("id,full_name")
         .eq("school_id", sid)
         .order("full_name")
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<LessonPlan>((f, t) =>
@@ -54,6 +57,7 @@ export default async function ApprovalsPage() {
         .eq("school_id", sid)
         .eq("status", "team_approved")
         .order("created_at", { ascending: false })
+        .order("id")
         .range(f, t),
     ),
     fetchAllRows<SubstituteRequest>((f, t) =>
@@ -63,6 +67,7 @@ export default async function ApprovalsPage() {
         .eq("school_id", sid)
         .eq("status", "pending")
         .order("date")
+        .order("id")
         .range(f, t),
     ),
   ]);
@@ -77,6 +82,7 @@ export default async function ApprovalsPage() {
           .in("class_id", classIds)
           .eq("status", "pending")
           .order("activity_date")
+          .order("id")
           .range(f, t),
       )
     : { rows: [], error: null, truncated: false };

@@ -2642,6 +2642,26 @@ test("CR-035/Codex: bucket lesson-plans co DELETE policy chi cho chu file", () =
     "policy phai gioi han chu file - delete rong truong la cross-user data loss");
 });
 
+test("CR-035/Codex: query phan trang co tiebreaker order(id) on dinh", () => {
+  // fetchAllRows doc theo offset range - order khong unique lam cac trang
+  // lap/bo sot row khi co nhieu dong trung gia tri sort (Codex R4).
+  for (const p of [
+    "src/app/(app)/academics/lesson-plans/page.tsx",
+    "src/app/(app)/team/lesson-plans/page.tsx",
+    "src/app/(app)/school/approvals/page.tsx",
+  ]) {
+    const src = read(p);
+    const queries = src.match(/\.range\(f, t\)/g) ?? [];
+    assert.ok(queries.length > 0, `${p} khong co query phan trang`);
+    for (const m of src.matchAll(
+      /fetchAllRows[\s\S]{0,900}?\.range\(f, t\)/g,
+    )) {
+      assert.ok(m[0].includes('.order("id")'),
+        `${p}: fetchAllRows block thieu order("id"): ${m[0].slice(-160)}`);
+    }
+  }
+});
+
 test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", () => {
   const src = read("src/app/(app)/school/approvals/page.tsx");
   const cls = src.match(

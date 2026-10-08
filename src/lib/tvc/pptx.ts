@@ -94,10 +94,17 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
       x: 0.5, y: 0.25, w: 9, h: 0.7,
       fontFace: FONT, fontSize: 22, bold: true, color: "1F3B73",
     });
+    // CR-042: note blocks = loi thuyet trinh cua GV -> speaker notes,
+    // khong hien thi tren slide chieu cho HS.
+    const notes = (sec.blocks ?? [])
+      .filter((b) => b.kind === "note")
+      .map((b) => b.text);
     const lines = (sec.blocks ?? [])
+      .filter((b) => b.kind !== "note")
       .flatMap(blockToLines)
       .filter((l) => l.text.trim())
       .slice(0, 9);
+    if (notes.length) s.addNotes(notes.join("\n\n"));
     s.addText(
       lines.map((l) => ({
         text: l.text,
@@ -128,10 +135,15 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
       x: 0.5, y: 0.25, w: 9, h: 0.7,
       fontFace: FONT, fontSize: 20, bold: true, color: "5B6577",
     });
+    const notes = (ap.blocks ?? [])
+      .filter((b) => b.kind === "note")
+      .map((b) => b.text);
     const lines = (ap.blocks ?? [])
+      .filter((b) => b.kind !== "note")
       .flatMap(blockToLines)
       .filter((l) => l.text.trim())
       .slice(0, 9);
+    if (notes.length) s.addNotes(notes.join("\n\n"));
     s.addText(
       lines.map((l) => ({
         text: l.text,

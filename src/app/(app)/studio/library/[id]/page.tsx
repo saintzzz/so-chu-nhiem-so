@@ -57,6 +57,16 @@ export default async function StudioMaterialPage({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold">{material.title}</h1>
         <MaterialStatusBadge status={material.status} />
+        {material.ai_usage === "none" && (
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+            Bản khung mẫu - chưa có nội dung AI
+          </span>
+        )}
+        {material.ai_usage === "partial" && (
+          <span className="rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
+            AI một phần
+          </span>
+        )}
       </div>
       {(stds ?? []).length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">

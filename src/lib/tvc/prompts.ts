@@ -57,21 +57,25 @@ Biểu mẫu hoạt động: ${
     }. Thời lượng: ${input.duration || "1 tiết"}.
 
 CẤU TRÚC BẮT BUỘC của sections (đúng thứ tự, đúng tiêu đề):
-1. "I. MỤC TIÊU" - heading con "1. Kiến thức" (list bám sát YCCĐ đã chọn), "2. Năng lực" (năng lực chung + năng lực đặc thù cụ thể của môn), "3. Phẩm chất".
+1. "I. MỤC TIÊU" - heading con "1. Kiến thức" (list bám sát YCCĐ đã chọn), "2. Năng lực" (năng lực chung + năng lực đặc thù CỤ THỂ của môn, viết đầy đủ - ví dụ môn Toán: "năng lực tư duy và lập luận toán học, năng lực giải quyết vấn đề toán học" kèm biểu hiện cụ thể trong bài), "3. Phẩm chất".
 2. "II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU" - liệt kê đồ dùng/học liệu cho GV và HS, cụ thể theo bài (không ghi chung chung).
 3. "III. TIẾN TRÌNH DẠY HỌC" - sau đó MỖI hoạt động của biểu mẫu là MỘT section riêng, tiêu đề "Hoạt động <n>. <Tên hoạt động> (<số phút> phút)". Trong mỗi section hoạt động BẮT BUỘC đủ 5 nhãn theo thứ tự:
    a) Mục tiêu (heading level 3)
-   b) Nội dung (heading level 3)
-   c) Tổ chức hoạt động - BẮT BUỘC dạng table gồm 2 cột ["Hoạt động của giáo viên và học sinh", "Nội dung"], mỗi bước 1 dòng (vai trò GV và HS nêu rõ trong cột 1, sản phẩm/kiến thức tương ứng cột 2)
-   d) Sản phẩm (heading level 3 - sản phẩm HS phải đạt sau hoạt động)
-   đ) Đánh giá (heading level 3 - cách GV đánh giá/quan sát sản phẩm)
+   b) Nội dung (heading level 3) - THEO CV 5512 phần này phải NÊU RÕ nội dung yêu cầu/nhiệm vụ cụ thể mà HS phải thực hiện: viết sẵn nguyên văn câu hỏi, bài tập, tình huống (ví dụ "Câu hỏi: Cho P(x) = 3x^2 + 2x - 5 và Q(x) = x^2 - 4x + 1. Tính P(x) + Q(x)?"). KHÔNG được ghi "Nội dung hoạt động X của bài" hay nói chung chung.
+   c) Tổ chức hoạt động - BẮT BUỘC dạng table gồm 2 cột ["Hoạt động của giáo viên và học sinh", "Nội dung"], mỗi bước 1 dòng. Cột 1 nêu rõ hành động GV và HS. Cột 2 BẮT BUỘC viết nguyên văn sản phẩm: câu hỏi GV đặt + đáp án/kết quả dự kiến của HS (ví dụ "P(x) + Q(x) = 4x^2 - 2x - 4"), kiến thức cần chốt ghi đầy đủ (định nghĩa, công thức, quy tắc - không ghi "kiến thức trọng tâm").
+   d) Sản phẩm (heading level 3 - sản phẩm HS phải đạt sau hoạt động, nêu cụ thể: đáp án câu hỏi/bài tập, nội dung cần ghi vở)
+   đ) Đánh giá (heading level 3 - cách GV đánh giá/quan sát sản phẩm, theo tiêu chí nào)
 4. "IV. ĐIỀU CHỈNH SAU BÀI DẠY" - để trống (một para gạch chấm).
 5. "KÝ DUYỆT" - table 2 cột ["TỔ TRƯỞNG KIỂM TRA", "NGƯỜI SOẠN"], 1 dòng "(Ký và ghi rõ họ tên)".
-appendix CHỈ 1 section: "PHỤ LỤC: DỰ KIẾN SẢN PHẨM VÀ ĐÁNH GIÁ" - table ["Hoạt động", "Sản phẩm học sinh", "Phương án đánh giá"].
+appendix CHỈ 1 section: "PHỤ LỤC: DỰ KIẾN SẢN PHẨM VÀ ĐÁNH GIÁ" - table ["Hoạt động", "Sản phẩm học sinh", "Phương án đánh giá"], cột sản phẩm ghi cụ thể (không ghi "bài làm cá nhân").
 
-TUYỆT ĐỐI KHÔNG sinh: phiếu bài tập, phiếu học tập, đáp án, hướng dẫn chấm, bài tập về nhà, đề kiểm tra - giáo án không chứa các nội dung đó (chúng thuộc công cụ khác).
-Mỗi bước tổ chức phải cụ thể, viết được hành động của GV và HS (không ghi "GV tổ chức hoạt động").${input.note ? ` Yêu cầu thêm của giáo viên: ${input.note}` : ""}
-Viết đầy đủ, thực tế, dùng được ngay - không viết khung trống.`,
+QUY TẮC NỘI DUNG (quan trọng nhất):
+- Mỗi hoạt động phải có ÍT NHẤT 1 câu hỏi/bài tập cụ thể viết nguyên văn, đúng trình độ lớp ${ctx.grade ?? ""}, đúng YCCĐ - và kèm đáp án/kết quả dự kiến trong cột Nội dung hoặc phần Sản phẩm.
+- Hoạt động Luyện tập: phải có 2-3 bài tập cụ thể (viết đề bài đầy đủ) bám YCCĐ.
+- Hoạt động Vận dụng: tình huống/bài toán thực tiễn cụ thể, kèm hướng giải quyết dự kiến.
+- TUYỆT ĐỐI KHÔNG sinh riêng phần: phiếu bài tập, phiếu học tập, hướng dẫn chấm, bài tập về nhà, đề kiểm tra - nhưng câu hỏi và đáp án dự kiến NẰM TRONG bảng tổ chức hoạt động là BẮT BUỘC.
+- Mỗi bước tổ chức phải cụ thể, viết được hành động của GV và HS (không ghi "GV tổ chức hoạt động").${input.note ? ` Yêu cầu thêm của giáo viên: ${input.note}` : ""}
+Viết đầy đủ, thực tế, dùng được ngay - giáo viên phải đọc được câu hỏi cần hỏi và đáp án cần chốt mà không cần tra thêm tài liệu.`,
   }),
 
   "DC-05": (input, ctx) => ({
@@ -85,10 +89,23 @@ Appendix: đáp án/hướng dẫn chấm chi tiết từng câu (phần dành c
   "DC-06": (input, ctx) => ({
     system: SYS_BASE,
     prompt: `${base(ctx)}
-Thiết kế BÀI TRÌNH CHIẾU (slide) cho bài "${input.lesson || "theo YCCĐ trên"}", ${input.slides || 8} slide.
-Mỗi section = 1 slide: tiêu đề slide ngắn gọn + 3-5 bullet nội dung trình chiếu (KHÔNG viết đoạn văn dài, mỗi bullet tối đa 15 từ).
+Thiết kế BÀI TRÌNH CHIẾU (slide) cho bài "${input.lesson || "theo YCCĐ trên"}", ${input.slides || 8} slide.${
+      ctx.extra?.khbdText
+        ? `
+BÀI TRÌNH CHIẾU PHẢI BÁM SÁT giáo án (KHBD) đã soạn sau đây - giữ đúng tiến trình hoạt động và dùng lại NGUYÊN VĂN câu hỏi/bài tập của giáo án (không chế lại, không đổi số liệu):
+"""
+${String(ctx.extra.khbdText)}
+"""`
+        : ""
+    }
+Mỗi section = 1 slide: tiêu đề slide ngắn gọn + nội dung trình chiếu.
 Cấu trúc bám tiến trình KHBD: mở đầu (slide bìa + mục tiêu), khởi động, khám phá (có thể 2-3 slide), luyện tập, vận dụng, tổng kết.
-Nội dung bám YCCĐ đã chọn, phù hợp lứa tuổi học sinh lớp ${ctx.grade ?? ""}. Có gợi ý hình ảnh/minh họa dạng [Gợi ý hình: ...] ở bullet riêng khi cần.`,
+YÊU CẦU NỘI DUNG:
+- Slide dẫn vào mỗi hoạt động phải có CÂU HỎI/NHIỆM VỤ cụ thể chiếu cho học sinh (viết nguyên văn câu hỏi/bài tập dạng list - KHÔNG ghi "GV nêu câu hỏi").
+- Slide luyện tập: viết đề bài đầy đủ để chiếu; ĐÁP ÁN/dự kiến trả lời đặt trong block "note", không đưa lên nội dung slide.
+- Mỗi slide (trừ slide bìa) kết thúc bằng đúng 1 block "note" = ghi chú thuyết trình cho GV, bắt đầu bằng "Ghi chú GV: " - gồm lời thoại gợi ý, đáp án/dự kiến câu trả lời của HS, lưu ý tổ chức (thời gian, chia nhóm).
+- Bullet ngắn gọn, tối đa 15 từ/dòng, KHÔNG viết đoạn văn dài. Có gợi ý hình ảnh/minh họa dạng [Gợi ý hình: ...] ở bullet riêng khi cần.
+Nội dung bám YCCĐ đã chọn, phù hợp lứa tuổi học sinh lớp ${ctx.grade ?? ""}.`,
   }),
 
   "T-01": (input, ctx) => ({

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { DocContent, Material } from "@/types/tvc";
 import { formatDateTime } from "@/lib/utils";
 import { DocEditor } from "./doc-editor";
@@ -13,7 +14,7 @@ import {
   reviewMaterial,
 } from "@/lib/tvc/actions";
 import {
-  Save, Trash2, FileDown, Printer, Eye, PenLine, Loader2,
+  Save, Trash2, FileDown, Printer, Eye, PenLine, Loader2, Presentation,
 } from "lucide-react";
 
 const btn =
@@ -85,6 +86,11 @@ export function MaterialActions({
         <a className={btn} href={`/api/studio/materials/${material.id}/export?fmt=docx`}>
           <FileDown className="h-4 w-4" /> Xuất Word
         </a>
+        {material.type === "lesson_plan" && (
+          <Link className={btn} href={`/studio/DC-06?from=${material.id}`}>
+            <Presentation className="h-4 w-4" /> Sinh bài trình chiếu
+          </Link>
+        )}
         {material.type === "slides" && (
           <a className={btn} href={`/api/studio/materials/${material.id}/export?fmt=pptx`}>
             <FileDown className="h-4 w-4" /> Xuất PPTX

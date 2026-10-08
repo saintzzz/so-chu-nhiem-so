@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TOOL_MAP } from "@/lib/tvc/registry";
 import { fbMatrix } from "@/lib/tvc/fallbacks";
 import { generateDoc } from "@/lib/tvc/ai-json";
-import { sanitizeKhbdDoc } from "@/lib/tvc/khbd-doc";
+import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
@@ -449,6 +449,46 @@ export async function POST(
       .eq("id", input.khbd_template)
       .single();
     if (tpl) ctx.extra = { khbdTemplate: tpl };
+  }
+
+  // DC-06 (CR-042): sinh slide tu giao an da soan - nap noi dung KHBD
+  // vao prompt thay vi bat GV nhap lai mon/khoi/YCCD. RLS tu loc quyen
+  // doc material (cua minh / xuat ban / cung truong).
+  if (code === "DC-06" && input.material_id) {
+    const { data: mat } = await supabase
+      .from("tvc_materials")
+      .select("id, title, type, subject_code, grade, standard_ids, content")
+      .eq("id", input.material_id)
+      .single();
+    if (!mat || mat.type !== "lesson_plan") {
+      return NextResponse.json(
+        { error: "Không tìm thấy giáo án nguồn (hoặc học liệu không phải KHBD)." },
+        { status: 404 },
+      );
+    }
+    // Bu trong tu material khi input thieu - API caller khong can truyen lai.
+    if (!ctx.subject && mat.subject_code) {
+      const { data } = await supabase
+        .from("tvc_subjects")
+        .select("*")
+        .eq("code", mat.subject_code)
+        .single();
+      subject = (data as Subject | null) ?? null;
+      ctx.subject = subject;
+    }
+    if (!ctx.grade && mat.grade) ctx.grade = mat.grade;
+    if (!ctx.standards.length && mat.standard_ids?.length) {
+      const { data } = await supabase
+        .from("tvc_curriculum_standards")
+        .select("*")
+        .in("id", mat.standard_ids);
+      standards = (data as CurriculumStandard[]) ?? [];
+      ctx.standards = standards;
+    }
+    ctx.extra = {
+      ...(ctx.extra ?? {}),
+      khbdText: docToPlainText(mat.content as DocContent),
+    };
   }
 
   // DC-03: sinh đề từ ngân hàng câu hỏi theo ma trận đã chọn

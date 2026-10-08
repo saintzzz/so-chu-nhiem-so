@@ -116,28 +116,28 @@ export default async function DashboardPage({
             .eq("id", profile.school_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      // CR-042: embed ten lop qua FK timetable_entries.class_id -> classes
+      // de bo wave truy van classes.in(taughtIds) rieng.
       supabase
         .from("timetable_entries")
-        .select("class_id")
+        .select("class_id, classes(id,name)")
         .eq("teacher_id", profile.id),
     ]);
   const homeroomClasses = (clsRaw ?? []) as ClassRow[];
   const homeroomIds = new Set(homeroomClasses.map((c) => c.id));
-  const taughtIds = [
-    ...new Set(
-      ((taughtRaw ?? []) as { class_id: string }[])
-        .map((t) => t.class_id)
-        .filter((id) => !homeroomIds.has(id)),
-    ),
-  ];
-  const { data: taughtClsRaw } =
-    taughtIds.length > 0
-      ? await supabase.from("classes").select("id,name").in("id", taughtIds)
-      : { data: [] };
+  const taughtMap = new Map<string, string>();
+  for (const t of (taughtRaw ?? []) as {
+    class_id: string;
+    classes: { id: string; name: string } | { id: string; name: string }[] | null;
+  }[]) {
+    const c = Array.isArray(t.classes) ? t.classes[0] : t.classes;
+    if (c && !homeroomIds.has(t.class_id)) taughtMap.set(t.class_id, c.name);
+  }
   // Lớp chủ nhiệm trước, lớp đang dạy sau (đánh dấu "(dạy)")
   const allClasses: ClassRow[] = [
     ...homeroomClasses,
-    ...((taughtClsRaw ?? []) as ClassRow[])
+    ...[...taughtMap.entries()]
+      .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "vi"))
       .map((c) => ({ ...c, name: `${c.name} (dạy)` })),
   ];
@@ -157,24 +157,13 @@ export default async function DashboardPage({
   const studentIds = students.map((s) => s.id);
   const hasStudents = studentIds.length > 0;
 
-  // Thẻ chuyên cần: ?date= xem 1 ngày (mặc định ngày có data gần nhất),
-  // ?from=&to= xem tổng hợp theo khoảng ngày.
+  // Thẻ chuyên cần: ?date= xem 1 ngày, ?from=&to= xem tổng hợp theo
+  // khoảng ngày. Mặc định = ngày có điểm danh gần nhất - suy ra từ cửa sổ
+  // attendance đã fetch trong batch bên dưới (CR-042, bỏ wave riêng).
   let attDate = TODAY;
-  if (hasStudents && !dateParam && !rangeMode) {
-    const { data: latestAtt } = await supabase
-      .from("attendance_records")
-      .select("date")
-      .in("student_id", studentIds)
-      .order("date", { ascending: false })
-      .limit(1);
-    if (latestAtt?.[0]?.date) attDate = latestAtt[0].date;
-  }
   if (dateParam) attDate = dateParam;
-  const rangeFrom = fromParam ?? attDate;
-  const rangeTo = toParam ?? attDate;
-  const attDateLabel = rangeMode
-    ? `${formatDateOnly(rangeFrom, { day: "numeric", month: "numeric" })} - ${formatDateOnly(rangeTo, { day: "numeric", month: "numeric" })}`
-    : formatDateOnly(attDate, { day: "numeric", month: "numeric" });
+  const qFrom = fromParam ?? attDate;
+  const qTo = toParam ?? attDate;
 
   // All remaining queries only depend on studentIds/classId/profile - run in one batch.
   const since30 = addDaysIso(TODAY, -30);
@@ -195,16 +184,21 @@ export default async function DashboardPage({
     { data: evalRaw },
   ] = await Promise.all([
     hasStudents
-      ? fetchAllRows<{ student_id: string; status: string }>((f, t) => {
-          let q = supabase
-            .from("attendance_records")
-            .select("student_id,status")
-            .in("student_id", studentIds);
-          q = rangeMode
-            ? q.gte("date", rangeFrom).lte("date", rangeTo)
-            : q.eq("date", attDate);
-          return q.order("id").range(f, t);
-        }).then((r) => ({ data: r.rows }))
+      ? fetchAllRows<{ student_id: string; status: string; date: string }>(
+          (f, t) => {
+            let q = supabase
+              .from("attendance_records")
+              .select("student_id,status,date")
+              .in("student_id", studentIds);
+            if (rangeMode) q = q.gte("date", qFrom).lte("date", qTo);
+            else if (dateParam) q = q.eq("date", attDate);
+            else q = q.gte("date", since30); // cua so gan nhat -> suy ra attDate
+            return q
+              .order("date", { ascending: false })
+              .order("id")
+              .range(f, t);
+          },
+        ).then((r) => ({ data: r.rows }))
       : Promise.resolve({ data: [] }),
     hasStudents && !rangeMode
       ? supabase
@@ -291,13 +285,18 @@ export default async function DashboardPage({
           .limit(4)
       : Promise.resolve({ data: [] }),
     classId
-      ? supabase
-          .from("daily_reports")
-          .select("id,status")
-          .eq("class_id", classId)
-          .eq("date", rangeMode ? rangeTo : attDate)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+      ? (rangeMode || dateParam
+          ? supabase
+              .from("daily_reports")
+              .select("id,status,date")
+              .eq("class_id", classId)
+              .eq("date", rangeMode ? qTo : attDate)
+          : supabase
+              .from("daily_reports")
+              .select("id,status,date")
+              .eq("class_id", classId)
+              .gte("date", since30))
+      : Promise.resolve({ data: [] }),
     hasStudents
       ? supabase
           .from("conduct_evaluations")
@@ -306,10 +305,22 @@ export default async function DashboardPage({
           .eq("term", "hk1")
       : Promise.resolve({ data: [] }),
   ]);
-  const todayAtt = (todayAttRaw ?? []) as {
+  // attDate = ngay gan nhat co diem danh (rows da order date desc)
+  const attRows = (todayAttRaw ?? []) as {
     student_id: string;
     status: string;
+    date: string;
   }[];
+  let todayAtt = attRows;
+  if (hasStudents && !rangeMode && !dateParam && attRows.length) {
+    attDate = attRows[0].date;
+    todayAtt = attRows.filter((r) => r.date === attDate);
+  }
+  const rangeFrom = fromParam ?? attDate;
+  const rangeTo = toParam ?? attDate;
+  const attDateLabel = rangeMode
+    ? `${formatDateOnly(rangeFrom, { day: "numeric", month: "numeric" })} - ${formatDateOnly(rangeTo, { day: "numeric", month: "numeric" })}`
+    : formatDateOnly(attDate, { day: "numeric", month: "numeric" });
   const presentToday = todayAtt.filter((r) => r.status === "present").length;
   const absentToday = todayAtt.filter(
     (r) => r.status === "excused" || r.status === "unexcused",
@@ -424,10 +435,10 @@ export default async function DashboardPage({
 
   // Tác vụ nghiệp vụ bắt buộc hôm nay (giống mô hình "chưa điểm danh / chưa
   // nộp báo cáo / chưa đánh giá" của hệ thống tham chiếu)
-  const todayReport = (reportRaw ?? null) as {
-    id: string;
-    status: string;
-  } | null;
+  const todayReport =
+    ((reportRaw ?? []) as { id: string; status: string; date: string }[]).find(
+      (r) => r.date === (rangeMode ? rangeTo : attDate),
+    ) ?? null;
   const evalRows = (evalRaw ?? []) as {
     student_id: string;
     comment: string | null;
@@ -439,7 +450,10 @@ export default async function DashboardPage({
   const missingEvaluations = hasStudents
     ? studentIds.filter((id) => !evaluatedIds.has(id)).length
     : 0;
-  const notMarkedToday = hasStudents && !rangeMode && attDate !== todayVN();
+  const notMarkedToday =
+    hasStudents &&
+    !rangeMode &&
+    (attDate !== todayVN() || !attRows.some((r) => r.date === todayVN()));
   const reportNotSubmitted = todayReport?.status !== "submitted";
   const clsQ = classId ? `&class=${classId}` : "";
 

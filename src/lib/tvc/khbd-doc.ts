@@ -67,3 +67,40 @@ export function sanitizeKhbdDoc(doc: DocContent | null | undefined): DocContent 
   };
   return khbdHasCoreStructure(out) ? out : null;
 }
+
+/**
+ * CR-042: DocContent -> plain text de dua vao prompt AI.
+ * Dung cho DC-06: bien giao an (KHBD) da luu thanh nguon sinh slide.
+ */
+export function docToPlainText(doc: DocContent, maxChars = 12000): string {
+  const blockText = (b: DocContent["sections"][0]["blocks"][0]): string => {
+    switch (b.kind) {
+      case "heading":
+      case "para":
+      case "note":
+        return b.text;
+      case "list":
+        return b.items.map((i) => `- ${i}`).join("\n");
+      case "kv":
+        return b.pairs.map(([k, v]) => `${k}: ${v}`).join("\n");
+      case "table":
+        return [b.header.join(" | "), ...b.rows.map((r) => r.join(" | "))].join("\n");
+      case "formula":
+        return b.tex;
+      case "image":
+        return b.caption ? `[Hình: ${b.caption}]` : "";
+      case "divider":
+        return "";
+    }
+  };
+  const parts: string[] = [];
+  if (doc.title) parts.push(`# ${doc.title}`);
+  for (const s of [...(doc.sections ?? []), ...(doc.appendix ?? [])]) {
+    parts.push(`\n## ${s.title}`);
+    for (const b of s.blocks ?? []) {
+      const t = blockText(b).trim();
+      if (t) parts.push(t);
+    }
+  }
+  return parts.join("\n").slice(0, maxChars);
+}

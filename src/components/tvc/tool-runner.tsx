@@ -25,9 +25,18 @@ const inputCls =
 export function ToolRunner({
   tool,
   defaultSubject,
+  fromMaterial,
 }: {
   tool: ToolClientDef;
   defaultSubject?: string;
+  // CR-042: DC-06 - sinh tu giao an da co (?from=<material_id>)
+  fromMaterial?: {
+    id: string;
+    title: string;
+    subject: string | null;
+    grade: number | null;
+    standardIds: string[];
+  } | null;
 }) {
   const router = useRouter();
   const [values, setValues] = useState<Record<string, string>>(() => {
@@ -37,6 +46,11 @@ export function ToolRunner({
     });
     // CR-032: GVBM vao tool thi mon mac dinh = mon phu trach
     if (defaultSubject && !v.subject) v.subject = defaultSubject;
+    // CR-042: prefill tu giao an nguon
+    if (fromMaterial) {
+      if (fromMaterial.subject) v.subject = fromMaterial.subject;
+      if (fromMaterial.grade) v.grade = String(fromMaterial.grade);
+    }
     return v;
   });
   const [coValues, setCoValues] = useState<Record<string, string>>({});
@@ -46,7 +60,9 @@ export function ToolRunner({
   const [standards, setStandards] = useState<CurriculumStandard[]>([]);
   const [matrixOptions, setMatrixOptions] = useState<{ id: string; title: string }[]>([]);
   const [tplOptions, setTplOptions] = useState<{ id: string; name: string }[]>([]);
-  const [selectedStd, setSelectedStd] = useState<string[]>([]);
+  const [selectedStd, setSelectedStd] = useState<string[]>(
+    fromMaterial?.standardIds ?? [],
+  );
   const [doc, setDoc] = useState<DocContent | null>(null);
   const [docTabs, setDocTabs] = useState<{ label: string; doc: DocContent }[] | null>(null);
   const [activeTab, setActiveTab] = useState(0);
@@ -139,7 +155,12 @@ export function ToolRunner({
     }
     setError("");
     setSavedId(null);
-    const input = { ...values, ...coValues, standard_ids: selectedStd.join(",") };
+    const input = {
+      ...values,
+      ...coValues,
+      standard_ids: selectedStd.join(","),
+      ...(fromMaterial ? { material_id: fromMaterial.id } : {}),
+    };
     start(async () => {
       const res = await fetch(`/api/studio/tools/${tool.code}/generate`, {
         method: "POST",
@@ -363,6 +384,22 @@ export function ToolRunner({
       <div className="space-y-4">
         <div className="rounded-xl border bg-card p-5 shadow-sm">
           <h2 className="font-semibold">Thông tin đầu vào</h2>
+          {fromMaterial && (
+            <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+              <p className="font-medium">
+                Sinh slide từ giáo án đã soạn - không cần nhập lại.
+              </p>
+              <p className="mt-0.5 text-muted-foreground">
+                {fromMaterial.title} -{" "}
+                <a
+                  href={`/studio/library/${fromMaterial.id}`}
+                  className="text-primary hover:underline"
+                >
+                  xem giáo án
+                </a>
+              </p>
+            </div>
+          )}
           <div className="mt-4 space-y-4">
             {tool.fields.map((f) => (
               <div key={f.key}>
@@ -443,9 +480,18 @@ export function ToolRunner({
                 {editMode ? "Xem bản in" : "Chỉnh sửa"}
               </button>
             </div>
-            {provider && (
+            {provider === "rule-based" && (
+              <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                <span className="font-semibold">BẢN KHUNG MẪU</span> - AI tạm
+                không khả dụng. Đây chỉ là khung chuẩn: các mục trong ngoặc
+                [ ] cần giáo viên điền nội dung cụ thể của bài trước khi dùng.
+                Bấm &quot;{genLabel}&quot; lại khi AI hoạt động để có học liệu
+                đầy đủ.
+              </div>
+            )}
+            {provider && provider !== "rule-based" && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Nguồn sinh: {provider === "rule-based" ? "Mẫu hệ thống" : provider === "question-bank" ? "Ngân hàng câu hỏi" : "AI"}
+                Nguồn sinh: {provider === "question-bank" ? "Ngân hàng câu hỏi" : provider === "fallback-engine" ? "AI (máy chủ dự phòng)" : "AI"}
                 {missing > 0 && ` - còn thiếu ${missing} câu hỏi trong ngân hàng`}
                 {review > 0 && ` - ${review} câu được thay bằng câu gần đúng (khác mức/dạng), cần rà soát`}
               </p>

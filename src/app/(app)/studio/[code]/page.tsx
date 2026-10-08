@@ -11,12 +11,15 @@ import { ArrowLeft } from "lucide-react";
 
 export default async function ToolPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
   await requireFeature("studio");
   const { code } = await params;
+  const sp = await searchParams;
   const tool = TOOL_MAP.get(code);
   if (!tool) notFound();
   if (tool.href) redirect(tool.href);
@@ -42,6 +45,34 @@ export default async function ToolPage({
     }
   }
 
+  // CR-042: DC-06 nhan ?from=<material_id> - sinh slide truc tiep tu
+  // giao an da soan. RLS loc quyen doc material; sai type thi bo qua.
+  let fromMaterial:
+    | {
+        id: string;
+        title: string;
+        subject: string | null;
+        grade: number | null;
+        standardIds: string[];
+      }
+    | null = null;
+  if (code === "DC-06" && sp.from) {
+    const { data: m } = await supabase
+      .from("tvc_materials")
+      .select("id, title, type, subject_code, grade, standard_ids")
+      .eq("id", sp.from)
+      .single();
+    if (m && m.type === "lesson_plan") {
+      fromMaterial = {
+        id: m.id,
+        title: m.title,
+        subject: m.subject_code,
+        grade: m.grade,
+        standardIds: (m.standard_ids as string[] | null) ?? [],
+      };
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl">
       <Link
@@ -59,7 +90,11 @@ export default async function ToolPage({
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{tool.description}</p>
       </div>
-      <ToolRunner tool={toClientTool(tool)} defaultSubject={defaultSubject} />
+      <ToolRunner
+        tool={toClientTool(tool)}
+        defaultSubject={defaultSubject}
+        fromMaterial={fromMaterial}
+      />
     </div>
   );
 }

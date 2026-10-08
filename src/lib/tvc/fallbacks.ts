@@ -1,4 +1,4 @@
-import type { DocContent, DocSection, CurriculumStandard } from "@/types/tvc";
+import type { DocBlock, DocContent, DocSection, CurriculumStandard } from "@/types/tvc";
 import type { ToolContext } from "./types";
 import { LEVEL_LABEL, QTYPE_LABEL } from "./types";
 
@@ -56,31 +56,31 @@ const KHBD_STEPS: Record<string, KhbdStep[]> = {
   "Khởi động": [
     {
       act: "GV nêu câu hỏi/tình huống mở đầu gắn trực tiếp với nội dung bài học; HS suy nghĩ, trả lời theo ý kiến cá nhân.",
-      content: "Câu hỏi/tình huống mở đầu của bài học",
+      content: "[GV điền câu hỏi/tình huống mở đầu cụ thể của bài]",
     },
     {
       act: "GV gọi 2-3 HS phát biểu, nhận xét câu trả lời, dẫn dắt vào bài mới.",
-      content: "Đáp án mở của HS - GV định hướng vào bài",
+      content: "[Dự kiến câu trả lời của HS]",
     },
   ],
   "Khám phá": [
     {
       act: "GV tổ chức HS đọc thông tin, quan sát ví dụ/tình huống; HS làm việc cá nhân ghi nhận thông tin.",
-      content: "Tư liệu/ví dụ khám phá của bài học",
+      content: "[GV điền tư liệu/ví dụ/câu hỏi khám phá cụ thể]",
     },
     {
       act: "HS thảo luận nhóm đôi/nhóm 4 theo nhiệm vụ; GV quan sát, hỗ trợ nhóm gặp khó khăn.",
-      content: "Kết quả thảo luận nhóm của HS",
+      content: "[Dự kiến sản phẩm thảo luận nhóm - đáp án/kết luận của các nhóm]",
     },
     {
       act: "Đại diện nhóm trình bày, nhóm khác nhận xét bổ sung; GV chốt kiến thức trọng tâm, ghi bảng.",
-      content: "Kiến thức trọng tâm được chốt trên bảng",
+      content: "[GV ghi kiến thức chốt đầy đủ - định nghĩa/công thức/quy tắc]",
     },
   ],
   "Luyện tập": [
     {
       act: "HS làm bài tập cá nhân mức Biết - Hiểu; GV bao quát lớp, giúp HS yếu.",
-      content: "Bài làm cá nhân của HS",
+      content: "[GV điền đề bài luyện tập cụ thể + đáp án dự kiến]",
     },
     {
       act: "HS đổi bài chấm chéo theo đáp án GV cung cấp; GV chữa lỗi sai phổ biến trước lớp.",
@@ -90,7 +90,7 @@ const KHBD_STEPS: Record<string, KhbdStep[]> = {
   "Vận dụng": [
     {
       act: "GV giao nhiệm vụ vận dụng gắn bối cảnh thực tế; HS thực hiện cá nhân/nhóm và trình bày sản phẩm.",
-      content: "Sản phẩm vận dụng của HS",
+      content: "[Dự kiến sản phẩm/bài giải của HS]",
     },
     {
       act: "GV nhận xét sản phẩm, dặn dò chuẩn bị bài sau.",
@@ -160,6 +160,10 @@ export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
       {
         title: "I. MỤC TIÊU",
         blocks: [
+          {
+            kind: "note",
+            text: "BẢN KHUNG MẪU - AI tạm không khả dụng. Các mục trong ngoặc [ ] cần giáo viên điền câu hỏi/nội dung cụ thể của bài trước khi dùng.",
+          },
           { kind: "heading", level: 3, text: "1. Về kiến thức" },
           { kind: "list", items: stds.map((s) => s.description) },
           { kind: "heading", level: 3, text: "2. Về năng lực" },
@@ -201,9 +205,10 @@ export function fbLessonPlan(input: Input, ctx: ToolContext): DocContent {
             (a.name === "Khám phá"
               ? `Hình thành kiến thức mới: ${stdDesc(ctx)}.`
               : "Thực hiện nhiệm vụ học tập của hoạt động."),
+          // CR-042: danh dau cho trong can GV dien, khong viet noi dung gia
           a.name === "Khám phá"
-            ? `Nội dung trọng tâm: ${stdDesc(ctx)}.`
-            : `Nội dung hoạt động ${a.name} của bài "${title}".`,
+            ? `Nội dung trọng tâm: ${stdDesc(ctx)}. [GV điền: câu hỏi/bài tập/nhiệm vụ cụ thể của hoạt động]`
+            : `[GV điền: câu hỏi/nhiệm vụ/bài tập cụ thể của hoạt động ${a.name} - bám mục tiêu và YCCĐ của bài]`,
         ),
       ),
       ...(tpl.include_review
@@ -861,9 +866,12 @@ export function fbDialogue(input: Input, ctx: ToolContext): DocContent {
 export function fbSlides(input: Input, ctx: ToolContext): DocContent {
   const topic = input.lesson || ctx.standards[0]?.lesson_ref || "Bài học";
   const n = Math.min(Math.max(Number(input.slides) || 8, 6), 16);
-  const slide = (t: string, items: string[]): DocSection => ({
+  const slide = (t: string, items: string[], note?: string): DocSection => ({
     title: t,
-    blocks: [{ kind: "list", items }],
+    blocks: [
+      { kind: "list", items },
+      ...(note ? [{ kind: "note", text: `Ghi chú GV: ${note}` } as DocBlock] : []),
+    ],
   });
   const all: DocSection[] = [
     {
@@ -871,38 +879,66 @@ export function fbSlides(input: Input, ctx: ToolContext): DocContent {
       blocks: [
         { kind: "para", text: `Môn: ${subjectName(ctx)} - Lớp ${ctx.grade ?? "?"}` },
         { kind: "para", text: "Giáo viên: ................................................" },
+        {
+          kind: "note",
+          text: "Ghi chú GV: [BẢN KHUNG - các mục [ ] cần GV điền câu hỏi/nội dung cụ thể của bài trước khi chiếu]",
+        },
       ],
     },
-    slide("MỤC TIÊU BÀI HỌC", [
-      `Kiến thức: ${stdDesc(ctx)}.`,
-      "Năng lực: tự chủ và tự học, giao tiếp và hợp tác, giải quyết vấn đề.",
-      "Phẩm chất: trách nhiệm, chăm chỉ, trung thực.",
-    ]),
-    slide("KHỞI ĐỘNG", [
-      "Trò chơi/câu hỏi mở đầu liên quan bài học (2-3 phút).",
-      "Học sinh nêu điều đã biết, điều muốn tìm hiểu.",
-      "Giáo viên dẫn dắt vào bài mới.",
-    ]),
-    slide("KHÁM PHÁ - NỘI DUNG CHÍNH", [
-      `Nội dung trọng tâm: ${stdDesc(ctx)}.`,
-      "Ví dụ minh họa 1: (giáo viên điền theo SGK/vật liệu của trường).",
-      "Học sinh thảo luận nhóm đôi - báo cáo kết quả.",
-    ]),
-    slide("LUYỆN TẬP", [
-      "Bài tập 1: củng cố mức nhận biết (trắc nghiệm/trả lời nhanh).",
-      "Bài tập 2: mức thông hiểu (vận dụng vào tình huống quen thuộc).",
-      "Bài tập 3: mức vận dụng (bài tập mở/liên hệ thực tiễn).",
-    ]),
-    slide("VẬN DỤNG - MỞ RỘNG", [
-      "Tình huống thực tiễn gần gũi với học sinh địa phương.",
-      "Sản phẩm: trình bày/poster/sơ đồ tư duy (tùy môn).",
-      "Đánh giá nhanh theo rubric 3 mức.",
-    ]),
-    slide("TỔNG KẾT - DẶN DÒ", [
-      "Chốt kiến thức: 3 ý chính của bài.",
-      "Bài về nhà: ................................................",
-      "Chuẩn bị bài sau: ........................................",
-    ]),
+    slide(
+      "MỤC TIÊU BÀI HỌC",
+      [
+        `Kiến thức: ${stdDesc(ctx)}.`,
+        "Năng lực: tự chủ và tự học, giao tiếp và hợp tác, giải quyết vấn đề.",
+        "Phẩm chất: trách nhiệm, chăm chỉ, trung thực.",
+      ],
+      "giới thiệu nhanh mục tiêu, không đọc nguyên văn - hỏi HS kỳ vọng vào bài.",
+    ),
+    slide(
+      "KHỞI ĐỘNG",
+      [
+        "[GV điền câu hỏi/trò chơi mở đầu cụ thể của bài]",
+        "Học sinh nêu điều đã biết, điều muốn tìm hiểu.",
+        "Giáo viên dẫn dắt vào bài mới.",
+      ],
+      "[dự kiến câu trả lời của HS] - 2-3 phút, gọi 2-3 em phát biểu.",
+    ),
+    slide(
+      "KHÁM PHÁ - NỘI DUNG CHÍNH",
+      [
+        `Nội dung trọng tâm: ${stdDesc(ctx)}.`,
+        "[GV điền câu hỏi/nhiệm vụ khám phá cụ thể]",
+        "Học sinh thảo luận nhóm đôi - báo cáo kết quả.",
+      ],
+      "[dự kiến kết quả thảo luận + kiến thức cần chốt] - chia nhóm đôi, quan sát nhóm yếu.",
+    ),
+    slide(
+      "LUYỆN TẬP",
+      [
+        "[GV điền bài tập 1 - mức nhận biết, viết đề đầy đủ]",
+        "[GV điền bài tập 2 - mức thông hiểu]",
+        "[GV điền bài tập 3 - mức vận dụng]",
+      ],
+      "[đáp án từng bài tập] - HS làm cá nhân rồi chấm chéo.",
+    ),
+    slide(
+      "VẬN DỤNG - MỞ RỘNG",
+      [
+        "[GV điền tình huống thực tiễn cụ thể]",
+        "Sản phẩm: trình bày/poster/sơ đồ tư duy (tùy môn).",
+        "Đánh giá nhanh theo rubric 3 mức.",
+      ],
+      "[dự kiến hướng giải quyết của HS] - khuyến khích nhiều cách làm.",
+    ),
+    slide(
+      "TỔNG KẾT - DẶN DÒ",
+      [
+        "Chốt kiến thức: 3 ý chính của bài.",
+        "Bài về nhà: ................................................",
+        "Chuẩn bị bài sau: ........................................",
+      ],
+      "tóm tắt 3 ý chính, gọi 1-2 HS nhắc lại trước khi dặn dò.",
+    ),
   ];
   return {
     title: `BÀI TRÌNH CHIẾU - ${topic.toUpperCase()}`,

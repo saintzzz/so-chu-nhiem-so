@@ -39,41 +39,47 @@ export default async function StudioLibraryPage({
     .eq("author_id", profile.id)
     .order("updated_at", { ascending: false });
   if (type) q = q.eq("type", type);
-  const { data } = await q.limit(100);
-  const materials = (data as Partial<Material>[]) ?? [];
 
   // Reviewer xem hoc lieu truong dang cho duyet
   const isReviewer = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
-  const { data: pendingData } = isReviewer
-    ? await supabase
-        .from("tvc_materials")
-        .select("id, title, type, tool_code, subject_code, grade, status, updated_at")
-        .neq("author_id", profile.id)
-        .in("status", ["in_review", "totruong_ok"])
-        .order("updated_at", { ascending: false })
-        .limit(50)
-    : { data: [] };
-  const pendingReview = (pendingData as Partial<Material>[]) ?? [];
 
-  // CR-033: to truong uu tien mon cua to minh truoc, mon khac xep sau
-  let deptSubjectCodes: string[] = [];
-  if (hasRole(profile, "to_truong") && profile.department_id) {
-    const { data: dept } = await supabase
-      .from("departments")
-      .select("subject_ids")
-      .eq("id", profile.department_id)
-      .single();
-    const sids = (dept?.subject_ids as string[] | null) ?? [];
-    if (sids.length) {
-      const { data: ds } = await supabase
-        .from("subjects")
-        .select("name")
-        .in("id", sids);
-      deptSubjectCodes = (ds ?? [])
-        .map((s) => subjectNameToCode(s.name))
-        .filter((c): c is string => !!c);
-    }
-  }
+  // CR-042: gom cac truy van doc lap vao 1 wave (materials + pending +
+  // chuoi department -> subjects cua to truong).
+  const [{ data }, { data: pendingData }, deptSubjectCodes] =
+    await Promise.all([
+      q.limit(100),
+      isReviewer
+        ? supabase
+            .from("tvc_materials")
+            .select(
+              "id, title, type, tool_code, subject_code, grade, status, updated_at",
+            )
+            .neq("author_id", profile.id)
+            .in("status", ["in_review", "totruong_ok"])
+            .order("updated_at", { ascending: false })
+            .limit(50)
+        : Promise.resolve({ data: [] as Partial<Material>[] }),
+      // CR-033: to truong uu tien mon cua to minh truoc, mon khac xep sau
+      (async (): Promise<string[]> => {
+        if (!hasRole(profile, "to_truong") || !profile.department_id) return [];
+        const { data: dept } = await supabase
+          .from("departments")
+          .select("subject_ids")
+          .eq("id", profile.department_id)
+          .single();
+        const sids = (dept?.subject_ids as string[] | null) ?? [];
+        if (!sids.length) return [];
+        const { data: ds } = await supabase
+          .from("subjects")
+          .select("name")
+          .in("id", sids);
+        return (ds ?? [])
+          .map((s) => subjectNameToCode(s.name))
+          .filter((c): c is string => !!c);
+      })(),
+    ]);
+  const materials = (data as Partial<Material>[]) ?? [];
+  const pendingReview = (pendingData as Partial<Material>[]) ?? [];
   const pendingMine = deptSubjectCodes.length
     ? pendingReview.filter((m) => m.subject_code && deptSubjectCodes.includes(m.subject_code))
     : pendingReview;

@@ -2902,3 +2902,72 @@ test("CR-041: khong con file question-gen.tsx", () => {
     false,
   );
 });
+
+// --- CR-042: KHBD chuan CV 5512 + sinh slide tu giao an + perf ----------
+test("CR-042A: prompt DC-01 doi cau hoi + dap an du kien theo CV 5512", () => {
+  const p = readSrc("src/lib/tvc/prompts.ts");
+  assert.match(p, /NÊU RÕ nội dung yêu cầu\/nhiệm vụ cụ thể/);
+  assert.match(p, /đáp án\/kết quả dự kiến/);
+  assert.match(p, /viết đề bài đầy đủ/);
+  assert.match(p, /câu hỏi cần hỏi và đáp án cần chốt/);
+});
+
+test("CR-042A: fallback KHBD danh dau cho trong thay vi noi dung gia", () => {
+  const fb = readSrc("src/lib/tvc/fallbacks.ts");
+  assert.match(fb, /BẢN KHUNG MẪU/);
+  assert.match(fb, /\[GV điền câu hỏi/);
+  assert.match(fb, /\[Dự kiến câu trả lời/);
+});
+
+test("CR-042A: tool-runner hien nhan ban khung khi rule-based", () => {
+  const tr = readSrc("src/components/tvc/tool-runner.tsx");
+  assert.match(tr, /BẢN KHUNG MẪU/);
+  assert.match(tr, /provider === "rule-based"/);
+});
+
+test("CR-042A: material detail hien badge ban khung theo ai_usage", () => {
+  const page = readSrc("src/app/(app)/studio/library/[id]/page.tsx");
+  assert.match(page, /ai_usage === "none"/);
+  assert.match(page, /Bản khung mẫu/);
+});
+
+test("CR-042B: nut sinh slide tu giao an o material detail", () => {
+  const ma = readSrc("src/components/tvc/material-actions.tsx");
+  assert.match(ma, /lesson_plan/);
+  assert.match(ma, /\/studio\/DC-06\?from=/);
+  const page = readSrc("src/app/(app)/studio/[code]/page.tsx");
+  assert.match(page, /sp\.from/);
+  assert.match(page, /fromMaterial/);
+});
+
+test("CR-042B: DC-06 nhan material_id -> nap KHBD vao prompt", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(route, /input\.material_id/);
+  assert.match(route, /docToPlainText/);
+  assert.match(route, /lesson_plan/);
+  const khbd = readSrc("src/lib/tvc/khbd-doc.ts");
+  assert.match(khbd, /export function docToPlainText/);
+  const tr = readSrc("src/components/tvc/tool-runner.tsx");
+  assert.match(tr, /material_id: fromMaterial\.id/);
+});
+
+test("CR-042B: prompt DC-06 doi cau hoi + speaker notes", () => {
+  const p = readSrc("src/lib/tvc/prompts.ts");
+  assert.match(p, /Ghi chú GV:/);
+  assert.match(p, /NGUYÊN VĂN câu hỏi\/bài tập/);
+  const fb = readSrc("src/lib/tvc/fallbacks.ts");
+  assert.match(fb, /Ghi chú GV:/);
+});
+
+test("CR-042B: pptx xuat note blocks vao speaker notes", () => {
+  const pptx = readSrc("src/lib/tvc/pptx.ts");
+  assert.match(pptx, /addNotes/);
+  assert.match(pptx, /b\.kind === "note"/);
+});
+
+test("CR-042C: dashboard gom wave - embed classes + windowed attendance", () => {
+  const page = readSrc("src/app/(app)/dashboard/page.tsx");
+  assert.match(page, /classes\(id,name\)/); // embed FK bo wave taughtCls
+  assert.doesNotMatch(page, /latestAtt/); // bo wave latestAtt
+  assert.match(page, /gte\("date", since30\)/); // cua so -> suy ra attDate
+});

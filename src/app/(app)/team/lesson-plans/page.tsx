@@ -87,7 +87,14 @@ export default async function TeamLessonPlansPage() {
   const teacherNames = Object.fromEntries(
     profRes.rows.map((p) => [p.id, p.full_name]),
   );
-  const plans = [...pendRes.rows, ...histRes.rows];
+  // Codex R6: plan co the chuyen status giua 2 query (pend truoc, hist sau)
+  // -> xuat hien o ca hai. Hist la doc sau nen trang thai moi hon - bo
+  // id trung phia pend.
+  const histIds = new Set(histRes.rows.map((p) => p.id));
+  const plans = [
+    ...pendRes.rows.filter((p) => !histIds.has(p.id)),
+    ...histRes.rows,
+  ];
 
   return (
     <div>

@@ -2629,6 +2629,10 @@ test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {
   assert.equal(hist[2], "300", "maxRows lich su phai la 300");
   assert.match(src, /Chỉ hiển thị 300 giáo án đã xử lý mới nhất/,
     "thieu note khi lich su bi cap");
+  // Race: plan chuyen status giua 2 query -> trung id -> duplicate key.
+  // Phai dedupe uu tien query sau.
+  assert.match(src, /histIds[\s\S]*?\.filter\(\(p\) => !histIds\.has\(p\.id\)\)/,
+    "phai loai id trung phia pending truoc khi ghep");
 });
 
 test("CR-035/Codex: bucket lesson-plans co DELETE policy chi cho chu file", () => {

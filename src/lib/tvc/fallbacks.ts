@@ -829,7 +829,7 @@ export function fbDialogue(input: Input, ctx: ToolContext): DocContent {
     meta: [
       ["Cấp độ", level],
       ["Khối lớp", ctx.grade ? `Lớp ${ctx.grade}` : "-"],
-      ["Audio", "Dùng nút 'Nghe hội thoại' - giọng đọc tự nhiên trên trình duyệt"],
+      ["Nghe thử", "GV đọc mẫu cho lớp, hoặc phát bằng tính năng đọc văn bản của trình duyệt"],
     ],
     sections: [
       { title: "I. DIALOGUE", blocks: [{ kind: "list", items: dialogue }] },

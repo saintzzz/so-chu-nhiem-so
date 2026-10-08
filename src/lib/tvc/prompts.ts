@@ -112,7 +112,7 @@ Nội dung bám YCCĐ đã chọn, phù hợp lứa tuổi học sinh lớp ${ct
     system: SYS_BASE,
     prompt: `${base(ctx)}
 Bài toán gốc: "${input.problem}"
-Sinh ${input.count || 10} biến thể: đổi số liệu/bối cảnh nhưng GIỮ NGUYÊN cấu trúc toán học và mức độ nhận thức.
+Sinh ${input.count || 10} biến thể: đổi số liệu/bối cảnh nhưng GIỮ NGUYÊN cấu trúc toán học và mức độ nhận thức. Mọi biến thể phải KHÁC bài gốc - không lặp lại đề bài gốc nguyên văn.
 Mỗi biến thể là một mục list "Bài n: nội dung". Section "LỜI GIẢI": giải từng biến thể tương ứng (ngắn gọn, đúng cách trình bày của cấp học).`,
   }),
 
@@ -128,21 +128,24 @@ Bám đặc trưng thể loại của văn bản. Appendix: đáp án đầy đ�
     system: SYS_BASE + "\n- Bài đọc và câu hỏi viết bằng tiếng Anh; phần hướng dẫn/từ vựng có nghĩa tiếng Việt.",
     prompt: `Cấp độ: Khung năng lực ngoại ngữ 6 bậc - ${input.cefr || "A2"} | Chủ đề: ${input.topic || "daily life"} | Khối: ${ctx.grade ?? "?"}
 Viết một bài đọc tiếng Anh NGUYÊN GỐC (120-180 từ) kiểm soát từ vựng và cấu trúc đúng bậc, chủ đề gần gũi học sinh Việt Nam.
-Kèm: bảng 5-8 từ vựng trọng tâm (từ - nghĩa - ví dụ trong bài), 5 câu hỏi đọc hiểu đủ dạng (MC 4 options, True/False, short answer). Appendix: answer key.`,
+Kèm: bảng 5-8 từ vựng trọng tâm (từ - nghĩa - ví dụ trong bài), 5 câu hỏi đọc hiểu đủ dạng (MC 4 options, True/False, short answer). Appendix: answer key.
+TUYỆT ĐỐI: bài đọc và câu hỏi viết hoàn toàn bằng TIẾNG ANH - KHÔNG được viết nội dung bằng tiếng Việt (chỉ cột nghĩa từ vựng có tiếng Việt).`,
   }),
 
   "A-02": (input, ctx) => ({
     system: SYS_BASE + "\n- Bài tập viết bằng tiếng Anh, hướng dẫn bằng tiếng Việt.",
     prompt: `Danh sách từ vựng: ${input.words}
 Chủ đề: ${input.topic || "theo từ vựng"} | Khối: ${ctx.grade ?? "?"}
-Sinh bài tập từ vựng đủ các dạng: điền khuyết (câu có nghĩa), nối từ - nghĩa, chọn dạng đúng của từ, đặt câu, ô chữ gợi ý (definition -> word), thẻ ghi nhớ. Appendix: đáp án đầy đủ.`,
+Sinh bài tập từ vựng đủ các dạng: điền khuyết (câu có nghĩa), nối từ - nghĩa, chọn dạng đúng của từ, đặt câu, ô chữ gợi ý (definition -> word), thẻ ghi nhớ. Appendix: đáp án đầy đủ.
+Bài tập viết bằng TIẾNG ANH - không viết câu/bài tập bằng tiếng Việt.`,
   }),
 
   "A-03": (input, ctx) => ({
     system: SYS_BASE + "\n- Hội thoại và bài tập viết bằng tiếng Anh tự nhiên, đúng bậc.",
     prompt: `Chủ đề: ${input.topic || "everyday conversation"} | Cấp độ: ${input.cefr || "A2"} | Khối: ${ctx.grade ?? "?"}
 Viết hội thoại 8-12 lượt lời giữa 2 người (đặt tên), tự nhiên, đúng cấp độ, chủ đề gần gũi học sinh Việt Nam.
-Kèm: transcript liền mạch, 4 bài tập nghe (MC, True/False, điền từ, role-play). Appendix: answer key.`,
+Kèm: transcript liền mạch, 4 bài tập nghe (MC, True/False, điền từ, role-play). Appendix: answer key.
+TUYỆT ĐỐI: toàn bộ hội thoại và bài tập viết bằng TIẾNG ANH - KHÔNG được viết hội thoại bằng tiếng Việt.`,
   }),
 };
 

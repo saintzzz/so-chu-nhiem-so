@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TOOL_MAP } from "@/lib/tvc/registry";
 import { fbMatrix } from "@/lib/tvc/fallbacks";
-import { generateDoc } from "@/lib/tvc/ai-json";
+import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
 import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
@@ -757,7 +757,20 @@ export async function POST(
 
   // Các tool còn lại: AI -> engine dự phòng (quota) -> rule-based
   const { system, prompt } = tool.buildPrompt(input, ctx);
-  const ai = await generateDoc(system, prompt);
+  // Tool tieng Anh: noi dung phai la tieng Anh - model yeu doi khi viet
+  // tieng Viet, validate bat va retry voi nhac nho ro rang.
+  const ENGLISH_TOOLS = new Set(["A-01", "A-03"]);
+  const ai = await generateDoc(
+    system,
+    prompt,
+    ENGLISH_TOOLS.has(code)
+      ? {
+          validate: sectionsLookEnglish,
+          retryNote:
+            "output truoc SAI YEU CAU: noi dung viet bang tieng Viet. Hoi thoai/bai doc va bai tap phai viet hoan toan bang TIENG ANH. Tra ve JSON hop le voi noi dung tieng Anh.",
+        }
+      : undefined,
+  );
 
   if (!ai.doc && (ai.error === "quota" || ai.error === "bad_json")) {
     const job = await fallbackToDevin({

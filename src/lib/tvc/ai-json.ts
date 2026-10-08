@@ -62,9 +62,36 @@ export function isDocContent(v: unknown): v is DocContent {
   );
 }
 
+// Tool tieng Anh (A-01/A-03): model yeu doi khi bo qua system prompt va viet
+// hoi thoai/bai doc bang tieng Viet - hoc lieu vo dung. Kiem tra ty le ky tu
+// co dau tieng Viet trong noi dung sections (bo qua appendix + table vi cot
+// nghia tu vung hop le la tieng Viet). Nguong 4% - heading Viet rai rac van
+// duoc cho phep, than van ban Viet (~13%+) bi bat.
+const VN_DIACRITIC =
+  /[ăâđêôơưĂÂĐÊÔƠƯáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵÁÀẢÃẠẤẦẨẪẬẮẰẲẴẶÉÈẺẼẸẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢÚÙỦŨỤỨỪỬỮỰÝỲỶỸỴ]/g;
+
+export function sectionsLookEnglish(doc: DocContent): boolean {
+  let vn = 0;
+  let total = 0;
+  const eat = (s?: string) => {
+    if (!s) return;
+    total += s.length;
+    vn += (s.match(VN_DIACRITIC) ?? []).length;
+  };
+  for (const sec of doc.sections ?? []) {
+    for (const b of sec.blocks ?? []) {
+      if (b.kind === "para" || b.kind === "note" || b.kind === "heading")
+        eat(b.text);
+      if (b.kind === "list") (b.items ?? []).forEach(eat);
+    }
+  }
+  return total === 0 || vn / total < 0.04;
+}
+
 export async function generateDoc(
   system: string,
   prompt: string,
+  opts?: { validate?: (doc: DocContent) => boolean; retryNote?: string },
 ): Promise<{ doc: DocContent | null; provider: string | null; error: string | null }> {
   // CR-042: KHBD day du ~8-12k output tokens - cap 8192 cat ngang JSON.
   // 2 lan thu (tong <=110s trong maxDuration 120s): model doi khi viet
@@ -73,7 +100,7 @@ export async function generateDoc(
     const r = await generateTextDetailed(
       attempt === 0
         ? prompt
-        : `${prompt}\n\nLUU Y BAT BUOC: output truoc bi loi cu phap JSON. Tra ve JSON hop le tuyet doi - dong du ngoac, du dau phay giua cac phan tu, khong tao chuoi ky tu lap dai.`,
+        : `${prompt}\n\nLUU Y BAT BUOC: ${opts?.retryNote ?? "output truoc bi loi cu phap JSON. Tra ve JSON hop le tuyet doi - dong du ngoac, du dau phay giua cac phan tu, khong tao chuoi ky tu lap dai."}`,
       {
         system,
         maxTokens: 16384,
@@ -84,7 +111,7 @@ export async function generateDoc(
     );
     if (!r.text) return { doc: null, provider: r.provider, error: r.error };
     const parsed = extractJson<DocContent>(r.text);
-    if (parsed && isDocContent(parsed)) {
+    if (parsed && isDocContent(parsed) && (opts?.validate?.(parsed) ?? true)) {
       return { doc: parsed, provider: r.provider, error: null };
     }
   }

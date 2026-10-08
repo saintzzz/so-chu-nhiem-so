@@ -150,7 +150,7 @@ Menu **Rèn luyện → Nhận xét & vi phạm/khen thưởng**: chọn HS, lo�
 
 ### 2.11 Kỳ thi, thi đua, kế hoạch, xuất sổ
 
-- **Quản lý kỳ thi**: tạo kỳ thi → thêm buổi thi (thủ công/Import Excel) → công bố. Panel **AI sinh câu hỏi** theo 4 mức nhận thức.
+- **Quản lý kỳ thi**: tạo kỳ thi → thêm buổi thi (thủ công/Import Excel) → công bố. Nút **Mở ngân hàng câu hỏi** chuyển sang Studio - sinh câu hỏi bằng AI theo môn + khối + chủ đề, gắn YCCĐ, duyệt rồi rút vào đề (DC-03).
 - **Thi đua**: chấm điểm tiêu chí lớp mình; xem bảng xếp hạng toàn trường.
 - **Kế hoạch tháng / sơ kết tuần**: checklist + nút **AI gợi ý công việc** đọc lịch năm học đề xuất việc.
 - **Xuất sổ**: tải CSV toàn bộ dữ liệu sổ chủ nhiệm.

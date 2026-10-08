@@ -92,7 +92,7 @@ Quy tắc tính: tỷ lệ chuyên cần = `(có mặt + đi muộn) / sĩ số`
 | Trao đổi phụ huynh | GVCN | Tin nhắn 1-1 với PH đã liên kết |
 | Kế hoạch hỗ trợ & tiến bộ | GVCN | Lập kế hoạch kèm cho HS yếu, theo dõi tiến độ |
 | Giáo án / Kế hoạch bài dạy | GVBM, GVCN | Soạn giáo án (AI hỗ trợ), nộp tổ trưởng duyệt |
-| Quản lý kỳ thi | GVCN, BGH, GVBM (xem) | Tạo kỳ thi, buổi thi (lớp/môn/ngày/giờ/phòng/giám thị), import Excel, công bố/đánh dấu đã thi, **AI sinh câu hỏi** theo 4 mức nhận thức (Nhận biết - Thông hiểu - Vận dụng - Vận dụng cao) |
+| Quản lý kỳ thi | GVCN, BGH, GVBM (xem) | Tạo kỳ thi, buổi thi (lớp/môn/ngày/giờ/phòng/giám thị), import Excel, công bố/đánh dấu đã thi; **sinh câu hỏi** chuyển qua Ngân hàng Studio (AI theo môn + khối + chủ đề, gắn YCCĐ, duyệt 2 lớp) |
 
 ### 3.4 Rèn luyện (GVCN)
 
@@ -216,7 +216,7 @@ Soạn học liệu theo CTGDPT 2018 tại `/studio` - vai trò: GVBM, GVCN, t�
 1. **Vắng trong tiết học**: Sổ đầu bài đánh dấu vắng → `attendance_records` cập nhật → dashboard/tracking/leaves thống kê → PH nhận thông báo.
 2. **Hoạt động giáo dục**: GVCN lập kế hoạch → BGH duyệt → công bố → PH đăng ký → GVCN điểm danh & đánh giá.
 3. **Giáo án**: GV soạn (AI hỗ trợ) → tổ trưởng duyệt/trả về kèm nhận xét (AI gợi ý nhận xét) → GV sửa nộp lại.
-4. **Kỳ thi**: GVCN/BGH tạo kỳ thi + buổi thi (thủ công/Excel) → công bố → GV/PH/HS xem lịch → AI sinh câu hỏi theo ma trận nhận thức.
+4. **Kỳ thi**: GVCN/BGH tạo kỳ thi + buổi thi (thủ công/Excel) → công bố → GV/PH/HS xem lịch → câu hỏi đề thi soạn tại Ngân hàng Studio (AI sinh → gắn YCCĐ → duyệt → DC-03 rút đề).
 5. **Sự cố an toàn**: GVCN ghi nhận (AI viết lại) → xử lý + ghi chú → mức Cao báo BGH → lưu trữ tra cứu.
 6. **Cảnh báo sớm**: hệ thống chấm điểm rủi ro từ chuyên cần/điểm/sự cố → BGH radar → AI đề xuất → tiếp nhận → đóng.
 

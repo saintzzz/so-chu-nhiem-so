@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRoles } from "@/lib/auth";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ExamsBoard } from "@/components/exams/exams-board";
-import { QuestionGen } from "@/components/exams/question-gen";
 import { hasRole } from "@/lib/roles";
 
 interface ExamRow {
@@ -132,9 +132,23 @@ export default async function ExamsPage({
         </p>
       ) : (
         <>
-          <QuestionGen
-            subjects={(subjectData ?? []) as { id: string; name: string }[]}
-          />
+          {/* CR-041: sinh cau hoi tap trung tai ngan hang Studio - ket qua
+              chay qua pipeline YCCD + duyet 2 lop, DC-03 rut de dung lai duoc */}
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-semibold">Sinh câu hỏi bằng AI</p>
+              <p className="text-muted-foreground">
+                Sinh theo môn + chủ đề trong Ngân hàng câu hỏi - câu hỏi được gắn
+                YCCĐ, kiểm duyệt và rút vào đề bằng công cụ DC-03.
+              </p>
+            </div>
+            <Link
+              href="/studio/questions?gen=1"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Mở ngân hàng câu hỏi
+            </Link>
+          </div>
           <ExamsBoard
             exams={exams}
             examId={examId}

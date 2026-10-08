@@ -320,6 +320,7 @@ export interface SaveQuestionInput {
   standardIds: string[];
   subjectCode?: string;
   grade?: number;
+  source?: "manual" | "imported" | "generated";
   media?: { kind: "figure" | "image"; spec?: Record<string, unknown>; path?: string; alt?: string }[];
 }
 
@@ -519,7 +520,7 @@ export async function importQuestions(rows: SaveQuestionInput[]) {
       standard_ids: r.standardIds,
       subject_code: r.subjectCode ?? null,
       grade: r.grade ?? null,
-      source: "imported" as const,
+      source: r.source ?? "imported",
       media: r.media ?? [],
       school_id: profile.school_id ?? null,
       standardIds: r.standardIds,

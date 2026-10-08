@@ -7,7 +7,7 @@ import { setItemAcl, listItemAcl } from "@/app/(app)/school/actions";
 import { LEVEL_LABEL, QTYPE_LABEL } from "@/lib/tvc/types";
 import { MathText } from "@/components/tvc/math-text";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
-import { Plus, Trash2, Download, Loader2, ScanLine } from "lucide-react";
+import { Plus, Trash2, Download, Loader2, ScanLine, Sparkles } from "lucide-react";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 import { createClient } from "@/lib/supabase/client";
 import { renderFigure, type FigureKind } from "@/lib/tvc/figures";
@@ -131,6 +131,19 @@ export function QuestionBank({
   const [aiScanning, setAiScanning] = useState(false);
   const [aiScope, setAiScope] = useState({ subject: "", grade: "" });
   const [aiStandards, setAiStandards] = useState<CurriculumStandard[]>([]);
+  // CR-041: sinh cau hoi bang AI theo chu de - cung pipeline aiRows -> YCCD -> import
+  const [genOpen, setGenOpen] = useState(false);
+  const [genBusy, setGenBusy] = useState(false);
+  // aiRows den tu "sinh theo chu de" thi luu source=generated (import file = imported)
+  const [aiFromGen, setAiFromGen] = useState(false);
+  const [genForm, setGenForm] = useState({
+    subject: "",
+    grade: "",
+    topic: "",
+    kind: "trac_nghiem" as "trac_nghiem" | "tu_luan",
+    level: "hieu",
+    count: 5,
+  });
   // Trang dau da co san tu server - tai dan cac chunk con lai o background
   // de filter/tim kiem van hoat dong tren toan bo ngan hang.
   useEffect(() => {
@@ -305,8 +318,12 @@ export function QuestionBank({
   };
 
   /** Map rows tu AI: tu doan mon/khoi + goi y ma YCCD, tai ds chuan theo scope. */
-  const applyAiRows = async (rows: Omit<AiRow, "standardId">[]) => {
-    // Da so phieu cho mon/khoi tu ket qua AI
+  const applyAiRows = async (
+    rows: Omit<AiRow, "standardId">[],
+    scope?: { subject: string; grade: string },
+  ) => {
+    // Da so phieu cho mon/khoi tu ket qua AI - scope truyen vao (gen form)
+    // uu tien hon scope cu con lai tu lan extract truoc
     const vote = (key: "subject" | "grade") => {
       const cnt = new Map<string, number>();
       for (const r of rows) {
@@ -315,8 +332,8 @@ export function QuestionBank({
       }
       return [...cnt.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     };
-    const subject = aiScope.subject || vote("subject");
-    const grade = aiScope.grade || vote("grade");
+    const subject = scope?.subject || aiScope.subject || vote("subject");
+    const grade = scope?.grade || aiScope.grade || vote("grade");
     setAiScope({ subject, grade });
 
     const qs = new URLSearchParams({ kind: "standards" });
@@ -351,6 +368,86 @@ export function QuestionBank({
           standardId: r.standard_code ? (byCode.get(r.standard_code) ?? "") : "",
         })),
       );
+    })();
+  };
+
+  /** CR-041: ?gen=1 tu trang ky thi -> mo san panel sinh AI. */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("gen") === "1") {
+      setGenOpen(true);
+    }
+  }, []);
+
+  /** Sinh cau hoi theo chu de -> do vao aiRows de preview + gan YCCD + import. */
+  const runGen = () => {
+    setError("");
+    if (!genForm.subject || !genForm.grade || !genForm.topic.trim()) {
+      return setError("Chọn môn, khối lớp và nhập chủ đề trước khi sinh.");
+    }
+    setGenBusy(true);
+    void (async () => {
+      try {
+        const res = await fetch("/api/ai/gen-questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: subjects.find((s) => s.code === genForm.subject)?.name ?? genForm.subject,
+            grade: Number(genForm.grade),
+            topic: genForm.topic.trim(),
+            count: genForm.count,
+            level: genForm.level,
+            kind: genForm.kind,
+          }),
+        });
+        const json = (await res.json()) as {
+          result?: { rows?: Omit<AiRow, "standardId">[] } | null;
+          pending?: boolean;
+          jobId?: string;
+          devinUrl?: string;
+          error?: string;
+        };
+        const applyRows = async (rows: Omit<AiRow, "standardId">[] | undefined) => {
+          if (rows?.length) {
+            setAiFromGen(true);
+            // ep scope theo lua chon cua GV - rows tu AI mang ten mon,
+            // ngan hang can ma mon (subject_code) + khoi de tai dung YCCD
+            await applyAiRows(
+              rows.map((r) => ({
+                ...r,
+                subject: genForm.subject,
+                grade: Number(genForm.grade),
+              })),
+              { subject: genForm.subject, grade: genForm.grade },
+            );
+            setGenOpen(false);
+          } else {
+            setError("AI chưa sinh được câu hỏi - thử lại với chủ đề cụ thể hơn.");
+          }
+          setGenBusy(false);
+        };
+        if (json.pending && json.jobId) {
+          aiJob.start(json.jobId, json.devinUrl ?? "", {
+            onDone: (result: unknown) => {
+              const r = result as { rows?: Omit<AiRow, "standardId">[] };
+              void applyRows(r?.rows ?? (Array.isArray(result) ? (result as Omit<AiRow, "standardId">[]) : undefined));
+            },
+            onFail: () => {
+              setError("AI xử lý gặp lỗi - thử lại sau.");
+              setGenBusy(false);
+            },
+          });
+          return;
+        }
+        if (!res.ok) {
+          setError(json.error ?? "Không sinh được câu hỏi.");
+          setGenBusy(false);
+          return;
+        }
+        await applyRows(json.result?.rows);
+      } catch {
+        setError("Lỗi kết nối - vui lòng thử lại.");
+        setGenBusy(false);
+      }
     })();
   };
 
@@ -395,6 +492,7 @@ export function QuestionBank({
                   ? result
                   : Object.values(result as Record<string, unknown>).find(Array.isArray);
                 if (Array.isArray(rows) && rows.length) {
+                  setAiFromGen(false);
                   await applyAiRows(rows as Omit<AiRow, "standardId">[]);
                 } else {
                   setError("AI không đọc được câu hỏi nào từ file.");
@@ -413,6 +511,7 @@ export function QuestionBank({
           return setError(json.error ?? "AI không đọc được file.");
         }
         if (!json.rows.length) return setError("Không tìm thấy câu hỏi nào trong file.");
+        setAiFromGen(false);
         await applyAiRows(json.rows);
       } catch (e) {
         console.error("[question-bank] read file:", e);
@@ -441,6 +540,7 @@ export function QuestionBank({
             standardIds: [q.standardId],
             subjectCode: std?.subject_code ?? aiScope.subject ?? undefined,
             grade: std?.grade ?? (aiScope.grade ? Number(aiScope.grade) : undefined),
+            source: aiFromGen ? "generated" : undefined,
           };
         }),
       );
@@ -717,6 +817,13 @@ export function QuestionBank({
         <div className="ml-auto flex gap-2">
           <button
             type="button"
+            onClick={() => setGenOpen((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-card px-3 py-2 text-sm hover:bg-muted"
+          >
+            <Sparkles className="h-4 w-4" /> Sinh bằng AI
+          </button>
+          <button
+            type="button"
             onClick={downloadTemplate}
             className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-sm hover:bg-muted"
           >
@@ -760,6 +867,82 @@ export function QuestionBank({
             <Loader2 className="h-4 w-4 animate-spin" />
             AI đang đọc file - có thể mất vài phút, vui lòng chờ...
           </p>
+        </div>
+      )}
+
+      {/* CR-041: sinh cau hoi theo chu de - ket qua chay qua preview + YCCD + import */}
+      {genOpen && (
+        <div className="mt-4 rounded-xl border border-primary/40 bg-card p-5 shadow-sm">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <Sparkles className="h-4 w-4 text-primary" /> Sinh câu hỏi theo chủ đề
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Câu hỏi AI tạo sẽ hiện ở bước kiểm tra phía dưới - gắn mã YCCĐ rồi mới nhập vào ngân hàng (trạng thái chờ duyệt).
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-6">
+            <select
+              className={inputCls}
+              value={genForm.subject}
+              onChange={(e) => setGenForm((f) => ({ ...f, subject: e.target.value }))}
+            >
+              <option value="">- Môn -</option>
+              {subjects.map((s) => (
+                <option key={s.code} value={s.code}>{s.name}</option>
+              ))}
+            </select>
+            <select
+              className={inputCls}
+              value={genForm.grade}
+              onChange={(e) => setGenForm((f) => ({ ...f, grade: e.target.value }))}
+            >
+              <option value="">- Khối -</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((g) => (
+                <option key={g} value={g}>Lớp {g}</option>
+              ))}
+            </select>
+            <select
+              className={inputCls}
+              value={genForm.kind}
+              onChange={(e) => setGenForm((f) => ({ ...f, kind: e.target.value as "trac_nghiem" | "tu_luan" }))}
+            >
+              <option value="trac_nghiem">Trắc nghiệm</option>
+              <option value="tu_luan">Tự luận</option>
+            </select>
+            <select
+              className={inputCls}
+              value={genForm.level}
+              onChange={(e) => setGenForm((f) => ({ ...f, level: e.target.value }))}
+            >
+              <option value="biet">Nhận biết</option>
+              <option value="hieu">Thông hiểu</option>
+              <option value="van_dung">Vận dụng</option>
+              <option value="van_dung_cao">Vận dụng cao</option>
+            </select>
+            <input
+              type="number"
+              min={1}
+              max={15}
+              className={inputCls}
+              value={genForm.count}
+              onChange={(e) => setGenForm((f) => ({ ...f, count: Number(e.target.value) || 5 }))}
+              title="Số câu (1-15)"
+            />
+            <button
+              type="button"
+              onClick={runGen}
+              disabled={genBusy || aiScanning}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {genBusy && <Loader2 className="h-4 w-4 animate-spin" />}
+              Sinh câu hỏi
+            </button>
+          </div>
+          <input
+            className={inputCls}
+            value={genForm.topic}
+            onChange={(e) => setGenForm((f) => ({ ...f, topic: e.target.value }))}
+            placeholder="Chủ đề / nội dung - VD: Phương trình bậc nhất một ẩn, tuần 5"
+          />
         </div>
       )}
 
@@ -1074,7 +1257,7 @@ export function QuestionBank({
       {/* AI extract preview */}
       {aiRows && (
         <div className="mt-4 rounded-xl border border-primary/40 bg-card p-5 shadow-sm">
-          <h3 className="font-semibold">AI đọc được {aiRows.length} câu hỏi - kiểm tra trước khi import</h3>
+          <h3 className="font-semibold">{aiFromGen ? "AI sinh được" : "AI đọc được"} {aiRows.length} câu hỏi - kiểm tra trước khi import</h3>
           <div className="mt-3 flex flex-wrap gap-3">
             <select
               className="rounded-lg border bg-background px-3 py-2 text-sm"

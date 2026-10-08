@@ -6,7 +6,7 @@
 // E2E role flows) can staging - khong chay probe ghi len production.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -2861,4 +2861,44 @@ test("CR-040: suggestUsername them hau to so khi trung", () => {
   // taken co the la username tron hoac email
   assert.equal(suggestUsername("Lê Duy Linh", ["LINHLD"]), "linhld1");
   assert.equal(emailLocal("Minh.TV@ND.scn"), "minh.tv");
+});
+
+// --- CR-041: AI sinh cau hoi hop nhat vao ngan hang + audit after() ----------
+const readSrc = (p) => readFileSync(join(ROOT, p), "utf8");
+
+test("CR-041: exams page khong con panel QuestionGen doc lap", () => {
+  const page = readSrc("src/app/(app)/academics/exams/page.tsx");
+  assert.doesNotMatch(page, /QuestionGen/);
+  assert.match(page, /\/studio\/questions\?gen=1/);
+});
+
+test("CR-041: gen-questions route tra rows dang ngan hang", () => {
+  const route = readSrc("src/app/api/ai/gen-questions/route.ts");
+  assert.match(route, /rows/);
+  assert.match(route, /grade/); // bat buoc khoi de tai YCCD dung scope
+  assert.match(route, /standard_code/); // AI goi y ma YCCD
+  assert.match(route, /multiple_choice|essay/); // map qtype ngan hang
+});
+
+test("CR-041: ngan hang co panel Sinh bang AI + deep-link ?gen=1", () => {
+  const bank = readSrc("src/components/tvc/question-bank.tsx");
+  assert.match(bank, /gen=1|"gen"\)\s*===\s*"1"/);
+  assert.match(bank, /Sinh bằng AI/);
+  assert.match(bank, /gen-questions/);
+  assert.match(bank, /aiFromGen/); // phan biet nguon generated vs imported
+});
+
+test("CR-041: logAudit dung after() chong serverless cat insert", () => {
+  const audit = readSrc("src/lib/audit.ts");
+  // file nam trong client bundle -> next/server chi import dong phia server
+  assert.match(audit, /import\("next\/server"\)/);
+  assert.match(audit, /after\(/);
+  assert.match(audit, /typeof window === "undefined"/); // tach ngu canh server/client
+});
+
+test("CR-041: khong con file question-gen.tsx", () => {
+  assert.equal(
+    existsSync(join(ROOT, "src/components/exams/question-gen.tsx")),
+    false,
+  );
 });

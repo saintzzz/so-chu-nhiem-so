@@ -724,7 +724,7 @@ function* g514(r) {
   // TOAN5.1.4 ti so phan tram
   for (let i = 0; i < 15; i++) {
     const a = ri(r, 2, 9) * 10, b = pick(r, [10, 20, 25, 50]);
-    yield ["hieu", sa(`Tính ${b}% của ${a}.`, `${a * b / 100}`, `${a} × ${b}% = ${a} × ${b} : 100 = ${a * b / 100}`)];
+    yield ["hieu", sa(`Tính ${b}% của ${a}.`, dec(a * b / 100), `${a} × ${b}% = ${a} × ${b} : 100 = ${dec(a * b / 100)}`)];
     const total = pick(r, [40, 50]);
     const c = ri(r, 10, total - 10);
     const t = c * 100 / total;
@@ -751,15 +751,16 @@ function* g521(r) {
   for (let i = 0; i < 15; i++) {
     const a = ri(r, 4, 20), h = ri(r, 4, 20);
     yield ["hieu", sa(`Hình tam giác có đáy ${a} cm, chiều cao ${h} cm. Tính diện tích.`,
-      `${a * h / 2}`, `S = ${a} × ${h} : 2 = ${a * h / 2} cm²`)];
+      dec(a * h / 2), `S = ${a} × ${h} : 2 = ${dec(a * h / 2)} cm²`)];
     const b = ri(r, 2, 9);
+    const circ = Math.round(b * b * 3.14 * 100) / 100;
     yield ["hieu", sa(`Hình tròn có bán kính ${b} cm. Tính diện tích (π ≈ 3,14).`,
-      `${Math.round(b * b * 3.14 * 100) / 100}`, `S = ${b} × ${b} × 3,14 = ${Math.round(b * b * 3.14 * 100) / 100} cm²`)];
+      dec(circ), `S = ${b} × ${b} × 3,14 = ${dec(circ)} cm²`)];
   }
   for (let i = 0; i < 8; i++) {
     const a = ri(r, 6, 15), b = ri(r, 4, a - 1), h = ri(r, 3, 10);
     yield ["van_dung", sa(`Hình thang có đáy lớn ${a} cm, đáy bé ${b} cm, chiều cao ${h} cm. Tính diện tích.`,
-      `${(a + b) * h / 2}`, `S = (${a} + ${b}) × ${h} : 2 = ${(a + b) * h / 2} cm²`)];
+      dec((a + b) * h / 2), `S = (${a} + ${b}) × ${h} : 2 = ${dec((a + b) * h / 2)} cm²`)];
   }
 }
 function* g522(r) {

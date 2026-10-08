@@ -122,13 +122,15 @@ export async function lessonPlanFileUrl(
   ) {
     return { error: "File không hợp lệ." };
   }
-  const { data: plan } = await supabase
+  // Codex R6: existence check bang limit(1) - single-row query tra loi khi
+  // 2 plan tro cung file_path, khoa file cua ca hai.
+  const { data: plans } = await supabase
     .from("lesson_plans")
     .select("id")
     .eq("school_id", profile.school_id ?? "")
     .eq("file_path", filePath)
-    .maybeSingle();
-  if (!plan) return { error: "File không tồn tại." };
+    .limit(1);
+  if (!plans?.length) return { error: "File không tồn tại." };
   const { data, error } = await supabase.storage
     .from("lesson-plans")
     .createSignedUrl(filePath, 3600);

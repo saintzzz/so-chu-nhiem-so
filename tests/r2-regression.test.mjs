@@ -2539,6 +2539,11 @@ test("CR-035: lessonPlanFileUrl kiem record + tenant truoc khi ky URL", () => {
     "phai verify file_path gan voi lesson_plans row cung truong");
   assert.match(fn[0], /\.eq\("school_id", profile\.school_id/,
     "phai scope school_id truoc khi ky URL");
+  // Codex R6: maybeSingle() loi khi 2 plan tro cung path -> chan file ca
+  // hai. Phai dung existence check limit(1).
+  assert.match(fn[0], /\.limit\(1\)/, "dung limit(1) thay maybeSingle");
+  assert.ok(!fn[0].includes("maybeSingle"),
+    "maybeSingle bi loi khi file_path trung - dung limit(1)");
 });
 
 test("CR-035: 3 page lesson-plans fetchAllRows + gate loi nguon", () => {

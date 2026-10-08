@@ -135,6 +135,16 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Grid item mac dinh min-width:auto -> noi dung rong (chart/table/feed)
+   lam track "auto" phinh qua viewport, dac biet tren mobile voi implicit
+   single column. Dat trong base layer de utility min-w-* (seating grid,
+   cell co dinh) van thang duoc. */
+@layer base {
+  .grid > * {
+    min-width: 0;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Domain-scoped design languages (see src/lib/domain-theme.ts).       */
 /* Applied to the content region only — chrome stays on base tokens.   */

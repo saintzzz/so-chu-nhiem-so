@@ -813,7 +813,7 @@ export default async function DashboardPage({
           )}
         </ChartCard>
 
-        <section className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+        <section className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
           <h3 className="mb-3 text-base font-semibold">Hoạt động gần đây</h3>
           {feed.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">

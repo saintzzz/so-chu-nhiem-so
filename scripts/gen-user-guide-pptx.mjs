@@ -1,6 +1,8 @@
 /**
- * CR-HANDOVER: User Guide PPTX cho doi chuyen gia giao duc test he thong.
+ * User Guide PPTX - cap nhat theo trang thai moi nhat cua he thong.
  * node scripts/gen-user-guide-pptx.mjs -> docs/handover/USER-GUIDE-vieschool.pptx
+ * Nguon du lieu: docs/user-guide/KICH-BAN-DEMO.md, HUONG-DAN-SU-DUNG.md,
+ * KHOI-TAO-TRUONG-MOI.md, ma tran quyen trong code (src/lib/nav.ts, ROLE-MATRIX).
  */
 import PptxGenJS from "pptxgenjs";
 import { mkdirSync } from "node:fs";
@@ -63,16 +65,17 @@ function note(s, txt, y = 6.85) {
   const s = p.addSlide();
   s.background = { color: C.code };
   s.addText("VieSchool - Sổ Chủ Nhiệm Số & Công cụ số Giáo viên", {
-    x: 0.8, y: 2.2, w: 11.7, h: 1.1, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
+    x: 0.8, y: 2.0, w: 11.7, h: 1.1, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
   });
-  s.addText("HƯỚNG DẪN SỬ DỤNG & KIỂM THỬ - BÀN GIAO ĐỘI CHUYÊN GIA GIÁO DỤC", {
-    x: 0.8, y: 3.3, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 15, color: "5eead4",
+  s.addText("HƯỚNG DẪN SỬ DỤNG & GIỚI THIỆU CHỨC NĂNG", {
+    x: 0.8, y: 3.15, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4",
   });
   s.addText([
-    { text: "Phiên bản: pilot v1 - 10/2026", options: { breakLine: true } },
+    { text: "Phiên bản: v2.0 - 10/2026 (gồm vai trò kiêm nhiệm + bộ kit khởi tạo trường)", options: { breakLine: true } },
     { text: "URL: https://sochunhiem.vieschool.com", options: { breakLine: true } },
-    { text: "Phạm vi: chương trình GDPT 2018, TT 22/2021, TT 27/2025; bảo mật theo Luật 91/2025", options: {} },
-  ], { x: 0.8, y: 4.1, w: 11.7, h: 1.2, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
+    { text: "Phạm vi: CTGDPT 2018, TT 22/2021, TT 27/2025, CV 5512; bảo mật theo Luật 91/2025", options: { breakLine: true } },
+    { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng 1 080+ câu hỏi", options: {} },
+  ], { x: 0.8, y: 3.95, w: 11.7, h: 1.6, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
 }
 
 // ---------- S2 Tong quan ----------
@@ -81,110 +84,150 @@ function note(s, txt, y = 6.85) {
   slideTitle(s, "GIỚI THIỆU", "Hệ thống gồm 2 module chính trên một nền tảng");
   bullets(s, [
     { t: "Sổ Chủ Nhiệm Số (SCN) - vận hành lớp học & nhà trường", b: 1 },
-    { sub: ["Điểm danh, hạnh kiểm, sổ liên lạc phụ huynh, thời khóa biểu, sự cố an toàn, báo cáo BGH/Sở", "Phân quyền theo vai trò: GVCN, GVBM, Tổ trưởng, PHT, BGH, Kế toán, Phụ huynh, Học sinh"] },
+    { sub: ["Điểm danh, sổ điểm, hạnh kiểm, sổ liên lạc phụ huynh, thời khóa biểu, sự cố an toàn, sơ đồ chỗ ngồi, báo cáo BGH/Sở", "Phân quyền theo vai trò: GVCN, GVBM, Tổ trưởng, PHT, BGH, Kế toán, Sở GD&ĐT, UBND, Phụ huynh, Học sinh, Admin"] },
     { t: "TVC360 Studio - công cụ soạn thảo giáo viên", b: 1 },
-    { sub: ["KHBĐ (DC-01), ma trận đề (DC-02), đề kiểm tra theo ma trận (DC-03), bộ câu hỏi (DC-04), phiếu học tập (DC-05), bài trình chiếu PPTX (DC-06)", "Ngân hàng câu hỏi chung của trường gắn YCCĐ CTGDPT 2018, duyệt 2 lớp, xuất DOCX/PDF/PPTX"] },
-    { t: "Dữ liệu theo trường (multi-tenant): mọi bảng đều scope school_id + RLS", b: 1 },
+    { sub: ["KHBĐ theo CV 5512 (DC-01), ma trận đề (DC-02), đề kiểm tra theo ma trận (DC-03), bộ câu hỏi (DC-04), phiếu học tập (DC-05), bài trình chiếu PPTX (DC-06)", "Ngân hàng câu hỏi chung của trường gắn YCCĐ, duyệt 2 lớp, xuất DOCX/PDF/PPTX, LaTeX/KaTeX"] },
+    { t: "Dữ liệu theo trường (multi-tenant): mọi bảng scope school_id + RLS nghiêm ngặt", b: 1 },
+    { t: "Vai trò kiêm nhiệm (multi-role): một cán bộ giữ nhiều vai trò - menu và quyền gộp từ toàn bộ vai trò", b: 1 },
   ]);
-  note(s, "Mục tiêu test: chuyên gia rà nội dung chuyên môn + quy trình nghiệp vụ trường học.");
+  note(s, "Thiết kế cho quy mô: 100 000 user giai đoạn pilot, lộ trình 1 000 000.");
 }
 
-// ---------- S3 Accounts ----------
+// ---------- S3 Moi truong demo ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "TÀI KHOẢN TEST", "Đăng nhập tại https://sochunhiem.vieschool.com/login");
+  slideTitle(s, "DỮ LIỆU DEMO", "3 trường thật quy mô - đủ mọi tình huống nghiệp vụ");
   table(s, [
-    ["Vai trò", "Email", "Mật khẩu", "Dùng để test"],
-    ["Hiệu trưởng / BGH", "bgh@demo.scn", "demo1234", "Quản trị trường, phân quyền, duyệt cuối"],
-    ["Tổ trưởng chuyên môn", "totruong@demo.scn", "demo1234", "Duyệt câu hỏi/học liệu (lớp 1), lọc theo môn tổ"],
-    ["Giáo viên chủ nhiệm", "gvcn@demo.scn", "demo1234", "Sổ CN, điểm danh, hạnh kiểm, đóng góp câu hỏi"],
-    ["Giáo viên bộ môn", "gvbm@demo.scn", "demo1234", "Studio, ngân hàng câu hỏi (không duyệt được)"],
-    ["Phụ huynh", "phuhuynh@demo.scn", "demo1234", "Portal PH, sổ liên lạc"],
-    ["Học sinh", "hocsinh@demo.scn", "demo1234", "Portal HS, học bạ"],
-    ["Sở GD&ĐT (demo)", "sogd@demo.scn", "demo1234", "Tạo trường + admin trường, dashboard usage xuyên trường"],
+    ["Trường", "Cấp", "Lớp", "Học sinh", "Cán bộ", "Đặc điểm demo"],
+    ["THCS Nguyễn Du", "THCS", "12 (6A1-9A3)", "~435", "34", "2 cơ sở, 4 tổ CM - demo giới hạn PHT theo cơ sở"],
+    ["Tiểu học Chu Văn An", "TH", "15 (1A1-5A3)", "~500", "30", "Đánh giá mức độ TT 22/2021, 4 tổ"],
+    ["Tiểu học Kim Đồng", "TH", "10 (1A1-5A2)", "~340", "22", "3 tổ, đa trường cùng Sở"],
   ]);
-  note(s, "Test multi-trường: gv001-gv100@{nd|cva|kd}.test / demo1234 - 3 trường, mỗi trường 100 GV (gv001-002: tổ trưởng, gv003: BGH).");
+  bullets(s, [
+    { t: "Mỗi trường: đủ BGH/PHT/kế toán/tổ trưởng/GVCN/GVBM phân môn, TKB đầy đủ, điểm, chuyên cần, hạnh kiểm, hoạt động, sự cố, cảnh báo sớm, kế hoạch hỗ trợ" },
+    { t: "Ngân hàng câu hỏi TVC360: 360 câu/trường gán đúng giáo viên của trường đó" },
+    { t: "THCS Nguyễn Du có 2 cơ sở - khối A3 thuộc Cơ sở 2 do PHT phụ trách, dùng demo giới hạn phạm vi" },
+  ], { y: 4.3, fontSize: 12.5 });
 }
 
-// ---------- S4 Role matrix ----------
+// ---------- S4 Accounts ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHÂN QUYỀN", "Ai được làm gì - ma trận tóm tắt");
+  slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập https://sochunhiem.vieschool.com/login - mật khẩu chung: demo1234");
   table(s, [
-    ["Chức năng", "GVBM/GVCN", "Tổ trưởng", "BGH/Admin"],
-    ["Studio (soạn KHBĐ/đề/bài giảng)", "Có", "Có", "Có"],
-    ["Ngân hàng câu hỏi - xem/đóng góp", "Có", "Có", "Có"],
-    ["Duyệt câu hỏi / học liệu", "Không", "Lớp tổ", "Lớp BGH (cuối)"],
-    ["Xuất file (DOCX/PDF/PPTX)", "Có*", "Có*", "Có"],
-    ["Quản trị user/quyền/ACL dữ liệu", "Không", "Không", "Có"],
-    ["Sổ chủ nhiệm (điểm danh, HK, SLĐ)", "Chỉ GVCN lớp mình", "Xem", "Có"],
-  ]);
-  bullets(s, [
-    { t: "Phân quyền 3 lớp (CR-030): mặc định theo vai trò → cấu hình theo trường → ghi đè theo từng GV", y: 5.0 },
-    { t: "Sở GD&ĐT / admin hệ thống: quản trị trường (/dept/schools) + giám sát usage (/dept/usage) - không vào nghiệp vụ lớp", y: 5.0 },
-  ], { y: 5.0, fontSize: 12.5 });
-  note(s, "* Admin có thể tắt xuất file cho từng vai trò/GV trong Ma trận quyền tại /school/users.");
+    ["Tài khoản", "Nhân sự", "Vai trò", "Dùng để test"],
+    ["bgh@demo.scn", "Nguyễn Văn Hải - HT Nguyễn Du", "bgh + gvbm", "Quản trị trường, duyệt cuối, Studio"],
+    ["pht@demo.scn", "Lê Minh Đức - PHT cơ sở 2", "pht + gvbm", "Chỉ thấy lớp Cơ sở 2, kiêm dạy"],
+    ["totruong@demo.scn", "Lê Thị Hồng Hạnh - Tổ Toán-TN", "to_truong + gvbm", "Duyệt lớp tổ, giảng dạy"],
+    ["gvcn@demo.scn", "Phạm Thị Lan Anh - GVCN 8A2", "gvcn + gvbm + to_truong", "3 vai trò - điểm nhấn kiêm nhiệm"],
+    ["gvbm@demo.scn", "Trần Văn Minh - GV Vật lý", "gvbm", "Đơn vai trò - chứng minh quyền giữ nguyên"],
+    ["ketoan@demo.scn", "Phạm Thu Trang", "ke_toan", "Nhân sự, thu chi"],
+    ["phuhuynh@demo.scn", "Nguyễn Văn An", "phu_huynh", "Portal PH - chỉ thấy con (Bảo 8A2)"],
+    ["hocsinh@demo.scn", "Nguyễn Gia Bảo - lớp 8A2", "hoc_sinh", "Portal HS - TKB, điểm, học bạ"],
+    ["sogd@demo.scn", "Vũ Quản Trị Sở", "so_gd", "Tạo trường, dashboard 3 trường"],
+    ["ubnd@demo.scn", "Ngô Văn Lãnh Đạo", "ubnd", "Dashboard địa bàn - chỉ đọc"],
+    ["admin@demo.scn", "Quản trị hệ thống", "admin", "Toàn hệ thống"],
+  ], { rowH: 0.34 });
+  note(s, "Trường khác: bgh.cva / gvcn.cva / totruong.cva / ketoan.cva và bgh.kd / gvcn.kd / ketoan.kd @demo.scn. GV còn lại: ten.vt@{nd|cva|kd}.scn.", 7.0);
 }
 
-// ---------- S5 Workflow GVCN ----------
+// ---------- S5 Multi-role ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "WORKFLOW 1", "Giáo viên chủ nhiệm - ngày làm việc điển hình");
+  slideTitle(s, "VAI TRÒ KIÊM NHIỆM", "Đúng thực tế trường Việt Nam - GVCN luôn kiêm dạy, tổ trưởng vẫn đứng lớp");
   bullets(s, [
-    { t: "Sáng: Điểm danh (/attendance/daily) - chọn lớp, tích vắng/có phép, lưu" },
-    { sub: ["Đồng bộ tự động với sổ trực tiết (period log); cảnh báo vắng nhiều ngày"] },
-    { t: "Trong ngày: sự cố/an toàn (/safety/report), nhận xét hạnh kiểm (/conduct/records)" },
-    { t: "Liên lạc PH: /parents/compose - soạn + gửi email cho CMHS (Resend), thông báo toàn lớp" },
-    { t: "Phụ huynh: /register/roster - liên kết PH - HS và cấp tài khoản đăng nhập cổng PH (tick 'Cấp tài khoản', nhập email + mật khẩu)" },
-    { sub: ["PH login vào /portal/parent chỉ thấy đúng con mình (RLS parent_students)"] },
-    { t: "Cuối tuần/tháng: báo cáo chuyên cần, hạnh kiểm theo TT22 (HK1/HK2/cả năm tách biệt)" },
-    { t: "Sổ CN số: /register/* - sổ theo dõi, ký duyệt, xuất file" },
+    { t: "Một cán bộ = 1 vai trò chính + nhiều vai trò kiêm nhiệm (concurrent roles)", b: 1 },
+    { sub: ["Ví dụ: GVCN 8A2 đồng thời là GV dạy Toán và Tổ trưởng Toán-Tự nhiên", "PHT/Hiệu trưởng vẫn phân công dạy - kiêm GVBM là mặc định"] },
+    { t: "Quyền = hợp của mọi vai trò, tính ở 3 tầng nhất quán", b: 1 },
+    { sub: ["UI: menu gộp + topbar hiện đủ nhãn vai trò; trang Hồ sơ hiện badge từng vai trò", "Server action: checkActionRole nhận role kiêm nhiệm", "Database: 158 RLS policies dùng my_roles() - không lách tầng app"] },
+    { t: "An toàn:", b: 1 },
+    { sub: ["Chỉ BGH/admin gán kiêm nhiệm tại /school/users - user tự sửa bị trigger chặn (chống leo quyền)", "Chỉ vai trò nhân sự được kiêm; admin/phụ huynh/học sinh không thể kiêm", "Người chỉ có 1 vai trò (gvbm thuần) vẫn bị chặn đúng route như trước"] },
   ]);
-  note(s, "Test chuyên gia: điểm danh → kiểm tra DB đồng bộ period_log; gửi thông báo → PH nhận email + in-app.");
+  note(s, "Cài đặt: /school/users → sửa cán bộ → tick 'Vai trò kiêm nhiệm'. Chỉ chức năng được quyền mới hiện trên menu.");
 }
 
-// ---------- S6 Workflow Studio ----------
+// ---------- S6 Role matrix ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "WORKFLOW 2", "Giáo viên bộ môn - biên soạn trên Studio");
+  slideTitle(s, "PHÂN QUYỀN", "Ma trận tóm tắt - menu chỉ hiện chức năng được cấp");
+  table(s, [
+    ["Chức năng", "GVBM", "GVCN", "Tổ trưởng", "PHT", "BGH/Admin"],
+    ["Studio soạn học liệu DC-01..06", "Có", "Có", "Có", "-", "Có"],
+    ["Ngân hàng câu hỏi - xem/đóng góp", "Có", "Có", "Có", "-", "Có"],
+    ["Duyệt câu hỏi/học liệu", "-", "-", "Lớp tổ", "-", "Lớp BGH (cuối)"],
+    ["Điểm danh, hạnh kiểm, SLĐ lớp", "-", "Lớp CN mình", "Xem", "Cơ sở mình", "Có"],
+    ["Nhập điểm môn dạy", "Lớp mình dạy", "Có", "Lớp mình dạy", "Lớp mình dạy", "Có"],
+    ["Hồ sơ HS toàn trường", "-", "Lớp CN", "Xem", "-", "Có"],
+    ["Quản trị user/quyền/ACL", "-", "-", "-", "-", "Có"],
+  ], { rowH: 0.36 });
   bullets(s, [
-    { t: "Vào /studio → chọn công cụ DC-01..DC-06 → điền môn/khối/bài → Sinh (AI hoặc fallback rule-based)" },
-    { sub: ["Môn học tự preselect theo môn phụ trách của GV (admin gán ở /school/users)", "Công thức toán viết LaTeX $...$, render KaTeX, xuất DOCX thành Word Equation native"] },
-    { t: "Chỉnh sửa trực tiếp trên tài liệu → Lưu vào Thư viện của tôi" },
-    { t: "Gửi duyệt (nút Gửi duyệt) → tổ trưởng nhận notification → BGH duyệt cuối → published" },
+    { t: "Kiêm nhiệm: quyền = hợp vai trò - GVCN kiêm tổ trưởng được cả 2 cột", y: 5.35 },
+    { t: "PHT giới hạn theo cơ sở (campus); không tiếp cận hồ sơ chi tiết HS (ẩn national_id)", y: 5.35 },
+    { t: "Phân quyền 3 lớp: mặc định theo vai trò → cấu hình theo trường → ghi đè từng cán bộ (/school/users)", y: 5.35 },
+  ], { y: 5.35, fontSize: 12 });
+  note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 7.05);
+}
+
+// ---------- S7 Workflow GVCN ----------
+{
+  const s = p.addSlide();
+  slideTitle(s, "WORKFLOW 1", "Giáo viên chủ nhiệm - ngày làm việc điển hình (gvcn@demo.scn)");
+  bullets(s, [
+    { t: "Topbar hiện 'Giáo viên chủ nhiệm · Giáo viên bộ môn · Tổ trưởng chuyên môn' - menu gộp đủ 3 vai trò" },
+    { t: "Sáng: Điểm danh (/attendance/daily) - chọn lớp 8A2, tích vắng, lưu" },
+    { sub: ["Đồng bộ sổ đầu bài (period log); cảnh báo vắng nhiều ngày; PH nhận thông báo"] },
+    { t: "Trong ngày: sự cố (/safety/report), nhận xét hạnh kiểm (/conduct/records), sổ điểm Toán (/academics/grades)" },
+    { t: "Liên lạc PH: /parents/compose - soạn + gửi email cho CMHS (Resend)" },
+    { sub: ["GVCN cấp tài khoản cổng PH tại /register/roster; PH chỉ thấy đúng con mình"] },
+    { t: "Kiêm tổ trưởng: mở /team/lesson-plans duyệt giáo án GV trong tổ - menu 'Tổ chuyên môn' chỉ hiện khi có vai trò" },
+    { t: "Cuối kỳ: báo cáo chuyên cần, hạnh kiểm TT22 (HK1/HK2/cả năm tách biệt), ký duyệt sổ" },
+  ]);
+}
+
+// ---------- S8 Workflow Studio ----------
+{
+  const s = p.addSlide();
+  slideTitle(s, "WORKFLOW 2", "Giáo viên bộ môn - biên soạn trên Studio (/studio)");
+  bullets(s, [
+    { t: "Chọn công cụ DC-01..DC-06 → điền môn/khối/bài → Sinh (AI hoặc fallback rule-based khi hết quota)" },
+    { sub: ["Môn tự preselect theo môn phụ trách của GV; công thức LaTeX $...$ render KaTeX, xuất DOCX thành Word Equation native"] },
+    { t: "Chỉnh sửa trực tiếp → Lưu vào Thư viện của tôi (/studio/library)" },
+    { t: "Gửi duyệt → tổ trưởng nhận notification → BGH duyệt cuối → published" },
     { t: "Xuất: DOCX (đề/KHBĐ/phiếu), PDF (trang in), PPTX (DC-06)" },
+    { t: "Các trang con Studio (Thư viện, Ngân hàng, Kho ngữ liệu, YCCĐ, Mẫu KHBĐ) đều có link 'Tất cả công cụ' quay về /studio" },
   ]);
-  note(s, "AI sinh nội dung theo YCCĐ thật; nếu LLM hết quota → engine fallback bất đồng bộ qua ai_jobs.");
+  note(s, "AI sinh có kiểm chứng 2 lớp: prompt ép khung + sanitizer lọc nội dung lạc đề (đáp án/phiếu rời rạc bị cắt).");
 }
 
-// ---------- S7 DC-01 ----------
+// ---------- S9 DC-01 ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "CÔNG CỤ DC-01", "Kế hoạch bài dạy (KHBĐ)");
+  slideTitle(s, "CÔNG CỤ DC-01", "Kế hoạch bài dạy (KHBĐ) - khung Công văn 5512");
   bullets(s, [
-    { t: "Input: Môn / Khối / Bài học (chọn YCCĐ từ chương trình) / Số tiết / Mẫu KHBĐ" },
-    { sub: ["Mẫu: hệ thống (khung 4 HĐ theo CV 5512) hoặc mẫu riêng của trường (/studio/mau-khbd - admin tạo mẫu, đặt mặc định)"] },
-    { t: "Output: KHBĐ đầy đủ - mục tiêu (phẩm chất/năng lực/YCCĐ), đồ dùng, hoạt động, điều chỉnh" },
-    { t: "Xuất DOCX - in để ký duyệt" },
-    { t: "Test point cho chuyên gia: hoạt động có đúng logic sư phạm tiểu học? YCCĐ gán có khớp bài?" },
+    { t: "Input: Môn / Khối / Bài học (chọn YCCĐ) / Số tiết / Mẫu KHBĐ" },
+    { sub: ["Mẫu hệ thống theo CV 5512 hoặc mẫu riêng của trường tại /studio/mau-khbd (admin tạo, đặt mặc định)"] },
+    { t: "Output đúng biểu mẫu: I. Mục tiêu - II. Thiết bị DH - III. Tiến trình - IV. Điều chỉnh + Ký duyệt", b: 1 },
+    { sub: ["Mỗi hoạt động đủ: a) Mục tiêu, b) Nội dung, c) Tổ chức (bảng 2 cột GV-HS | Nội dung), d) Sản phẩm, đ) Đánh giá", "Phụ lục đánh giá theo hoạt động; không còn mục 'ĐÁP ÁN/PHIẾU BÀI TẬP' lạc đề (sanitizer lọc)"] },
+    { t: "Xuất DOCX - in ký duyệt; sửa được trực tiếp trước khi lưu/gửi duyệt" },
+    { t: "Nếu AI trả sai khung → hệ thống tự loại và dùng bản rule-based đủ cấu trúc" },
   ]);
 }
 
-// ---------- S8 DC-02/03 ----------
+// ---------- S10 DC-02/03 ----------
 {
   const s = p.addSlide();
   slideTitle(s, "CÔNG CỤ DC-02 + DC-03", "Ma trận đề và sinh đề kiểm tra");
   bullets(s, [
-    { t: "DC-02: chọn môn/khối/đợt KT (thường xuyên, giữa kì, cuối kì) → ma trận theo phân bố YCCĐ × mức độ (Nhận biết/Hiểu/Vận dụng)" },
-    { sub: ["Đợt giữa kì cho lớp 1-3 sẽ cảnh báo TT22 (không bắt buộc KT giấy)"] },
-    { t: "DC-03: chọn ma trận → rút câu từ NGÂN HÀNG CỦA TRƯỜNG → đề chính thức + đề dự phòng + bảng đáp án phân biệt" },
-    { sub: ["Ô ma trận thiếu câu → báo THIẾU trung thực, không lấy câu sai YCCĐ", "Tick \"Chỉ câu đã duyệt\" → chỉ rút câu approved"] },
-    { t: "Xuất DOCX gồm 3 tab/phần: Đề + Đề dự phòng + Đáp án/HDC" },
+    { t: "DC-02: chọn môn/khối/đợt KT → ma trận YCCĐ × mức độ (Nhận biết/Hiểu/Vận dụng) đúng tỷ lệ quy định" },
+    { sub: ["Đợt giữa kì cho lớp 1-3 cảnh báo TT22 (không bắt buộc KT giấy)"] },
+    { t: "DC-03: chọn ma trận → rút câu từ ngân hàng CỦA TRƯỜNG → đề chính + đề dự phòng + bảng đáp án" },
+    { sub: ["Ưu tiên không trùng câu giữa 2 đề; trộn đáp án trắc nghiệm tự động", "Ô ma trận thiếu câu → báo THIẾU trung thực, không lấy câu sai YCCĐ", "Tick 'Chỉ câu đã duyệt' → chỉ rút câu approved"] },
+    { t: "Cấp tiểu học: tự đổi mẫu - Phần I trắc nghiệm gộp + Phần II tự luận, có chỗ mã phách" },
+    { t: "Kèm biên bản phản biện đề (chủ tọa/thư ký/ủy viên) đúng quy trình ra đề của trường" },
   ]);
-  note(s, "Test: tạo ma trận GK1 Toán lớp 4 → sinh đề → kiểm tra đúng ma trận, đúng thang điểm, đáp án khớp.");
 }
 
-// ---------- S9 DC-04..06 ----------
+// ---------- S11 DC-04..06 ----------
 {
   const s = p.addSlide();
   slideTitle(s, "CÔNG CỤ DC-04 / DC-05 / DC-06", "Bộ câu hỏi, phiếu học tập, bài trình chiếu");
@@ -195,119 +238,111 @@ function note(s, txt, y = 6.85) {
     ["DC-06 Bài trình chiếu", "Môn/khối/YCCĐ/số slide", "Slide theo tiến trình KHBĐ", "PPTX"],
   ]);
   bullets(s, [
-    { t: "Mọi công cụ: lưu thư viện → gửi duyệt → xuất file; AI sinh có kiểm chứng (schema + YCCĐ gate)", y: 4.6 },
+    { t: "Mọi công cụ: lưu thư viện → gửi duyệt → xuất file; AI sinh có kiểm chứng (schema + YCCĐ gate + sanitizer)", y: 4.6 },
   ], { y: 4.6, fontSize: 12.5 });
 }
 
-// ---------- S10 Question bank ----------
+// ---------- S12 Question bank ----------
 {
   const s = p.addSlide();
   slideTitle(s, "NGÂN HÀNG CÂU HỎI", "Ngân hàng chung của trường (/studio/questions)");
   bullets(s, [
-    { t: "GV cùng trường đóng góp chung - không còn bank cá nhân; filter: Cả trường / Của tôi / Môn của tổ tôi" },
-    { t: "Thêm tay hoặc import ảnh/PDF (AI đọc) hoặc template Excel; validate tự động: đúng qtype, mức độ TT22, YCCĐ, stem tham chiếu hình phải kèm media/context" },
-    { t: "Duyệt: checkbox từng câu hoặc bulk duyệt cả trang; trạng thái: chưa duyệt → đã duyệt / đánh dấu lỗi" },
-    { t: "Hình ảnh trong câu hỏi (CR-031): upload ảnh HOẶC hình vẽ tham số (SVG) cho Toán - tam giác, HCN, tròn, đoạn thẳng, góc, đồng hồ; render trong đề DOCX/PPTX" },
+    { t: "GV cùng trường đóng góp chung; filter: Cả trường / Của tôi / Môn của tổ tôi; phân trang server" },
+    { t: "Thêm tay hoặc import ảnh/PDF (AI đọc) hoặc template Excel; validate: đúng qtype, mức độ, YCCĐ, stem tham chiếu hình phải kèm media" },
+    { t: "Duyệt: từng câu hoặc bulk (tối đa 200 câu/lần); trạng thái: chưa duyệt → đã duyệt / đánh dấu lỗi" },
+    { t: "Hình trong câu hỏi: upload ảnh HOẶC hình vẽ tham số SVG cho Toán (tam giác, HCN, tròn, góc, đồng hồ) - deterministic, không AI sinh ảnh" },
     { t: "Câu nghe Tiếng Anh: transcript ở Ngữ cảnh + nút Nghe thử (TTS trình duyệt)" },
+    { t: "Mã câu tự sinh dạng <YCCĐ>-<D|F|S|E><seq> theo quy ước ngành" },
   ]);
-  note(s, "Hiện có ~1 400 câu/trường test, 100% đã duyệt trong bank demo; đủ coverage YCCĐ tiểu học (Toán/TV/Anh).");
+  note(s, "Demo: 360 câu/trường; quyền duyệt tính theo role set - tổ trưởng kiêm nhiệm vẫn duyệt được.");
 }
 
-// ---------- S11 Media ----------
-{
-  const s = p.addSlide();
-  slideTitle(s, "HÌNH ẢNH TRONG CÂU HỎI", "2 cơ chế - quyết định quan trọng về chất lượng");
-  bullets(s, [
-    { t: "Hình học Toán: SVG tham số (deterministic) - KHÔNG dùng AI sinh ảnh", b: 1 },
-    { sub: ["Đề thi Toán đòi chính xác góc/tỉ lệ; AI sinh ảnh sẽ sai. Figure spec → SVG → PNG trong DOCX", "Thêm hình: select '+ Hình vẽ' → chọn loại → sửa tham số JSON (nhãn đỉnh, độ dài, góc, giờ)"] },
-    { t: "Ảnh minh họa TV/Anh: upload ảnh lên (lưu storage theo trường) + alt text", b: 1 },
-    { sub: ["Giới hạn 4 media/câu; ảnh resize ≤480px khi xuất DOCX"] },
-    { t: "Trong đề DOCX: hình chèn ngay sau stem câu; PPTX: ảnh trên slide", b: 1 },
-  ]);
-}
-
-// ---------- S12 Review ----------
+// ---------- S13 Review ----------
 {
   const s = p.addSlide();
   slideTitle(s, "QUY TRÌNH DUYỆT 2 LỚP", "Tác giả → Tổ trưởng → BGH → published");
   bullets(s, [
     { t: "Lớp 1 - Tổ trưởng chuyên môn:", b: 1 },
-    { sub: ["Ngân hàng: filter 'Môn của tổ tôi' mặc định - chỉ thấy môn tổ mình phụ trách", "Thư viện: 'Chờ duyệt - môn của tổ tôi' xếp trên, môn khác xếp dưới", "Duyệt / trả về kèm nhận xét → tác giả nhận notification"] },
+    { sub: ["Ngân hàng: filter 'Môn của tổ tôi' - chỉ thấy môn tổ mình; Thư viện: 'Chờ duyệt - môn của tổ' xếp trên", "Duyệt / trả về kèm nhận xét → tác giả nhận notification in-app"] },
     { t: "Lớp 2 - BGH/admin:", b: 1 },
-    { sub: ["Thấy tất cả, duyệt cuối → status published; có thể sửa câu của GV (audit)"] },
-    { t: "Mọi thao tác ghi audit trail (ai, làm gì, lúc nào)", b: 1 },
+    { sub: ["Thấy tất cả, duyệt cuối → published; mọi thao tác ghi audit trail"] },
+    { t: "Vai trò kiêm nhiệm áp dụng thật:", b: 1 },
+    { sub: ["GVCN kiêm tổ trưởng (như cô Lan Anh) vẫn vào được queue duyệt của tổ mình", "Hàm DB (scn_review_material, scn_can_write_grade...) kiểm tra trên tập vai trò - không bypass được qua UI"] },
   ]);
-  note(s, "Test: GV tạo câu → gửi → tổ trưởng thấy đúng môn mình → duyệt → BGH duyệt → kiểm tra notification.");
 }
 
-// ---------- S13 Admin ----------
+// ---------- S14 Admin ----------
 {
   const s = p.addSlide();
   slideTitle(s, "QUẢN TRỊ TRƯỜNG", "Trang /school/users - BGH/admin của từng trường");
   bullets(s, [
-    { t: "Thêm giáo viên: email + mật khẩu + vai trò + cơ sở + tổ + mã cán bộ + loại hợp đồng + trình độ" },
-    { t: "Gán môn phụ trách (chip multi-select → teacher_subjects) - Studio tự preselect môn cho GV" },
-    { t: "Tổ chuyên môn - môn học: gán môn cho tổ; hệ thống cảnh báo vàng khi GV dạy môn khác tổ" },
-    { t: "Ma trận quyền chức năng: 6 chức năng × 6 vai trò, 3 trạng thái (mặc định/cấm/cho) + quyền riêng từng GV" },
-    { t: "ACL dữ liệu: ẩn một câu hỏi/học liệu cụ thể với một GV - GV khác vẫn thấy (RLS level)" },
-    { t: "Thống kê nhanh: số GV theo vai trò + loại hợp đồng (đếm cả 'chưa khai báo')" },
+    { t: "Thêm cán bộ: email + mật khẩu + vai trò chính + vai trò kiêm nhiệm (checkbox) + cơ sở + tổ + mã NV + hợp đồng + trình độ" },
+    { t: "Gán môn phụ trách (chip multi-select → teacher_subjects) - Studio tự preselect môn" },
+    { t: "Tổ chuyên môn - môn học: gán môn cho tổ; cảnh báo vàng khi GV dạy môn khác tổ" },
+    { t: "Ma trận quyền chức năng: 6 chức năng × 6 vai trò × 3 trạng thái (mặc định/cấm/cho) + quyền riêng từng người" },
+    { sub: ["Có grant xung đột giữa các vai trò kiêm nhiệm → deny thắng (an toàn)"] },
+    { t: "ACL dữ liệu tới item: ẩn một câu hỏi/học liệu cụ thể với một GV - GV khác vẫn thấy (RLS level)" },
+    { t: "Chống leo quyền: trigger DB chặn user tự sửa vai trò/trường/kiêm nhiệm - chỉ BGH/admin được đổi" },
   ]);
 }
 
-// ---------- S13b Onboarding truong (CR-034) ----------
+// ---------- S15 Onboarding ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "ONBOARDING TRƯỜNG MỚI", "Tự phục vụ: Sở GD tạo trường → admin trường tự vận hành");
+  slideTitle(s, "KHỞI TẠO TRƯỜNG MỚI", "2 đường - giao diện từng bước HOẶC import Excel hàng loạt");
   bullets(s, [
-    { t: "Bước 1 - Sở GD/admin hệ thống: /dept/schools → 'Tạo trường'", b: 1 },
-    { sub: ["Nhập tên, mã, cấp học (Tiểu học/THCS/THPT), email + mật khẩu admin trường (vai trò BGH)", "Tick 'Seed dữ liệu mẫu' → hệ thống tự tạo năm học 2026-2027, 2 tổ CM, bộ môn theo cấp, lớp mẫu + HS mẫu", "Lỗi giữa chừng → hệ thống rollback và báo rõ phần chưa dọn - không trường 'nửa vời'"] },
-    { t: "Bước 2 - Admin trường (BGH): đăng nhập → /school/users → '+ Thêm giáo viên'", b: 1 },
-    { sub: ["Tự tạo tài khoản GV/GVCN/tổ trưởng/kế toán trong phạm vi trường mình - không cần đội kỹ thuật", "Import danh sách HS qua Excel tại /records/upload (mã HS, CCCD, họ tên, ngày sinh, giới tính)"] },
-    { t: "Bước 3 - GVCN: /register/roster liên kết PH - HS và cấp tài khoản cổng PH", b: 1 },
-    { t: "Giám sát - Sở GD: /dept/usage", b: 1 },
-    { sub: ["Bảng theo trường: tổng user, active 24h, active 7d, lần đăng nhập gần nhất", "Bảng user: tên, vai trò, trường, last sign-in - đo mức độ dùng của từng trường pilot"] },
+    { t: "Đường 1 - Giao diện:", b: 1 },
+    { sub: ["Sở GD/admin: /dept/schools → 'Tạo trường' (tự tạo năm học, 2 tổ, bộ môn theo cấp, tài khoản BGH)", "BGH: /school/campuses khai cơ sở → /school/departments tổ CM → /school/users thêm cán bộ → tạo lớp → GVCN liên kết PH - HS → import TKB"] },
+    { t: "Đường 2 - Import Excel hàng loạt (khuyến nghị cho trường lớn):", b: 1 },
+    { sub: ["Tải workbook mẫu khoi-tao-truong.xlsx: 8 sheet (cơ sở, tổ, cán bộ, lớp, HS, phụ huynh, TKB + hướng dẫn)", "Chạy: node scripts/bootstrap-school.mjs --file <xlsx> --school <MA> --apply", "Tự tạo: tài khoản + vai trò kiêm nhiệm + môn dạy + trưởng tổ + lớp + GVCN + HS + PH/tài khoản PH + TKB", "Chạy lại nhiều lần an toàn (idempotent); có --cleanup dọn về 0"] },
+    { t: "Hướng dẫn chi tiết: docs/user-guide/KHOI-TAO-TRUONG-MOI.md + checklist nghiệm thu", b: 1 },
   ]);
-  note(s, "Demo gate 15/10: trường tự đăng nhập dùng thử - quy trình trên là toàn bộ onboarding.");
 }
 
-// ---------- S14 Highlights ----------
+// ---------- S16 Highlights ----------
 {
   const s = p.addSlide();
   slideTitle(s, "ĐIỂM NỔI BẬT", "Khác biệt so với nền tảng thông thường");
   bullets(s, [
-    { t: "Bám quy định thật: YCCĐ CTGDPT 2018 chi tiết đến strand; TT22/2021 (HK1/HK2/năm tách, không KT giấy lớp 1-3 giữa kì); TT27/2025", c: C.accent },
+    { t: "Bám quy định thật: YCCĐ CTGDPT 2018 chi tiết đến strand; TT22/2021; CV 5512 cho KHBĐ; TT 15/2026 điều lệ", c: C.accent },
+    { t: "Vai trò kiêm nhiệm đúng thực tế trường VN - tính nhất quán UI/action/RLS, audit tự động menu theo quyền", c: C.accent },
     { t: "Ngân hàng trường + duyệt 2 lớp + audit trail - kiểm soát chất lượng đề như trường thật vận hành", c: C.accent },
     { t: "Hình học deterministic (không AI ảo) + xuất Word Equation native - in thi thật dùng được ngay", c: C.accent },
-    { t: "Phân quyền chức năng + dữ liệu tới item-level ACL - admin trường tự quản, không cần IT", c: C.accent },
-    { t: "Multi-tenant RLS nghiêm ngặt + DPIA theo Luật 91/2025 - sẵn sàng pilot liên trường", c: C.accent },
-    { t: "AI provider linh hoạt (Gemini/OpenAI/Anthropic qua env) + fallback engine + rule-based - không chết khi hết quota", c: C.accent },
+    { t: "AI provider linh hoạt (Gemini/OpenAI/Anthropic qua env) + sanitizer + fallback rule-based - không chết khi hết quota", c: C.accent },
+    { t: "Multi-tenant RLS nghiêm + trigger chống leo quyền + DPIA theo Luật 91/2025 - sẵn sàng pilot liên trường", c: C.accent },
   ]);
 }
 
-// ---------- S15 Test checklist ----------
+// ---------- S17 Test checklist ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "CHECKLIST TEST CHUYÊN GIA", "Các kịch bản ưu tiên rà soát");
+  slideTitle(s, "CHECKLIST TEST", "Các kịch bản ưu tiên rà soát");
   bullets(s, [
-    { t: "NỘI DUNG: đọc kỹ câu hỏi bank (đáp án đúng? phù hợp lứa tuổi? ngôn ngữ tiểu học?); KHBĐ có đúng flow sư phạm? YCCĐ gán khớp?", b: 1 },
-    { t: "ĐỀ THI: sinh đề GK1 Toán 4-5 + TV 4-5 → check ma trận, điểm, đáp án, hình vẽ, định dạng in", b: 1 },
+    { t: "KIÊM NHIỆM: gvcn@demo.scn thấy 3 nhãn vai trò + menu gộp + vào /team/* được; gvbm@demo.scn vào /team/* bị chặn", b: 1 },
+    { t: "NỘI DUNG: KHBĐ đúng khung CV 5512 (5 phần a-đ); đề đúng ma trận, thang điểm, đáp án; YCCĐ gán khớp", b: 1 },
     { t: "WORKFLOW: đóng góp → duyệt tổ → duyệt BGH → notification đúng người", b: 1 },
-    { t: "PHÂN QUYỀN: gvbm không duyệt được; tổ trưởng chỉ thấy môn tổ; phụ huynh không vào được bank", b: 1 },
-    { t: "EDGE CASES: câu nói 'như hình' không hình → bị chặn; import Excel sai format → báo lỗi rõ; câu trùng stem → cảnh báo dedupe", b: 1 },
+    { t: "PHÂN QUYỀN: PHT chỉ thấy Cơ sở 2; PH chỉ thấy con mình; UBND chỉ đọc; trường A không thấy trường B", b: 1 },
+    { t: "ONBOARDING: bootstrap workbook lên trường scratch → verify counts → cleanup về 0", b: 1 },
+    { t: "EDGE CASES: câu 'như hình' không hình bị chặn; import sai format báo rõ; câu trùng stem cảnh báo", b: 1 },
   ]);
 }
 
-// ---------- S16 Feedback ----------
+// ---------- S18 Docs map ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "BÁO LỖI & FEEDBACK", "Cách ghi nhận kết quả test");
-  bullets(s, [
-    { t: "Format bug report: [Vai trò] + [Trang/thao tác] + [Kết quả thực tế] vs [Kết quả mong đợi] + [Ảnh chụp nếu có]" },
-    { t: "Lỗi nội dung chuyên môn (đáp án sai, YCCĐ sai, ngôn ngữ): dùng nút 'Đánh dấu lỗi' ngay trên câu hỏi - hệ thống giữ trạng thái flagged để rà lại" },
-    { t: "Mức độ: Blocker (sai đáp án/mất dữ liệu/lộ dữ liệu trường khác) | Major (sai workflow, sai phân quyền) | Minor (UI/copy)" },
-    { t: "Môi trường test data thoải mái - mọi thứ trường test (nd/cva/kd.test) là dữ liệu giả, không sợ phá" },
+  slideTitle(s, "TÀI LIỆU KÈM THEO", "Bộ hồ sơ đầy đủ trong docs/user-guide/");
+  table(s, [
+    ["Tài liệu", "Nội dung"],
+    ["HUONG-DAN-SU-DUNG.md", "Thao tác chi tiết theo từng vai trò (kèm kiêm nhiệm), 31 ảnh màn hình"],
+    ["KHOI-TAO-TRUONG-MOI.md", "Đưa trường mới lên từ con số 0 - giao diện hoặc import hàng loạt"],
+    ["khoi-tao-truong.xlsx", "Workbook mẫu 8 sheet để khởi tạo trường"],
+    ["KICH-BAN-DEMO.md / .pptx", "Kịch bản demo theo luồng vai trò - tài khoản, đường đi, kết quả kỳ vọng"],
+    ["MO-TA-CHUC-NANG.md", "Mô tả chi tiết module, ma trận vai trò, luồng nghiệp vụ"],
   ]);
-  note(s, "Cảm ơn đội chuyên gia! Mọi góp ý nội dung sẽ được đội phát triển xử lý theo CR.");
+  bullets(s, [
+    { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs", y: 4.6 },
+    { t: "Tái sinh workbook mẫu: node scripts/gen-init-template.mjs; kịch bản demo: gen-demo-pptx.mjs", y: 4.6 },
+  ], { y: 4.6, fontSize: 12.5 });
 }
 
 mkdirSync("docs/handover", { recursive: true });

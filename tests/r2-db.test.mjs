@@ -42,6 +42,10 @@ const MIGRATION_R15 = readFileSync(
   join(ROOT, "supabase/migrations/20261111_r15_atomic_writes.sql"),
   "utf8",
 );
+const MIGRATION_CR35 = readFileSync(
+  join(ROOT, "supabase/migrations/20261112_cr035_khbd_jsonb.sql"),
+  "utf8",
+);
 
 // UUIDs phai khop tests/fixtures/r2-fixture.sql
 const ID = {
@@ -131,6 +135,7 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   psql(MIGRATION_R11);
   psql(MIGRATION_R12);
   psql(MIGRATION_R15);
+  psql(MIGRATION_CR35);
   psql("grant execute on all functions in schema public to appuser");
 
   const asUser = (uid, stmt) =>
@@ -818,5 +823,25 @@ test("R2 DB: migration + RLS/trigger behavior tren Postgres thuc", {
   await t.test("GVCN tA van thay lop truong minh", () => {
     const out = asUser(ID.tA, "select count(*) from my_school_class_ids()");
     assert.equal(out.trim(), "1");
+  });
+
+  // ---------- CR-035: content_json jsonb ----------
+  await t.test("lesson_plans.content_json ton tai, ghi/doc jsonb", () => {
+    psql(`insert into lesson_plans(school_id, teacher_id, class_id, subject_id,
+        title, content, content_json, status) values
+      ('${ID.schoolA}','${ID.tA}','${ID.classA}','${ID.subjA}',
+       'Bai test','flat mirror',
+       '{"muc_tieu_kien_thuc":"KT1","kham_pha":{"to_chuc":"TC"}}'::jsonb,
+       'submitted')`);
+    const out = psql(
+      `select concat_ws('|', content_json->>'muc_tieu_kien_thuc',
+         (content_json->'kham_pha')->>'to_chuc') from lesson_plans`);
+    assert.equal(out.trim(), "KT1|TC");
+    // Plan cu (content_json null) van doc duoc binh thuong
+    psql(`insert into lesson_plans(school_id, teacher_id, title, content, status)
+      values ('${ID.schoolA}','${ID.tA}','Bai cu','noi dung cu','approved')`);
+    const old = psql(
+      `select content_json is null from lesson_plans where title='Bai cu'`);
+    assert.equal(old.trim(), "t");
   });
 });

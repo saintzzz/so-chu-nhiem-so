@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { khbdHasContent, parseKhbd, renderKhbdText } from "@/lib/khbd";
+import type { KhbdContent } from "@/lib/khbd";
 
 export async function submitLessonPlan(input: {
   classId: string;
@@ -11,6 +13,7 @@ export async function submitLessonPlan(input: {
   periods: string;
   title: string;
   content: string;
+  contentJson?: KhbdContent | null;
   filePath?: string;
   fileName?: string;
 }): Promise<{ error?: string }> {
@@ -20,7 +23,36 @@ export async function submitLessonPlan(input: {
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.title.trim()) return { error: "Vui lòng nhập tên bài dạy." };
-  if (!input.content.trim() && !input.filePath)
+  if (input.title.trim().length > 200) {
+    return { error: "Tên bài dạy quá dài (tối đa 200 ký tự)." };
+  }
+  if (
+    input.week !== null &&
+    (!Number.isInteger(input.week) || input.week < 1 || input.week > 45)
+  ) {
+    return { error: "Tuần không hợp lệ (1-45)." };
+  }
+  // CR-035: structured content -> content la ban render phang mirror.
+  const structured = input.contentJson ? parseKhbd(input.contentJson) : null;
+  if (structured && JSON.stringify(structured).length > 100_000) {
+    return { error: "Nội dung giáo án quá lớn - vui lòng rút gọn." };
+  }
+  // File phai nam trong thu muc cua truong - chan path traversal /
+  // tro sang file truong khac.
+  const filePath = input.filePath ?? null;
+  if (
+    filePath &&
+    (!filePath.startsWith(`${profile.school_id}/`) ||
+      // Chan traversal theo segment - ten file "kehoach..final.pdf" hop le.
+      filePath.split("/").includes(".."))
+  ) {
+    return { error: "File đính kèm không hợp lệ." };
+  }
+  const contentText =
+    (structured && khbdHasContent(structured)
+      ? renderKhbdText(structured)
+      : input.content.trim()) || null;
+  if (!contentText && !filePath)
     return { error: "Giáo án cần có nội dung hoặc file đính kèm." };
 
   const { data: cls } = await supabase
@@ -40,9 +72,10 @@ export async function submitLessonPlan(input: {
     week: input.week,
     periods: input.periods.trim() || null,
     title: input.title.trim(),
-    content: input.content.trim() || null,
-    file_path: input.filePath ?? null,
-    file_name: input.fileName ?? null,
+    content: contentText,
+    content_json: structured && khbdHasContent(structured) ? structured : null,
+    file_path: filePath,
+    file_name: input.fileName?.slice(0, 200) ?? null,
     status: "submitted",
   });
   if (error) {
@@ -63,7 +96,10 @@ export async function submitLessonPlan(input: {
     body: `${profile.full_name} nộp giáo án tuần ${input.week ?? "-"}`,
     link: "/team/lesson-plans",
   }));
-  if (rows.length) await supabase.from("notifications").insert(rows);
+  if (rows.length) {
+    const { error: nErr } = await supabase.from("notifications").insert(rows);
+    if (nErr) console.error("[lesson-plans] notify heads:", nErr.message);
+  }
 
   revalidatePath("/academics/lesson-plans");
   return {};
@@ -76,6 +112,25 @@ export async function lessonPlanFileUrl(
   const deny = await checkActionRole(["gvbm", "gvcn", "to_truong", "bgh", "pht"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
+  const profile = await getProfile();
+  if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
+  // Chi ky URL cho file nam trong thu muc truong minh + gan voi 1 giao an
+  // ton tai - chan lay signed URL cho path truong khac.
+  if (
+    !filePath.startsWith(`${profile.school_id}/`) ||
+    filePath.split("/").includes("..")
+  ) {
+    return { error: "File không hợp lệ." };
+  }
+  // Codex R6: existence check bang limit(1) - single-row query tra loi khi
+  // 2 plan tro cung file_path, khoa file cua ca hai.
+  const { data: plans } = await supabase
+    .from("lesson_plans")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("file_path", filePath)
+    .limit(1);
+  if (!plans?.length) return { error: "File không tồn tại." };
   const { data, error } = await supabase.storage
     .from("lesson-plans")
     .createSignedUrl(filePath, 3600);
@@ -108,7 +163,9 @@ export async function teamReviewLessonPlan(
     return { error: "Giáo án không tồn tại hoặc đã được xử lý." };
   }
 
-  const { error } = await supabase
+  // Predicate status tren update: tranh 2 nguoi duyet song song ghi de -
+  // luot sau se thay 0 rows va bao loi thay vi overwrite.
+  const { data: updated, error } = await supabase
     .from("lesson_plans")
     .update({
       status: approve ? "team_approved" : "rejected",
@@ -116,10 +173,15 @@ export async function teamReviewLessonPlan(
       review_note: note?.trim() || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", planId);
+    .eq("id", planId)
+    .eq("status", "submitted")
+    .select("id");
   if (error) {
     console.error("[lesson-plans] team review update:", error.message);
     return { error: "Không cập nhật được giáo án - vui lòng thử lại." };
+  }
+  if (!updated?.length) {
+    return { error: "Giáo án đã được người khác xử lý." };
   }
 
   if (approve) {
@@ -136,9 +198,12 @@ export async function teamReviewLessonPlan(
       body: "Chờ Ban Giám Hiệu phê duyệt cuối",
       link: "/school/approvals",
     }));
-    if (rows.length) await supabase.from("notifications").insert(rows);
+    if (rows.length) {
+      const { error: nErr } = await supabase.from("notifications").insert(rows);
+      if (nErr) console.error("[lesson-plans] notify leaders:", nErr.message);
+    }
   }
-  await supabase.from("notifications").insert({
+  const { error: tnErr } = await supabase.from("notifications").insert({
     profile_id: plan.teacher_id,
     type: "lesson_plan",
     title: approve
@@ -147,6 +212,7 @@ export async function teamReviewLessonPlan(
     body: note?.trim() || (approve ? "Chờ BGH phê duyệt cuối" : null),
     link: "/academics/lesson-plans",
   });
+  if (tnErr) console.error("[lesson-plans] notify teacher:", tnErr.message);
   revalidatePath("/team/lesson-plans");
   revalidatePath("/academics/lesson-plans");
   revalidatePath("/school/approvals");
@@ -175,7 +241,7 @@ export async function bghDecideLessonPlan(
     return { error: "Giáo án không tồn tại hoặc chưa qua duyệt tổ." };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("lesson_plans")
     .update({
       status: approve ? "approved" : "rejected",
@@ -183,13 +249,18 @@ export async function bghDecideLessonPlan(
       review_note: note?.trim() || null,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", planId);
+    .eq("id", planId)
+    .eq("status", "team_approved")
+    .select("id");
   if (error) {
     console.error("[lesson-plans] bgh decide update:", error.message);
     return { error: "Không cập nhật được giáo án - vui lòng thử lại." };
   }
+  if (!updated?.length) {
+    return { error: "Giáo án đã được người khác xử lý." };
+  }
 
-  await supabase.from("notifications").insert({
+  const { error: nErr } = await supabase.from("notifications").insert({
     profile_id: plan.teacher_id,
     type: "lesson_plan",
     title: approve
@@ -198,6 +269,7 @@ export async function bghDecideLessonPlan(
     body: note?.trim() || null,
     link: "/academics/lesson-plans",
   });
+  if (nErr) console.error("[lesson-plans] notify teacher:", nErr.message);
   revalidatePath("/school/approvals");
   revalidatePath("/academics/lesson-plans");
   return {};

@@ -2454,3 +2454,230 @@ test("R15-03: exams-board khong doc exam_sessions phia client", () => {
   assert.ok(!/\.from\("exam_sessions"\)\s*\.select\(/.test(src),
     "board con select exam_sessions khong phan trang");
 });
+
+// --- CR-035: KHBD co cau truc ------------------------------------------
+const {
+  emptyKhbd,
+  khbdHasContent,
+  parseKhbd,
+  parseKhbdStrict,
+  renderKhbdText,
+} = await import(join(ROOT, "src/lib/khbd.ts"));
+
+test("CR-035: parseKhbd roundtrip va tu choi input hong", () => {
+  const k = emptyKhbd();
+  k.muc_tieu_kien_thuc = "HS nêu được khái niệm phương trình bậc nhất";
+  k.kham_pha.to_chuc = "- GV giao phiếu học tập\n- HS thảo luận nhóm";
+  // roundtrip qua JSON nhu DB jsonb
+  const back = parseKhbd(JSON.parse(JSON.stringify(k)));
+  assert.deepEqual(back, k);
+  // input hong -> null
+  for (const bad of [null, undefined, "x", 42, [], { muc_tieu: "x" }]) {
+    assert.equal(parseKhbd(bad), null, `input hong ${JSON.stringify(bad)} phai null`);
+  }
+  // thieu field -> default "" (khong throw)
+  const partial = parseKhbd({ muc_tieu_kien_thuc: "abc" });
+  assert.equal(partial.muc_tieu_kien_thuc, "abc");
+  assert.equal(partial.khoi_dong.to_chuc, "");
+});
+
+test("CR-035: khbdHasContent chi true khi co it nhat 1 field khac rong", () => {
+  assert.equal(khbdHasContent(emptyKhbd()), false);
+  const k = emptyKhbd();
+  k.van_dung.danh_gia = "  ";
+  assert.equal(khbdHasContent(k), false);
+  k.dieu_chinh = "Rút kinh nghiệm tiết sau";
+  assert.equal(khbdHasContent(k), true);
+});
+
+test("CR-035: renderKhbdText dung bo cuc CV 5512 va bo qua section rong", () => {
+  const k = emptyKhbd();
+  k.muc_tieu_kien_thuc = "K1";
+  k.khoi_dong.muc_tieu = "MT khởi động";
+  k.khoi_dong.to_chuc = "Tổ chức trò chơi";
+  const text = renderKhbdText(k);
+  assert.match(text, /I\. MỤC TIÊU/);
+  assert.match(text, /III\. TIẾN TRÌNH DẠY HỌC/);
+  assert.match(text, /Hoạt động: Khởi động/);
+  assert.ok(!/Luyện tập|Vận dụng/.test(text),
+    "section rong phai bi bo qua trong ban render");
+  assert.ok(!/II\. THIẾT BỊ/.test(text),
+    "thiet bi rong khong render ca heading section");
+  // hoan toan rong -> chuoi rong (khong con heading treo)
+  assert.equal(renderKhbdText(emptyKhbd()), "");
+});
+
+test("CR-035: submitLessonPlan validate filePath prefix + size caps", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  assert.match(src,
+    /filePath\.startsWith\(`\$\{profile\.school_id\}\/`\)[\s\S]*?split\("\/"\)\.includes\("\.\."\)/,
+    "filePath phai bat dau bang school_id/ va chan .. theo segment (ten file kehoach..x.pdf hop le)");
+  assert.match(src, /JSON\.stringify\(structured\)\.length > 100_000/,
+    "thieu gioi han kich thuoc content_json");
+  assert.match(src, /input\.week < 1 \|\| input\.week > 45/,
+    "thieu validate tuan");
+});
+
+test("CR-035: review updates co status predicate + bat 0-row", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  // team: submitted, bgh: team_approved - predicate tren UPDATE + .select("id")
+  assert.match(src,
+    /\.eq\("id", planId\)\s*\.eq\("status", "submitted"\)\s*\.select\("id"\)/,
+    "team review update thieu predicate status");
+  assert.match(src,
+    /\.eq\("id", planId\)\s*\.eq\("status", "team_approved"\)\s*\.select\("id"\)/,
+    "bgh update thieu predicate status");
+  assert.match(src, /Giáo án đã được người khác xử lý\./,
+    "thieu nhan bao stale/concurrent review");
+});
+
+test("CR-035: lessonPlanFileUrl kiem record + tenant truoc khi ky URL", () => {
+  const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  const fn = src.match(/lessonPlanFileUrl[\s\S]*?createSignedUrl/);
+  assert.ok(fn, "khong tim thay lessonPlanFileUrl");
+  assert.match(fn[0], /\.eq\("file_path", filePath\)/,
+    "phai verify file_path gan voi lesson_plans row cung truong");
+  assert.match(fn[0], /\.eq\("school_id", profile\.school_id/,
+    "phai scope school_id truoc khi ky URL");
+  // Codex R6: maybeSingle() loi khi 2 plan tro cung path -> chan file ca
+  // hai. Phai dung existence check limit(1).
+  assert.match(fn[0], /\.limit\(1\)/, "dung limit(1) thay maybeSingle");
+  assert.ok(!fn[0].includes("maybeSingle"),
+    "maybeSingle bi loi khi file_path trung - dung limit(1)");
+});
+
+test("CR-035: 3 page lesson-plans fetchAllRows + gate loi nguon", () => {
+  for (const p of [
+    "src/app/(app)/academics/lesson-plans/page.tsx",
+    "src/app/(app)/team/lesson-plans/page.tsx",
+    "src/app/(app)/school/approvals/page.tsx",
+  ]) {
+    const src = read(p);
+    assert.match(src, /fetchAllRows</, `${p} chua phan trang fetchAllRows`);
+    assert.match(src, /loadError/, `${p} thieu gate loi nguon`);
+    assert.match(src, /Không tải được dữ liệu\. Vui lòng thử lại\./,
+      `${p} thieu nhan loi co dinh`);
+  }
+  // approvals: activities phai scope theo class_ids (khong co school_id)
+  const ap = read("src/app/(app)/school/approvals/page.tsx");
+  assert.match(ap, /\.in\("class_id", classIds\)/,
+    "activities chua scope theo class_ids cua truong");
+});
+
+test("CR-035: board gioi han file 8MB + don file mo coi khi insert loi", () => {
+  const src = read("src/components/academics/lesson-plan-board.tsx");
+  assert.match(src, /file\.size > 8 \* 1024 \* 1024/, "thieu cap 8MB");
+  assert.match(src,
+    /\.from\("lesson-plans"\)\s*\.remove\(\[filePath\]\)/,
+    "thieu cleanup file mo coi khi submit loi");
+});
+
+test("CR-035: parseKhbdStrict tu choi sections thieu/sai kieu", () => {
+  const full = emptyKhbd();
+  full.muc_tieu_kien_thuc = "K1";
+  // day du cau truc -> pass
+  assert.ok(parseKhbdStrict(JSON.parse(JSON.stringify(full))));
+  // Codex R3: {"sections":{muc_tieu_kien_thuc:"x", khoi_dong:42}} khong duoc
+  // tin hop le du co 1 field dung - nguoc lai user nhan plan gan nhu rong.
+  assert.equal(parseKhbdStrict({ muc_tieu_kien_thuc: "x", khoi_dong: 42 }), null);
+  assert.equal(parseKhbdStrict({ muc_tieu_kien_thuc: "x" }), null);
+  assert.equal(parseKhbdStrict({}), null);
+  assert.equal(parseKhbdStrict(null), null);
+  const missingAct = JSON.parse(JSON.stringify(full));
+  delete missingAct.kham_pha;
+  assert.equal(parseKhbdStrict(missingAct), null, "thieu 1 hoat dong phai reject");
+  const badField = JSON.parse(JSON.stringify(full));
+  delete badField.luyen_tap.danh_gia;
+  assert.equal(parseKhbdStrict(badField), null, "hoat dong thieu field phai reject");
+});
+
+test("CR-035: migration them content_json jsonb nullable", () => {
+  const mig = read("supabase/migrations/20261112_cr035_khbd_jsonb.sql");
+  assert.match(mig, /add column if not exists content_json jsonb/i,
+    "migration thieu content_json jsonb");
+});
+
+// --- CR-035 codex round: 3 finding tu Codex Cloud review -------------------
+test("CR-035/Codex: AI route validate sections bang parseKhbdStrict", () => {
+  const src = read("src/app/api/ai/lesson-plan/route.ts");
+  assert.match(src, /parseKhbdStrict\(s\)/,
+    "route phai parse strict - sections:{} hoac field sai kieu khong duoc tin hop le");
+  assert.match(src, /khbdHasContent\(k\)/,
+    "route phai tu choi khbd rong - client se tu thanh cong voi plan trong");
+  // Fallback bat dong bo (devin-callback) bo qua parse cua route:
+  // expectedShape phai day du schema, va client phai validate lai.
+  const shape = src.match(/expectedShape:\s*'([^']+)'/);
+  assert.ok(shape?.[1].includes('"van_dung"') && shape?.[1].includes('"dieu_chinh"'),
+    "expectedShape phai la schema KHBD day du, khong phai ban tom tat");
+  const board = read("src/components/academics/lesson-plan-board.tsx");
+  assert.match(board, /parseKhbdStrict\(r\.sections\)/,
+    "onApply phai parse strict - async result chua qua route parse");
+  assert.match(board, /khbdHasContent\(k\)/,
+    "onApply phai kiem khbdHasContent - async result chua qua route parse");
+});
+
+test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {
+  const src = read("src/app/(app)/team/lesson-plans/page.tsx");
+  // Queue can xu ly (submitted) phai doc het - cap tong the co the giấu
+  // giao an pending cu. Lich su da xu ly moi duoc cap 300.
+  const pend = src.match(
+    /fetchAllRows<LessonPlan>\(\(f, t\) =>[\s\S]*?from\("lesson_plans"\)[\s\S]*?\.eq\("status", "submitted"\)[\s\S]*?\.range\(f, t\),?\s*\)/);
+  assert.ok(pend, "giao an submitted phai fetchAllRows khong cap maxRows");
+  const hist = src.match(
+    /fetchAllRows<LessonPlan>\([\s\S]*?\.neq\("status", "submitted"\)[\s\S]*?\.range\(f, t\),?\s*\n?\s*(\d+),\s*\n?\s*(\d+)/);
+  assert.ok(hist, "lich su da xu ly phai truyen maxRows");
+  assert.equal(hist[2], "300", "maxRows lich su phai la 300");
+  assert.match(src, /Chỉ hiển thị 300 giáo án đã xử lý mới nhất/,
+    "thieu note khi lich su bi cap");
+  // Race: plan chuyen status giua 2 query -> trung id -> duplicate key.
+  // Phai dedupe uu tien query sau.
+  assert.match(src, /histIds[\s\S]*?\.filter\(\(p\) => !histIds\.has\(p\.id\)\)/,
+    "phai loai id trung phia pending truoc khi ghep");
+});
+
+test("CR-035/Codex: bucket lesson-plans co DELETE policy chi cho chu file", () => {
+  // Board don file mo coi bang remove() tu client. Policy phai scope
+  // truong VA owner_id = auth.uid() - khong thi GV cung truong xoa duoc
+  // file dinh kem cua nhau (Codex R4).
+  const migs = readdirSync(join(ROOT, "supabase/migrations"))
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => read(`supabase/migrations/${f}`))
+    .join("\n");
+  const del = migs.match(
+    /create policy "lp_files_delete_same_school"[\s\S]*?for delete to authenticated[\s\S]*?;/);
+  assert.ok(del, "thieu DELETE policy cho bucket lesson-plans - orphan cleanup khong chay duoc");
+  assert.match(del[0], /bucket_id = 'lesson-plans'/, "policy phai scope bucket");
+  assert.match(del[0], /owner_id = auth\.uid\(\)::text/,
+    "policy phai gioi han chu file - delete rong truong la cross-user data loss");
+  assert.match(del[0], /not exists[\s\S]*?lesson_plans lp where lp\.file_path = name/,
+    "file da gan vao lesson_plans khong duoc xoa - xoa bang chung duyet");
+});
+
+test("CR-035/Codex: query phan trang co tiebreaker order(id) on dinh", () => {
+  // fetchAllRows doc theo offset range - order khong unique lam cac trang
+  // lap/bo sot row khi co nhieu dong trung gia tri sort (Codex R4).
+  for (const p of [
+    "src/app/(app)/academics/lesson-plans/page.tsx",
+    "src/app/(app)/team/lesson-plans/page.tsx",
+    "src/app/(app)/school/approvals/page.tsx",
+  ]) {
+    const src = read(p);
+    const queries = src.match(/\.range\(f, t\)/g) ?? [];
+    assert.ok(queries.length > 0, `${p} khong co query phan trang`);
+    for (const m of src.matchAll(
+      /fetchAllRows[\s\S]{0,900}?\.range\(f, t\)/g,
+    )) {
+      assert.ok(m[0].includes('.order("id")'),
+        `${p}: fetchAllRows block thieu order("id"): ${m[0].slice(-160)}`);
+    }
+  }
+});
+
+test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", () => {
+  const src = read("src/app/(app)/school/approvals/page.tsx");
+  const cls = src.match(
+    /fetchAllRows<ClassRoom>\(\(f, t\) =>[\s\S]*?from\("classes"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(cls, "khong tim thay classes fetchAllRows");
+  assert.ok(!cls[0].includes('"active"'),
+    "lop archived van co the con activity pending - khong duoc loc status=active");
+});

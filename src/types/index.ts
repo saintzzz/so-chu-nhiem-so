@@ -317,11 +317,7 @@ export interface SubstituteRequest {
 }
 
 export type LessonPlanStatus =
-  | "draft"
-  | "submitted"
-  | "team_approved"
-  | "approved"
-  | "rejected";
+  "draft" | "submitted" | "team_approved" | "approved" | "rejected";
 
 export interface LessonPlan {
   id: string;
@@ -333,6 +329,7 @@ export interface LessonPlan {
   periods: string | null;
   title: string;
   content: string | null;
+  content_json?: unknown | null;
   file_path: string | null;
   file_name: string | null;
   status: LessonPlanStatus;

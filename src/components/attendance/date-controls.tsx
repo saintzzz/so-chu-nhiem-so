@@ -138,7 +138,7 @@ export function DashboardDateBar({
         ))}
         <label className="text-sm text-muted-foreground">Từ ngày</label>
         <input
-          key={from}
+          key={`from-${from}`}
           type="date"
           name="from"
           defaultValue={from}
@@ -146,7 +146,7 @@ export function DashboardDateBar({
         />
         <label className="text-sm text-muted-foreground">đến</label>
         <input
-          key={to}
+          key={`to-${to}`}
           type="date"
           name="to"
           defaultValue={to}
@@ -186,7 +186,7 @@ export function AttendanceRangeNav({
       ))}
       <label className="text-sm text-muted-foreground">Từ ngày</label>
       <input
-        key={from}
+        key={`from-${from}`}
         type="date"
         name="from"
         defaultValue={from}
@@ -194,7 +194,7 @@ export function AttendanceRangeNav({
       />
       <label className="text-sm text-muted-foreground">đến</label>
       <input
-        key={to}
+        key={`to-${to}`}
         type="date"
         name="to"
         defaultValue={to}

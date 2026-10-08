@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireRoles, STAFF_ROLES } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ROLE_LABELS } from "@/lib/nav";
+import { effectiveRoles } from "@/lib/roles";
 import { ProfileForm } from "@/components/profile/profile-form";
 import type { Campus, ClassRoom, School } from "@/types";
 
@@ -57,7 +58,11 @@ export default async function ProfilePage() {
             <tr>
               <td className="text-muted-foreground">Vai trò</td>
               <td>
-                <StatusBadge label={ROLE_LABELS[profile.role]} tone="primary" />
+                <span className="flex flex-wrap gap-1">
+                  {effectiveRoles(profile).map((r) => (
+                    <StatusBadge key={r} label={ROLE_LABELS[r]} tone="primary" />
+                  ))}
+                </span>
               </td>
             </tr>
             <tr>

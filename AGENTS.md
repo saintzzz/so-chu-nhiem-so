@@ -115,7 +115,7 @@ scripts/            # Asset download scripts
 - **Vietnamese copy:** hyphen `-` only, never em-dash/en-dash.
 - **Auth lookups:** `getProfile` is React `cache()`-deduped per request - call it freely in layout + page + actions.
 - **DB types:** verify column types in seed/migrations first (`month` is int, dates are real `date`).
-- **AI:** providers via env (`GEMINI_API_KEY`/`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `AI_PROVIDER`/`AI_MODEL`) in `src/lib/ai.ts` - never hard-code; Gemini needs `thinkingBudget: 0` for JSON output.
+- **AI:** providers via env (`GEMINI_API_KEY`/`OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `AI_PROVIDER`/`AI_MODEL` global, `GEMINI_MODEL`/`OPENAI_MODEL`/`ANTHROPIC_MODEL` per-provider) in `src/lib/ai.ts` - never hard-code; Gemini needs `thinkingBudget: 0` for JSON output. `OPENAI_BASE_URL` redirects the openai slot to any OpenAI-compatible endpoint (e.g. OpenRouter `https://openrouter.ai/api/v1`).
 - **AI fallback:** on `quota` errors, `src/lib/devin.ts` creates an async Devin session; result returns via `/api/ai/devin-callback` (per-job `callback_token` in `ai_jobs`, proxy-whitelisted path). Env: `DEVIN_API_KEY` (+ optional `DEVIN_CALLBACK_URL`, else derived from request host). `AI_FORCE_ERROR=quota` simulates quota locally.
 - **Deploy:** push to `master` auto-deploys to Vercel (`saintzzz/so-chu-nhiem-so`). Do NOT re-add `output: "standalone"` - it breaks remote builds.
 - **Secrets:** `.env.local` and `~/.config/devin/secrets/*` stay uncommitted; never print key values.

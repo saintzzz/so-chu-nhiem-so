@@ -207,9 +207,11 @@ export function PeriodLogBoard({
         if (insErr) throw insErr;
       }
 
-      // Đồng bộ sổ đầu bài -> điểm danh ngày: HS vắng bất kỳ tiết nào phải
-      // phản ánh vào attendance_records (source=period_log). Không ghi đè
-      // record "manual" - xác nhận của GVCN luôn giữ nguyên.
+      // Đồng bộ sổ đầu bài -> điểm danh ngày qua RPC nguyên tử: HS vắng bất
+      // kỳ tiết nào phản ánh vào attendance_records (source=period_log), chỉ
+      // nâng severity record manual - không ghi đè source. Toàn bộ logic
+      // (severity, quét mọi tiết của lớp trong ngày, lock serialize) nằm
+      // trong scn_sync_period_attendance - 1 transaction, không rơi nửa vời.
       const affectedIds = [
         ...new Set([
           ...rows.map((r) => r.student_id),
@@ -217,99 +219,15 @@ export function PeriodLogBoard({
         ]),
       ];
       if (affectedIds.length > 0) {
-        // Tính lại điểm danh ngày từ TẤT CẢ tiết của lớp trong ngày - không
-        // chỉ các tiết của GV đang lưu, nếu không GV A lưu sẽ xóa vắng do
-        // GV B ghi ở tiết khác.
-        const classId = entries.find((e) => e.id === entryId)?.class_id;
-        const jsDay = new Date(`${date}T00:00:00`).getDay();
-        const weekday = jsDay === 0 ? null : jsDay + 1;
-        const { data: dayEntries } = weekday
-          ? await supabase
-              .from("timetable_entries")
-              .select("id")
-              .eq("class_id", classId ?? "")
-              .eq("weekday", weekday)
-          : { data: [] };
-        const entryIds = ((dayEntries ?? []) as { id: string }[]).map(
-          (e) => e.id,
+        const { error: syncErr } = await supabase.rpc(
+          "scn_sync_period_attendance",
+          {
+            p_date: date,
+            p_class_id: entries.find((e) => e.id === entryId)?.class_id,
+            p_student_ids: affectedIds,
+          },
         );
-        const { data: dayLogs } = await supabase
-          .from("period_logs")
-          .select("id")
-          .eq("date", date)
-          .in("timetable_entry_id", entryIds);
-        const logIds = ((dayLogs ?? []) as { id: string }[]).map((l) => l.id);
-        const { data: dayAbs } = logIds.length
-          ? await supabase
-              .from("period_absences")
-              .select("student_id,status")
-              .in("period_log_id", logIds)
-              .in("student_id", affectedIds)
-          : { data: [] };
-
-        const SEVERITY_ORDER: Record<string, number> = {
-          unexcused: 3,
-          excused: 2,
-          late: 1,
-        };
-        const worst = new Map<string, string>();
-        for (const a of (dayAbs ?? []) as {
-          student_id: string;
-          status: string;
-        }[]) {
-          const cur = worst.get(a.student_id);
-          if (!cur || SEVERITY_ORDER[a.status] > SEVERITY_ORDER[cur])
-            worst.set(a.student_id, a.status);
-        }
-
-        // Xóa record do sổ đầu bài tạo trước đó rồi tính lại từ đầu.
-        await supabase
-          .from("attendance_records")
-          .delete()
-          .in("student_id", affectedIds)
-          .eq("date", date)
-          .eq("source", "period_log");
-        // Record hiện có (manual/parent): vắng theo tiết là bằng chứng thực tế
-        // -> nâng status nếu period log nghiêm trọng hơn; không hạ severity.
-        const { data: existing } = await supabase
-          .from("attendance_records")
-          .select("student_id,status")
-          .in("student_id", affectedIds)
-          .eq("date", date);
-        const existingStatus = new Map(
-          ((existing ?? []) as { student_id: string; status: string }[]).map(
-            (r) => [r.student_id, r.status],
-          ),
-        );
-        const inserts: {
-          student_id: string;
-          date: string;
-          status: string;
-          source: string;
-        }[] = [];
-        const updates: { student_id: string; status: string }[] = [];
-        for (const [sid, st] of worst) {
-          const cur = existingStatus.get(sid);
-          if (!cur) {
-            inserts.push({ student_id: sid, date, status: st, source: "period_log" });
-          } else if (SEVERITY_ORDER[st] > (SEVERITY_ORDER[cur] ?? 0)) {
-            updates.push({ student_id: sid, status: st });
-          }
-        }
-        if (inserts.length > 0) {
-          const { error: syncErr } = await supabase
-            .from("attendance_records")
-            .insert(inserts);
-          if (syncErr) throw syncErr;
-        }
-        for (const u of updates) {
-          const { error: upErr } = await supabase
-            .from("attendance_records")
-            .update({ status: u.status })
-            .eq("student_id", u.student_id)
-            .eq("date", date);
-          if (upErr) throw upErr;
-        }
+        if (syncErr) throw syncErr;
       }
 
       logAudit(supabase, {

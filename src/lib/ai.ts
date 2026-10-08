@@ -32,9 +32,18 @@ export function getAiConfigs(): AiConfig[] {
     .filter(Boolean);
   const allowedSet = allowed.length ? new Set(allowed) : null;
   const model = process.env.AI_MODEL;
+  const providerModel: Record<AiProvider, string | undefined> = {
+    gemini: process.env.GEMINI_MODEL,
+    openai: process.env.OPENAI_MODEL,
+    anthropic: process.env.ANTHROPIC_MODEL,
+  };
   const pick = (provider: AiProvider, key?: string): AiConfig | null =>
     key && (!allowedSet || allowedSet.has(provider))
-      ? { provider, key, model: model ?? DEFAULT_MODELS[provider] }
+      ? {
+          provider,
+          key,
+          model: model ?? providerModel[provider] ?? DEFAULT_MODELS[provider],
+        }
       : null;
 
   if (forced) {
@@ -155,7 +164,11 @@ async function callOpenAI(
   prompt: string,
   opts: GenerateOptions,
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  // OPENAI_BASE_URL cho phep tro sang endpoint OpenAI-compatible
+  // (vd OpenRouter https://openrouter.ai/api/v1) ma van giu slot provider.
+  const base = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1")
+    .replace(/\/$/, "");
+  const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
     signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
     headers: {

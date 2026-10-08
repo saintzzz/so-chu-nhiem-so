@@ -1,6 +1,6 @@
 # QA Evidence — Công cụ soạn học liệu (13 tool) + Ngân hàng câu hỏi CR-043
 
-Ngày: 2026-10-08. Môi trường kiểm chứng: **local dev** `localhost:3000` + **production** `https://sochunhiem.vieschool.com` (deploy từ `master`, commit gần nhất `5a80068`, docs `d566541`).
+Ngày: 2026-10-09 (GMT+7). Môi trường kiểm chứng: **local dev** `localhost:3000` + **production** `https://sochunhiem.vieschool.com` (deploy từ `master`, commit gần nhất `5a80068`, docs `d566541`).
 Phương thức: Playwright MCP trong session login thật `anhptl@nd.scn` (gọi đúng route `/api/studio/tools/<code>/generate` mà UI dùng) + PostgREST trực tiếp cho DB assertions.
 
 ## 1. Coverage 13/13 tool — môn × lớp

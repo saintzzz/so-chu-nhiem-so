@@ -1,6 +1,6 @@
 # PRD — Công cụ soạn học liệu (TVC360 Studio)
 
-**Phase 2 output — BA** | Date: 2026-10-08 | Status: Đã triển khai (as-built PRD)
+**Phase 2 output — BA** | Date: 2026-10-09 | Status: Đã triển khai (as-built PRD)
 **Liên quan:** CR-023 (module tool), CR-041 (AI gen câu hỏi), CR-043 (ngân hàng 10k), CR-031 (media), CR-026 (biểu mẫu KHBD)
 
 ## 1. Problem
@@ -63,7 +63,7 @@ Giáo viên Việt Nam mất nhiều giờ soạn học liệu thủ công: giá
 - Audit: `logAudit` trên save/review mutations.
 - Vietnamese copy: dấu gạch `-`, không em/en-dash; số thập phân dấu phẩy.
 
-## 7. Acceptance criteria — đã verify 2026-10-08
+## 7. Acceptance criteria — đã verify 2026-10-09
 
 - [x] 13/13 tool render trong `/studio`, mỗi tool sinh được học liệu (AI hoặc fallback)
 - [x] DC-03 trên 4 ma trận (Toán L1/L5, TV L3, TA L4): 0 `[THIẾU]`, đáp án kiểm tay đúng 12/12

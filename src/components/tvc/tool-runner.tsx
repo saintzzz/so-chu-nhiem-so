@@ -11,6 +11,7 @@ import { sanitizeKhbdDoc } from "@/lib/tvc/khbd-doc";
 import { useTvcAiJob } from "@/hooks/use-tvc-ai-job";
 import { Sparkles, Save, Loader2, Users } from "lucide-react";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+import { FormulaInput } from "./formula-input";
 
 interface MatrixPayload {
   cells: unknown[];
@@ -348,6 +349,15 @@ export function ToolRunner({
       }
       case "textarea":
       case "words":
+        if (f.key === "formula") {
+          return (
+            <FormulaInput
+              value={values[f.key] ?? ""}
+              onChange={(v) => set(f.key, v)}
+              placeholder={f.placeholder}
+            />
+          );
+        }
         return (
           <AutoGrowTextarea
             className={inputCls}

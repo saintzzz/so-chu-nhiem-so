@@ -11,8 +11,8 @@ Hệ thống: https://sochunhiem.vieschool.com
 | [KICH-BAN-DEMO.md](KICH-BAN-DEMO.md) | Markdown | Kịch bản demo theo luồng vai trò - tài khoản, tuyến đường, kết quả kỳ vọng |
 | [KICH-BAN-DEMO.pptx](KICH-BAN-DEMO.pptx) | PowerPoint | Kịch bản demo dạng slide 14 trang, dùng trình chiếu khi demo |
 | [USER-GUIDE-vieschool.pptx](../handover/USER-GUIDE-vieschool.pptx) | PowerPoint | Hướng dẫn sử dụng + giới thiệu chức năng 18 slides (v2.0: vai trò kiêm nhiệm, 3 trường, tài khoản, ma trận quyền, khởi tạo trường) |
-| [SO-CHU-NHIEM-SO-TAI-LIEU.docx](SO-CHU-NHIEM-SO-TAI-LIEU.docx) | Word | Gộp mô tả + hướng dẫn - dùng để in/phát hành nội bộ |
-| [SO-CHU-NHIEM-SO-GIOI-THIEU.pptx](SO-CHU-NHIEM-SO-GIOI-THIEU.pptx) | PowerPoint | Slide 13 trang giới thiệu + đào tạo người dùng, kèm ảnh màn hình |
+| [SO-CHU-NHIEM-SO-TAI-LIEU.docx](SO-CHU-NHIEM-SO-TAI-LIEU.docx) | Word | Gộp mô tả + hướng dẫn (gồm kiêm nhiệm + Studio TVC360) - dùng để in/phát hành nội bộ |
+| [SO-CHU-NHIEM-SO-GIOI-THIEU.pptx](SO-CHU-NHIEM-SO-GIOI-THIEU.pptx) | PowerPoint | Slide 15 trang giới thiệu + đào tạo (vai trò kiêm nhiệm, Studio, URL prod), kèm ảnh màn hình |
 
 Thư mục `images/` chứa 31 ảnh chụp màn hình thật từ production dùng chung cho các tài liệu.
 

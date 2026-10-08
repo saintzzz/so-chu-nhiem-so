@@ -159,7 +159,7 @@ def build_docx():
     meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
     meta.add_run(
         "Phiên bản 1.0 - 21/09/2026\n"
-        "Hệ thống: https://so-chu-nhiem-so-theta.vercel.app\n"
+        "Hệ thống: https://sochunhiem.vieschool.com\n"
         "Tài khoản demo: chọn vai trò tại màn hình đăng nhập - mật khẩu demo1234"
     )
     doc.add_page_break()
@@ -231,14 +231,15 @@ def build_pptx():
     add_text(t.text_frame, "SỔ CHỦ NHIỆM SỐ", size=44, bold=True, color=PRGB(0xFF, 0xFF, 0xFF))
     add_text(t.text_frame, "Nền tảng số hóa công tác chủ nhiệm & quản lý trường học", size=20, color=PRGB(0xDB, 0xEA, 0xFE))
     m = txbox(s, Inches(1), Inches(5.6), SW - Inches(2), Inches(1))
-    add_text(m.text_frame, "https://so-chu-nhiem-so-theta.vercel.app - Demo: chọn vai trò, mật khẩu demo1234", size=14, color=PRGB(0xBF, 0xDB, 0xFE))
+    add_text(m.text_frame, "https://sochunhiem.vieschool.com - Demo: *@demo.scn, mật khẩu demo1234", size=14, color=PRGB(0xBF, 0xDB, 0xFE))
 
     content_slide(prs, "Tổng quan hệ thống", [
         "Số hóa toàn bộ sổ chủ nhiệm giấy: điểm danh, sổ đầu bài, sổ điểm, rèn luyện, tư vấn, liên lạc phụ huynh, hoạt động giáo dục, an toàn, thi đua, báo cáo",
+        "TVC360 Studio: soạn KHBD (CV 5512), ma trận đề, đề kiểm tra, ngân hàng câu hỏi chung của trường - xuất DOCX/PDF/PPTX",
+        "Vai trò kiêm nhiệm: GVCN kiêm dạy + tổ trưởng, quyền gộp nhất quán UI - action - RLS",
         "Một dữ liệu nghiệp vụ - đồng bộ nhiều màn hình (vắng tiết học tự cập nhật điểm danh ngày)",
-        "Phân quyền theo vai trò ở cả UI, route và Row-Level-Security",
-        "Hỗ trợ Tiểu học / THCS / THPT, nhiều cơ sở (phân hiệu)",
-        "AI 3 tuyến: LLM cấu hình được - Devin async - rule-based fallback",
+        "Hỗ trợ Tiểu học / THCS / THPT, nhiều cơ sở (phân hiệu); multi-tenant RLS theo trường",
+        "AI 3 tuyến: LLM cấu hình được - engine async - rule-based fallback; sanitizer kiểm chứng nội dung",
         "Chuẩn TT22/2021: điểm thành phần hệ số 1-2-3, ĐTBm HK1/HK2/cả năm",
     ], img="02-gvcn-dashboard.png", img_caption="Dashboard giáo viên chủ nhiệm")
 
@@ -251,7 +252,7 @@ def build_pptx():
         ("Tổ trưởng", "Duyệt giáo án, đánh giá năng lực"), ("BGH", "Toàn trường: ký sổ, phân công, duyệt, radar"),
         ("PHT", "Vận hành trường - không ký sổ/phân công"), ("Kế toán", "Nhân sự, CSVC, NQ37 - không xem hồ sơ HS"),
         ("Sở GD&ĐT", "Tổng hợp nhiều trường, quản trị"), ("UBND cấp xã", "Dashboard địa bàn"),
-        ("Phụ huynh", "Con mình (nhiều con): tin nhắn, lịch hẹn, đăng ký"), ("Học sinh", "TKB, điểm, hạnh kiểu của mình"),
+        ("Phụ huynh", "Con mình (nhiều con): tin nhắn, lịch hẹn, đăng ký"), ("Học sinh", "TKB, điểm, hạnh kiểm của mình"),
     ]
     tb = s.shapes.add_table(5, 4, Inches(0.6), Inches(1.3), SW - Inches(1.2), Inches(5.2)).table
     for i, (role, scope) in enumerate(roles):
@@ -262,6 +263,22 @@ def build_pptx():
             for p in cell.text_frame.paragraphs:
                 for run in p.runs:
                     run.font.size = PPt(14)
+
+    content_slide(prs, "Vai trò kiêm nhiệm - đúng thực tế trường Việt Nam", [
+        "1 vai trò chính + nhiều vai trò kiêm nhiệm: GVCN kiêm GVBM + tổ trưởng, PHT/Hiệu trưởng kiêm dạy",
+        "Quyền = hợp mọi vai trò, tính nhất quán 3 tầng: menu gộp + topbar đủ nhãn, server action, 158 RLS policies (my_roles)",
+        "BGH gán kiêm nhiệm tại /school/users - user tự sửa bị trigger DB chặn (chống leo quyền)",
+        "Grant xung đột giữa vai trò kiêm: deny thắng; chỉ vai trò nhân sự được kiêm",
+        "Menu chỉ hiện chức năng được cấp - audit tự động bằng check-nav-access (158 links)",
+    ], img="26-team-lesson-plans.png", img_caption="GVCN kiêm tổ trưởng vào được queue duyệt giáo án")
+
+    content_slide(prs, "Studio - công cụ số giáo viên (TVC360)", [
+        "6 công cụ DC-01..06: KHBĐ khung CV 5512, ma trận đề, đề từ ngân hàng, bộ câu hỏi, phiếu học tập, bài trình chiếu",
+        "Ngân hàng câu hỏi chung của trường gắn YCCĐ: import tay/Excel/ảnh-PDF, duyệt 2 lớp (tổ → BGH)",
+        "Hình Toán vẽ SVG tham số (deterministic), LaTeX $...$ → Word Equation native khi xuất DOCX",
+        "AI sinh qua schema + YCCĐ gate + sanitizer; hết quota → fallback engine / rule-based",
+        "Xuất DOCX/PDF/PPTX; đề kèm đáp án - hướng dẫn chấm - biên bản phản biện",
+    ], img="17-exams.png", img_caption="Ngân hàng câu hỏi và sinh đề theo ma trận")
 
     content_slide(prs, "Chuyên cần - điểm danh số", [
         "4 trạng thái/em: Có mặt, Vắng CP, Vắng KP, Đi muộn + ghi chú lý do ngay trên dòng",
@@ -345,8 +362,8 @@ def build_pptx():
     bg.fill.solid(); bg.fill.fore_color.rgb = DARK; bg.line.fill.background()
     t = txbox(s, Inches(1), Inches(2.6), SW - Inches(2), Inches(2.5))
     add_text(t.text_frame, "Bắt đầu sử dụng", size=36, bold=True, color=PRGB(0xFF, 0xFF, 0xFF))
-    add_text(t.text_frame, "https://so-chu-nhiem-so-theta.vercel.app", size=20, color=PRGB(0x93, 0xC5, 0xFD))
-    add_text(t.text_frame, "Chọn vai trò demo tại màn hình đăng nhập - mật khẩu: demo1234", size=16, color=PRGB(0xD1, 0xD5, 0xDB))
+    add_text(t.text_frame, "https://sochunhiem.vieschool.com", size=20, color=PRGB(0x93, 0xC5, 0xFD))
+    add_text(t.text_frame, "Tài khoản demo: bgh / pht / totruong / gvcn / gvbm / ketoan / phuhuynh / hocsinh / sogd / ubnd / admin @demo.scn - mật khẩu: demo1234", size=16, color=PRGB(0xD1, 0xD5, 0xDB))
     add_text(t.text_frame, "Tài liệu đầy đủ: docs/user-guide/SO-CHU-NHIEM-SO-TAI-LIEU.docx", size=14, color=PRGB(0x9C, 0xA3, 0xAF))
 
     out = UG / "SO-CHU-NHIEM-SO-GIOI-THIEU.pptx"

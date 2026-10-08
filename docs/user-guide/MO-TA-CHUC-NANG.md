@@ -26,11 +26,11 @@ Mỗi trường có đủ: Hiệu trưởng + Phó HT (bgh), kế toán, tổ tr
 
 | Vai trò | Tài khoản demo | Nhân sự | Phạm vi |
 |---|---|---|---|
-| Giáo viên chủ nhiệm (GVCN) | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ Toán-TN (ND) | Lớp mình chủ nhiệm; lịch dạy cá nhân các lớp được phân công |
-| Giáo viên bộ môn (GVBM) | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (ND) | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
-| Tổ trưởng chuyên môn | totruong@demo.scn | Lê Thị Hồng Hạnh - TT Tổ Toán-TN (ND) | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
-| Ban Giám Hiệu (BGH) | bgh@demo.scn | Nguyễn Văn Hải - Hiệu trưởng ND | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
-| Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Lê Minh Đức - PHT phụ trách Cơ sở 2 (ND) | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
+| Giáo viên chủ nhiệm (GVCN) | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (ND) - `gvcn`+`gvbm`+`to_truong` | Lớp mình chủ nhiệm; lịch dạy cá nhân; duyệt giáo án tổ mình |
+| Giáo viên bộ môn (GVBM) | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (ND) - đơn vai trò | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
+| Tổ trưởng chuyên môn | totruong@demo.scn | Lê Thị Hồng Hạnh - TT Tổ Toán-TN (ND) - `to_truong`+`gvbm` | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
+| Ban Giám Hiệu (BGH) | bgh@demo.scn | Nguyễn Văn Hải - Hiệu trưởng ND - `bgh`+`gvbm` | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
+| Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Lê Minh Đức - PHT phụ trách Cơ sở 2 (ND) - `pht`+`gvbm` | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
 | Kế toán | ketoan@demo.scn | Phạm Thu Trang - kế toán ND | Nhân sự, đánh giá cơ sở vật chất TT15 |
 | Sở GD&ĐT | sogd@demo.scn | Vũ Quản Trị Sở | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
 | UBND cấp xã | ubnd@demo.scn | Ngô Văn Lãnh Đạo | Dashboard địa bàn (read-only) |
@@ -46,6 +46,15 @@ Tài khoản theo trường khác (demo từng trường độc lập):
 | Quản trị | admin@demo.scn |
 
 Mật khẩu demo chung: `demo1234`. Mỗi trường còn có đội ngũ GV đầy đủ (email dạng `ten.vt@<truong>.scn`, cùng mật khẩu) để test luồng nhiều người dùng.
+
+### Vai trò kiêm nhiệm (multi-role)
+
+Thực tế trường Việt Nam: GVCN luôn kiêm dạy bộ môn, tổ trưởng vẫn đứng lớp, BGH/PHT vẫn phân công dạy. Hệ thống hỗ trợ bằng mô hình **1 vai trò chính + nhiều vai trò kiêm nhiệm** (`concurrent_roles`):
+
+- **Quyền = hợp của mọi vai trò**, tính nhất quán ở 3 tầng: giao diện (menu gộp, topbar hiện đủ nhãn vai trò), server action (`checkActionRole`), và RLS database (`my_roles()` - 158 policies).
+- **Cấu hình**: BGH/admin tick "Vai trò kiêm nhiệm" khi tạo/sửa cán bộ tại `/school/users`. Chỉ vai trò nhân sự được kiêm; `admin`, `phu_huynh`, `hoc_sinh` không thể kiêm.
+- **An toàn**: trigger `profiles_no_priv_escalation` chặn người dùng tự gán kiêm nhiệm cho chính mình; grant xung đột giữa các vai trò thì `deny` thắng.
+- **Menu theo quyền**: mỗi vai trò chỉ thấy chức năng mình được cấp - kiểm chứng tự động bởi `scripts/check-nav-access.mjs` (158 nav hrefs ↔ 104 routes).
 
 ## 3. Danh mục chức năng theo module
 
@@ -169,10 +178,32 @@ Mọi GV: tự đánh giá theo tiêu chí + kế hoạch phát triển → nộ
 | Radar cảnh báo sớm | Cảnh báo học sinh/lớp (học tập, chuyên cần, tâm lý, an toàn, bỏ học) - chấm điểm rủi ro, AI đề xuất can thiệp, tiếp nhận/đóng cảnh báo |
 | Trợ lý điều hành (AI) | Chat hỏi-đáp trên số liệu thật: phê duyệt, sự cố, chuyên cần, cảnh báo |
 | Cơ sở & đánh giá TT15 | Quản lý phân hiệu + đánh giá chất lượng theo TT15 (5 nhóm tiêu chuẩn, /100, mức 1-4) |
-| Nhân sự trường | Danh sách GV + phân công |
+| Nhân sự trường | Danh sách GV + phân công; gán **vai trò kiêm nhiệm** (checkbox) khi tạo/sửa cán bộ |
 | Phân công năm học | Gán GVCN cho lớp, GV dạy môn |
 
-### 3.14 Cấp Sở/Phòng/UBND
+### 3.14 Studio - Công cụ số giáo viên (TVC360)
+
+Soạn học liệu theo CTGDPT 2018 tại `/studio` - vai trò: GVBM, GVCN, tổ trưởng, BGH, admin (kể cả vai trò kiêm nhiệm).
+
+| Công cụ | Mã | Mô tả |
+|---|---|---|
+| Kế hoạch bài dạy | DC-01 | KHBĐ theo khung CV 5512: I. Mục tiêu - II. Thiết bị - III. Tiến trình (mỗi HĐ đủ 5 phần a-đ, bảng tổ chức 2 cột) - IV. Điều chỉnh + ký duyệt; hỗ trợ mẫu riêng của trường (`/studio/mau-khbd`); sanitizer cắt nội dung lạc đề |
+| Ma trận đề | DC-02 | Ma trận YCCĐ × mức độ đúng tỷ lệ; cảnh báo TT22 khi tạo đợt KT giữa kì cho lớp 1-3 |
+| Đề kiểm tra | DC-03 | Rút câu từ ngân hàng của trường theo ma trận: đề chính + dự phòng + đáp án/hướng dẫn chấm + biên bản phản biện; trộn đáp án TN, báo THIẾU trung thực khi bank thiếu câu |
+| Bộ câu hỏi | DC-04 | Bộ câu luyện tập theo YCCĐ + đáp án |
+| Phiếu học tập | DC-05 | Phiếu bài tập theo bài học |
+| Bài trình chiếu | DC-06 | Slide PPTX theo tiến trình KHBĐ |
+
+| Thành phần | Mô tả |
+|---|---|
+| Ngân hàng câu hỏi (`/studio/questions`) | Chung cả trường, gắn YCCĐ; thêm tay / import ảnh-PDF (AI đọc) / Excel; duyệt 2 lớp (tổ trưởng → BGH); hình vẽ SVG tham số cho Toán (deterministic) + upload ảnh |
+| Thư viện (`/studio/library`) | Học liệu cá nhân; gửi duyệt - nhận xét - published; xuất DOCX/PDF/PPTX |
+| Kho ngữ liệu (`/studio/literature`) | Ngữ liệu ngoài SGK phục vụ biên soạn |
+| YCCĐ (`/studio/yccd`) | Tra cứu yêu cầu cần đạt theo môn/khối |
+| AI | Provider qua env (Gemini/OpenAI/Anthropic), quota → fallback engine bất đồng bộ → rule-based; nội dung AI đi qua schema + YCCĐ gate + sanitizer |
+| LaTeX/KaTeX | Công thức `$...$` render trên web; xuất DOCX thành Word Equation native |
+
+### 3.15 Cấp Sở/Phòng/UBND
 
 | Chức năng | Mô tả |
 |---|---|

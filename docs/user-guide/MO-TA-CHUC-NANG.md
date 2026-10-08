@@ -16,20 +16,36 @@ Phiên bản: 1.0 · Ngày: 21/09/2026 · Môi trường: https://so-chu-nhiem-s
 
 ## 2. Vai trò và phạm vi dữ liệu
 
-| Vai trò | Tài khoản demo | Phạm vi |
-|---|---|---|
-| Giáo viên chủ nhiệm (GVCN) | gvcn@demo.scn | Lớp mình chủ nhiệm; lịch dạy cá nhân các lớp được phân công |
-| Giáo viên bộ môn (GVBM) | gvbm@demo.scn | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
-| Tổ trưởng chuyên môn | totruong@demo.scn | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
-| Ban Giám Hiệu (BGH) | bgh@demo.scn | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
-| Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
-| Kế toán | ketoan@demo.scn | Nhân sự, đánh giá cơ sở vật chất TT15 |
-| Sở GD&ĐT | sogd@demo.scn | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
-| UBND cấp xã | ubnd@demo.scn | Dashboard địa bàn (read-only) |
-| Phụ huynh | phuhuynh@demo.scn | Con mình: thông báo, tin nhắn, lịch hẹn, đăng ký hoạt động |
-| Học sinh | hocsinh@demo.scn | Bản thân: thời khóa biểu, điểm, hạnh kiểm, thông báo |
+Dữ liệu demo gồm **3 trường** có cơ cấu nhân sự sát thực tế (CR-036):
 
-Mật khẩu demo chung: `demo1234`.
+- **THCS Nguyễn Du** - 12 lớp (6A1-9A3), 2 cơ sở, 4 tổ chuyên môn, 34 cán bộ, ~430 HS
+- **Tiểu học Chu Văn An** - 15 lớp (1A1-5A3), 4 tổ (Khối 1-2, Khối 3, Khối 4-5, Chuyên biệt), 30 cán bộ, ~500 HS
+- **Tiểu học Kim Đồng** - 10 lớp (1A1-5A2), 3 tổ, 22 cán bộ, ~335 HS
+
+Mỗi trường có đủ: Hiệu trưởng + Phó HT (bgh), kế toán, tổ trưởng chuyên môn, GVCN mỗi lớp, GVBM phân về tổ + môn dạy (`teacher_subjects`). Lớp A3 của THCS Nguyễn Du thuộc **Cơ sở 2** do PHT phụ trách.
+
+| Vai trò | Tài khoản demo | Nhân sự | Phạm vi |
+|---|---|---|---|
+| Giáo viên chủ nhiệm (GVCN) | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ Toán-TN (ND) | Lớp mình chủ nhiệm; lịch dạy cá nhân các lớp được phân công |
+| Giáo viên bộ môn (GVBM) | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (ND) | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
+| Tổ trưởng chuyên môn | totruong@demo.scn | Lê Thị Hồng Hạnh - TT Tổ Toán-TN (ND) | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
+| Ban Giám Hiệu (BGH) | bgh@demo.scn | Nguyễn Văn Hải - Hiệu trưởng ND | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
+| Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Lê Minh Đức - PHT phụ trách Cơ sở 2 (ND) | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
+| Kế toán | ketoan@demo.scn | Phạm Thu Trang - kế toán ND | Nhân sự, đánh giá cơ sở vật chất TT15 |
+| Sở GD&ĐT | sogd@demo.scn | Vũ Quản Trị Sở | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
+| UBND cấp xã | ubnd@demo.scn | Ngô Văn Lãnh Đạo | Dashboard địa bàn (read-only) |
+| Phụ huynh | phuhuynh@demo.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo, 8A2 (ND) | Con mình: thông báo, tin nhắn, lịch hẹn, đăng ký hoạt động |
+| Học sinh | hocsinh@demo.scn | Nguyễn Gia Bảo - HS lớp 8A2 (ND) | Bản thân: thời khóa biểu, điểm, hạnh kiểm, thông báo |
+
+Tài khoản theo trường khác (demo từng trường độc lập):
+
+| Trường | Tài khoản |
+|---|---|
+| TH Chu Văn An | bgh.cva@demo.scn (HT Trần Thị Mai Phương), gvcn.cva@demo.scn (GVCN Đỗ Thị Kim Oanh), totruong.cva@demo.scn (TT Trương Thị Bích Liên), ketoan.cva@demo.scn |
+| TH Kim Đồng | bgh.kd@demo.scn (HT Hoàng Đức Long), gvcn.kd@demo.scn (GVCN Lý Thị Thanh Nga), ketoan.kd@demo.scn |
+| Quản trị | admin@demo.scn |
+
+Mật khẩu demo chung: `demo1234`. Mỗi trường còn có đội ngũ GV đầy đủ (email dạng `ten.vt@<truong>.scn`, cùng mật khẩu) để test luồng nhiều người dùng.
 
 ## 3. Danh mục chức năng theo module
 

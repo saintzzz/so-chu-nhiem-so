@@ -282,6 +282,10 @@ for (const [p, src] of srcFiles) {
       "20261007_cr031_question_media.sql",
       "20261007_cr032_teacher_profile.sql",
     ])],
+    ["20261112", new Set([
+      "20261112_cr035_khbd_jsonb.sql",
+      "20261112_cr035_lp_files_delete.sql",
+    ])],
   ]);
   const migDir = resolve(root, "supabase/migrations");
   const byVersion = new Map();

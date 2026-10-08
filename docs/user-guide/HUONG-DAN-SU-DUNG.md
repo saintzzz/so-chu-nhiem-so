@@ -13,6 +13,8 @@ Truy cập địa chỉ hệ thống → nhập **Tên đăng nhập** + **Mật
 
 Môi trường demo có sẵn danh sách vai trò trong ô "Đăng nhập với vai trò (demo)" - chọn vai trò để hệ thống tự điền tài khoản. Mật khẩu demo chung: `demo1234`.
 
+Bộ dữ liệu demo gồm 3 trường có cơ cấu nhân sự sát thực tế: **THCS Nguyễn Du** (12 lớp, 2 cơ sở), **Tiểu học Chu Văn An** (15 lớp), **Tiểu học Kim Đồng** (10 lớp). Mỗi trường có đủ Hiệu trưởng/Phó HT, kế toán, tổ trưởng chuyên môn, GVCN từng lớp và GVBM phân về tổ + môn dạy. Danh sách tài khoản và kịch bản demo chi tiết: `KICH-BAN-DEMO.md`.
+
 ![Màn hình đăng nhập](images/01-login.png)
 
 Sau đăng nhập, hệ thống tự chuyển đến trang chủ theo vai trò. Thanh bên trái là menu chức năng được phân quyền riêng cho vai trò của bạn. Góc trên phải: tìm nhanh (Ctrl+K), thông báo, tài khoản, đăng xuất.

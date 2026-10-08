@@ -31,7 +31,9 @@ function bullets(s, items, { x = 0.7, y = 1.95, w = 12, h = 5, fontSize = 13.5, 
       Array.isArray(it)
         ? it.map((t) => ({ text: String(t), options: { bullet: { indent: 14 }, breakLine: true } }))
         : [
-            { text: String(it.t ?? it), options: { bullet: { code: "2022", indent: 14 }, breakLine: true, bold: !!it.b, color: it.c ?? C.ink } },
+            ...(it.t
+              ? [{ text: String(it.t), options: { bullet: { code: "2022", indent: 14 }, breakLine: true, bold: !!it.b, color: it.c ?? C.ink } }]
+              : []),
             ...(it.sub ?? []).map((t) => ({ text: t, options: { bullet: { code: "2013", indent: 30 }, breakLine: true, color: C.muted, fontSize: fontSize - 1.5 } })),
           ],
     ),
@@ -161,9 +163,9 @@ function note(s, txt, y = 6.85) {
     ["Quản trị user/quyền/ACL", "-", "-", "-", "-", "Có"],
   ], { rowH: 0.36 });
   bullets(s, [
-    { t: "Kiêm nhiệm: quyền = hợp vai trò - GVCN kiêm tổ trưởng được cả 2 cột", y: 5.35 },
-    { t: "PHT giới hạn theo cơ sở (campus); không tiếp cận hồ sơ chi tiết HS (ẩn national_id)", y: 5.35 },
-    { t: "Phân quyền 3 lớp: mặc định theo vai trò → cấu hình theo trường → ghi đè từng cán bộ (/school/users)", y: 5.35 },
+    { t: "Kiêm nhiệm: quyền = hợp vai trò - GVCN kiêm tổ trưởng được cả 2 cột" },
+    { t: "PHT giới hạn theo cơ sở (campus); không tiếp cận hồ sơ chi tiết HS (ẩn national_id)" },
+    { t: "Phân quyền 3 lớp: mặc định theo vai trò → cấu hình theo trường → ghi đè từng cán bộ (/school/users)" },
   ], { y: 5.35, fontSize: 12 });
   note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 7.05);
 }
@@ -238,7 +240,7 @@ function note(s, txt, y = 6.85) {
     ["DC-06 Bài trình chiếu", "Môn/khối/YCCĐ/số slide", "Slide theo tiến trình KHBĐ", "PPTX"],
   ]);
   bullets(s, [
-    { t: "Mọi công cụ: lưu thư viện → gửi duyệt → xuất file; AI sinh có kiểm chứng (schema + YCCĐ gate + sanitizer)", y: 4.6 },
+    { t: "Mọi công cụ: lưu thư viện → gửi duyệt → xuất file; AI sinh có kiểm chứng (schema + YCCĐ gate + sanitizer)" },
   ], { y: 4.6, fontSize: 12.5 });
 }
 

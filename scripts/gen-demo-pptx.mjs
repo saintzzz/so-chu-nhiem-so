@@ -30,7 +30,9 @@ function bullets(s, items, { x = 0.7, y = 1.95, w = 12, h = 5, fontSize = 13.5, 
       Array.isArray(it)
         ? it.map((t) => ({ text: String(t), options: { bullet: { indent: 14 }, breakLine: true } }))
         : [
-            { text: String(it.t ?? it), options: { bullet: { code: "2022", indent: 14 }, breakLine: true, bold: !!it.b, color: it.c ?? C.ink } },
+            ...(it.t
+              ? [{ text: String(it.t), options: { bullet: { code: "2022", indent: 14 }, breakLine: true, bold: !!it.b, color: it.c ?? C.ink } }]
+              : []),
             ...(it.sub ?? []).map((t) => ({ text: t, options: { bullet: { code: "2013", indent: 30 }, breakLine: true, color: C.muted, fontSize: fontSize - 1.5 } })),
           ],
     ),

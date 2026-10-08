@@ -3,6 +3,8 @@
 **Phase 2 output — BA** | Date: 2026-09-19 | Sources: clone recon + sitemap + stakeholder Q&A
 **Knowledge check:** NotebookLM queried (BA notebook unrelated domain — no grounding available). DeepWiki used in Phase 4 for stack standards.
 
+**Module PRDs:** [Công cụ soạn học liệu (TVC360 Studio)](./PRD-cong-cu-soan-hoc-lieu.md) - 13 tool AI soạn học liệu + ngân hàng câu hỏi 21k theo YCCĐ.
+
 ## 1. Problem
 
 GVCN tại trường THCS VN phải quản lý thủ công nhiều loại sổ sách: sổ chủ nhiệm, chuyên cần, hạnh kiểm, liên lạc phụ huynh, thi đua, sự cố an toàn. App số hóa toàn bộ workflow này, đa vai trò (giáo viên → BGH → Sở GD&ĐT → phụ huynh/học sinh).

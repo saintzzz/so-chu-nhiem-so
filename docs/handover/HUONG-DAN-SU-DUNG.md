@@ -1,0 +1,279 @@
+# Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số
+
+Phiên bản: 1.2 · Ngày: 08/10/2026
+Địa chỉ hệ thống: https://sochunhiem.vieschool.com
+
+Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
+
+Tài liệu liên quan trong cùng thư mục:
+
+- `KHOI-TAO-TRUONG-MOI.md` - hướng dẫn đưa trường mới lên hệ thống từ con số 0 (kèm file Excel import `docs/templates/khoi-tao-truong.xlsx`).
+- `KICH-BAN-DEMO.md` + `KICH-BAN-DEMO.pptx` - kịch bản demo theo luồng vai trò, dạng slide trình chiếu.
+
+---
+
+## 1. Đăng nhập
+
+Truy cập địa chỉ hệ thống → nhập **Tên đăng nhập** + **Mật khẩu** → **Đăng nhập**.
+
+Môi trường demo có sẵn danh sách vai trò trong ô "Đăng nhập với vai trò (demo)" - chọn vai trò để hệ thống tự điền tài khoản. Mật khẩu demo chung: `demo1234`.
+
+Bộ dữ liệu demo gồm 3 trường có cơ cấu nhân sự sát thực tế: **THCS Nguyễn Du** (12 lớp, 2 cơ sở), **Tiểu học Chu Văn An** (15 lớp), **Tiểu học Kim Đồng** (10 lớp). Mỗi trường có đủ Hiệu trưởng/Phó HT, kế toán, tổ trưởng chuyên môn, GVCN từng lớp và GVBM phân về tổ + môn dạy. Danh sách tài khoản và kịch bản demo chi tiết: `KICH-BAN-DEMO.md`.
+
+![Màn hình đăng nhập](images/01-login.png)
+
+Sau đăng nhập, hệ thống tự chuyển đến trang chủ theo vai trò. Thanh bên trái là menu chức năng được phân quyền riêng cho vai trò của bạn - chỉ những chức năng bạn được phép truy cập mới hiển thị; truy cập trực tiếp link không thuộc quyền sẽ bị đẩy về trang chủ. Góc trên phải: tìm nhanh (Ctrl+K), thông báo, tài khoản, đăng xuất.
+
+**Vai trò kiêm nhiệm (multi-role)**: một người có thể giữ nhiều vai trò cùng lúc - thực tế GVCN luôn kiêm dạy bộ môn, Hiệu trưởng có thể kiêm dạy. Khi đó:
+
+- Thanh trên cùng hiển thị đủ các vai trò, vd `Giáo viên chủ nhiệm · Giáo viên bộ môn · Tổ trưởng chuyên môn`.
+- Menu trái là **hợp của mọi vai trò** (vai trò chính đứng trước), đã lọc trùng - chỉ hiện chức năng ít nhất một vai trò của bạn được phép.
+- Quyền truy cập tính trên toàn bộ vai trò: GVCN kiêm tổ trưởng vào được mục Tổ chuyên môn như tổ trưởng thường.
+- BGH gán vai trò kiêm nhiệm tại trang **Nhân sự → Tài khoản** (ô "Vai trò kiêm nhiệm" khi tạo/sửa tài khoản).
+
+### Thông báo
+
+Biểu tượng chuông mở trang **Thông báo** (`/notifications`) - tập trung mọi sự kiện liên quan đến bạn: tin nhắn mới, lịch hẹn, kết quả ký duyệt sổ, giáo án được duyệt/trả về, sự cố mới... Mỗi mục có link nhảy thẳng tới màn hình liên quan; bấm vào để đánh dấu đã đọc, hoặc **Đánh dấu tất cả đã đọc**.
+
+---
+
+## 2. Giáo viên chủ nhiệm (GVCN)
+
+GVCN là vai trò trung tâm - quản lý toàn bộ hoạt động của lớp chủ nhiệm.
+
+### 2.1 Dashboard
+
+Trang chủ hiển thị tổng quan lớp: chuyên cần hôm nay (hoặc ngày gần nhất có dữ liệu), sự cố đang mở, việc sắp đến hạn, cảnh báo học sinh.
+
+![Dashboard GVCN](images/02-gvcn-dashboard.png)
+
+### 2.2 Điểm danh hàng ngày
+
+Menu **Chuyên cần → Điểm danh hàng ngày**.
+
+1. Chọn lớp (nếu chủ nhiệm nhiều lớp).
+2. Chọn ngày bằng ô ngày hoặc nút ‹ › để xem/sửa điểm danh ngày cũ - bấm **Xem** để tải dữ liệu ngày đã chọn.
+3. Đánh dấu trạng thái từng em: Có mặt / Nghỉ có phép / Nghỉ không phép / Đi muộn.
+4. Với em vắng/đi muộn, cột **Ghi chú** hiện ô nhập lý do (VD: "ốm, PH đã báo") - ghi chú lưu cùng điểm danh và hiển thị lại ở sổ vắng/muộn.
+5. Bấm **Xác nhận chuyên cần** để lưu.
+
+6 thẻ tổng ở trên cập nhật theo ngày đang xem: Sĩ số, Có mặt, Vắng, Nghỉ có phép, Nghỉ không phép, Đi muộn. Nút **Tải template / Import Excel** hỗ trợ nhập điểm danh hàng loạt.
+
+![Điểm danh hàng ngày](images/03-attendance-daily.png)
+
+### 2.3 Theo dõi tình trạng & lịch sử chuyên cần
+
+- **Theo dõi tình trạng**: ma trận học sinh × ngày. Chọn ngày mốc ở ô "Đến ngày" để xem chuỗi vắng/muộn gần đó - phát hiện em vắng liên tục.
+- **Nghỉ học / đi muộn**: sổ vắng/muộn theo khoảng ngày - chọn **Từ ngày / Đến ngày** rồi xem danh sách kèm lý do, nguồn ghi (GVCN nhập / Sổ đầu bài / Phụ huynh báo).
+- **Lịch sử chuyên cần**: chọn khoảng ngày để xem tỷ lệ chuyên cần, biểu đồ, bảng chi tiết.
+
+![Theo dõi tình trạng](images/04-attendance-tracking.png)
+![Nghỉ học - đi muộn](images/05-attendance-leaves.png)
+![Lịch sử chuyên cần](images/06-attendance-history.png)
+
+### 2.4 Nhập / đồng bộ điểm (Sổ điểm)
+
+Menu **Học tập → Nhập / đồng bộ điểm**.
+
+1. Chọn **Lớp** + **Môn học** + **Học kỳ** (I/II). GVCN thấy lớp chủ nhiệm **và** các lớp mình đang dạy; GVBM chỉ thấy đúng lớp/môn được phân công trong thời khóa biểu - không nhập được điểm lớp/môn người khác dạy.
+2. Bảng điểm gồm các cột: **Miệng, 15 phút, 1 tiết** (hệ số 1 - số cột tùy ý), **ĐĐGgk** (hệ số 2), **ĐĐGck** (hệ số 3).
+3. Thêm cột đánh giá thường xuyên: chọn loại ở ô kế nút **Thêm cột điểm** → bấm để thêm. Xóa cột bằng dấu × trên tiêu đề cột.
+4. Nhập điểm từng ô (0-10). Cột **ĐTBm** tự tính theo công thức Thông tư 22: `(Tổng ĐGTX + 2×ĐĐGgk + 3×ĐĐGck) / (số ĐGTX + 5)`.
+5. Bấm **Lưu điểm**. Khi tải lại trang, các cột đã lưu tự dựng lại đúng loại.
+
+Nhập hàng loạt: **Tải template** → điền Excel → **Import Excel**. Xuất kết quả: chọn mẫu ở ô "Mẫu 1/2/3" → nút xuất.
+
+![Sổ điểm](images/07-grades.png)
+
+### 2.5 Thời khóa biểu
+
+Menu **Thời khóa biểu & Sổ đầu bài → Thời khóa biểu**. Hai chế độ:
+
+- **Theo lớp** (mặc định): TKB lớp chủ nhiệm của bạn - chip lớp có đánh dấu `(CN)`.
+- **Lịch cá nhân**: toàn bộ tiết bạn dạy trong tuần, mỗi ô hiển thị `Lớp · Môn · Phòng`. Tiết bị xếp trùng slot hiển thị chồng kèm viền cảnh báo.
+
+![TKB cá nhân](images/08-timetable-me.png)
+![TKB theo lớp](images/08b-timetable-class.png)
+
+### 2.6 Sổ đầu bài
+
+Menu **Thời khóa biểu & Sổ đầu bài → Sổ đầu bài**. Chọn ngày → danh sách tiết trong ngày hiện dạng thu gọn (tiết, môn, lớp, GV, sĩ số, chip vắng/muộn, trạng thái đã ghi).
+
+**Phân quyền ghi:** chỉ giáo viên được phân công tiết đó mới mở được form nhập. Tiết của giáo viên khác (kể cả lớp mình chủ nhiệm) chỉ xem được ở chế độ đọc - đúng nguyên tắc "ai dạy tiết đó người đó ghi sổ".
+
+Bấm vào tiết của mình để mở form ghi:
+
+1. **Sĩ số có mặt** - tự tính từ đánh dấu vắng/muộn.
+2. **Tên bài học** - VD: "Bài 12 - Phép nhân phân số".
+3. **Nội dung bài học** - nội dung đã dạy, bài tập giao.
+4. **Nhận xét của giáo viên** - nhận xét lớp, cá nhân.
+5. Đánh dấu từng em: vắng có phép / vắng không phép / đi muộn.
+6. **+/− điểm rèn luyện**: nút +/− cạnh tên em → ghi khen thưởng/vi phạm kèm điểm vào sổ rèn luyện.
+7. **Lưu** - hệ thống đồng bộ trạng thái vắng/muộn sang điểm danh ngày.
+
+Nút **AI tóm tắt sổ đầu bài / Tóm tắt tuần** phân tích toàn bộ tiết đã ghi trong tuần.
+
+![Sổ đầu bài](images/09-period-log.png)
+
+### 2.7 Sơ đồ lớp & danh sách học sinh
+
+Menu **Sổ chủ nhiệm**:
+
+- **Sơ đồ lớp**: kéo-thả học sinh vào ô ghế. **+ Hàng / − Hàng** và **+ Cột / − Cột** để đổi kích thước lưới (vị trí HS được giữ). **Lưu sơ đồ** tạo phiên bản mới - xem lại ở "Lịch sử phiên bản sơ đồ".
+- **Danh sách HS & Tổ**: **Thêm tổ** → **Chia đều tổ** tự động xếp em vào các tổ; gán Ban cán sự bằng dropdown trên từng dòng; khu vực **Liên kết phụ huynh** để tạo tài khoản PH gắn với HS.
+
+![Sơ đồ lớp](images/11-seating.png)
+![Danh sách HS & Tổ](images/12-roster.png)
+
+### 2.8 Rèn luyện
+
+Menu **Rèn luyện → Nhận xét & vi phạm/khen thưởng**: chọn HS, loại (Nhận xét / Khen thưởng / Vi phạm), ngày, điểm (+/−), nội dung → **Ghi nhận**. Menu **Đánh giá & xếp loại** để xếp loại hạnh kiểm học kỳ cho cả lớp.
+
+![Rèn luyện](images/13-conduct.png)
+
+### 2.9 Liên lạc phụ huynh
+
+- **Soạn & gửi thông báo**: chọn phạm vi (cả lớp / PH từng em), nhập tiêu đề + nội dung → gửi. PH nhận trong app + email.
+- **Hộp thư phản hồi**: đọc/trả lời tin nhắn PH.
+- **Lịch hẹn trao đổi**: xác nhận/từ chối lịch PH đề xuất.
+- **Ban đại diện CMHS**: thêm thành viên + vai trò (Trưởng/Phó ban/Ủy viên).
+
+![Soạn thông báo](images/14-parents-compose.png)
+
+### 2.10 Tư vấn học sinh & an toàn
+
+- **Tư vấn**: Tiếp nhận ca → Đánh giá mức độ (có AI gợi ý) → ca mức Cao chuyển tuyến chuyên gia.
+- **An toàn**: Ghi nhận sự cố (loại + mức độ, AI viết lại mô tả) → theo dõi xử lý → lưu trữ.
+
+![Tư vấn học sinh](images/18-counseling.png)
+![An toàn học sinh](images/15-safety.png)
+
+### 2.11 Kỳ thi, thi đua, kế hoạch, xuất sổ
+
+- **Quản lý kỳ thi**: tạo kỳ thi → thêm buổi thi (thủ công/Import Excel) → công bố. Panel **AI sinh câu hỏi** theo 4 mức nhận thức.
+- **Thi đua**: chấm điểm tiêu chí lớp mình; xem bảng xếp hạng toàn trường.
+- **Kế hoạch tháng / sơ kết tuần**: checklist + nút **AI gợi ý công việc** đọc lịch năm học đề xuất việc.
+- **Xuất sổ**: tải CSV toàn bộ dữ liệu sổ chủ nhiệm.
+
+![Kỳ thi](images/17-exams.png)
+![Thi đua](images/16-emulation.png)
+![Kế hoạch tháng](images/19-plans.png)
+![Xuất sổ](images/20-export.png)
+
+### 2.12 Nộp sổ chủ nhiệm cho BGH ký duyệt
+
+Menu **Sổ chủ nhiệm → Ký duyệt sổ**. Cuối kỳ, BGH mở "đợt ký" cho từng lớp:
+
+1. Sổ của lớp mình ở trạng thái **Chờ GVCN nộp** → bấm **Nộp sổ** (hoặc **Nộp tất cả** khi chủ nhiệm nhiều lớp).
+2. Trạng thái chuyển **Chờ BGH duyệt** - BGH nhận thông báo.
+3. Nếu BGH **từ chối**, sổ về trạng thái **Bị từ chối** kèm lý do - sửa lại dữ liệu rồi bấm **Nộp lại**.
+4. Khi BGH ký xong, trạng thái **Đã ký** - sổ khóa, chỉ BGH mở lại được.
+
+Mọi chuyển trạng thái đều gửi thông báo cho bên kia và ghi audit log.
+
+---
+
+## 3. Giáo viên bộ môn (GVBM)
+
+- **Lịch cá nhân**: vào Thời khóa biểu mặc định hiện toàn bộ tiết mình dạy (xem mục 2.5).
+- **Sổ điểm**: nhập điểm các lớp mình dạy - thao tác như mục 2.4.
+- **Sổ đầu bài**: ghi tiết mình dạy - thao tác như mục 2.6.
+- **Giáo án**: soạn → nộp tổ trưởng; nếu bị trả về thì sửa theo nhận xét rồi nộp lại.
+- **Trao đổi với GVCN**: chat gắn học sinh cụ thể.
+- **Lịch thi**: xem lịch coi thi/thi của lớp mình dạy.
+
+---
+
+## 4. Tổ trưởng chuyên môn
+
+- **Duyệt giáo án**: danh sách giáo án GV trong tổ nộp → xem nội dung → **AI gợi ý nhận xét** → Duyệt hoặc Trả về kèm nhận xét.
+- **Duyệt đánh giá năng lực**: xét đánh giá tự chấm của GV trong tổ.
+- **Sinh hoạt chuyên môn**: tạo buổi sinh hoạt (chủ đề, ngày, ghi chú) → **AI soạn biên bản** từ ghi chú nhanh.
+- **Danh sách giáo viên**: xem GV trong tổ, môn dạy.
+
+![Duyệt giáo án](images/26-team-lesson-plans.png)
+![Sinh hoạt chuyên môn](images/27-team-meetings.png)
+
+---
+
+## 5. Ban Giám Hiệu (BGH) / Phó Hiệu trưởng (PHT)
+
+PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC, nhân sự) nhưng **không** ký duyệt sổ chủ nhiệm, không phân công năm học, không quản trị tài khoản - 3 quyền đó chỉ thuộc BGH.
+
+- **Dashboard cấp trường**: chuyên cần, điểm, sự cố, cảnh báo toàn trường.
+- **Trung tâm phê duyệt**: duyệt kế hoạch hoạt động giáo dục và các đơn chờ.
+- **Báo cáo ngày các lớp**: xem báo cáo GVCN đã gửi.
+- **Radar cảnh báo sớm**: danh sách cảnh báo theo mức → **AI đề xuất** can thiệp → Tiếp nhận → Đóng cảnh báo.
+- **Trợ lý điều hành (AI)**: chat hỏi đáp trên số liệu thật của trường.
+- **Thời khóa biểu**: xem mọi lớp + **Tải template / Import Excel** để xếp TKB hàng loạt (định dạng ô `Môn|GV|Phòng`).
+- **Ký duyệt sổ chủ nhiệm**: **Tạo đợt ký** mở kỳ ký cho tất cả lớp → với từng sổ GVCN đã nộp: **Ký duyệt** hoặc **Từ chối** (bắt buộc nhập lý do - GVCN nhận thông báo kèm lý do để sửa và nộp lại). Nhiều sổ chờ: **Ký duyệt tất cả**. Chỉ BGH/admin ký được - GVCN không tự ký sổ của mình.
+- **Phân công năm học** (`school/assignments`): chỉ BGH/admin phân công GVCN và lớp + môn dạy của GV.
+- **Tài khoản giáo viên** (`school/users`): tạo/sửa tài khoản cán bộ - họ tên, email, mật khẩu, vai trò chính, **vai trò kiêm nhiệm** (GVCN kiêm GVBM/tổ trưởng...), mã nhân viên, loại hợp đồng, cơ sở, tổ chuyên môn; khối "Tổ chuyên môn - môn học" gán môn phụ trách cho từng tổ và trưởng tổ. Chỉ BGH/admin.
+- **Cơ sở** (`school/campuses`): khai báo cơ sở chính/phân hiệu - quyết định phạm vi của PHT.
+- **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ**, **Sự cố toàn trường** (đánh dấu đã báo cáo).
+
+> Khởi tạo trường mới từ đầu (tài khoản, cơ sở, tổ, lớp, HS, PH, TKB): xem `KHOI-TAO-TRUONG-MOI.md` kèm file Excel `docs/templates/khoi-tao-truong.xlsx`.
+
+![Dashboard BGH](images/21-bgh-dashboard.png)
+![Trung tâm phê duyệt](images/22-bgh-approvals.png)
+![Radar cảnh báo](images/23-bgh-radar.png)
+![TKB toàn trường + toolbar import](images/24-bgh-timetable.png)
+![Trợ lý AI điều hành](images/25-bgh-ai.png)
+
+---
+
+## 5b. Kế toán trường
+
+Kế toán chỉ tiếp cận dữ liệu hành chính - tài chính, **không** xem được hồ sơ học tập/chuyên cần của học sinh:
+
+- **Nhân sự**: danh sách cán bộ, giáo viên trong trường.
+- **Cơ sở vật chất**: quản lý cơ sở/phân hiệu, phòng học.
+- **Thiết bị**: sổ thiết bị, tình trạng, bảo trì.
+- **Báo cáo NQ37**: báo cáo tài chính - cơ sở vật chất theo Nghị quyết 37.
+
+---
+
+## 6. Sở GD&ĐT / UBND cấp xã
+
+- **Dashboard cấp Sở/địa bàn UBND xã**: tổng hợp các trường - quy mô, tỷ lệ chuyên cần, sự cố, cảnh báo; nút **AI bản tin** tổng hợp. (Theo chính quyền địa phương 2 cấp - Phòng GD&ĐT cấp huyện đã bãi bỏ từ 1/7/2025.)
+- **Quản lý trường** (`dept/schools`): tạo trường mới - hệ thống tự tạo năm học hiện tại, tổ chuyên môn mặc định, bộ môn theo cấp học và tài khoản BGH đầu tiên.
+- **Quản trị người dùng** (Sở): tài khoản các trường.
+- **Quản trị dữ liệu** (Sở): kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/phụ huynh, liên kết mồ côi.
+
+![Dashboard Sở GD](images/28-dept-dashboard.png)
+![Kiểm tra toàn vẹn dữ liệu](images/29-dept-data.png)
+
+---
+
+## 7. Phụ huynh
+
+Portal phụ huynh hiển thị thông tin con mình (hai PH cùng con thấy chung dữ liệu):
+
+- **Nhiều con**: nếu có từ 2 con trở lên học tại trường, đầu trang có **bộ chọn con** - đổi con để xem đúng dữ liệu từng em (điểm, chuyên cần, thông báo lớp của em đó).
+- **Thông báo lớp**: đọc thông báo GVCN gửi.
+- **Tin nhắn**: **Soạn tin nhắn** gửi thẳng GVCN hoặc **Trả lời** từng tin - cả tin đã gửi và đã nhận đều hiển thị trong cùng một hội thoại.
+- **Đặt lịch hẹn**: chọn ngày giờ + mục đích → chờ GVCN xác nhận → trạng thái chuyển "Đã xác nhận".
+- **Đăng ký hoạt động**: các hoạt động giáo dục đã công bố → bấm **Đăng ký** cho con; đổi ý thì **Báo vắng**.
+- **Thông tin con**: điểm số theo HK1/HK2/cả năm (TT22), chuyên cần, hạnh kiểm.
+
+Mọi thao tác (đặt hẹn, nhắn tin, đăng ký) chỉ áp dụng cho con đã liên kết với tài khoản - hệ thống kiểm tra quyền sở hữu ở server trước khi ghi.
+
+![Portal phụ huynh](images/30-parent-portal.png)
+
+---
+
+## 8. Học sinh
+
+Portal học sinh xem dữ liệu bản thân: thời khóa biểu, điểm các môn, hạnh kiểm, thông báo lớp, lịch thi.
+
+![Portal học sinh](images/31-student-portal.png)
+
+---
+
+## 9. Mẹo sử dụng
+
+- **Tìm nhanh**: Ctrl+K mở command palette - gõ tên chức năng/học sinh để nhảy thẳng tới.
+- **Ngày/khoảng ngày**: các màn hình chuyên cần đều có chọn ngày hoặc khoảng ngày; đổi giá trị rồi dữ liệu tự cập nhật theo URL (có thể lưu bookmark link kèm ngày).
+- **Import Excel**: mọi màn hình có Import đều có nút **Tải template** - luôn tải template mới nhất trước khi import.
+- **AI**: các nút AI (tóm tắt, gợi ý, viết lại, sinh câu hỏi) chạy trên dữ liệu thật đang hiển thị; nếu AI bận, hệ thống tự dùng phương án dự phòng.
+- **Điện thoại**: giao diện responsive - menu thu vào biểu tượng ☰, bảng cuộn ngang, tên học sinh vẫn hiển thị đầy đủ.

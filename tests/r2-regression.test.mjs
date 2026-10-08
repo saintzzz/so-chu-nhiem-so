@@ -2626,16 +2626,20 @@ test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {
     "thieu note khi lich su bi cap");
 });
 
-test("CR-035/Codex: bucket lesson-plans co DELETE policy scope truong", () => {
-  // Board don file mo coi bang remove() tu client - neu bucket chi co
-  // INSERT/SELECT thi delete bi tu choi ngam -> file mo coi tich luy.
+test("CR-035/Codex: bucket lesson-plans co DELETE policy chi cho chu file", () => {
+  // Board don file mo coi bang remove() tu client. Policy phai scope
+  // truong VA owner_id = auth.uid() - khong thi GV cung truong xoa duoc
+  // file dinh kem cua nhau (Codex R4).
   const migs = readdirSync(join(ROOT, "supabase/migrations"))
     .filter((f) => f.endsWith(".sql"))
     .map((f) => read(`supabase/migrations/${f}`))
     .join("\n");
-  assert.match(migs,
-    /for delete to authenticated[\s\S]*?bucket_id = 'lesson-plans'|bucket_id = 'lesson-plans'[\s\S]*?for delete to authenticated/,
-    "thieu DELETE policy cho bucket lesson-plans - orphan cleanup khong chay duoc");
+  const del = migs.match(
+    /create policy "lp_files_delete_same_school"[\s\S]*?for delete to authenticated[\s\S]*?;/);
+  assert.ok(del, "thieu DELETE policy cho bucket lesson-plans - orphan cleanup khong chay duoc");
+  assert.match(del[0], /bucket_id = 'lesson-plans'/, "policy phai scope bucket");
+  assert.match(del[0], /owner_id = auth\.uid\(\)::text/,
+    "policy phai gioi han chu file - delete rong truong la cross-user data loss");
 });
 
 test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", () => {

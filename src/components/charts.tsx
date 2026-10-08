@@ -44,7 +44,9 @@ export function ChartCard({
       )
     ) : undefined);
   return (
-    <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+    // min-w-0: grid/flex item mac dinh min-width:auto -> SVG minWidth 560
+    // lam card phinh qua viewport tren mobile (noi dung bi clip khuat).
+    <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-base font-semibold">{title}</h3>
         {table && (
@@ -60,7 +62,7 @@ export function ChartCard({
         // Bang thay the giu nguyen semantics table - khong dat role="img" len wrapper.
         table
       ) : (
-        <div role="img" aria-label={ariaDescription}>
+        <div role="img" aria-label={ariaDescription} className="min-w-0">
           {children}
         </div>
       )}

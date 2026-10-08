@@ -203,40 +203,24 @@ export async function saveActivityAttendance(
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: existingData } = await supabase
-    .from("activity_attendance")
-    .select("student_id")
-    .eq("activity_id", activityId);
-  const existing = new Set(
-    ((existingData ?? []) as { student_id: string }[]).map((r) => r.student_id),
-  );
-
-  for (const row of rows) {
-    const payload = {
+  if (rows.length === 0) {
+    revalidatePath("/activities/attendance");
+    return {};
+  }
+  // PK (activity_id, student_id) -> 1 upsert thay vi N update/insert tuan tu
+  // (lop ~45 HS tung mat ~45 RTT).
+  const { error } = await supabase.from("activity_attendance").upsert(
+    rows.map((row) => ({
+      activity_id: activityId,
+      student_id: row.studentId,
       status: row.status,
       evaluation: row.evaluation.trim() || null,
-    };
-    if (existing.has(row.studentId)) {
-      const { error } = await supabase
-        .from("activity_attendance")
-        .update(payload)
-        .eq("activity_id", activityId)
-        .eq("student_id", row.studentId);
-      if (error) {
-        console.error("[activities] attendance update failed:", error.message);
-        return { error: "Không lưu được điểm danh. Vui lòng thử lại." };
-      }
-    } else {
-      const { error } = await supabase.from("activity_attendance").insert({
-        activity_id: activityId,
-        student_id: row.studentId,
-        ...payload,
-      });
-      if (error) {
-        console.error("[activities] attendance insert failed:", error.message);
-        return { error: "Không lưu được điểm danh. Vui lòng thử lại." };
-      }
-    }
+    })),
+    { onConflict: "activity_id,student_id" },
+  );
+  if (error) {
+    console.error("[activities] attendance upsert failed:", error.message);
+    return { error: "Không lưu được điểm danh. Vui lòng thử lại." };
   }
 
   revalidatePath("/activities/attendance");

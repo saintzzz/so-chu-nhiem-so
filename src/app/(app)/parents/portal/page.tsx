@@ -91,12 +91,32 @@ export default async function PortalPage({
       : students[0].id;
   const student = students.find((s) => s.id === selectedId)!;
 
-  const { data: attData } = await supabase
-    .from("attendance_records")
-    .select("*")
-    .eq("student_id", selectedId)
-    .gte("date", MONTH_START)
-    .lte("date", MONTH_END);
+  // 4 query doc lap theo selectedId - gom 1 wave thay vi 4 RTT tuan tu.
+  const [{ data: attData }, { data: gradeData }, { data: annData }, { data: apptData }] =
+    await Promise.all([
+      supabase
+        .from("attendance_records")
+        .select("*")
+        .eq("student_id", selectedId)
+        .gte("date", MONTH_START)
+        .lte("date", MONTH_END),
+      supabase
+        .from("grades")
+        .select("subject_id,term,assessment_type,score")
+        .eq("student_id", selectedId),
+      supabase
+        .from("announcements")
+        .select("*")
+        .or(`class_id.eq.${student.class_id},student_id.eq.${selectedId}`)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase
+        .from("appointments")
+        .select("*")
+        .eq("student_id", selectedId)
+        .order("scheduled_at", { ascending: false })
+        .limit(5),
+    ]);
   const monthRecords = (attData ?? []) as AttendanceRecord[];
   const todayRecord = monthRecords.find((r) => r.date === TODAY) ?? null;
   const presentCount = monthRecords.filter(
@@ -106,10 +126,6 @@ export default async function PortalPage({
     ? Math.round((presentCount / monthRecords.length) * 100)
     : null;
 
-  const { data: gradeData } = await supabase
-    .from("grades")
-    .select("subject_id,term,assessment_type,score")
-    .eq("student_id", selectedId);
   const grades = (gradeData ?? []) as Pick<
     Grade,
     "subject_id" | "term" | "assessment_type" | "score"
@@ -130,20 +146,7 @@ export default async function PortalPage({
     ? (cellAvgs.reduce((x, y) => x + y, 0) / cellAvgs.length).toFixed(1)
     : null;
 
-  const { data: annData } = await supabase
-    .from("announcements")
-    .select("*")
-    .or(`class_id.eq.${student.class_id},student_id.eq.${selectedId}`)
-    .order("created_at", { ascending: false })
-    .limit(5);
   const announcements = (annData ?? []) as Announcement[];
-
-  const { data: apptData } = await supabase
-    .from("appointments")
-    .select("*")
-    .eq("student_id", selectedId)
-    .order("scheduled_at", { ascending: false })
-    .limit(5);
   const appointments = (apptData ?? []) as Appointment[];
 
   const apptParentIds = [...new Set(appointments.map((a) => a.parent_id))];

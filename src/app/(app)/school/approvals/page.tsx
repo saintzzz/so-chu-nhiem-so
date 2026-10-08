@@ -21,12 +21,13 @@ export default async function ApprovalsPage() {
   // CR-035/R16: bat moi loi doc nguon. activities khong co school_id nen
   // phai scope theo class_ids cua truong (doc sau khi co danh sach lop).
   const [classRes, subRes, profRes, lpRes, subReqRes] = await Promise.all([
+    // Lay TAT CA lop cua truong (khong chi active): lop da archive van co the
+    // con activity pending can duyet - scope chi theo active se lam bien mat.
     fetchAllRows<ClassRoom>((f, t) =>
       supabase
         .from("classes")
         .select("*")
         .eq("school_id", sid)
-        .eq("status", "active")
         .order("name")
         .range(f, t),
     ),

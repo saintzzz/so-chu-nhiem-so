@@ -31,20 +31,23 @@ export default async function LessonPlansPage() {
         .order("name")
         .range(f, t),
     ),
-    fetchAllRows<LessonPlan>((f, t) =>
-      supabase
-        .from("lesson_plans")
-        .select("*")
-        .eq("teacher_id", profile.id)
-        .order("created_at", { ascending: false })
-        .range(f, t),
+    fetchAllRows<LessonPlan>(
+      (f, t) =>
+        supabase
+          .from("lesson_plans")
+          .select("*")
+          .eq("teacher_id", profile.id)
+          .order("created_at", { ascending: false })
+          .range(f, t),
+      1000,
+      300,
     ),
   ]);
 
   const srcErrors = Object.entries({
     classes: classRes.error,
     subjects: subRes.error,
-    lesson_plans: planRes.error ?? (planRes.truncated ? "truncated" : null),
+    lesson_plans: planRes.error,
   }).filter(([, e]) => e);
   const loadError = srcErrors.length > 0;
   if (loadError) {
@@ -66,7 +69,13 @@ export default async function LessonPlansPage() {
           Không tải được dữ liệu. Vui lòng thử lại.
         </p>
       ) : (
-        <LessonPlanBoard
+        <>
+          {planRes.truncated && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Chỉ hiển thị 300 giáo án mới nhất.
+            </p>
+          )}
+          <LessonPlanBoard
           mode="teacher"
           schoolId={sid}
           classes={classRes.rows.map((c) => ({ id: c.id, name: c.name }))}
@@ -87,7 +96,8 @@ export default async function LessonPlansPage() {
             created_at: p.created_at,
           }))}
           teacherNames={{}}
-        />
+          />
+        </>
       )}
     </div>
   );

@@ -166,31 +166,47 @@ export function KhbdView({ content }: { content: KhbdContent }) {
       </div>
     ) : null;
 
+  // Chi render heading cua section co noi dung - heading rong nhin nhu loi.
+  const sec1 = [
+    content.muc_tieu_kien_thuc,
+    content.muc_tieu_nang_luc,
+    content.muc_tieu_pham_chat,
+  ].some((v) => v.trim());
+  const sec2 = [content.thiet_bi_gv, content.thiet_bi_hs].some((v) =>
+    v.trim(),
+  );
+  const acts = KHBD_ACTIVITIES.map(({ key, label }) => ({
+    label,
+    a: content[key],
+  })).filter(({ a }) => Object.values(a).some((v) => v.trim()));
+
   return (
     <div className="space-y-4 text-sm">
-      <section>
-        <h4 className="mb-1 font-semibold">I. Mục tiêu</h4>
-        <dl className="grid gap-1">
-          {row("1. Kiến thức", content.muc_tieu_kien_thuc)}
-          {row("2. Năng lực", content.muc_tieu_nang_luc)}
-          {row("3. Phẩm chất", content.muc_tieu_pham_chat)}
-        </dl>
-      </section>
-      <section>
-        <h4 className="mb-1 font-semibold">II. Thiết bị dạy học và học liệu</h4>
-        <dl className="grid gap-1">
-          {row("1. Giáo viên", content.thiet_bi_gv)}
-          {row("2. Học sinh", content.thiet_bi_hs)}
-        </dl>
-      </section>
-      <section>
-        <h4 className="mb-1 font-semibold">III. Tiến trình dạy học</h4>
-        <div className="space-y-3">
-          {KHBD_ACTIVITIES.map(({ key, label }) => {
-            const a = content[key];
-            if (!Object.values(a).some((v) => v.trim())) return null;
-            return (
-              <div key={key}>
+      {sec1 && (
+        <section>
+          <h4 className="mb-1 font-semibold">I. Mục tiêu</h4>
+          <dl className="grid gap-1">
+            {row("1. Kiến thức", content.muc_tieu_kien_thuc)}
+            {row("2. Năng lực", content.muc_tieu_nang_luc)}
+            {row("3. Phẩm chất", content.muc_tieu_pham_chat)}
+          </dl>
+        </section>
+      )}
+      {sec2 && (
+        <section>
+          <h4 className="mb-1 font-semibold">II. Thiết bị dạy học và học liệu</h4>
+          <dl className="grid gap-1">
+            {row("1. Giáo viên", content.thiet_bi_gv)}
+            {row("2. Học sinh", content.thiet_bi_hs)}
+          </dl>
+        </section>
+      )}
+      {acts.length > 0 && (
+        <section>
+          <h4 className="mb-1 font-semibold">III. Tiến trình dạy học</h4>
+          <div className="space-y-3">
+            {acts.map(({ label, a }) => (
+              <div key={label}>
                 <h5 className="font-medium">{label}</h5>
                 <dl className="mt-1 grid gap-1 pl-3">
                   {KHBD_ACTIVITY_FIELDS.map(({ key: fk, label: fl }) =>
@@ -198,10 +214,10 @@ export function KhbdView({ content }: { content: KhbdContent }) {
                   )}
                 </dl>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
       {content.dieu_chinh.trim() ? (
         <section>
           <h4 className="mb-1 font-semibold">IV. Điều chỉnh sau bài dạy</h4>

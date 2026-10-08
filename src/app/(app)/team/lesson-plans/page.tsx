@@ -12,7 +12,10 @@ export default async function TeamLessonPlansPage() {
 
   // CR-035/R16: bat moi loi doc nguon - nguoi duyet khong duoc thay danh
   // sach rong khi query that bai hoac bi cat ngam.
-  const [classRes, subRes, planRes, profRes] = await Promise.all([
+  // Codex R1-P1: khong do ca lich su (content_json nang) vao bang client.
+  // Giao an `submitted` doc day du vi la queue can xu ly; lich su con lai
+  // cap 300 dong moi nhat + hien note khi bi cat.
+  const [classRes, subRes, pendRes, profRes] = await Promise.all([
     fetchAllRows<Pick<ClassRoom, "id" | "name">>((f, t) =>
       supabase
         .from("classes")
@@ -35,6 +38,7 @@ export default async function TeamLessonPlansPage() {
         .from("lesson_plans")
         .select("*")
         .eq("school_id", sid)
+        .eq("status", "submitted")
         .order("created_at", { ascending: false })
         .range(f, t),
     ),
@@ -47,11 +51,24 @@ export default async function TeamLessonPlansPage() {
         .range(f, t),
     ),
   ]);
+  const histRes = await fetchAllRows<LessonPlan>(
+    (f, t) =>
+      supabase
+        .from("lesson_plans")
+        .select("*")
+        .eq("school_id", sid)
+        .neq("status", "submitted")
+        .order("created_at", { ascending: false })
+        .range(f, t),
+    1000,
+    300,
+  );
 
   const srcErrors = Object.entries({
     classes: classRes.error,
     subjects: subRes.error,
-    lesson_plans: planRes.error ?? (planRes.truncated ? "truncated" : null),
+    lesson_plans_pending: pendRes.error,
+    lesson_plans_history: histRes.error,
     profiles: profRes.error ?? (profRes.truncated ? "truncated" : null),
   }).filter(([, e]) => e);
   const loadError = srcErrors.length > 0;
@@ -65,6 +82,7 @@ export default async function TeamLessonPlansPage() {
   const teacherNames = Object.fromEntries(
     profRes.rows.map((p) => [p.id, p.full_name]),
   );
+  const plans = [...pendRes.rows, ...histRes.rows];
 
   return (
     <div>
@@ -78,29 +96,37 @@ export default async function TeamLessonPlansPage() {
           Không tải được dữ liệu. Vui lòng thử lại.
         </p>
       ) : (
-        <LessonPlanBoard
-          mode="team"
-          schoolId={sid}
-          classes={classRes.rows.map((c) => ({ id: c.id, name: c.name }))}
-          subjects={subRes.rows.map((s) => ({ id: s.id, name: s.name }))}
-          plans={planRes.rows.map((p) => ({
-            id: p.id,
-            teacher_id: p.teacher_id,
-            class_id: p.class_id,
-            subject_id: p.subject_id,
-            week: p.week,
-            periods: p.periods,
-            title: p.title,
-            content: p.content,
-            content_json: p.content_json,
-            file_path: p.file_path,
-            file_name: p.file_name,
-            status: p.status,
-            review_note: p.review_note,
-            created_at: p.created_at,
-          }))}
-          teacherNames={teacherNames}
-        />
+        <>
+          {histRes.truncated && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Chỉ hiển thị 300 giáo án đã xử lý mới nhất - giáo án chờ duyệt
+              luôn hiển thị đầy đủ.
+            </p>
+          )}
+          <LessonPlanBoard
+            mode="team"
+            schoolId={sid}
+            classes={classRes.rows.map((c) => ({ id: c.id, name: c.name }))}
+            subjects={subRes.rows.map((s) => ({ id: s.id, name: s.name }))}
+            plans={plans.map((p) => ({
+              id: p.id,
+              teacher_id: p.teacher_id,
+              class_id: p.class_id,
+              subject_id: p.subject_id,
+              week: p.week,
+              periods: p.periods,
+              title: p.title,
+              content: p.content,
+              content_json: p.content_json,
+              file_path: p.file_path,
+              file_name: p.file_name,
+              status: p.status,
+              review_note: p.review_note,
+              created_at: p.created_at,
+            }))}
+            teacherNames={teacherNames}
+          />
+        </>
       )}
     </div>
   );

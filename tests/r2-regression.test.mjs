@@ -2569,3 +2569,36 @@ test("CR-035: migration them content_json jsonb nullable", () => {
   assert.match(mig, /add column if not exists content_json jsonb/i,
     "migration thieu content_json jsonb");
 });
+
+// --- CR-035 codex round: 3 finding tu Codex Cloud review -------------------
+test("CR-035/Codex: AI route validate sections bang parseKhbd", () => {
+  const src = read("src/app/api/ai/lesson-plan/route.ts");
+  assert.match(src, /parseKhbd\(s\)/,
+    "route phai parse sections qua parseKhbd - sections:{} khong duoc tin hop le");
+  assert.match(src, /khbdHasContent\(k\)/,
+    "route phai tu choi khbd rong - client se tu thanh cong voi plan trong");
+});
+
+test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {
+  const src = read("src/app/(app)/team/lesson-plans/page.tsx");
+  // Queue can xu ly (submitted) phai doc het - cap tong the co the giấu
+  // giao an pending cu. Lich su da xu ly moi duoc cap 300.
+  const pend = src.match(
+    /fetchAllRows<LessonPlan>\(\(f, t\) =>[\s\S]*?from\("lesson_plans"\)[\s\S]*?\.eq\("status", "submitted"\)[\s\S]*?\.range\(f, t\),?\s*\)/);
+  assert.ok(pend, "giao an submitted phai fetchAllRows khong cap maxRows");
+  const hist = src.match(
+    /fetchAllRows<LessonPlan>\([\s\S]*?\.neq\("status", "submitted"\)[\s\S]*?\.range\(f, t\),?\s*\n?\s*(\d+),\s*\n?\s*(\d+)/);
+  assert.ok(hist, "lich su da xu ly phai truyen maxRows");
+  assert.equal(hist[2], "300", "maxRows lich su phai la 300");
+  assert.match(src, /Chỉ hiển thị 300 giáo án đã xử lý mới nhất/,
+    "thieu note khi lich su bi cap");
+});
+
+test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", () => {
+  const src = read("src/app/(app)/school/approvals/page.tsx");
+  const cls = src.match(
+    /fetchAllRows<ClassRoom>\(\(f, t\) =>[\s\S]*?from\("classes"\)[\s\S]*?\.range\(f, t\)/);
+  assert.ok(cls, "khong tim thay classes fetchAllRows");
+  assert.ok(!cls[0].includes('"active"'),
+    "lop archived van co the con activity pending - khong duoc loc status=active");
+});

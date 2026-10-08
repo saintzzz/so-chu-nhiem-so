@@ -68,12 +68,26 @@ lich chen giu song sau response ma khong chan UX.
 
 ### logAudit
 
+`audit.ts` duoc goi truc tiep boi ca client components (browser supabase
+client) lan server actions -> file nam trong client bundle, KHONG import
+tinh `next/server` duoc (build vo). Implementation:
+
 ```ts
-export function logAudit(supabase, input) {
-  const work = (async () => { /* getClaims + insert, log loi ra console */ })();
-  try { after(() => work); } catch { /* ngoai request scope: giu fire-and-forget */ }
+const work = async () => { /* getClaims + insert, log loi ra console */ };
+if (typeof window === "undefined") {
+  // server: import dong next/server, len lich after() trong request scope;
+  // ngoai request scope after() nem loi -> chay truc tiep
+  void import("next/server").then(({ after }) => {
+    try { after(() => work()); } catch { void work(); }
+  }).catch(() => void work());
+} else {
+  void work(); // client: fire-and-forget du - trinh duyet giu fetch song
 }
 ```
+
+Phat hien them khi implement: `subject` trong rows tu AI la TEN mon trong
+khi ngan hang can MA mon (`subject_code`) de tai YCCD - fix bang cach ep
+scope theo lua chon cua GV trong gen form (override `applyAiRows`).
 
 ## 4. Test plan
 

@@ -42,13 +42,17 @@ Sau khi review 13 tool studio phát hiện ngân hàng câu hỏi cấp 1 gần 
 
 UI flow verify: DC-02 sinh ma trận -> Lưu học liệu -> "Sinh đề từ ma trận này" -> DC-03 `?matrix=<id>` preselect -> "Rút câu hỏi & sinh đề" -> đề đầy đủ (đề CT + dự phòng + đáp án + biên bản phản biện), 0 `[THIẾU]`.
 
-## Còn lại (đợt 2 - AI expansion)
+## Kết quả đợt 2 - AI expansion
 
-- `expand-ai.mjs` đang chạy: sinh biến thể từ base qua provider chain (Gemini -> OpenRouter), `source=generated`, `unreviewed` chờ GV duyệt. ~1.400 câu dự kiến (81 YCCĐ x ~18).
-- Chạy `node scripts/gen-bank/run.mjs --insert` để re-seed base (idempotent, dedupe theo stem, đã paginate).
+- `expand-ai.mjs`: sinh biến thể từ câu base cùng YCCĐ qua provider chain (Gemini -> OpenRouter `google/gemini-2.5-flash` -> Anthropic `claude-haiku-5-5`), validate JSON + định dạng câu + dedupe stem, insert `source=generated`, `review_state=unreviewed` chờ GV duyệt.
+- Kết quả: 360 câu gen qua 89 calls (2 lỗi); sau khi quét chất lượng xóa **65 câu Đ/S thiếu 4 mệnh đề a-d trong stem** -> còn **295 câu generated/unreviewed**.
+- Fix validator: TF4 giờ bắt buộc đủ 4 mệnh đề a) b) c) d) trong stem (trước chỉ check đáp án).
+- **Tổng bank cuối: 21.105 câu** (20.810 imported/approved + 295 generated/unreviewed), phủ đủ 81/81 YCCĐ.
+- Generated quality sweep: 0 đáp số âm, 0 MC hỏng, 0 Đ/S thiếu ý, 0 đáp án trống, 0 thiếu lời giải; spot-check đáp án Toán đúng (150 phút, 24 km/h, 4800 m²...).
 
 ## Verify
 
 - `run.mjs --dry` báo coverage từng YCCĐ; insert batch 200.
 - E2E đã test trên dev server (login anhptl@nd.scn -> POST /api/studio/tools/DC-03/generate -> đề đủ câu không thiếu) + UI flow DC-02 -> DC-03 bằng Playwright.
 - `npm run check` (lint+tsc+build) xanh, `check-consistency.mjs` all PASS.
+- Retest các AI tool sau khi nâng provider (OpenRouter paid + Anthropic): DC-01, DC-05, DC-06, V-02, T-01, A-01, A-02, A-03 đều ra output đúng cấp lớp 1-5 (KHBD đúng khung CTGDPT 2018, phiếu học tập phân hóa, slide có ghi chú GV, bài đọc/hội thoại tiếng Anh đúng bậc A1).

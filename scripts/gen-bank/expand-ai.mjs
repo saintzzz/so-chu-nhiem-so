@@ -19,7 +19,8 @@ const envAll = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^"|"$/g, "")]; })
 );
 const SUPA = envAll.NEXT_PUBLIC_SUPABASE_URL, KEY = envAll.SUPABASE_SERVICE_ROLE_KEY;
-const GEMINI = envAll.GEMINI_API_KEY, OR_KEY = envAll.OPENAI_API_KEY, OR_MODEL = envAll.OPENAI_MODEL || "nvidia/nemotron-3-super-120b-a12b:free";
+const GEMINI = envAll.GEMINI_API_KEY, OR_KEY = envAll.OPENAI_API_KEY, OR_MODEL = envAll.OPENAI_MODEL || "google/gemini-2.5-flash";
+const ANT_KEY = envAll.ANTHROPIC_API_KEY, ANT_MODEL = envAll.ANTHROPIC_MODEL || "claude-haiku-5-5";
 const DRY = process.argv.includes("--dry");
 const PER_STD = +(process.argv.find((a) => a.startsWith("--per-std="))?.split("=")[1] ?? 20);
 
@@ -50,9 +51,27 @@ async function callOpenRouter(prompt) {
   const j = await r.json();
   return j.choices?.[0]?.message?.content ?? "";
 }
+async function callAnthropic(prompt) {
+  if (!ANT_KEY) throw new Error("no anthropic key");
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANT_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: ANT_MODEL, max_tokens: 4000, temperature: 0.9, messages: [{ role: "user", content: prompt }] }),
+  });
+  if (!r.ok) throw new Error(`anthropic ${r.status}`);
+  const j = await r.json();
+  return j.content?.[0]?.text ?? "";
+}
 async function gen(prompt) {
   try { return await callGemini(prompt); }
-  catch (e) { if (String(e.message).includes("429") || String(e.message).includes("no gemini")) return callOpenRouter(prompt); throw e; }
+  catch (e) {
+    if (!String(e.message).includes("429") && !String(e.message).includes("no gemini")) throw e;
+    try { return await callOpenRouter(prompt); }
+    catch (e2) {
+      if (String(e2.message).includes("429") || String(e2.message).includes("402")) return callAnthropic(prompt);
+      throw e2;
+    }
+  }
 }
 
 // ---- prompt + validate -------------------------------------------------------
@@ -84,7 +103,7 @@ function valid(q, seen) {
   if (!["multiple_choice", "true_false_4", "short_answer"].includes(q.qtype)) return false;
   const c = String(q.answer?.correct ?? "");
   if (q.qtype === "multiple_choice" && (!/ [A-D]\. /.test(q.stem) || !["A","B","C","D"].includes(c))) return false;
-  if (q.qtype === "true_false_4" && !c.includes("-")) return false;
+  if (q.qtype === "true_false_4" && (!c.includes("-") || new Set([...q.stem.matchAll(/(?:^|\s|\()([abcd])[.)]\s/g)].map((m) => m[1])).size < 4)) return false;
   if (q.qtype === "short_answer" && !c.trim()) return false;
   return !seen.has(norm(q.stem));
 }
@@ -141,7 +160,7 @@ for (const std of order) {
         });
       }
     } catch (e) { fails++; console.log(`  ${std.code} err: ${e.message}`); await sleep(3000); }
-    await sleep(1200);
+    await sleep(300);
   }
   console.log(`${std.code}: +${got} (tong ${out.length})`);
 }

@@ -65,3 +65,23 @@ business logic; verify bang Playwright so lieu khop cu.
 - View/RPC gom aggregate (schema change) - de CR rieng neu van cham.
 - Cold start Vercel function - van de ha tang, khong phai code.
 - ngu_van grade range 1-12 (bug da phat hien) - CR rieng.
+
+## 3. Ket qua verify tren prod (08/10)
+
+- DC-01 prompt that -> Gemini 200, JSON valid 26KB, 9 sections; noi dung
+  dung CV 5512: cau hoi nguyen van + "HS du kien tra loi" trong cot
+  Noi dung, dung bieu mau truong (host dong "Trai nghiem dau").
+- Root cause DC-01 luon ra ban khung tren prod (ca 3 lop, da fix het):
+  1. `callGemini` timeout cung 25s < thoi gian sinh doc 40KB+ (~30-60s)
+  2. `maxOutputTokens` 8192 sat nguong doc day du ~8-12k tokens
+  3. Model sinh loi cu phap JSON ngau nhien (bad_json) -> khong retry,
+     khong qua engine -> thang skeleton
+- Fix: timeout 55s x 2 lan thu (retry kem nhan JSON hop le) <=110s trong
+  maxDuration 120s; token cap 16384; bad_json di duong engine du phong.
+- Prod sau deploy `dfe4ffd`: DC-01 "Nhan da thuc mot bien" ->
+  provider=gemini (tvc_generations 14:24), khong con BAN KHUNG.
+- DC-06 tu KHBD: prefill mon/khoi/bai/YCCD, slide co cau hoi + dap an
+  trong note; PPTX export dung speaker notes (verify bang python-pptx).
+- Dashboard warm ~1.0s (truoc ~1.4s); khong doi so lieu hien thi.
+- Con lai (ops): DEVIN_API_KEY tren Vercel chua xac nhan - khi AI va
+  retry deu hong, khong co engine du phong thi van ra ban khung co nhan.

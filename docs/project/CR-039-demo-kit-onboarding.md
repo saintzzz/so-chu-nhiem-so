@@ -93,3 +93,20 @@ Chua co:
 - `check-consistency`: all PASS (gom nav-access)
 - `r2-regression`: 124/124
 - tsc: 0 loi · lint: 0 errors · build: 125 routes xanh
+
+### Playwright tren prod (deploy 568681a, sochunhiem.vieschool.com)
+
+Chay theo dung kich ban demo, ket qua:
+
+| Tai khoan | Vai tro | Ket qua |
+|---|---|---|
+| gvcn@demo.scn | gvcn+gvbm+to_truong | Topbar 3 nhan; nav gop co "To chuyen mon"; dashboard lop CN 8A2 + 10 lop day; `/team/lesson-plans` mo duoc, queue "Cho to duyet" |
+| pht@demo.scn | pht+gvbm | Topbar 2 nhan; dashboard chi 4 lop A3 (Co so 2); muc "Hoc sinh toan truong" da bien mat khoi nav - fix verified |
+| bgh.cva@demo.scn | bgh | Chi thay 15 lop 1A-5A cua CVA - co lap truong |
+| phuhuynh@demo.scn | phu_huynh | Portal chi con minh: Nguyen Gia Bao 8A2 |
+| hocsinh@demo.scn | hoc_sinh | Portal 8A2, TKB day du GV tung tiet |
+| sogd@demo.scn | so_gd | Dashboard tong hop 3 truong (12+15+10 lop) |
+| ubnd@demo.scn | ubnd | Dia ban 2 truong, 0 nut ghi - read-only |
+| gvbm@demo.scn | gvbm | `/team/lesson-plans` redirect ve `/academics/grades` - default-deny giu nguyen |
+
+Console: 0 errors tren moi man hinh da kiem.

@@ -66,7 +66,7 @@ for (const [role, routes] of Object.entries(ROUTES)) {
 {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
-  await login(page, "gvcn@demo.scn");
+  await login(page, "anhptl@nd.scn");
   await page.goto(`${BASE}/register/roster`, { waitUntil: "networkidle" });
   const chips = page.locator('main a[href*="/register/roster?class="]');
   const n = await chips.count();

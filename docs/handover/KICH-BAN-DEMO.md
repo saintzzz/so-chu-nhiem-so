@@ -26,25 +26,25 @@ Mỗi trường có đủ nhân sự thực tế: Hiệu trưởng + Phó hiệu
 
 | Vai trò | Tài khoản | Nhân sự - bối cảnh |
 |---|---|---|
-| Hiệu trưởng ND | bgh@demo.scn | Nguyễn Văn Hải - THCS Nguyễn Du, kiêm dạy (`bgh`+`gvbm`) |
-| PHT cơ sở 2 ND | pht@demo.scn | Lê Minh Đức - chỉ thấy các lớp A3, kiêm dạy (`pht`+`gvbm`) |
-| Tổ trưởng ND | totruong@demo.scn | Lê Thị Hồng Hạnh - Tổ Toán-Tự nhiên, kiêm dạy (`to_truong`+`gvbm`) |
-| GVCN ND | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (`gvcn`+`gvbm`+`to_truong`) |
-| GVBM ND | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (đơn vai trò) |
-| Kế toán ND | ketoan@demo.scn | Phạm Thu Trang |
-| Phụ huynh | phuhuynh@demo.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo lớp 8A2 |
-| Học sinh | hocsinh@demo.scn | Nguyễn Gia Bảo - lớp 8A2 |
-| Sở GD&ĐT | sogd@demo.scn | Vũ Quản Trị Sở - xem được cả 3 trường |
-| UBND | ubnd@demo.scn | Ngô Văn Lãnh Đạo - dashboard địa bàn, chỉ đọc |
+| Hiệu trưởng ND | hainv@nd.scn | Nguyễn Văn Hải - THCS Nguyễn Du, kiêm dạy (`bgh`+`gvbm`) |
+| PHT cơ sở 2 ND | duclm@nd.scn | Lê Minh Đức - chỉ thấy các lớp A3, kiêm dạy (`pht`+`gvbm`) |
+| Tổ trưởng ND | hanhlth@nd.scn | Lê Thị Hồng Hạnh - Tổ Toán-Tự nhiên, kiêm dạy (`to_truong`+`gvbm`) |
+| GVCN ND | anhptl@nd.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (`gvcn`+`gvbm`+`to_truong`) |
+| GVBM ND | minhtv@nd.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (đơn vai trò) |
+| Kế toán ND | trangpt@nd.scn | Phạm Thu Trang |
+| Phụ huynh | annv@nd.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo lớp 8A2 |
+| Học sinh | baong@nd.scn | Nguyễn Gia Bảo - lớp 8A2 |
+| Sở GD&ĐT | sovqt@demo.scn | Vũ Quản Trị Sở - xem được cả 3 trường |
+| UBND | daonvl@demo.scn | Ngô Văn Lãnh Đạo - dashboard địa bàn, chỉ đọc |
 | Quản trị | admin@demo.scn | Toàn hệ thống |
 
-Trường khác: `bgh.cva@demo.scn`, `gvcn.cva@demo.scn` (GVCN 3A2), `totruong.cva@demo.scn`, `ketoan.cva@demo.scn`; `bgh.kd@demo.scn`, `gvcn.kd@demo.scn` (GVCN 3A2), `ketoan.kd@demo.scn`.
+Trường khác: `phuongttm@cva.scn`, `oanhdtk@cva.scn` (GVCN 3A2), `lienttb@cva.scn`, `havt@cva.scn`; `longhd@kd.scn`, `ngaltt@kd.scn` (GVCN 3A2), `anhdn@kd.scn`.
 
-Các GV còn lại của từng trường login bằng email dạng `ten.vt@nd.scn` / `@cva.scn` / `@kd.scn` (vd: `minh.tv@nd.scn`), cùng mật khẩu `demo1234` - xem danh sách trong `scripts/seed-real-demo.mjs`.
+Các GV còn lại của từng trường login bằng email dạng `tenvt@nd.scn` / `@cva.scn` / `@kd.scn` (vd: `minhtv@nd.scn`), cùng mật khẩu `demo1234` - xem danh sách trong `scripts/seed-real-demo.mjs`.
 
 ## 3. Kịch bản theo luồng
 
-### Luồng A - GVCN một ngày làm việc (gvcn@demo.scn, ~10 phút)
+### Luồng A - GVCN một ngày làm việc (anhptl@nd.scn, ~10 phút)
 
 Mở đầu bằng điểm nhấn **vai trò kiêm nhiệm** (CR-038): cô Lan Anh đăng
 nhập thấy topbar "Giáo viên chủ nhiệm - Giáo viên bộ môn - Tổ trưởng
@@ -61,36 +61,36 @@ cô là tổ trưởng Tổ Toán - Tự nhiên).
 
 ### Luồng B - Phê duyệt 2 cấp (totruong → bgh, ~5 phút)
 
-1. `totruong@demo.scn` → **Tổ chuyên môn** (`/dept`): thấy GV trong Tổ Toán-TN, giáo án chờ duyệt của cô Lan Anh → xem bản cấu trúc CV 5512 → **Duyệt** (hoặc trả về kèm nhận xét).
-2. `bgh@demo.scn` → **Phê duyệt** (`/school/approvals`): giáo án `team_approved` hiện trong hàng chờ → **Duyệt** → trạng thái `approved`, GV nhận thông báo.
+1. `hanhlth@nd.scn` → **Tổ chuyên môn** (`/dept`): thấy GV trong Tổ Toán-TN, giáo án chờ duyệt của cô Lan Anh → xem bản cấu trúc CV 5512 → **Duyệt** (hoặc trả về kèm nhận xét).
+2. `hainv@nd.scn` → **Phê duyệt** (`/school/approvals`): giáo án `team_approved` hiện trong hàng chờ → **Duyệt** → trạng thái `approved`, GV nhận thông báo.
 3. Điểm nhấn: tổ trưởng chỉ thấy giáo án của GV trong tổ mình; BGH thấy toàn trường. Cô Lan Anh (đang là GVCN) cũng mở được `/team/lesson-plans` vì kiêm tổ trưởng - menu "Tổ chuyên môn" chỉ xuất hiện khi có vai trò đó.
 
-### Luồng C - Điều hành trường (bgh@demo.scn + pht@demo.scn, ~8 phút)
+### Luồng C - Điều hành trường (hainv@nd.scn + duclm@nd.scn, ~8 phút)
 
 1. **Dashboard BGH**: KPI toàn trường - chuyên cần, sự cố, radar cảnh báo, tình hình phê duyệt.
 2. **TKB toàn trường** (`/school/timetable`): 360 tiết/tuần của 12 lớp, không tiết trống.
 3. **Phân công** (`/school/assignments`): danh sách GVCN từng lớp + GVBM phân môn.
 4. **Nhân sự** (`/school/users`): 34 cán bộ có mã NV, hợp đồng, trình độ, tổ chuyên môn.
-5. **So sánh PHT**: đăng nhập `pht@demo.scn` → cùng màn hình nhưng chỉ thấy các lớp A3 (Cơ sở 2) - demo giới hạn phạm vi cơ sở.
+5. **So sánh PHT**: đăng nhập `duclm@nd.scn` → cùng màn hình nhưng chỉ thấy các lớp A3 (Cơ sở 2) - demo giới hạn phạm vi cơ sở.
 6. **Báo cáo** (`/school/reports`): báo cáo tổng hợp gửi Sở.
 
 ### Luồng D - Phụ huynh & học sinh (~5 phút)
 
-1. `phuhuynh@demo.scn` → **Cổng PH** (`/portal/parent`): thấy con Nguyễn Gia Bảo 8A2 - điểm, chuyên cần, hạnh kiểm, thông báo từ GVCN ở luồng A.
+1. `annv@nd.scn` → **Cổng PH** (`/portal/parent`): thấy con Nguyễn Gia Bảo 8A2 - điểm, chuyên cần, hạnh kiểm, thông báo từ GVCN ở luồng A.
 2. Nhắn tin cho GVCN → đặt lịch hẹn → GVCN nhận thông báo.
-3. `hocsinh@demo.scn` → **Cổng HS**: TKB của 8A2, điểm, hạnh kiểm, thông báo.
+3. `baong@nd.scn` → **Cổng HS**: TKB của 8A2, điểm, hạnh kiểm, thông báo.
 
 ### Luồng E - Cấp trên & đa trường (sogd + ubnd + admin, ~5 phút)
 
-1. `sogd@demo.scn` → **Sở GD&ĐT** (`/dept`): tổng hợp 3 trường, `/dept/schools` tạo trường mới, `/dept/usage` giám sát sử dụng.
-2. `ubnd@demo.scn` → dashboard địa bàn, chỉ đọc.
+1. `sovqt@demo.scn` → **Sở GD&ĐT** (`/dept`): tổng hợp 3 trường, `/dept/schools` tạo trường mới, `/dept/usage` giám sát sử dụng.
+2. `daonvl@demo.scn` → dashboard địa bàn, chỉ đọc.
 3. `admin@demo.scn` → quản trị hệ thống.
 
-### Luồng F - Trường tiểu học (gvcn.cva@demo.scn, ~5 phút)
+### Luồng F - Trường tiểu học (oanhdtk@cva.scn, ~5 phút)
 
 1. Đăng nhập GVCN 3A2 Chu Văn An: dữ liệu đánh giá theo **mức độ** (không phải điểm số) đúng TT 22/2021 cho tiểu học.
-2. Tổ trưởng `totruong.cva@demo.scn` duyệt giáo án tổ Khối 1-2.
-3. `bgh.cva@demo.scn` xem dashboard 15 lớp.
+2. Tổ trưởng `lienttb@cva.scn` duyệt giáo án tổ Khối 1-2.
+3. `phuongttm@cva.scn` xem dashboard 15 lớp.
 
 ### Luồng G - Vai trò kiêm nhiệm (CR-038, ~4 phút)
 
@@ -99,11 +99,11 @@ PHT/Hiệu trưởng vẫn dạy. Hệ thống hỗ trợ bằng "vai trò kiêm
 
 | Tài khoản | Vai trò | Demo nhanh |
 |---|---|---|
-| `gvcn@demo.scn` | gvcn + gvbm + to_truong | Topbar 3 nhãn; menu gộp đủ Chuyên cần + Tổ chuyên môn; vào được `/team/lesson-plans` duyệt giáo án tổ mình |
-| `totruong@demo.scn` | to_truong + gvbm | Menu Tổ chuyên môn + Giảng dạy bộ môn; nhập điểm lớp mình dạy |
-| `pht@demo.scn` | pht + gvbm | Điều hành cơ sở 2 + menu giảng dạy của GV |
-| `bgh@demo.scn` | bgh + gvbm | Toàn quyền BGH + công cụ soạn học liệu của GV |
-| `gvbm@demo.scn` | gvbm thuần | Menu gọn chỉ phần giảng dạy; vào `/team/*` bị chặn - chứng minh quyền vẫn giữ |
+| `anhptl@nd.scn` | gvcn + gvbm + to_truong | Topbar 3 nhãn; menu gộp đủ Chuyên cần + Tổ chuyên môn; vào được `/team/lesson-plans` duyệt giáo án tổ mình |
+| `hanhlth@nd.scn` | to_truong + gvbm | Menu Tổ chuyên môn + Giảng dạy bộ môn; nhập điểm lớp mình dạy |
+| `duclm@nd.scn` | pht + gvbm | Điều hành cơ sở 2 + menu giảng dạy của GV |
+| `hainv@nd.scn` | bgh + gvbm | Toàn quyền BGH + công cụ soạn học liệu của GV |
+| `minhtv@nd.scn` | gvbm thuần | Menu gọn chỉ phần giảng dạy; vào `/team/*` bị chặn - chứng minh quyền vẫn giữ |
 
 Phân quyền kiêm nhiệm được quản trị tại `/school/users` (BGH tick vai
 trò kiêm nhiệm; chỉ vai trò nhân sự được chọn, `admin` không thể kiêm).
@@ -114,11 +114,11 @@ Menu và quyền được tính từ "vai trò chính + kiêm nhiệm" ở mọi
 
 | Kiểm tra | Cách demo | Kỳ vọng |
 |---|---|---|
-| Cô lập trường | `bgh.cva@demo.scn` vào URL của trường ND | Chỉ thấy dữ liệu CVA |
-| Giới hạn PHT | `pht@demo.scn` xem danh sách lớp | Chỉ các lớp Cơ sở 2 |
-| GVBM không có quyền CN | `gvbm@demo.scn` vào route GVCN-only | Redirect về home GVBM |
-| PH chỉ thấy con mình | `phuhuynh@demo.scn` | Chỉ hồ sơ em Nguyễn Gia Bảo |
-| UBND read-only | `ubnd@demo.scn` | Không có nút ghi |
+| Cô lập trường | `phuongttm@cva.scn` vào URL của trường ND | Chỉ thấy dữ liệu CVA |
+| Giới hạn PHT | `duclm@nd.scn` xem danh sách lớp | Chỉ các lớp Cơ sở 2 |
+| GVBM không có quyền CN | `minhtv@nd.scn` vào route GVCN-only | Redirect về home GVBM |
+| PH chỉ thấy con mình | `annv@nd.scn` | Chỉ hồ sơ em Nguyễn Gia Bảo |
+| UBND read-only | `daonvl@demo.scn` | Không có nút ghi |
 | Menu theo quyền | Soi menu từng tài khoản | Mỗi role chỉ thấy chức năng mình được cấp (kiểm chứng tự động: `node scripts/check-nav-access.mjs`) |
 
 ## 5. Ghi chú vận hành

@@ -2833,3 +2833,32 @@ test("CR-038: khong con .in(\"role\"/.eq(\"role\" loc concurrent o cac query sta
     assert.doesNotMatch(s, /\.eq\("role"/, `${f} con .eq("role") bo sot concurrent`);
   }
 });
+
+// --- CR-040: username theo ten that -----------------------------------------
+const { usernameBase, suggestUsername, emailLocal } = await import(
+  join(ROOT, "src/lib/username.ts")
+);
+
+test("CR-040: usernameBase bo dau, lay ten + viet tat ho dem", () => {
+  assert.equal(usernameBase("Lê Duy Linh"), "linhld");
+  assert.equal(usernameBase("Phạm Thị Lan Anh"), "anhptl");
+  assert.equal(usernameBase("Đỗ Thị Kim Oanh"), "oanhdtk");
+  assert.equal(usernameBase("Nguyễn Văn Hải"), "hainv");
+  assert.equal(usernameBase("Đinh Ngọc Ánh"), "anhdn");
+  assert.equal(usernameBase(""), "user");
+  assert.equal(usernameBase("   "), "user");
+  assert.equal(usernameBase("Linh"), "linh"); // khong ho dem
+  assert.equal(usernameBase("Trần Văn 'Minh'"), "minhtv"); // punctuation bo qua
+});
+
+test("CR-040: suggestUsername them hau to so khi trung", () => {
+  assert.equal(suggestUsername("Lê Duy Linh", []), "linhld");
+  assert.equal(suggestUsername("Lê Duy Linh", ["linhld@nd.scn"]), "linhld1");
+  assert.equal(
+    suggestUsername("Lê Duy Linh", ["linhld@nd.scn", "linhld1@nd.scn"]),
+    "linhld2",
+  );
+  // taken co the la username tron hoac email
+  assert.equal(suggestUsername("Lê Duy Linh", ["LINHLD"]), "linhld1");
+  assert.equal(emailLocal("Minh.TV@ND.scn"), "minh.tv");
+});

@@ -45,9 +45,9 @@ const { data: orgs } = await supabase.from("org_units").select("id,type");
 const orgByType = Object.fromEntries(orgs.map((o) => [o.type, o.id]));
 
 const users = [
-  ["pht@demo.scn", "pht", "Trần Thị Phó Hiệu", SID, CAMPUS_PH, null],
-  ["ketoan@demo.scn", "ke_toan", "Nguyễn Thị Kế Toán", SID, null, null],
-  ["ubnd@demo.scn", "ubnd", "Phạm Cán Bộ UBND", null, null, orgByType.ubnd],
+  ["duclm@nd.scn", "pht", "Trần Thị Phó Hiệu", SID, CAMPUS_PH, null],
+  ["trangpt@nd.scn", "ke_toan", "Nguyễn Thị Kế Toán", SID, null, null],
+  ["daonvl@demo.scn", "ubnd", "Phạm Cán Bộ UBND", null, null, orgByType.ubnd],
 ];
 
 for (const [email, role, name, school_id, campus_id, org_unit_id] of users) {

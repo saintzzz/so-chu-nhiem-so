@@ -13,7 +13,7 @@ Date: 2026-09-18 · Full SDLC clone of `mockup-so-chu-nhiem.vercel.app` → real
 
 ## Access
 
-- Demo accounts (password `demo1234`): `gvcn@demo.scn`, `gvbm@`, `totruong@`, `bgh@`, `sogd@`, `phuhuynh@`, `hocsinh@`
+- Demo accounts (password `demo1234`): `anhptl@nd.scn`, `gvbm@`, `totruong@`, `bgh@`, `sogd@`, `phuhuynh@`, `hocsinh@`
 - Supabase project: `so-chu-nhiem-so` — ref `cxjpgfhqchjoernfmcra` (ap-southeast-1)
 - Secrets: `~/.config/devin/secrets/supabase_new_keys.json` (DB pass + API keys, chmod 600)
 

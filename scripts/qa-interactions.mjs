@@ -109,7 +109,7 @@ for (const [role, routes] of Object.entries(ROUTES)) {
 // Do dac biet: dashboard chip latency cold->warm, 3 vong
 const ctx = await browser.newContext();
 const page = await ctx.newPage();
-await login(page, "gvcn@demo.scn");
+await login(page, "anhptl@nd.scn");
 await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
 for (let i = 0; i < 4; i++) {
   const target = i % 2 === 0 ? "8A2" : "6A3";

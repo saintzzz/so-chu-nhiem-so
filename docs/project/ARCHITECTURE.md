@@ -74,7 +74,7 @@ docs/project/      # this SDLC's artifacts
 
 ## 4. Auth & RBAC
 
-- Supabase Auth email/password. Seeded demo accounts: `gvcn@demo.scn`, `gvbm@`, `totruong@`, `bgh@`, `sogd@`, `phuhuynh@`, `hocsinh@` (password demo).
+- Supabase Auth email/password. Seeded demo accounts: `anhptl@nd.scn`, `gvbm@`, `totruong@`, `bgh@`, `sogd@`, `phuhuynh@`, `hocsinh@` (password demo).
 - `profiles` table mirrors `auth.users` (trigger on signup): `id`, `role` enum, `full_name`, `school_id`, `department_id`.
 - `proxy.ts`: redirect unauthenticated `/` + `(app)`/`portal` → `/login`; redirect logged-in `/login` → role home. Optimistic only.
 - Real authz in Server Components via `requireRole()` helper + RLS as final layer.

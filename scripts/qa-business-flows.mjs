@@ -47,7 +47,7 @@ async function freshPage() {
 }
 
 // Pre-fetch: lop CN cua gvcn + 1 HS
-const { data: gvcn } = await db.from("profiles").select("id,school_id").eq("email", "gvcn@demo.scn").single();
+const { data: gvcn } = await db.from("profiles").select("id,school_id").eq("email", "anhptl@nd.scn").single();
 const { data: myClass } = await db.from("classes").select("id,name").eq("gvcn_id", gvcn.id).limit(1).single();
 const { data: student } = await db.from("students").select("id,full_name,code").eq("class_id", myClass.id).limit(1).single();
 const today = new Date().toISOString().slice(0, 10);
@@ -55,7 +55,7 @@ const MARK = `QAFLOW-${Date.now()}`;
 
 // ================= GVCN =================
 let p = await freshPage();
-await login(p, "gvcn@demo.scn");
+await login(p, "anhptl@nd.scn");
 
 // F01 - Diem danh: danh "Vang khong phep" 1 HS -> luu -> verify attendance_records
 await p.goto(`${BASE}/attendance/daily?class=${myClass.id}&date=${today}`);
@@ -166,7 +166,7 @@ check("F12", "KPI render", /KPI|chỉ tiêu|chuyên cần|hạnh kiểm/i.test(k
 
 // ================= GVBM =================
 p = await freshPage();
-await login(p, "gvbm@demo.scn");
+await login(p, "minhtv@nd.scn");
 await p.goto(`${BASE}/academics/grades`);
 await settle(p);
 const gvbmBody = await p.locator("body").innerText();
@@ -174,7 +174,7 @@ check("F13", "GVBM bang diem render", /điểm|môn/i.test(gvbmBody), "", await 
 
 // ================= BGH =================
 p = await freshPage();
-await login(p, "bgh@demo.scn");
+await login(p, "hainv@nd.scn");
 await p.goto(`${BASE}/school/students`);
 await settle(p);
 const bghBody = await p.locator("body").innerText();
@@ -186,24 +186,24 @@ await shot(p, "f15-bgh-announce");
 
 // ================= PH / HS portals =================
 p = await freshPage();
-await login(p, "phuhuynh@demo.scn");
+await login(p, "annv@nd.scn");
 await settle(p);
 const phBody = await p.locator("body").innerText();
 check("F15", "Portal PH render", /con|học sinh|điểm|chuyên cần/i.test(phBody), "", await shot(p, "f16-portal-parent"));
 
 p = await freshPage();
-await login(p, "hocsinh@demo.scn");
+await login(p, "baong@nd.scn");
 await settle(p);
 const hsBody = await p.locator("body").innerText();
 check("F16", "Portal HS render", /điểm|học bạ|chuyên cần|thời khóa/i.test(hsBody), "", await shot(p, "f17-portal-student"));
 
 // ================= Deny paths =================
 const denyCases = [
-  ["gvbm@demo.scn", "/emulation/scoring"],
-  ["gvbm@demo.scn", "/school/staff"],
-  ["phuhuynh@demo.scn", "/dashboard"],
-  ["hocsinh@demo.scn", "/academics/grades"],
-  ["bgh@demo.scn", "/portal/student"],
+  ["minhtv@nd.scn", "/emulation/scoring"],
+  ["minhtv@nd.scn", "/school/staff"],
+  ["annv@nd.scn", "/dashboard"],
+  ["baong@nd.scn", "/academics/grades"],
+  ["hainv@nd.scn", "/portal/student"],
 ];
 for (const [email, route] of denyCases) {
   p = await freshPage();

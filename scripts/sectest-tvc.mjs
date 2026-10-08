@@ -58,7 +58,7 @@ check("E1 to_truong ND khong thay bank CVA", nB2 === 0);
 
 // F. Phu huynh khong doc duoc cau hoi
 try {
-  const ph = await signIn("phuhuynh@demo.scn");
+  const ph = await signIn("annv@nd.scn");
   const { count: nPH } = await ph.from("tvc_questions").select("*", { count: "exact", head: true });
   check("F1 phu huynh khong doc duoc bank", nPH === 0, `n=${nPH}`);
 } catch { check("F1 phu huynh login", false, "khong login duoc de test"); }

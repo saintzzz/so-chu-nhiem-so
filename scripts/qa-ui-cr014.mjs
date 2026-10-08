@@ -65,7 +65,7 @@ async function freshPage() {
 }
 
 // ============ GVCN ============
-await login(page, "gvcn@demo.scn");
+await login(page, "anhptl@nd.scn");
 
 // T1. Dashboard + nav groups
 await settle(page);
@@ -290,7 +290,7 @@ check(
 
 // ============ BGH (context moi) ============
 page = await freshPage();
-await login(page, "bgh@demo.scn");
+await login(page, "hainv@nd.scn");
 await page.goto(`${BASE}/register/signoff`);
 await settle(page);
 const signBtn = page.locator('button:has-text("Ký duyệt")').first();
@@ -330,7 +330,7 @@ check(
 
 // ============ Deny paths ============
 page = await freshPage();
-await login(page, "gvbm@demo.scn");
+await login(page, "minhtv@nd.scn");
 await page.goto(`${BASE}/records/students`);
 await settle(page);
 check(
@@ -341,7 +341,7 @@ check(
 );
 
 page = await freshPage();
-await login(page, "phuhuynh@demo.scn");
+await login(page, "annv@nd.scn");
 await page.goto(`${BASE}/register/signoff`);
 await settle(page);
 check(

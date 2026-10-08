@@ -129,10 +129,10 @@ const MATRIX = {
 const ALIASES = { "/records/history": "/register/audit" };
 
 const ROLE_EMAIL = {
-  gvcn: "gvcn@demo.scn", gvbm: "gvbm@demo.scn", to_truong: "totruong@demo.scn",
-  bgh: "bgh@demo.scn", pht: "pht@demo.scn", ke_toan: "ketoan@demo.scn",
-  so_gd: "sogd@demo.scn", ubnd: "ubnd@demo.scn",
-  phu_huynh: "phuhuynh@demo.scn", hoc_sinh: "hocsinh@demo.scn",
+  gvcn: "anhptl@nd.scn", gvbm: "minhtv@nd.scn", to_truong: "hanhlth@nd.scn",
+  bgh: "hainv@nd.scn", pht: "duclm@nd.scn", ke_toan: "trangpt@nd.scn",
+  so_gd: "sovqt@demo.scn", ubnd: "daonvl@demo.scn",
+  phu_huynh: "annv@nd.scn", hoc_sinh: "baong@nd.scn",
 };
 const ROLE_HOME = {
   gvcn: "/dashboard", gvbm: "/academics/grades", to_truong: "/team/home",
@@ -213,14 +213,14 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
 }
 
 // === PHAN 2: WRITE FLOWS qua UI -> verify DB ===
-const { data: gvcnP } = await db.from("profiles").select("id,school_id").eq("email", "gvcn@demo.scn").single();
+const { data: gvcnP } = await db.from("profiles").select("id,school_id").eq("email", "anhptl@nd.scn").single();
 const { data: myClasses } = await db.from("classes").select("id,name").eq("gvcn_id", gvcnP.id);
 const { data: anyStu } = await db.from("students").select("id,full_name,code").eq("class_id", myClasses[0].id).limit(1).single();
 const today = new Date().toISOString().slice(0, 10);
 const MARK = `FULL-${Date.now()}`;
 
 {
-  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  const { ctx, p } = await loginCtx("anhptl@nd.scn");
 
   // W01: Diem danh -> DB. Xoa record cu cua HS hom nay de assert deterministic.
   await db.from("attendance_records").delete().eq("student_id", anyStu.id).eq("date", today);
@@ -366,7 +366,7 @@ const MARK = `FULL-${Date.now()}`;
 
 // --- GVBM ---
 {
-  const { ctx, p } = await loginCtx("gvbm@demo.scn");
+  const { ctx, p } = await loginCtx("minhtv@nd.scn");
   await p.goto(`${BASE}/schedule/period-log`);
   await settle(p, 1500);
   check("W13", "GVBM so dau bai", /tiết|sổ đầu bài/i.test(await p.locator("body").innerText()), "");
@@ -384,7 +384,7 @@ const MARK = `FULL-${Date.now()}`;
 
 // --- BGH ---
 {
-  const { ctx, p } = await loginCtx("bgh@demo.scn");
+  const { ctx, p } = await loginCtx("hainv@nd.scn");
   const bghChecks = [
     ["W15", "/school/announce", /thông báo|toàn trường|gửi/i, "Thong bao truong"],
     ["W16", "/school/approvals", /duyệt|phê duyệt|chờ|kế hoạch/i, "Approvals"],
@@ -401,7 +401,7 @@ const MARK = `FULL-${Date.now()}`;
 
 // --- TO_TRUONG ---
 {
-  const { ctx, p } = await loginCtx("totruong@demo.scn");
+  const { ctx, p } = await loginCtx("hanhlth@nd.scn");
   await p.goto(`${BASE}/team/home`);
   await settle(p, 1200);
   check("W19", "To truong home", (await p.locator("body").innerText()).length > 200, "");
@@ -413,7 +413,7 @@ const MARK = `FULL-${Date.now()}`;
 
 // --- KE_TOAN / DEPT ---
 {
-  const { ctx, p } = await loginCtx("ketoan@demo.scn");
+  const { ctx, p } = await loginCtx("trangpt@nd.scn");
   await p.goto(`${BASE}/school/equipment`);
   await settle(p, 1200);
   check("W21", "Ke toan equipment", /thiết bị|tài sản|cơ sở/i.test(await p.locator("body").innerText()), "");
@@ -429,14 +429,14 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // --- Portals ---
 {
-  const { ctx, p } = await loginCtx("phuhuynh@demo.scn");
+  const { ctx, p } = await loginCtx("annv@nd.scn");
   await p.goto(`${BASE}/portal/parent`);
   await settle(p, 1500);
   check("W22", "Portal PH", /con|điểm|chuyên cần|học/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
 }
 {
-  const { ctx, p } = await loginCtx("hocsinh@demo.scn");
+  const { ctx, p } = await loginCtx("baong@nd.scn");
   await p.goto(`${BASE}/portal/student/hoc-ba`);
   await settle(p, 1500);
   check("W23", "Hoc ba HS", /học bạ|điểm|hạnh kiểm/i.test(await p.locator("body").innerText()), "");
@@ -447,7 +447,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W24: GVCN luu so dau bai -> period_logs
 {
-  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  const { ctx, p } = await loginCtx("anhptl@nd.scn");
   await p.goto(`${BASE}/schedule/period-log`);
   await settle(p, 2000);
   // CR-016: chi tiet cua minh moi co form nhap - duyet tung row tim tiet own
@@ -502,7 +502,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W26: Signoff state machine - GVCN nop (pending->submitted), BGH ky (submitted->signed)
 {
-  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  const { ctx, p } = await loginCtx("anhptl@nd.scn");
   // Tim signoff pending cua cac lop gvcn chu nhiem
   const myClassIds = myClasses.map((c) => c.id);
   const { data: pending } = await db.from("register_signoffs").select("id,status")
@@ -524,7 +524,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
   await ctx.close();
 }
 {
-  const { ctx, p } = await loginCtx("bgh@demo.scn");
+  const { ctx, p } = await loginCtx("hainv@nd.scn");
   // BGH tao dot ky: chap nhan insert moi HOAC thong bao da ton tai (idempotent)
   await p.goto(`${BASE}/register/signoff`);
   await settle(p, 1500);
@@ -559,7 +559,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W27: To truong tao buoi sinh hoat -> dept_meetings
 {
-  const { ctx, p } = await loginCtx("totruong@demo.scn");
+  const { ctx, p } = await loginCtx("hanhlth@nd.scn");
   await p.goto(`${BASE}/team/meetings`);
   await settle(p, 1500);
   const titleIn = p.locator("#title");
@@ -578,7 +578,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W28: PH dat lich hen -> appointments
 {
-  const { ctx, p } = await loginCtx("phuhuynh@demo.scn");
+  const { ctx, p } = await loginCtx("annv@nd.scn");
   await p.goto(`${BASE}/portal/parent`);
   await settle(p, 2000);
   const dtInput = p.locator('input[type="datetime-local"]');
@@ -597,7 +597,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W29: To truong duyet giao an (submitted -> team_approved)
 {
-  const { ctx, p } = await loginCtx("totruong@demo.scn");
+  const { ctx, p } = await loginCtx("hanhlth@nd.scn");
   const { data: lp } = await db.from("lesson_plans").select("id,title,status")
     .eq("status", "submitted");
   await p.goto(`${BASE}/team/lesson-plans`);
@@ -624,7 +624,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W30: BGH duyet cuoi giao an (team_approved -> approved)
 {
-  const { ctx, p } = await loginCtx("bgh@demo.scn");
+  const { ctx, p } = await loginCtx("hainv@nd.scn");
   const { data: lp } = await db.from("lesson_plans").select("id,status")
     .eq("status", "team_approved");
   if (lp?.length) {
@@ -646,7 +646,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 
 // W31: GVCN xac nhan lich hen (proposed -> confirmed)
 {
-  const { ctx, p } = await loginCtx("gvcn@demo.scn");
+  const { ctx, p } = await loginCtx("anhptl@nd.scn");
   const { data: appt } = await db.from("appointments").select("id,status")
     .eq("status", "proposed");
   await p.goto(`${BASE}/parents/appointments`);

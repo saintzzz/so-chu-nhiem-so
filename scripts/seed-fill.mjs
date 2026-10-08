@@ -269,7 +269,7 @@ async function main() {
   const { count: msgCount } = await supabase.from("messages").select("id", { count: "exact", head: true });
   if ((msgCount ?? 0) < 15) {
     const rows = [];
-    const gvcn = profiles.find((p) => p.email === "gvcn@demo.scn")
+    const gvcn = profiles.find((p) => p.email === "anhptl@nd.scn")
       ?? gvcnOfSchool(thcs.id)[0];
     const gvbm = gvbmOfSchool(thcs.id);
     const cls6a1 = classes.find((c) => c.name === "6A1");

@@ -124,19 +124,19 @@ function note(s, txt, y = 6.9) {
 // S4 - Tai khoan
 {
   const s = p.addSlide();
-  slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập theo vai trò - mật khẩu chung demo1234", "Tài khoản chính của THCS Nguyễn Du (trường khác: hậu tố .cva / .kd)");
+  slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập theo vai trò - mật khẩu chung demo1234", "Tài khoản chính của THCS Nguyễn Du (trường khác: @cva.scn / @kd.scn)");
   table(s, [
     ["Vai trò", "Tài khoản", "Nhân sự & kiêm nhiệm"],
-    ["Hiệu trưởng", "bgh@demo.scn", "Nguyễn Văn Hải - kiêm dạy (bgh + gvbm)"],
-    ["PHT cơ sở 2", "pht@demo.scn", "Lê Minh Đức - chỉ lớp A3, kiêm dạy (pht + gvbm)"],
-    ["Tổ trưởng", "totruong@demo.scn", "Lê Thị Hồng Hạnh - Tổ Toán-TN (to_truong + gvbm)"],
-    ["GVCN 8A2", "gvcn@demo.scn", "Phạm Thị Lan Anh - GVCN + dạy Toán + Tổ trưởng (3 vai trò)"],
-    ["GVBM Vật lý", "gvbm@demo.scn", "Trần Văn Minh - đơn vai trò (đối chứng)"],
-    ["Kế toán", "ketoan@demo.scn", "Phạm Thu Trang"],
-    ["Phụ huynh", "phuhuynh@demo.scn", "Nguyễn Văn An - bố em Nguyễn Gia Bảo (8A2)"],
-    ["Học sinh", "hocsinh@demo.scn", "Nguyễn Gia Bảo - lớp 8A2"],
-    ["Sở GD&ĐT", "sogd@demo.scn", "Vũ Quản Trị Sở - giám sát cả 3 trường"],
-    ["UBND", "ubnd@demo.scn", "Ngô Văn Lãnh Đạo - dashboard địa bàn, chỉ đọc"],
+    ["Hiệu trưởng", "hainv@nd.scn", "Nguyễn Văn Hải - kiêm dạy (bgh + gvbm)"],
+    ["PHT cơ sở 2", "duclm@nd.scn", "Lê Minh Đức - chỉ lớp A3, kiêm dạy (pht + gvbm)"],
+    ["Tổ trưởng", "hanhlth@nd.scn", "Lê Thị Hồng Hạnh - Tổ Toán-TN (to_truong + gvbm)"],
+    ["GVCN 8A2", "anhptl@nd.scn", "Phạm Thị Lan Anh - GVCN + dạy Toán + Tổ trưởng (3 vai trò)"],
+    ["GVBM Vật lý", "minhtv@nd.scn", "Trần Văn Minh - đơn vai trò (đối chứng)"],
+    ["Kế toán", "trangpt@nd.scn", "Phạm Thu Trang"],
+    ["Phụ huynh", "annv@nd.scn", "Nguyễn Văn An - bố em Nguyễn Gia Bảo (8A2)"],
+    ["Học sinh", "baong@nd.scn", "Nguyễn Gia Bảo - lớp 8A2"],
+    ["Sở GD&ĐT", "sovqt@demo.scn", "Vũ Quản Trị Sở - giám sát cả 3 trường"],
+    ["UBND", "daonvl@demo.scn", "Ngô Văn Lãnh Đạo - dashboard địa bàn, chỉ đọc"],
     ["Quản trị", "admin@demo.scn", "Toàn hệ thống"],
   ], { colW: [2.4, 3.0, 6.8], rowH: 0.34 });
 }
@@ -166,7 +166,7 @@ function note(s, txt, y = 6.9) {
 // S6 - Luong A1
 {
   const s = p.addSlide();
-  slideTitle(s, "LUỒNG A - GVCN MỘT NGÀY (1/2)", "gvcn@demo.scn - cô Phạm Thị Lan Anh, lớp 8A2", "~5 phút - mở đầu bằng điểm nhấn 3 vai trò trên topbar và menu gộp");
+  slideTitle(s, "LUỒNG A - GVCN MỘT NGÀY (1/2)", "anhptl@nd.scn - cô Phạm Thị Lan Anh, lớp 8A2", "~5 phút - mở đầu bằng điểm nhấn 3 vai trò trên topbar và menu gộp");
   bullets(s, [
     { t: "1. Dashboard lớp chủ nhiệm", b: true, sub: [
       "Sĩ số 8A2, tỷ lệ chuyên cần, cảnh báo sớm, việc cần xử lý trong ngày",
@@ -211,7 +211,7 @@ function note(s, txt, y = 6.9) {
 // S8 - Luong B
 {
   const s = p.addSlide();
-  slideTitle(s, "LUỒNG B - PHÊ DUYỆT 2 CẤP", "totruong@demo.scn rồi bgh@demo.scn", "~5 phút - chứng minh quy trình quản trị chuyên môn");
+  slideTitle(s, "LUỒNG B - PHÊ DUYỆT 2 CẤP", "hanhlth@nd.scn rồi hainv@nd.scn", "~5 phút - chứng minh quy trình quản trị chuyên môn");
   bullets(s, [
     { t: "1. Tổ trưởng duyệt (cô Hạnh - Tổ Toán-Tự nhiên)", b: true, sub: [
       "Menu 'Tổ chuyên môn' -> Duyệt giáo án: thấy giáo án của GV trong tổ mình",
@@ -232,7 +232,7 @@ function note(s, txt, y = 6.9) {
 // S9 - Luong C
 {
   const s = p.addSlide();
-  slideTitle(s, "LUỒNG C - ĐIỀU HÀNH TRƯỜNG", "bgh@demo.scn + đối chứng pht@demo.scn", "~8 phút");
+  slideTitle(s, "LUỒNG C - ĐIỀU HÀNH TRƯỜNG", "hainv@nd.scn + đối chứng duclm@nd.scn", "~8 phút");
   bullets(s, [
     { t: "1. Dashboard BGH (/school/dashboard)", b: true, sub: [
       "KPI toàn trường: chuyên cần, sự cố, radar cảnh báo sớm, tình hình phê duyệt",
@@ -242,7 +242,7 @@ function note(s, txt, y = 6.9) {
       "Phân công năm học: GVCN từng lớp + GVBM phân môn",
       "Nhân sự: 34 cán bộ có mã NV, hợp đồng, trình độ, tổ chuyên môn",
     ] },
-    { t: "3. Đối chứng PHT (đổi tài khoản pht@demo.scn)", b: true, sub: [
+    { t: "3. Đối chứng PHT (đổi tài khoản duclm@nd.scn)", b: true, sub: [
       "Cùng màn hình nhưng chỉ thấy 4 lớp A3 của Cơ sở 2 - giới hạn phạm vi thật",
       "PHT không thấy mục 'Học sinh toàn trường' (hồ sơ chi tiết chỉ dành BGH - TT15)",
     ] },
@@ -255,7 +255,7 @@ function note(s, txt, y = 6.9) {
 // S10 - Luong D
 {
   const s = p.addSlide();
-  slideTitle(s, "LUỒNG D - PHỤ HUYNH & HỌC SINH", "phuhuynh@demo.scn, hocsinh@demo.scn", "~5 phút - cổng thông tin hai chiều");
+  slideTitle(s, "LUỒNG D - PHỤ HUYNH & HỌC SINH", "annv@nd.scn, baong@nd.scn", "~5 phút - cổng thông tin hai chiều");
   bullets(s, [
     { t: "1. Cổng phụ huynh (/portal/parent)", b: true, sub: [
       "Chỉ thấy con mình: Nguyễn Gia Bảo - 8A2",
@@ -274,16 +274,16 @@ function note(s, txt, y = 6.9) {
 // S11 - Luong E+F
 {
   const s = p.addSlide();
-  slideTitle(s, "LUỒNG E+F - CẤP TRÊN & TRƯỜNG TIỂU HỌC", "sogd, ubnd, gvcn.cva", "~6 phút");
+  slideTitle(s, "LUỒNG E+F - CẤP TRÊN & TRƯỜNG TIỂU HỌC", "sovqt, daonvl, oanhdtk", "~6 phút");
   bullets(s, [
-    { t: "E1. Sở GD&ĐT (sogd@demo.scn)", b: true, sub: [
+    { t: "E1. Sở GD&ĐT (sovqt@demo.scn)", b: true, sub: [
       "Tổng hợp 3 trường trên một dashboard; /dept/schools tạo trường mới",
       "/dept/usage giám sát mức độ sử dụng từng trường",
     ] },
-    { t: "E2. UBND (ubnd@demo.scn)", b: true, sub: [
+    { t: "E2. UBND (daonvl@demo.scn)", b: true, sub: [
       "Dashboard địa bàn - chỉ đọc, không có nút ghi",
     ] },
-    { t: "F1. Tiểu học Chu Văn An (gvcn.cva@demo.scn)", b: true, sub: [
+    { t: "F1. Tiểu học Chu Văn An (oanhdtk@cva.scn)", b: true, sub: [
       "Đánh giá theo MỨC ĐỘ (không phải điểm số) - đúng TT 22/2021 cho tiểu học",
       "Cô Oanh GVCN 3A2 cũng là tổ trưởng Tổ Khối 3 - kiêm nhiệm như THCS",
     ] },
@@ -300,11 +300,11 @@ function note(s, txt, y = 6.9) {
   slideTitle(s, "KIỂM CHỨNG PHÂN QUYỀN", "Security smoke - 6 phép thử nhanh", "Chạy trực tiếp trong buổi demo nếu khán giả yêu cầu");
   table(s, [
     ["Kiểm tra", "Cách demo", "Kỳ vọng"],
-    ["Cô lập trường", "bgh.cva@demo.scn mở URL chức năng trường ND", "Chỉ thấy dữ liệu Chu Văn An"],
-    ["Giới hạn PHT", "pht@demo.scn xem danh sách lớp", "Chỉ 4 lớp A3 - Cơ sở 2"],
-    ["GVBM không quyền CN", "gvbm@demo.scn vào route chủ nhiệm", "Redirect về trang chủ GVBM"],
-    ["PH chỉ thấy con mình", "phuhuynh@demo.scn", "Chỉ hồ sơ em Nguyễn Gia Bảo"],
-    ["UBND chỉ đọc", "ubnd@demo.scn", "Không có nút ghi nào"],
+    ["Cô lập trường", "phuongttm@cva.scn mở URL chức năng trường ND", "Chỉ thấy dữ liệu Chu Văn An"],
+    ["Giới hạn PHT", "duclm@nd.scn xem danh sách lớp", "Chỉ 4 lớp A3 - Cơ sở 2"],
+    ["GVBM không quyền CN", "minhtv@nd.scn vào route chủ nhiệm", "Redirect về trang chủ GVBM"],
+    ["PH chỉ thấy con mình", "annv@nd.scn", "Chỉ hồ sơ em Nguyễn Gia Bảo"],
+    ["UBND chỉ đọc", "daonvl@demo.scn", "Không có nút ghi nào"],
     ["Menu theo quyền", "Soi menu từng tài khoản", "Mỗi vai trò chỉ thấy chức năng được cấp"],
   ], { colW: [3.0, 4.8, 4.4], rowH: 0.42 });
   note(s, "Kiểm chứng tự động: node scripts/check-nav-access.mjs - 158 mục menu đối chiếu quyền từng route.");

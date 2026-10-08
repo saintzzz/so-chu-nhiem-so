@@ -32,7 +32,7 @@ try {
   page.on("pageerror", (e) => console.log("  [pageerror]", e.message));
 
   // 1. Sở GD login
-  const u1 = await login("sogd@demo.scn", "demo1234");
+  const u1 = await login("sovqt@demo.scn", "demo1234");
   ok("login sogd", !u1.includes("/login"), u1);
 
   // 2. /dept/schools render
@@ -90,7 +90,7 @@ try {
 
   // 6. Usage dashboard
   await ctx.clearCookies();
-  await login("sogd@demo.scn", "demo1234");
+  await login("sovqt@demo.scn", "demo1234");
   await page.goto(`${BASE}/dept/usage`, { waitUntil: "networkidle" });
   const t3 = await page.textContent("body");
   ok("dept/usage render", /hoạt động|đăng nhập|tài khoản/i.test(t3));
@@ -98,7 +98,7 @@ try {
 
   // 7. RBAC deny: gvcn hits /dept/schools
   await ctx.clearCookies();
-  await login("gvcn@demo.scn", "demo1234");
+  await login("anhptl@nd.scn", "demo1234");
   await page.goto(`${BASE}/dept/schools`, { waitUntil: "networkidle" });
   const t4 = await page.textContent("body");
   ok("gvcn denied /dept/schools", !t4.includes("Tạo trường mới"));

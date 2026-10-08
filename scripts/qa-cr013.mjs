@@ -18,8 +18,8 @@ function check(name, ok, detail = "") {
 }
 
 const ROLES = {
-  gvcn: "gvcn@demo.scn", bgh: "bgh@demo.scn", pht: "pht@demo.scn",
-  phuhuynh: "phuhuynh@demo.scn", gvbm: "gvbm@demo.scn", ketoan: "ketoan@demo.scn",
+  gvcn: "anhptl@nd.scn", bgh: "hainv@nd.scn", pht: "duclm@nd.scn",
+  phuhuynh: "annv@nd.scn", gvbm: "minhtv@nd.scn", ketoan: "trangpt@nd.scn",
 };
 
 const browser = await chromium.launch();

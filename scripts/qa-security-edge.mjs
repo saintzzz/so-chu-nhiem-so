@@ -35,7 +35,7 @@ const count = async (c, t, sel = "*") => {
 };
 
 // ================= SEC: RLS / privilege =================
-await asUser("phuhuynh@demo.scn", async (c) => {
+await asUser("annv@nd.scn", async (c) => {
   const { data: { user } } = await c.auth.getUser();
   const { data: u1, error: e1 } = await c.from("profiles").update({ role: "admin" }).eq("id", user.id).select("id");
   check("S01", "PH self-escalate role bi chan", !!e1 || !(u1 ?? []).length, e1?.message?.slice(0, 60) ?? `rows=${u1?.length}`);
@@ -50,24 +50,24 @@ await asUser("phuhuynh@demo.scn", async (c) => {
   check("S06", "PH insert attendance bi chan", !!we || !(w ?? []).length, "");
 });
 
-await asUser("ketoan@demo.scn", async (c) => {
+await asUser("trangpt@nd.scn", async (c) => {
   for (const [id, t] of [["S07a","grades"],["S07b","counseling_cases"],["S07c","incidents"],["S07d","parents"],["S07e","digest_deliveries"],["S07f","ai_jobs"],["S07g","audit_logs"]]) {
     const n = await count(c, t);
     check(id, `ke_toan ${t} -> 0`, n === 0, String(n));
   }
 });
 
-// Cross-school: bgh-th (truong TH-CVA) khong thay du lieu truong khac
-await asUser("bgh-th@demo.scn", async (c) => {
+// Cross-school: bgh truong TH-CVA khong thay du lieu truong khac
+await asUser("phuongttm@cva.scn", async (c) => {
   const { data: me } = await c.from("profiles").select("school_id").limit(1).maybeSingle();
   const { data: stu } = await c.from("students").select("id, classes!inner(school_id)").limit(500);
   const foreign = (stu ?? []).filter((s) => s.classes?.school_id && s.classes.school_id !== me?.school_id);
-  check("S08", "bgh-th students chi thuoc truong minh", foreign.length === 0, `rows=${(stu ?? []).length} foreign=${foreign.length}`);
-  check("S09", "bgh-th tvc_materials -> 0 published xa", (await count(c, "tvc_materials")) === 0, "");
+  check("S08", "bgh-cva students chi thuoc truong minh", foreign.length === 0, `rows=${(stu ?? []).length} foreign=${foreign.length}`);
+  check("S09", "bgh-cva tvc_materials -> 0 published xa", (await count(c, "tvc_materials")) === 0, "");
 });
 
 // gvbm: chi thay student lop minh day (RLS scope) - verify qua so luong < tong
-await asUser("gvbm@demo.scn", async (c) => {
+await asUser("minhtv@nd.scn", async (c) => {
   const mine = await count(c, "students");
   const { count: total } = await admin.from("students").select("id", { count: "exact", head: true });
   check("S10", "gvbm students scope < toan he thong", typeof mine === "number" && mine < (total ?? 0), `gvbm=${mine} total=${total}`);
@@ -128,7 +128,7 @@ async function login(email, pw = "demo1234") {
 }
 
 // E01: sai mat khau -> loi inline, van o /login
-await login("gvcn@demo.scn", "sai-mat-khau");
+await login("anhptl@nd.scn", "sai-mat-khau");
 await page.waitForTimeout(4000);
 {
   const t = await page.textContent("body");
@@ -150,7 +150,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 }
 // E05: route khong ton tai -> khong crash
 {
-  await login("gvcn@demo.scn");
+  await login("anhptl@nd.scn");
   await page.waitForTimeout(3000);
   const res = await page.goto(`${BASE}/records/students/00000000-0000-0000-0000-000000000000`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1500);
@@ -159,7 +159,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 }
 // E06: IDOR - roster?class= lop truong khac -> rong, khong thay HS nguoi ta
 {
-  const { data: me } = await admin.from("profiles").select("school_id").eq("email", "gvcn@demo.scn").single();
+  const { data: me } = await admin.from("profiles").select("school_id").eq("email", "anhptl@nd.scn").single();
   const { data: otherClass } = await admin.from("classes").select("id,name,school_id").neq("school_id", me.school_id).limit(1);
   if (otherClass?.length) {
     await page.goto(`${BASE}/register/roster?class=${otherClass[0].id}`, { waitUntil: "networkidle" });
@@ -210,7 +210,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 // E09: bgh tao account email loi -> inline error
 {
   await ctx.clearCookies();
-  await login("bgh@demo.scn");
+  await login("hainv@nd.scn");
   await page.waitForTimeout(3000);
   await page.goto(`${BASE}/school/users`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
@@ -232,7 +232,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 // E10: required-field disable - create school form
 {
   await ctx.clearCookies();
-  await login("sogd@demo.scn");
+  await login("sovqt@demo.scn");
   await page.waitForTimeout(3000);
   await page.goto(`${BASE}/dept/schools`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1200);
@@ -243,7 +243,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 // E11: logout -> route sau do redirect /login
 {
   await ctx.clearCookies();
-  await login("gvcn@demo.scn");
+  await login("anhptl@nd.scn");
   // doi session set xong (roi /login) roi moi vao dashboard - tranh race cookie
   await page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 20000 }).catch(() => {});
   await page.goto(`${BASE}/dashboard`, { waitUntil: "domcontentloaded" }).catch(() => {});
@@ -263,7 +263,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 {
   // login PH qua browser ctx de co session cookie
   await ctx.clearCookies();
-  await login("phuhuynh@demo.scn");
+  await login("annv@nd.scn");
   await page.waitForTimeout(3000);
   const apiChecks = [
     ["S14a", "POST", "/api/ai/dept-brief", { weeks: 1 }],
@@ -278,7 +278,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
   }
   // hoc_sinh cung bi chan AI routes
   await ctx.clearCookies();
-  await login("hocsinh@demo.scn");
+  await login("baong@nd.scn");
   await page.waitForTimeout(3000);
   const r = await ctx.request.fetch(`${BASE}/api/ai/dept-brief`, {
     method: "POST", data: { weeks: 1 }, headers: { "content-type": "application/json" },
@@ -316,12 +316,12 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 // ============ E13: GVBM nhap diem -> DB ============
 {
   await ctx.clearCookies();
-  await login("gvbm@demo.scn");
+  await login("minhtv@nd.scn");
   await page.waitForTimeout(3000);
   await page.goto(`${BASE}/academics/grades`, { waitUntil: "networkidle" });
   await page.waitForTimeout(1500);
   // lay 1 grade row cua gvbm de so sanh truoc/sau
-  const { data: gvbmProf } = await admin.from("profiles").select("id").eq("email", "gvbm@demo.scn").single();
+  const { data: gvbmProf } = await admin.from("profiles").select("id").eq("email", "minhtv@nd.scn").single();
   const { data: before } = await admin.from("grades").select("id,score,student_id,subject_id,term,assessment_type")
     .order("id").limit(5);
   const gridInput = page.locator('input[type="number"]').first();
@@ -347,7 +347,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 // ============ STUDIO happy path: generate -> tvc_generations ============
 {
   await ctx.clearCookies();
-  await login("gvbm@demo.scn");
+  await login("minhtv@nd.scn");
   await page.waitForTimeout(3000);
   const { data: sub } = await admin.from("tvc_subjects").select("code").eq("code", "toan").maybeSingle();
   const { data: std } = await admin.from("tvc_curriculum_standards").select("id").limit(1);
@@ -383,20 +383,20 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
   } else {
     // gvbm (staff cung truong) export -> 200 + file non-empty
     await ctx.clearCookies();
-    await login("gvbm@demo.scn");
+    await login("minhtv@nd.scn");
     await page.waitForTimeout(2500);
     const r = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
     const buf = r?.ok() ? await r.body() : Buffer.alloc(0);
     check("S20", `export docx material "${String(mat.title).slice(0, 30)}"`, !!r?.ok() && buf.length > 1000, `status=${r?.status()} bytes=${buf.length}`);
     // ke_toan KHONG duoc export (khong phai staff studio + neu published thi day la finding)
     await ctx.clearCookies();
-    await login("ketoan@demo.scn");
+    await login("trangpt@nd.scn");
     await page.waitForTimeout(2500);
     const r2 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
     check("S21", "ke_toan export material -> 4xx", !!r2 && r2.status() >= 400, `status=${r2?.status()} (published=${mat.status === "published"})`);
     // phu_huynh export -> 4xx
     await ctx.clearCookies();
-    await login("phuhuynh@demo.scn");
+    await login("annv@nd.scn");
     await page.waitForTimeout(2500);
     const r3 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
     check("S22", "phu_huynh export material -> 4xx", !!r3 && r3.status() >= 400, `status=${r3?.status()}`);
@@ -405,11 +405,11 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
 
 // ================= PERF: timing theo role =================
 const perfPages = [
-  ["gvcn@demo.scn", "/dashboard"], ["gvcn@demo.scn", "/academics/grades"],
-  ["gvcn@demo.scn", "/records/report"], ["bgh@demo.scn", "/school/dashboard"],
-  ["bgh@demo.scn", "/school/exam-analytics"], ["bgh@demo.scn", "/school/radar"],
-  ["phuhuynh@demo.scn", "/portal/parent"], ["hocsinh@demo.scn", "/portal/student"],
-  ["sogd@demo.scn", "/dept/usage"],
+  ["anhptl@nd.scn", "/dashboard"], ["anhptl@nd.scn", "/academics/grades"],
+  ["anhptl@nd.scn", "/records/report"], ["hainv@nd.scn", "/school/dashboard"],
+  ["hainv@nd.scn", "/school/exam-analytics"], ["hainv@nd.scn", "/school/radar"],
+  ["annv@nd.scn", "/portal/parent"], ["baong@nd.scn", "/portal/student"],
+  ["sovqt@demo.scn", "/dept/usage"],
 ];
 const perf = [];
 for (const [email, route] of perfPages) {

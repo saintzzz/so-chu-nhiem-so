@@ -26,23 +26,23 @@ Mỗi trường có đủ: Hiệu trưởng + Phó HT (bgh), kế toán, tổ tr
 
 | Vai trò | Tài khoản demo | Nhân sự | Phạm vi |
 |---|---|---|---|
-| Giáo viên chủ nhiệm (GVCN) | gvcn@demo.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (ND) - `gvcn`+`gvbm`+`to_truong` | Lớp mình chủ nhiệm; lịch dạy cá nhân; duyệt giáo án tổ mình |
-| Giáo viên bộ môn (GVBM) | gvbm@demo.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (ND) - đơn vai trò | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
-| Tổ trưởng chuyên môn | totruong@demo.scn | Lê Thị Hồng Hạnh - TT Tổ Toán-TN (ND) - `to_truong`+`gvbm` | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
-| Ban Giám Hiệu (BGH) | bgh@demo.scn | Nguyễn Văn Hải - Hiệu trưởng ND - `bgh`+`gvbm` | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
-| Phó Hiệu trưởng cơ sở (PHT) | pht@demo.scn | Lê Minh Đức - PHT phụ trách Cơ sở 2 (ND) - `pht`+`gvbm` | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
-| Kế toán | ketoan@demo.scn | Phạm Thu Trang - kế toán ND | Nhân sự, đánh giá cơ sở vật chất TT15 |
-| Sở GD&ĐT | sogd@demo.scn | Vũ Quản Trị Sở | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
-| UBND cấp xã | ubnd@demo.scn | Ngô Văn Lãnh Đạo | Dashboard địa bàn (read-only) |
-| Phụ huynh | phuhuynh@demo.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo, 8A2 (ND) | Con mình: thông báo, tin nhắn, lịch hẹn, đăng ký hoạt động |
-| Học sinh | hocsinh@demo.scn | Nguyễn Gia Bảo - HS lớp 8A2 (ND) | Bản thân: thời khóa biểu, điểm, hạnh kiểm, thông báo |
+| Giáo viên chủ nhiệm (GVCN) | anhptl@nd.scn | Phạm Thị Lan Anh - GVCN 8A2, dạy Toán, Tổ trưởng Toán-TN (ND) - `gvcn`+`gvbm`+`to_truong` | Lớp mình chủ nhiệm; lịch dạy cá nhân; duyệt giáo án tổ mình |
+| Giáo viên bộ môn (GVBM) | minhtv@nd.scn | Trần Văn Minh - GV Vật lý, Tổ Toán-TN (ND) - đơn vai trò | Điểm các lớp mình dạy; lịch cá nhân; giáo án |
+| Tổ trưởng chuyên môn | hanhlth@nd.scn | Lê Thị Hồng Hạnh - TT Tổ Toán-TN (ND) - `to_truong`+`gvbm` | Giáo viên trong tổ, duyệt giáo án/đánh giá năng lực |
+| Ban Giám Hiệu (BGH) | hainv@nd.scn | Nguyễn Văn Hải - Hiệu trưởng ND - `bgh`+`gvbm` | Toàn trường: phê duyệt, TKB, kỳ thi, radar cảnh báo, AI điều hành |
+| Phó Hiệu trưởng cơ sở (PHT) | duclm@nd.scn | Lê Minh Đức - PHT phụ trách Cơ sở 2 (ND) - `pht`+`gvbm` | Như BGH nhưng chỉ các lớp thuộc campus mình phụ trách |
+| Kế toán | trangpt@nd.scn | Phạm Thu Trang - kế toán ND | Nhân sự, đánh giá cơ sở vật chất TT15 |
+| Sở GD&ĐT | sovqt@demo.scn | Vũ Quản Trị Sở | Tổng hợp nhiều trường, quản trị người dùng, toàn vẹn dữ liệu |
+| UBND cấp xã | daonvl@demo.scn | Ngô Văn Lãnh Đạo | Dashboard địa bàn (read-only) |
+| Phụ huynh | annv@nd.scn | Nguyễn Văn An - bố em Nguyễn Gia Bảo, 8A2 (ND) | Con mình: thông báo, tin nhắn, lịch hẹn, đăng ký hoạt động |
+| Học sinh | baong@nd.scn | Nguyễn Gia Bảo - HS lớp 8A2 (ND) | Bản thân: thời khóa biểu, điểm, hạnh kiểm, thông báo |
 
 Tài khoản theo trường khác (demo từng trường độc lập):
 
 | Trường | Tài khoản |
 |---|---|
-| TH Chu Văn An | bgh.cva@demo.scn (HT Trần Thị Mai Phương), gvcn.cva@demo.scn (GVCN Đỗ Thị Kim Oanh), totruong.cva@demo.scn (TT Trương Thị Bích Liên), ketoan.cva@demo.scn |
-| TH Kim Đồng | bgh.kd@demo.scn (HT Hoàng Đức Long), gvcn.kd@demo.scn (GVCN Lý Thị Thanh Nga), ketoan.kd@demo.scn |
+| TH Chu Văn An | phuongttm@cva.scn (HT Trần Thị Mai Phương), oanhdtk@cva.scn (GVCN Đỗ Thị Kim Oanh), lienttb@cva.scn (TT Trương Thị Bích Liên), havt@cva.scn |
+| TH Kim Đồng | longhd@kd.scn (HT Hoàng Đức Long), ngaltt@kd.scn (GVCN Lý Thị Thanh Nga), anhdn@kd.scn |
 | Quản trị | admin@demo.scn |
 
 Mật khẩu demo chung: `demo1234`. Mỗi trường còn có đội ngũ GV đầy đủ (email dạng `ten.vt@<truong>.scn`, cùng mật khẩu) để test luồng nhiều người dùng.

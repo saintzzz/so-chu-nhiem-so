@@ -5,6 +5,10 @@
  *   node scripts/bootstrap-school.mjs --file khoi-tao-truong.xlsx --school <ma|id> --apply
  *   node scripts/bootstrap-school.mjs --cleanup --school <ma|id>
  *
+ * Cot email cua can_bo co the trong -> tu sinh <ten><viet-tat-ho-dem>@<domain>
+ * (VD "Le Duy Linh" -> linhld@..., trung thi linhld1, linhld2...).
+ * Domain mac dinh: domain email nhieu nhat hien co cua truong, nhan --domain de ep.
+ *
  * Mac dinh DRY-RUN: chi validate + bao loi, khong ghi gi. --apply moi ghi.
  * --cleanup xoa truong kiem thu cung toan bo du lieu + tai khoan auth.
  *
@@ -16,6 +20,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import ExcelJS from "exceljs";
+import { suggestUsername } from "../src/lib/username.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(
@@ -37,6 +42,7 @@ const APPLY = args.includes("--apply");
 const CLEANUP = args.includes("--cleanup");
 const FILE = argOf("--file");
 const SCHOOL = argOf("--school");
+const DOMAIN_ARG = argOf("--domain");
 
 const STAFF_ROLES = new Set(["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan"]);
 const CONCURRENT_OK = new Set(["gvcn", "gvbm", "to_truong", "bgh", "pht"]);
@@ -257,6 +263,21 @@ async function bootstrap() {
   const stuByCode = new Map((exStu ?? []).map((s) => [s.code, s.id]));
   const profByEmail = new Map((exProf ?? []).map((p) => [p.email, p.id]));
 
+  // CR-040: domain cho email tu sinh - --domain > domain nhieu nhat hien co > <code>.scn
+  const exDomains = new Map();
+  for (const p of exProf ?? []) {
+    const d = (p.email ?? "").split("@")[1];
+    if (d) exDomains.set(d, (exDomains.get(d) ?? 0) + 1);
+  }
+  const mailDomain =
+    normLow(DOMAIN_ARG) ||
+    [...exDomains.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ||
+    `${normLow(school.code).replace(/[^a-z0-9]/g, "") || "truong"}.scn`;
+
+  // tap email da chiem: profiles hien co + moi email khai bao san trong file
+  const assignedEmails = new Set(profByEmail.keys());
+  for (const r of canBo) if (normLow(r["email"])) assignedEmails.add(normLow(r["email"]));
+
   /* ---- VALIDATE ---- */
   const V = (sheetName, line, msg) => errors.push(`${sheetName} dong ${line}: ${msg}`);
 
@@ -271,6 +292,12 @@ async function bootstrap() {
   }
   const staffEmails = new Set();
   for (const r of canBo) {
+    if (!normLow(r["email"]) && norm(r["ho_ten"])) {
+      // CR-040: tu sinh email theo ten that, hau to so khi trung
+      r["email"] = `${suggestUsername(r["ho_ten"], assignedEmails)}@${mailDomain}`;
+      assignedEmails.add(r["email"]);
+      warns.push(`can_bo ${r["ho_ten"]}: tu sinh email ${r["email"]}`);
+    }
     const e = normLow(r["email"]);
     if (!r["ho_ten"]) V("can_bo", r.__line, "thieu ho_ten");
     if (!EMAIL_RE.test(e)) V("can_bo", r.__line, `email '${r["email"]}' khong hop le`);

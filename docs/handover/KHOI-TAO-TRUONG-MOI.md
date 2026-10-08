@@ -154,10 +154,17 @@ Quy tắc khớp: **email** là khóa của cán bộ/GVCN/GV/PH có tài khoả
 **tên môn** phải trùng bộ môn hệ thống tạo sẵn theo cấp học;
 **tên cơ sở/tổ/lớp** khớp đúng tên đã khai ở sheet tương ứng.
 
+Cột `email` của `can_bo` **có thể để trống** — script tự sinh theo quy ước
+`<tên><viết tắt họ đệm>@<domain>` (vd `Lê Duy Linh` → `linhld@...`, trùng
+thì `linhld1`...). Domain mặc định = domain đang dùng nhiều nhất trong
+tài khoản của trường; ép tay bằng `--domain <domain>`. Các cột tham chiếu
+(`gvcn_email`, `truong_to_email`, `giao_vien_email`) điền đúng email đã
+khai hoặc email tự sinh đó.
+
 ### B2. Chạy kiểm tra (không ghi gì)
 
 ```bash
-node scripts/bootstrap-school.mjs --file khoi-tao-truong.xlsx --school THCS-NGUYEN-DU
+node scripts/bootstrap-school.mjs --file khoi-tao-truong.xlsx --school THCS-ND
 ```
 
 `--school` nhận **mã trường** hoặc **uuid** (trường phải được tạo sẵn ở Bước 0).
@@ -168,7 +175,9 @@ in ra `DRY-RUN OK`.
 ### B3. Ghi vào hệ thống
 
 ```bash
-node scripts/bootstrap-school.mjs --file khoi-tao-truong.xlsx --school THCS-NGUYEN-DU --apply
+node scripts/bootstrap-school.mjs --file khoi-tao-truong.xlsx --school THCS-ND --apply
+# ep domain email tu sinh (truong chua co tai khoan nao):
+#   ... --apply --domain truongabc.edu.vn
 ```
 
 Script tự làm theo thứ tự: cơ sở → tổ (+gán môn) → cán bộ (tạo tài khoản

@@ -23,7 +23,7 @@ try {
   ok("GV row in users table", t.includes(`gv.demo${suffix}@demo.scn`));
 
   await ctx.clearCookies();
-  await login("gvcn@demo.scn", "demo1234");
+  await login("anhptl@nd.scn", "demo1234");
   await page.goto(`${BASE}/register/roster`, { waitUntil: "networkidle" });
   const t2 = await page.textContent("body");
   ok("gvcn /register/roster render", /học sinh|danh sách|phụ huynh/i.test(t2));

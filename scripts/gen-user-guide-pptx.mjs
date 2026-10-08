@@ -116,19 +116,19 @@ function note(s, txt, y = 6.85) {
   slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập https://sochunhiem.vieschool.com/login - mật khẩu chung: demo1234");
   table(s, [
     ["Tài khoản", "Nhân sự", "Vai trò", "Dùng để test"],
-    ["bgh@demo.scn", "Nguyễn Văn Hải - HT Nguyễn Du", "bgh + gvbm", "Quản trị trường, duyệt cuối, Studio"],
-    ["pht@demo.scn", "Lê Minh Đức - PHT cơ sở 2", "pht + gvbm", "Chỉ thấy lớp Cơ sở 2, kiêm dạy"],
-    ["totruong@demo.scn", "Lê Thị Hồng Hạnh - Tổ Toán-TN", "to_truong + gvbm", "Duyệt lớp tổ, giảng dạy"],
-    ["gvcn@demo.scn", "Phạm Thị Lan Anh - GVCN 8A2", "gvcn + gvbm + to_truong", "3 vai trò - điểm nhấn kiêm nhiệm"],
-    ["gvbm@demo.scn", "Trần Văn Minh - GV Vật lý", "gvbm", "Đơn vai trò - chứng minh quyền giữ nguyên"],
-    ["ketoan@demo.scn", "Phạm Thu Trang", "ke_toan", "Nhân sự, thu chi"],
-    ["phuhuynh@demo.scn", "Nguyễn Văn An", "phu_huynh", "Portal PH - chỉ thấy con (Bảo 8A2)"],
-    ["hocsinh@demo.scn", "Nguyễn Gia Bảo - lớp 8A2", "hoc_sinh", "Portal HS - TKB, điểm, học bạ"],
-    ["sogd@demo.scn", "Vũ Quản Trị Sở", "so_gd", "Tạo trường, dashboard 3 trường"],
-    ["ubnd@demo.scn", "Ngô Văn Lãnh Đạo", "ubnd", "Dashboard địa bàn - chỉ đọc"],
+    ["hainv@nd.scn", "Nguyễn Văn Hải - HT Nguyễn Du", "bgh + gvbm", "Quản trị trường, duyệt cuối, Studio"],
+    ["duclm@nd.scn", "Lê Minh Đức - PHT cơ sở 2", "pht + gvbm", "Chỉ thấy lớp Cơ sở 2, kiêm dạy"],
+    ["hanhlth@nd.scn", "Lê Thị Hồng Hạnh - Tổ Toán-TN", "to_truong + gvbm", "Duyệt lớp tổ, giảng dạy"],
+    ["anhptl@nd.scn", "Phạm Thị Lan Anh - GVCN 8A2", "gvcn + gvbm + to_truong", "3 vai trò - điểm nhấn kiêm nhiệm"],
+    ["minhtv@nd.scn", "Trần Văn Minh - GV Vật lý", "gvbm", "Đơn vai trò - chứng minh quyền giữ nguyên"],
+    ["trangpt@nd.scn", "Phạm Thu Trang", "ke_toan", "Nhân sự, thu chi"],
+    ["annv@nd.scn", "Nguyễn Văn An", "phu_huynh", "Portal PH - chỉ thấy con (Bảo 8A2)"],
+    ["baong@nd.scn", "Nguyễn Gia Bảo - lớp 8A2", "hoc_sinh", "Portal HS - TKB, điểm, học bạ"],
+    ["sovqt@demo.scn", "Vũ Quản Trị Sở", "so_gd", "Tạo trường, dashboard 3 trường"],
+    ["daonvl@demo.scn", "Ngô Văn Lãnh Đạo", "ubnd", "Dashboard địa bàn - chỉ đọc"],
     ["admin@demo.scn", "Quản trị hệ thống", "admin", "Toàn hệ thống"],
   ], { rowH: 0.34 });
-  note(s, "Trường khác: bgh.cva / gvcn.cva / totruong.cva / ketoan.cva và bgh.kd / gvcn.kd / ketoan.kd @demo.scn. GV còn lại: ten.vt@{nd|cva|kd}.scn.", 7.0);
+  note(s, "Trường khác: phuongttm / oanhdtk / lienttb / havt @cva.scn và longhd / ngaltt / anhdn @kd.scn. GV còn lại: tenvt@{nd|cva|kd}.scn (ten + viet tat ho dem).", 7.0);
 }
 
 // ---------- S5 Multi-role ----------
@@ -171,7 +171,7 @@ function note(s, txt, y = 6.85) {
 // ---------- S7 Workflow GVCN ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "WORKFLOW 1", "Giáo viên chủ nhiệm - ngày làm việc điển hình (gvcn@demo.scn)");
+  slideTitle(s, "WORKFLOW 1", "Giáo viên chủ nhiệm - ngày làm việc điển hình (anhptl@nd.scn)");
   bullets(s, [
     { t: "Topbar hiện 'Giáo viên chủ nhiệm · Giáo viên bộ môn · Tổ trưởng chuyên môn' - menu gộp đủ 3 vai trò" },
     { t: "Sáng: Điểm danh (/attendance/daily) - chọn lớp 8A2, tích vắng, lưu" },
@@ -318,7 +318,7 @@ function note(s, txt, y = 6.85) {
   const s = p.addSlide();
   slideTitle(s, "CHECKLIST TEST", "Các kịch bản ưu tiên rà soát");
   bullets(s, [
-    { t: "KIÊM NHIỆM: gvcn@demo.scn thấy 3 nhãn vai trò + menu gộp + vào /team/* được; gvbm@demo.scn vào /team/* bị chặn", b: 1 },
+    { t: "KIÊM NHIỆM: anhptl@nd.scn thấy 3 nhãn vai trò + menu gộp + vào /team/* được; minhtv@nd.scn vào /team/* bị chặn", b: 1 },
     { t: "NỘI DUNG: KHBĐ đúng khung CV 5512 (5 phần a-đ); đề đúng ma trận, thang điểm, đáp án; YCCĐ gán khớp", b: 1 },
     { t: "WORKFLOW: đóng góp → duyệt tổ → duyệt BGH → notification đúng người", b: 1 },
     { t: "PHÂN QUYỀN: PHT chỉ thấy Cơ sở 2; PH chỉ thấy con mình; UBND chỉ đọc; trường A không thấy trường B", b: 1 },

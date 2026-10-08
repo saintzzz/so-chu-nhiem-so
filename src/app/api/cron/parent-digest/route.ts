@@ -111,7 +111,7 @@ async function run(req: NextRequest) {
       .from("parents")
       .select("id, full_name, email")
       .not("email", "is", null)
-      .not("email", "ilike", "%@demo.scn")
+      .not("email", "ilike", "%.scn")
       .gt("id", lastParentId || "00000000-0000-0000-0000-000000000000")
       .order("id")
       .limit(CHUNK);

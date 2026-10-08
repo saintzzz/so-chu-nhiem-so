@@ -313,23 +313,23 @@ const SCHOOLS = [
 
 const DEMO = {
   nd: {
-    gvcn: { email: "gvcn@demo.scn", name: "Phạm Thị Lan Anh" },
-    gvbm: { email: "gvbm@demo.scn", name: "Trần Văn Minh", subject: "Vật lý" },
-    tt: { email: "totruong@demo.scn", name: "Lê Thị Hồng Hạnh" },
-    bgh: { email: "bgh@demo.scn", name: "Nguyễn Văn Hải" },
-    pht: { email: "pht@demo.scn", name: "Lê Minh Đức" },
-    kt: { email: "ketoan@demo.scn", name: "Phạm Thu Trang" },
+    gvcn: { email: "anhptl@nd.scn", name: "Phạm Thị Lan Anh" },
+    gvbm: { email: "minhtv@nd.scn", name: "Trần Văn Minh", subject: "Vật lý" },
+    tt: { email: "hanhlth@nd.scn", name: "Lê Thị Hồng Hạnh" },
+    bgh: { email: "hainv@nd.scn", name: "Nguyễn Văn Hải" },
+    pht: { email: "duclm@nd.scn", name: "Lê Minh Đức" },
+    kt: { email: "trangpt@nd.scn", name: "Phạm Thu Trang" },
   },
   cva: {
-    gvcn: { email: "gvcn.cva@demo.scn", name: "Đỗ Thị Kim Oanh" },
-    tt: { email: "totruong.cva@demo.scn", name: "Trương Thị Bích Liên" },
-    bgh: { email: "bgh.cva@demo.scn", name: "Trần Thị Mai Phương" },
-    kt: { email: "ketoan.cva@demo.scn", name: "Vũ Thanh Hà" },
+    gvcn: { email: "oanhdtk@cva.scn", name: "Đỗ Thị Kim Oanh" },
+    tt: { email: "lienttb@cva.scn", name: "Trương Thị Bích Liên" },
+    bgh: { email: "phuongttm@cva.scn", name: "Trần Thị Mai Phương" },
+    kt: { email: "havt@cva.scn", name: "Vũ Thanh Hà" },
   },
   kd: {
-    gvcn: { email: "gvcn.kd@demo.scn", name: "Lý Thị Thanh Nga" },
-    bgh: { email: "bgh.kd@demo.scn", name: "Hoàng Đức Long" },
-    kt: { email: "ketoan.kd@demo.scn", name: "Đinh Ngọc Ánh" },
+    gvcn: { email: "ngaltt@kd.scn", name: "Lý Thị Thanh Nga" },
+    bgh: { email: "longhd@kd.scn", name: "Hoàng Đức Long" },
+    kt: { email: "anhdn@kd.scn", name: "Đinh Ngọc Ánh" },
   },
 };
 
@@ -338,7 +338,7 @@ function teacherEmail(name, tag) {
   const parts = name.split(" ");
   const ten = slug(parts[parts.length - 1]);
   const init = parts.slice(0, -1).map((w) => slug(w)[0]).join("");
-  return `${ten}.${init}@${tag}.scn`;
+  return `${ten}${init}@${tag}.scn`;
 }
 
 async function seedSchool(cfg, demo) {
@@ -438,7 +438,7 @@ async function seedSchool(cfg, demo) {
           name = demo.gvbm.name; email = demo.gvbm.email;
         } else { name = vnName(chance(0.55) ? "nu" : "nam"); email = teacherEmail(name, tag); }
         const uid = await ensureUser(email, mkMeta(role, { full_name: name, department_id: deptIds[deptIdx].id, campus_id: mainCampus, concurrent_roles: role === "gvcn" ? ["gvbm"] : [] }));
-        if (email.endsWith("@demo.scn")) demoMail[email] = uid;
+        if (email === demo.gvcn?.email || email === demo.gvbm?.email) demoMail[email] = uid;
         teachers.push({ uid, role, deptIdx, subjects: [sName], campus: mainCampus });
       }
     }
@@ -920,8 +920,8 @@ async function main() {
 
   // system users
   const sysUsers = [
-    ["sogd@demo.scn", "so_gd", "Vũ Quản Trị Sở", ouSo?.id],
-    ["ubnd@demo.scn", "ubnd", "Ngô Văn Lãnh Đạo", ouUbnd?.id],
+    ["sovqt@demo.scn", "so_gd", "Vũ Quản Trị Sở", ouSo?.id],
+    ["daonvl@demo.scn", "ubnd", "Ngô Văn Lãnh Đạo", ouUbnd?.id],
     ["admin@demo.scn", "admin", "Quản trị hệ thống", null],
   ];
   for (const [email, role, name, ou] of sysUsers)
@@ -930,11 +930,11 @@ async function main() {
   // PH + HS demo (ND, lop 8A2)
   const nd = results.nd;
   const demoStudent = nd.students.find((s) => s.class_id === nd.classByName["8A2"].id);
-  const phUid = await ensureUser("phuhuynh@demo.scn", { role: "phu_huynh", full_name: "Nguyễn Văn An", school_id: S.nd });
-  const hsUid = await ensureUser("hocsinh@demo.scn", { role: "hoc_sinh", full_name: "Nguyễn Gia Bảo", school_id: S.nd });
+  const phUid = await ensureUser("annv@nd.scn", { role: "phu_huynh", full_name: "Nguyễn Văn An", school_id: S.nd });
+  const hsUid = await ensureUser("baong@nd.scn", { role: "hoc_sinh", full_name: "Nguyễn Gia Bảo", school_id: S.nd });
   const { data: dp } = await sb.from("parents").insert({
     profile_id: phUid, full_name: "Nguyễn Văn An", phone: "0901234567",
-    email: "phuhuynh@demo.scn", relationship: "bố",
+    email: "annv@nd.scn", relationship: "bố",
   }).select().single();
   await sb.from("parent_students").insert({ parent_id: dp.id, student_id: demoStudent.id });
   await sb.from("students").update({ full_name: "Nguyễn Gia Bảo", profile_id: hsUid }).eq("id", demoStudent.id);

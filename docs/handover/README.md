@@ -25,12 +25,15 @@ Thư mục này là **bản đóng gói** của `docs/user-guide/` + template + 
 
 | Tài khoản | Vai trò | Ghi chú |
 |---|---|---|
-| bgh@demo.scn | Hiệu trưởng + kiêm GVBM | Toàn quyền trường THCS Nguyễn Du |
-| pht@demo.scn | PHT cơ sở 2 + kiêm GVBM | Chỉ thấy lớp Cơ sở 2 |
-| totruong@demo.scn | Tổ trưởng Toán-TN + kiêm GVBM | Duyệt giáo án/câu hỏi lớp tổ |
-| gvcn@demo.scn | GVCN 8A2 + kiêm GVBM + tổ trưởng | Demo multi-role 3 vai trò |
-| gvbm@demo.scn | GVBM đơn vai trò | Chứng minh quyền giữ nguyên |
-| ketoan / phuhuynh / hocsinh / sogd / ubnd / admin @demo.scn | Theo tên | Chi tiết trong KICH-BAN-DEMO.md |
+| hainv@nd.scn | Hiệu trưởng + kiêm GVBM | Toàn quyền trường THCS Nguyễn Du |
+| duclm@nd.scn | PHT cơ sở 2 + kiêm GVBM | Chỉ thấy lớp Cơ sở 2 |
+| hanhlth@nd.scn | Tổ trưởng Toán-TN + kiêm GVBM | Duyệt giáo án/câu hỏi lớp tổ |
+| anhptl@nd.scn | GVCN 8A2 + kiêm GVBM + tổ trưởng | Demo multi-role 3 vai trò |
+| minhtv@nd.scn | GVBM đơn vai trò | Chứng minh quyền giữ nguyên |
+| trangpt@nd.scn | Kế toán | Nhân sự, thu chi |
+| annv@nd.scn / baong@nd.scn | Phụ huynh / Học sinh | Cổng PH-HS |
+| sovqt@demo.scn / daonvl@demo.scn | Sở GD / UBND | Cấp trên, UBND chỉ đọc |
+| admin@demo.scn | Quản trị hệ thống | Toàn hệ thống |
 
 ## Vận hành (cho đội triển khai)
 

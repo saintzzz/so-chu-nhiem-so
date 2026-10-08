@@ -231,7 +231,7 @@ def build_pptx():
     add_text(t.text_frame, "SỔ CHỦ NHIỆM SỐ", size=44, bold=True, color=PRGB(0xFF, 0xFF, 0xFF))
     add_text(t.text_frame, "Nền tảng số hóa công tác chủ nhiệm & quản lý trường học", size=20, color=PRGB(0xDB, 0xEA, 0xFE))
     m = txbox(s, Inches(1), Inches(5.6), SW - Inches(2), Inches(1))
-    add_text(m.text_frame, "https://sochunhiem.vieschool.com - Demo: *@demo.scn, mật khẩu demo1234", size=14, color=PRGB(0xBF, 0xDB, 0xFE))
+    add_text(m.text_frame, "https://sochunhiem.vieschool.com - Demo: anhptl@nd.scn..., mật khẩu demo1234", size=14, color=PRGB(0xBF, 0xDB, 0xFE))
 
     content_slide(prs, "Tổng quan hệ thống", [
         "Số hóa toàn bộ sổ chủ nhiệm giấy: điểm danh, sổ đầu bài, sổ điểm, rèn luyện, tư vấn, liên lạc phụ huynh, hoạt động giáo dục, an toàn, thi đua, báo cáo",
@@ -363,7 +363,7 @@ def build_pptx():
     t = txbox(s, Inches(1), Inches(2.6), SW - Inches(2), Inches(2.5))
     add_text(t.text_frame, "Bắt đầu sử dụng", size=36, bold=True, color=PRGB(0xFF, 0xFF, 0xFF))
     add_text(t.text_frame, "https://sochunhiem.vieschool.com", size=20, color=PRGB(0x93, 0xC5, 0xFD))
-    add_text(t.text_frame, "Tài khoản demo: bgh / pht / totruong / gvcn / gvbm / ketoan / phuhuynh / hocsinh / sogd / ubnd / admin @demo.scn - mật khẩu: demo1234", size=16, color=PRGB(0xD1, 0xD5, 0xDB))
+    add_text(t.text_frame, "Tài khoản demo theo tên thật: hainv / duclm / hanhlth / anhptl / minhtv / trangpt / annv / baong @nd.scn; sovqt / daonvl / admin @demo.scn - mật khẩu: demo1234", size=16, color=PRGB(0xD1, 0xD5, 0xDB))
     add_text(t.text_frame, "Tài liệu đầy đủ: docs/user-guide/SO-CHU-NHIEM-SO-TAI-LIEU.docx", size=14, color=PRGB(0x9C, 0xA3, 0xAF))
 
     out = UG / "SO-CHU-NHIEM-SO-GIOI-THIEU.pptx"

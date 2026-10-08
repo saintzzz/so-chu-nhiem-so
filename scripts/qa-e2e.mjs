@@ -19,16 +19,16 @@ function check(name, ok, detail = "") {
 }
 
 const ROLES = {
-  gvcn: "gvcn@demo.scn",
-  gvbm: "gvbm@demo.scn",
-  totruong: "totruong@demo.scn",
-  bgh: "bgh@demo.scn",
-  pht: "pht@demo.scn",
-  ketoan: "ketoan@demo.scn",
-  phuhuynh: "phuhuynh@demo.scn",
-  hocsinh: "hocsinh@demo.scn",
-  sogd: "sogd@demo.scn",
-  ubnd: "ubnd@demo.scn",
+  gvcn: "anhptl@nd.scn",
+  gvbm: "minhtv@nd.scn",
+  totruong: "hanhlth@nd.scn",
+  bgh: "hainv@nd.scn",
+  pht: "duclm@nd.scn",
+  ketoan: "trangpt@nd.scn",
+  phuhuynh: "annv@nd.scn",
+  hocsinh: "baong@nd.scn",
+  sogd: "sovqt@demo.scn",
+  ubnd: "daonvl@demo.scn",
 };
 
 const browser = await chromium.launch();

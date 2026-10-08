@@ -11,11 +11,11 @@
 const RESEND_URL = "https://api.resend.com/emails";
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 
-// Demo/seeded parent accounts use @demo.scn addresses that cannot receive
-// mail. Sending to them burns the daily quota and produces bounce
-// events that hurt sender reputation - block them centrally for every
-// caller (digest cron, announcements).
-const DEMO_EMAIL_RE = /@demo\.scn$/i;
+// Demo/seeded addresses use the fake .scn TLD (@demo.scn, @mail.scn,
+// @nd.scn...) that cannot receive mail. Sending to them burns the daily
+// quota and produces bounce events that hurt sender reputation - block
+// them centrally for every caller (digest cron, announcements).
+const DEMO_EMAIL_RE = /\.scn$/i;
 
 export interface EmailResult {
   sent: number;

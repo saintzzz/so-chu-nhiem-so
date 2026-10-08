@@ -3,7 +3,7 @@
  * qua validate pipeline giong app truoc khi insert DB.
  *
  * Su dung:
- *   node scripts/gen-tvc-content.mjs --mode=questions [--subject=toan] [--grade=4] [--per-std=2] [--owner=gvcn@demo.scn] [--dry]
+ *   node scripts/gen-tvc-content.mjs --mode=questions [--subject=toan] [--grade=4] [--per-std=2] [--owner=anhptl@nd.scn] [--dry]
  *   node scripts/gen-tvc-content.mjs --mode=yccd --subject=tieng_anh --grade=5 --count=6 [--dry]
  *
  * Provider: doc env giong src/lib/ai.ts (GEMINI_API_KEY > OPENAI_API_KEY > ANTHROPIC_API_KEY,
@@ -37,7 +37,7 @@ const GRADE = arg("grade", null) ? Number(arg("grade")) : null;
 const PER_STD = Number(arg("per-std", 2));
 const COUNT = Number(arg("count", 5));
 const DRY = process.argv.includes("--dry");
-const OWNER = arg("owner", "gvcn@demo.scn");
+const OWNER = arg("owner", "anhptl@nd.scn");
 // --from-file=path.json: harness qua ChatGPT/Claude web (khong can API key) -
 // LLM web tra JSON co "std_code" -> script validate + insert.
 const FROM_FILE = arg("from-file", null);

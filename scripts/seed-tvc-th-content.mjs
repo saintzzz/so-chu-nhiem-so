@@ -3,7 +3,7 @@
  * + ngan hang cau hoi mau khop tung YCCĐ cho giao vien demo.
  * - YCCĐ: xoa bo khung AI-pharaphrase cu (school_id IS NULL, cap TH),
  *   ghi lai theo van ban chuong trinh (dien giai tai cho nguoi doc gan).
- * - Cau hoi: seed cho owner = tai khoan gvcn@demo.scn (demo/training).
+ * - Cau hoi: seed cho owner = tai khoan anhptl@nd.scn (demo/training).
  *   Nguon ngu lieu do he thong tu viet - KHONG sao chep SGK (ban quyen).
  * Usage: node scripts/seed-tvc-th-content.mjs
  */
@@ -295,9 +295,9 @@ const main = async () => {
   const { data: owner } = await supabase
     .from("tvc_profiles")
     .select("id")
-    .eq("email", "gvcn@demo.scn")
+    .eq("email", "anhptl@nd.scn")
     .single();
-  if (!owner) throw new Error("Khong tim thay tvc_profiles gvcn@demo.scn");
+  if (!owner) throw new Error("Khong tim thay tvc_profiles anhptl@nd.scn");
   await supabase
     .from("tvc_questions")
     .delete()

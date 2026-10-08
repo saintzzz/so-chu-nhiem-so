@@ -69,6 +69,8 @@ function sheet(name, headers, widths, rows, notes) {
     "  - mon_phu_trach / mon_day phai TRUNG TEN voi bo mon da tao san cho truong",
     "    (bo mon tu dong theo cap hoc khi tao truong: xem trang /school/staff hoac phu luc guide).",
     "  - Email la khoa dinh danh: can_bo/gvcn/phu_huynh/giao_vien TKB deu tham chieu bang email.",
+    "  - can_bo.email de trong -> tu sinh <ten><viet-tat-ho-dem>@<domain> (Le Duy Linh -> linhld@...,",
+    "    trung thi linhld1...). Tham chieu cheo (gvcn_email...) dung email tu sinh do.",
     "  - mat_khau toi thieu 8 ky tu; de trong o phu_huynh = chi tao ho so, khong cap tai khoan.",
     "  - Chay lai file 2 lan an toan: ban ghi da co se duoc cap nhat/bo qua, khong nhan doi.",
     "  - XOA DONG VI DU (cac dong mau mau xam) truoc khi chay that.",
@@ -98,9 +100,9 @@ sheet(
   ["ten (*)", "mon_phu_trach", "truong_to_email"],
   [26, 50, 26],
   [
-    ["Tổ Toán - Tự nhiên", "Toán, Vật lý, Hóa học, Sinh học, Tin học, Công nghệ", "lananh.pt@truong.vn"],
-    ["Tổ Văn - Xã hội", "Ngữ văn, Tiếng Anh, Lịch sử, Địa lý, GDCD", "hung.nv@truong.vn"],
-    ["Tổ Thể chất - Nghệ thuật", "Thể dục, Âm nhạc, Mỹ thuật", "binh.vt@truong.vn"],
+    ["Tổ Toán - Tự nhiên", "Toán, Vật lý, Hóa học, Sinh học, Tin học, Công nghệ", "anhptl@truong.vn"],
+    ["Tổ Văn - Xã hội", "Ngữ văn, Tiếng Anh, Lịch sử và Địa lý, Giáo dục công dân", "hungnv@truong.vn"],
+    ["Tổ Thể chất - Nghệ thuật", "Thể dục, Âm nhạc, Mỹ thuật", "binhvt@truong.vn"],
   ],
   "mon_phu_trach: ten mon ngan cach boi dau phay, phai trung ten bo mon cua truong (tao san theo cap hoc).",
 );
@@ -109,20 +111,20 @@ sheet(
 sheet(
   "can_bo",
   [
-    "ho_ten (*)", "email (*)", "mat_khau (*)", "vai_tro (*)", "vai_tro_kiem",
+    "ho_ten (*)", "email", "mat_khau (*)", "vai_tro (*)", "vai_tro_kiem",
     "ma_nv", "hop_dong", "trinh_do", "co_so", "to_chuyen_mon", "mon_day",
   ],
   [24, 26, 14, 10, 14, 10, 12, 22, 14, 20, 30],
   [
-    ["Nguyễn Văn Hải", "hai.nv@truong.vn", "MatKhau@2026", "bgh", "gvbm", "HT001", "bien_che", "Thạc sĩ QLGD", "Cơ sở chính", "", "Toán"],
-    ["Phạm Thị Lan Anh", "lananh.pt@truong.vn", "MatKhau@2026", "gvcn", "gvbm,to_truong", "GV012", "bien_che", "Cử nhân Sư phạm Toán", "Cơ sở chính", "Tổ Toán - Tự nhiên", "Toán"],
-    ["Trần Văn Minh", "minh.tv@truong.vn", "MatKhau@2026", "gvbm", "", "GV023", "hop_dong", "Cử nhân Vật lý", "Cơ sở chính", "Tổ Toán - Tự nhiên", "Vật lý"],
-    ["Lê Minh Đức", "duc.lm@truong.vn", "MatKhau@2026", "pht", "gvbm", "PHT01", "bien_che", "Cử nhân Sư phạm", "Cơ sở 2", "", "GDCD"],
-    ["Phạm Thu Trang", "trang.pt@truong.vn", "MatKhau@2026", "ke_toan", "", "KT001", "bien_che", "Cử nhân Kế toán", "Cơ sở chính", "", ""],
-    ["Nguyễn Văn Hùng", "hung.nv@truong.vn", "MatKhau@2026", "to_truong", "gvbm", "GV031", "bien_che", "Cử nhân Sư phạm Văn", "Cơ sở chính", "Tổ Văn - Xã hội", "Ngữ văn"],
-    ["Vũ Thị Bình", "binh.vt@truong.vn", "MatKhau@2026", "gvcn", "gvbm", "GV045", "bien_che", "Cử nhân Thể dục", "Cơ sở 2", "Tổ Thể chất - Nghệ thuật", "Thể dục"],
+    ["Nguyễn Văn Hải", "hainv@truong.vn", "MatKhau@2026", "bgh", "gvbm", "HT001", "bien_che", "Thạc sĩ QLGD", "Cơ sở chính", "", "Toán"],
+    ["Phạm Thị Lan Anh", "anhptl@truong.vn", "MatKhau@2026", "gvcn", "gvbm,to_truong", "GV012", "bien_che", "Cử nhân Sư phạm Toán", "Cơ sở chính", "Tổ Toán - Tự nhiên", "Toán"],
+    ["Trần Văn Minh", "minhtv@truong.vn", "MatKhau@2026", "gvbm", "", "GV023", "hop_dong", "Cử nhân Vật lý", "Cơ sở chính", "Tổ Toán - Tự nhiên", "Vật lý"],
+    ["Lê Minh Đức", "duclm@truong.vn", "MatKhau@2026", "pht", "gvbm", "PHT01", "bien_che", "Cử nhân Sư phạm", "Cơ sở 2", "", "Giáo dục công dân"],
+    ["Phạm Thu Trang", "trangpt@truong.vn", "MatKhau@2026", "ke_toan", "", "KT001", "bien_che", "Cử nhân Kế toán", "Cơ sở chính", "", ""],
+    ["Nguyễn Văn Hùng", "hungnv@truong.vn", "MatKhau@2026", "to_truong", "gvbm", "GV031", "bien_che", "Cử nhân Sư phạm Văn", "Cơ sở chính", "Tổ Văn - Xã hội", "Ngữ văn"],
+    ["Vũ Thị Bình", "", "MatKhau@2026", "gvcn", "gvbm", "GV045", "bien_che", "Cử nhân Thể dục", "Cơ sở 2", "Tổ Thể chất - Nghệ thuật", "Thể dục"],
   ],
-  "vai_tro_kiem: gvcn day kem -> gvbm; lam them to truong -> them to_truong. admin khong duoc kiem.",
+  "email de trong -> tu sinh kieu binhvt@<domain>. vai_tro_kiem: gvcn day kem -> gvbm; lam them to truong -> them to_truong. admin khong duoc kiem.",
 );
 
 /* ---------- lop ---------- */
@@ -131,9 +133,9 @@ sheet(
   ["ten (*)", "khoi (*)", "co_so", "gvcn_email"],
   [12, 10, 16, 26],
   [
-    ["6A1", 6, "Cơ sở chính", "lananh.pt@truong.vn"],
+    ["6A1", 6, "Cơ sở chính", "anhptl@truong.vn"],
     ["6A2", 6, "Cơ sở chính", ""],
-    ["7A1", 7, "Cơ sở 2", "binh.vt@truong.vn"],
+    ["7A1", 7, "Cơ sở 2", ""],
   ],
   "khoi: so khoi (6-9 cho THCS, 1-5 cho TH, 10-12 THPT). gvcn_email: email can bo chu nhiem.",
 );
@@ -171,10 +173,10 @@ sheet(
   ["lop (*)", "thu (*)", "tiet (*)", "mon (*)", "giao_vien_email", "phong"],
   [10, 8, 8, 16, 26, 12],
   [
-    ["6A1", 2, 1, "Toán", "lananh.pt@truong.vn", "P201"],
-    ["6A1", 2, 2, "Ngữ văn", "hung.nv@truong.vn", "P201"],
+    ["6A1", 2, 1, "Toán", "anhptl@truong.vn", "P201"],
+    ["6A1", 2, 2, "Ngữ văn", "hungnv@truong.vn", "P201"],
     ["6A1", 2, 3, "Tiếng Anh", "", "P201"],
-    ["7A1", 2, 1, "Thể dục", "binh.vt@truong.vn", "Sân vận động"],
+    ["7A1", 2, 1, "Thể dục", "", "Sân vận động"],
   ],
   "thu: 2-7. tiet: 1-10. mon trung ten bo mon cua truong. giao_vien_email de trong = tiet trong.",
 );

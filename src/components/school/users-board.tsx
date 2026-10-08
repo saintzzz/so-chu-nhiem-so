@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { DataTable } from "@/components/data-table";
 import {
   createStaffAccount,
@@ -12,6 +12,7 @@ import { UserGrantRow } from "./feature-permissions";
 import { compareVietnameseName } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/nav";
 import { CONCURRENT_ELIGIBLE } from "@/lib/roles";
+import { suggestUsername } from "@/lib/username";
 import type { Role } from "@/types";
 
 interface UserRow {
@@ -74,6 +75,7 @@ export function UsersBoard({
   const [openId, setOpenId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [msg, setMsg] = useState("");
+  const [emailTouched, setEmailTouched] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -98,6 +100,26 @@ export function UsersBoard({
   );
   const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
   const deptById = new Map(departments.map((d) => [d.id, d]));
+
+  // CR-040: domain chinh cua truong (nhieu nhat trong danh sach) + tap username da dung
+  const mailDomain = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const u of users) {
+      const d = (u.email ?? "").split("@")[1];
+      if (d) c.set(d, (c.get(d) ?? 0) + 1);
+    }
+    return [...c.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  }, [users]);
+  const takenEmails = useMemo(() => users.map((u) => u.email ?? ""), [users]);
+
+  function onNameChange(v: string) {
+    const next = { ...form, fullName: v };
+    if (!emailTouched) {
+      const un = suggestUsername(v, takenEmails);
+      next.email = mailDomain ? `${un}@${mailDomain}` : un;
+    }
+    setForm(next);
+  }
 
   function draftOf(u: UserRow) {
     return (
@@ -136,6 +158,7 @@ export function UsersBoard({
       });
       if (r.error) return setMsg(r.error);
       setMsg("Đã tạo tài khoản.");
+      setEmailTouched(false);
       setForm({ email: "", password: "", fullName: "", role: "gvcn", campusId: "", departmentId: "", staffCode: "", qualification: "", employmentType: "" });
     });
   }
@@ -186,12 +209,15 @@ export function UsersBoard({
             <label className="text-xs text-muted-foreground">
               Họ tên
               <input className={`${inputCls} mt-1 block`} value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+                onChange={(e) => onNameChange(e.target.value)} />
             </label>
             <label className="text-xs text-muted-foreground">
               Email
               <input className={`${inputCls} mt-1 block`} type="email" value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                onChange={(e) => { setEmailTouched(true); setForm({ ...form, email: e.target.value }); }} />
+              <span className="mt-0.5 block text-[10px] text-muted-foreground/70">
+                Tự đề xuất theo họ tên - có thể sửa
+              </span>
             </label>
             <label className="text-xs text-muted-foreground">
               Mật khẩu

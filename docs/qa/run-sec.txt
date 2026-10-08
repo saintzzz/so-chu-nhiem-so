@@ -48,15 +48,15 @@ PASS S19 tvc_generations co row moi (DC-01) - rows=5
 PASS S20 export docx material "KẾ HOẠCH BÀI DẠY - PHÉP CỘNG C" - status=200 bytes=9619
 PASS S21 ke_toan export material -> 4xx - status=404 (published=true)
 PASS S22 phu_huynh export material -> 4xx - status=404
-  perf gvcn@demo.scn /dashboard: cold=6173ms warm-ttfb=659ms warm-total=1158ms
-  perf gvcn@demo.scn /academics/grades: cold=506ms warm-ttfb=618ms warm-total=1129ms
-  perf gvcn@demo.scn /records/report: cold=602ms warm-ttfb=444ms warm-total=951ms
-  perf bgh@demo.scn /school/dashboard: cold=894ms warm-ttfb=978ms warm-total=1484ms
-  perf bgh@demo.scn /school/exam-analytics: cold=4721ms warm-ttfb=648ms warm-total=1158ms
-  perf bgh@demo.scn /school/radar: cold=1966ms warm-ttfb=1113ms warm-total=1624ms
-  perf phuhuynh@demo.scn /portal/parent: cold=820ms warm-ttfb=898ms warm-total=1408ms
-  perf hocsinh@demo.scn /portal/student: cold=3472ms warm-ttfb=1671ms warm-total=2169ms
-  perf sogd@demo.scn /dept/usage: cold=7285ms warm-ttfb=837ms warm-total=1348ms
+  perf anhptl@nd.scn /dashboard: cold=6173ms warm-ttfb=659ms warm-total=1158ms
+  perf anhptl@nd.scn /academics/grades: cold=506ms warm-ttfb=618ms warm-total=1129ms
+  perf anhptl@nd.scn /records/report: cold=602ms warm-ttfb=444ms warm-total=951ms
+  perf hainv@nd.scn /school/dashboard: cold=894ms warm-ttfb=978ms warm-total=1484ms
+  perf hainv@nd.scn /school/exam-analytics: cold=4721ms warm-ttfb=648ms warm-total=1158ms
+  perf hainv@nd.scn /school/radar: cold=1966ms warm-ttfb=1113ms warm-total=1624ms
+  perf annv@nd.scn /portal/parent: cold=820ms warm-ttfb=898ms warm-total=1408ms
+  perf baong@nd.scn /portal/student: cold=3472ms warm-ttfb=1671ms warm-total=2169ms
+  perf sovqt@demo.scn /dept/usage: cold=7285ms warm-ttfb=837ms warm-total=1348ms
 PASS P01 warm load < 8s (9 trang) - max=2169ms
 PASS P02 warm TTFB < 2s - ok
 PASS P03 cold start < 15s (lambda init) - max=7285ms

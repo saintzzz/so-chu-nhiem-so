@@ -16,7 +16,7 @@ Tài liệu liên quan trong cùng thư mục:
 
 Truy cập địa chỉ hệ thống → nhập **Tên đăng nhập** + **Mật khẩu** → **Đăng nhập**.
 
-Môi trường demo có sẵn danh sách vai trò trong ô "Đăng nhập với vai trò (demo)" - chọn vai trò để hệ thống tự điền tài khoản. Mật khẩu demo chung: `demo1234`.
+Môi trường demo: tài khoản theo quy ước tên thật `<tên><viết tắt họ đệm>@<domain trường>` (vd `anhptl@nd.scn` = cô Phạm Thị Lan Anh), mật khẩu chung `demo1234` - danh sách đầy đủ trong `KICH-BAN-DEMO.md`.
 
 Bộ dữ liệu demo gồm 3 trường có cơ cấu nhân sự sát thực tế: **THCS Nguyễn Du** (12 lớp, 2 cơ sở), **Tiểu học Chu Văn An** (15 lớp), **Tiểu học Kim Đồng** (10 lớp). Mỗi trường có đủ Hiệu trưởng/Phó HT, kế toán, tổ trưởng chuyên môn, GVCN từng lớp và GVBM phân về tổ + môn dạy. Danh sách tài khoản và kịch bản demo chi tiết: `KICH-BAN-DEMO.md`.
 

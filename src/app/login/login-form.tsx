@@ -45,7 +45,7 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-          placeholder="vd: gvcn@demo.scn"
+          placeholder="vd: anhptl@nd.scn"
           autoComplete="username"
           required
         />

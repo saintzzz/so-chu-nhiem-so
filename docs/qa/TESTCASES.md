@@ -317,9 +317,9 @@ lesson_plan 17, incident 6, message 5, substitute 3, daily_report 3, warning 1 -
 
 | Case | Kết quả |
 |---|---|
-| GVCN: chỉ thấy chip lớp chủ nhiệm | PASS - gvcn@demo.scn chỉ thấy "6A3(CN)", không thấy 8 lớp còn lại |
+| GVCN: chỉ thấy chip lớp chủ nhiệm | PASS - anhptl@nd.scn chỉ thấy "6A3(CN)", không thấy 8 lớp còn lại |
 | GVCN: mặc định view=class lớp CN | PASS - vào /schedule/timetable hiện "Lớp 6A3 - Tuần học" |
-| GVBM: mặc định view=me | PASS - gvbm@demo.scn hiện "Lịch dạy cá nhân" ngay khi vào |
+| GVBM: mặc định view=me | PASS - minhtv@nd.scn hiện "Lịch dạy cá nhân" ngay khi vào |
 | Switcher 2 chế độ | PASS - chips "Lịch cá nhân" / "Theo lớp", ?view=class tường minh được tôn trọng (fix sau khi phát hiện override) |
 | Ô tiết cá nhân: Lớp - Môn - Phòng | PASS - "6A1 · Toán / Phòng P.601" |
 | Tiết trùng slot: hiện tất cả, ring amber | PASS - GV dạy 8-9 lớp cùng slot giờ hiện đủ thay vì ghi đè (phát hiện data seed xung đột) |

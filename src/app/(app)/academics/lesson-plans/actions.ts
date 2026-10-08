@@ -42,7 +42,9 @@ export async function submitLessonPlan(input: {
   const filePath = input.filePath ?? null;
   if (
     filePath &&
-    (!filePath.startsWith(`${profile.school_id}/`) || filePath.includes(".."))
+    (!filePath.startsWith(`${profile.school_id}/`) ||
+      // Chan traversal theo segment - ten file "kehoach..final.pdf" hop le.
+      filePath.split("/").includes(".."))
   ) {
     return { error: "File đính kèm không hợp lệ." };
   }
@@ -116,7 +118,7 @@ export async function lessonPlanFileUrl(
   // ton tai - chan lay signed URL cho path truong khac.
   if (
     !filePath.startsWith(`${profile.school_id}/`) ||
-    filePath.includes("..")
+    filePath.split("/").includes("..")
   ) {
     return { error: "File không hợp lệ." };
   }

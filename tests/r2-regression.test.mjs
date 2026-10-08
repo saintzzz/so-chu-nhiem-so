@@ -2507,8 +2507,8 @@ test("CR-035: renderKhbdText dung bo cuc CV 5512 va bo qua section rong", () => 
 test("CR-035: submitLessonPlan validate filePath prefix + size caps", () => {
   const src = read("src/app/(app)/academics/lesson-plans/actions.ts");
   assert.match(src,
-    /filePath\.startsWith\(`\$\{profile\.school_id\}\/`\)[\s\S]*?includes\("\.\."\)/,
-    "filePath phai bat dau bang school_id/ va khong chua ..");
+    /filePath\.startsWith\(`\$\{profile\.school_id\}\/`\)[\s\S]*?split\("\/"\)\.includes\("\.\."\)/,
+    "filePath phai bat dau bang school_id/ va chan .. theo segment (ten file kehoach..x.pdf hop le)");
   assert.match(src, /JSON\.stringify\(structured\)\.length > 100_000/,
     "thieu gioi han kich thuoc content_json");
   assert.match(src, /input\.week < 1 \|\| input\.week > 45/,
@@ -2577,6 +2577,14 @@ test("CR-035/Codex: AI route validate sections bang parseKhbd", () => {
     "route phai parse sections qua parseKhbd - sections:{} khong duoc tin hop le");
   assert.match(src, /khbdHasContent\(k\)/,
     "route phai tu choi khbd rong - client se tu thanh cong voi plan trong");
+  // Fallback bat dong bo (devin-callback) bo qua parse cua route:
+  // expectedShape phai day du schema, va client phai validate lai.
+  const shape = src.match(/expectedShape:\s*'([^']+)'/);
+  assert.ok(shape?.[1].includes('"van_dung"') && shape?.[1].includes('"dieu_chinh"'),
+    "expectedShape phai la schema KHBD day du, khong phai ban tom tat");
+  const board = read("src/components/academics/lesson-plan-board.tsx");
+  assert.match(board, /khbdHasContent\(k\)/,
+    "onApply phai kiem khbdHasContent - async result chua qua route parse");
 });
 
 test("CR-035/Codex: team page pending khong cap + lich su cap 300", () => {

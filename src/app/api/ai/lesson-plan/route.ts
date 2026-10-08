@@ -71,7 +71,8 @@ Trả về CHỈ JSON đúng schema sau (moi gia tri la chuoi, khong markdown):
 }}
 
 Huong dan: to_chuc viet dang gach dau dong "GV ..." / "HS ..." theo tung buoc. Khong bia noi dung bai hoc ngoai ten bai - neu thieu du kien, viet khung goi y de GV dien.`,
-      expectedShape: '{"sections": {"muc_tieu_kien_thuc": "..."}}',
+      expectedShape:
+        '{"sections": {"muc_tieu_kien_thuc": "...", "muc_tieu_nang_luc": "...", "muc_tieu_pham_chat": "...", "thiet_bi_gv": "...", "thiet_bi_hs": "...", "khoi_dong": {"muc_tieu": "...", "to_chuc": "...", "san_pham": "...", "danh_gia": "..."}, "kham_pha": {"muc_tieu": "...", "to_chuc": "...", "san_pham": "...", "danh_gia": "..."}, "luyen_tap": {"muc_tieu": "...", "to_chuc": "...", "san_pham": "...", "danh_gia": "..."}, "van_dung": {"muc_tieu": "...", "to_chuc": "...", "san_pham": "...", "danh_gia": "..."}, "dieu_chinh": "..."}}',
       maxTokens: 3500,
       parse: (text) => {
         const o = parseJsonObject(text);

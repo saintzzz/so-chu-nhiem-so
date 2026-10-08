@@ -73,23 +73,25 @@ export default async function RecordsStudentsPage({
     );
   }
 
-  const [studentsRes, groupsRes, rolesRes] = await Promise.all([
+  // class_roles embed qua FK students.id - query unscoped se quet toan
+  // bang roi loc bang JS (sai + ton). Embed tu dong scope theo lop.
+  const [studentsRes, groupsRes] = await Promise.all([
     supabase
       .from("students")
-      .select("*")
+      .select("*, class_roles(role)")
       .eq("class_id", selected.id)
       .order("code"),
     supabase.from("student_groups").select("*").eq("class_id", selected.id),
-    supabase.from("class_roles").select("student_id,role"),
   ]);
   const students = (studentsRes.data ?? []) as Student[];
   const groups = (groupsRes.data ?? []) as StudentGroup[];
   const groupName = new Map(groups.map((g) => [g.id, g.name]));
   const studentIds = new Set(students.map((s) => s.id));
   const roleByStudent = new Map(
-    ((rolesRes.data ?? []) as { student_id: string; role: string }[])
-      .filter((r) => studentIds.has(r.student_id))
-      .map((r) => [r.student_id, r.role]),
+    students.flatMap((s) =>
+      ((s as unknown as { class_roles?: { role: string }[] }).class_roles ??
+        []).map((r) => [s.id, r.role] as [string, string]),
+    ),
   );
 
   const ids = [...studentIds];

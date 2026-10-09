@@ -133,12 +133,13 @@ export default async function GradesPage({
       ? sp.class
       : (classes[0]?.id ?? "");
 
-  // GVCN xem lop kiem day (khong phai CN): chi mon minh day lop do,
-  // tranh chon mon khong day -> RLS chan khi luu
-  if (hasRole(profile, "gvcn") && teaching && classId) {
-    const isHomeroom = (classData ?? []).some(
-      (c) => (c as ClassRow).id === classId,
-    );
+  // Chi mon duoc phan cong day trong lop dang chon - tranh chon cap
+  // (lop, mon) khong phan cong -> RLS chan khi luu.
+  // GVCN xem lop CN van duoc full mon (nhap diem CN moi mon).
+  if (teaching && classId) {
+    const isHomeroom =
+      hasRole(profile, "gvcn") &&
+      (classData ?? []).some((c) => (c as ClassRow).id === classId);
     if (!isHomeroom) {
       const taughtHere = new Set(
         teaching.filter((t) => t.class_id === classId).map((t) => t.subject_id),

@@ -37,9 +37,12 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
-  // Public API: devin-callback co callback_token rieng, cron routes co CRON_SECRET.
+  // Public API: devin-callback co callback_token rieng, cron routes co
+  // CRON_SECRET, webhooks co svix signature (RESEND_WEBHOOK_SECRET).
   const isPublicApi =
-    pathname === "/api/ai/devin-callback" || pathname.startsWith("/api/cron/");
+    pathname === "/api/ai/devin-callback" ||
+    pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/webhooks/");
 
   // redirect giu nguyen cookie da refresh (ke ca cookie xoa session)
   const redirectWithCookies = (url: URL) => {

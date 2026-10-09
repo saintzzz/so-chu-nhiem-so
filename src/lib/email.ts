@@ -24,6 +24,9 @@ export interface EmailResult {
   failed: number;
   skipped?: boolean;
   error?: string;
+  // Map dia chi -> provider message id (Resend `id`, Brevo `messageId`)
+  // de webhook doi chieu su kien delivered/bounced/complained.
+  ids?: Record<string, string>;
 }
 
 function parseFrom(raw: string): { name: string; email: string } {
@@ -100,6 +103,7 @@ export async function sendEmail(input: {
   const from = parseFrom(fromRaw);
   let sent = 0;
   let lastError: string | undefined;
+  const ids: Record<string, string> = {};
   // Send individually so one bad address doesn't block others.
   for (const addr of to) {
     try {
@@ -128,12 +132,25 @@ export async function sendEmail(input: {
               },
         ),
       });
-      if (res.ok) sent++;
-      else
+      if (res.ok) {
+        sent++;
+        try {
+          const body = (await res.json()) as { id?: string; messageId?: string };
+          const pid = body.id ?? body.messageId;
+          if (pid) ids[addr] = pid;
+        } catch {
+          // khong doc duoc body - van tinh la sent
+        }
+      } else
         lastError = `${provider} ${res.status}: ${(await res.text()).slice(0, 200)}`;
     } catch (e) {
       lastError = e instanceof Error ? e.message : String(e);
     }
   }
-  return { sent, failed: to.length - sent, error: sent ? undefined : lastError };
+  return {
+    sent,
+    failed: to.length - sent,
+    error: sent ? undefined : lastError,
+    ids: Object.keys(ids).length ? ids : undefined,
+  };
 }

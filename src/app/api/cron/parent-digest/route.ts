@@ -18,6 +18,10 @@ import { fmtDateVN, isoDateVN, todayVN } from "@/lib/utils";
  */
 const CHUNK = 500;
 const MAX_CHUNKS = 40; // 20k PH/lan chay - du margin; cron goi lai neu can
+// Auto-retry: moi run tu dong gui lai cho PH co delivery failed/skipped
+// trong tuan nay (khong can ?retry=), toi da MAX_ATTEMPTS lan/PH/tuan.
+// `?retry=<run_id>` van co san de force retry thu cong (bo qua cap).
+const MAX_ATTEMPTS = 3;
 
 const ATT_LABEL: Record<string, string> = {
   excused: "vắng có phép",
@@ -82,20 +86,45 @@ async function run(req: NextRequest) {
     retryParents = new Set(prev.rows.map((r) => r.parent_id));
     for (const r of prev.rows) prevAttempts.set(r.parent_id, r.attempts);
   } else {
-    const done = await fetchAllRows<{ parent_id: string }>((f, t) =>
-      supabase
-        .from("digest_deliveries")
-        .select("parent_id")
-        .eq("week_start", weekStart)
-        .eq("status", "sent")
-        .order("id")
-        .range(f, t),
+    // Load tat ca deliveries tuan nay: sent => bo qua; failed/skipped =>
+    // auto-retry neu attempts < MAX_ATTEMPTS (cong don attempts tu run truoc).
+    const all = await fetchAllRows<{
+      parent_id: string;
+      status: string;
+      attempts: number;
+      delivery_event: string | null;
+    }>(
+      (f, t) =>
+        supabase
+          .from("digest_deliveries")
+          .select("parent_id, status, attempts, delivery_event")
+          .eq("week_start", weekStart)
+          .order("id")
+          .range(f, t),
     );
-    if (done.error) {
-      console.error("[parent-digest] sent-this-week lookup failed:", done.error);
+    if (all.error) {
+      console.error("[parent-digest] sent-this-week lookup failed:", all.error);
       return NextResponse.json({ error: "delivery lookup failed" }, { status: 500 });
     }
-    sentThisWeek = new Set(done.rows.map((r) => r.parent_id));
+    // 'sent' hoac event terminal (bounced/complained - webhook Resend)
+    // deu khong gui lai. bounced/complained = dia chi hong/spam report,
+    // gui tiep chi lam xau sender reputation.
+    const TERMINAL_EVENTS = new Set(["bounced", "complained", "delivered"]);
+    sentThisWeek = new Set(
+      all.rows
+        .filter(
+          (r) =>
+            r.status === "sent" ||
+            (r.delivery_event ? TERMINAL_EVENTS.has(r.delivery_event) : false),
+        )
+        .map((r) => r.parent_id),
+    );
+    for (const r of all.rows) {
+      prevAttempts.set(
+        r.parent_id,
+        Math.max(prevAttempts.get(r.parent_id) ?? 0, r.attempts),
+      );
+    }
   }
 
   const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(todayVN())}`;
@@ -210,6 +239,9 @@ async function run(req: NextRequest) {
     const jobs: { parentId: string; email: string; text: string }[] = [];
     for (const p of parents as ParentRow[]) {
       if (retryParents ? !retryParents.has(p.id) : sentThisWeek.has(p.id)) continue;
+      // Auto-retry cap: khong retry qua MAX_ATTEMPTS lan/PH/tuan (tru
+      // mode ?retry= thu cong). Dung so lan gui lon nhat da ghi.
+      if (!retryParents && (prevAttempts.get(p.id) ?? 0) >= MAX_ATTEMPTS) continue;
       if (!p.email?.trim()) continue;
       const kids = childrenOf.get(p.id) ?? [];
       if (!kids.length) continue;
@@ -288,6 +320,7 @@ async function run(req: NextRequest) {
           status,
           error: r.error?.slice(0, 500) ?? null,
           attempts: (prevAttempts.get(j.parentId) ?? 0) + 1,
+          provider_id: r.ids?.[j.email] ?? null,
         };
       });
       // Khong ghi duoc delivery log => lan chay sau se gui trung email.

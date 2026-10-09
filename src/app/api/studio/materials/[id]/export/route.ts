@@ -38,7 +38,9 @@ export async function GET(
     .select("role, school_id")
     .eq("id", userId)
     .single();
-  const staff = ["gvcn", "gvbm", "to_truong", "bgh", "pht", "admin"].includes(
+  // staff = cac role duoc vao /studio (qa-matrix); pht khong thuoc studio
+  // nen chi xuat duoc material published qua canView ben duoi.
+  const staff = ["gvcn", "gvbm", "to_truong", "bgh", "admin"].includes(
     profile?.role ?? "",
   );
   const canView =

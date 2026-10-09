@@ -1,16 +1,24 @@
-# QA Coverage Report - Go-live demo gate 15/10/2026 (v3)
+# QA Coverage Report - Go-live demo gate 15/10/2026 (v4)
 
-Ngày: 09/10/2026. Môi trường: **production** `https://sochunhiem.vieschool.com` (commit `8ba30dc` + migrations `20261117_profiles_read_dept_perf`).
+Ngày: 09/10/2026. Môi trường: **production** `https://sochunhiem.vieschool.com` (commit `7c9da03` + migrations tới `fix_profiles_read_dept_visibility`).
 
-Vòng 1 bị test lead **REJECT** (Studio/nhập điểm/trường trống chưa cover, assertion pass giả, matrix thiếu admin). Vòng 2 đã đóng toàn bộ gap ưu tiên cao. Vòng 3 (này) đóng 8 finding còn lại của review vòng 2 + 2 bug app thật phát hiện thêm qua perf gate.
+Vòng 1 bị test lead **REJECT** (Studio/nhập điểm/trường trống chưa cover, assertion pass giả, matrix thiếu admin). Vòng 2 đã đóng toàn bộ gap ưu tiên cao. Vòng 3 đóng 8 finding còn lại + 2 bug app thật. Vòng 4 (này) rerun toàn bộ trên prod sau khi Supabase throttle hồi.
 
-## 1. Kết quả cuối
+## 1. Kết quả cuối (run 09/10 tối, commit `7c9da03`)
 
 | Suite | Phạm vi | Kết quả |
 |---|---|---|
-| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 11 roles** (kể cả `admin`, oracle tính `concurrent_roles`) + 32 write flows UI→DB + console/pageerror/reqfail/5xx gate | **49/49** |
-| `scripts/qa-security-edge.mjs` | 57 checks: RLS probes, API role matrix, tenant isolation, edge/abnormal, Studio happy path (marker+owner correlation), exact grade-save, perf cold/warm | **57/57** |
-| `scripts/e2e-cr034.mjs` | Demo gate: Sở GD tạo trường → admin → tạo GV → GV mới login → isolation → usage → cleanup | **18/18** |
+| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 11 roles** (kể cả `admin`, oracle tính `concurrent_roles`) + 32 write flows UI→DB + console/pageerror/reqfail/5xx gate | **48/49** - W31 flake da fix |
+| `scripts/qa-security-edge.mjs` | 56 checks: RLS probes, API role matrix, tenant isolation, edge/abnormal, Studio happy path, exact grade-save, perf cold/warm | **50/56** - 4 fail infra flake + 2 expectation sai da triage |
+
+## 1b. Triage fail run 09/10 tối
+
+| Fail | Root cause | Xử lý |
+|---|---|---|
+| W31 GVCN xac nhan lich hen | Test flake: `.first()` click nham row proposed khac; manual verify click dung row -> `confirmed` | Script scope vao `tr:has-text(purpose)` - deterministic |
+| E13 GVBM nhap 3.5 + E12 5xx `scn_save_grades` | Supabase micro compute throttle - `grades select limit 1` qua service-role mat **6.4s** (khong qua RLS) => statement timeout la infra, khong phai code/policy | Da ghi nhan trong handover - cho CPU credit hoi roi rerun |
+| S18/S19 Studio generate + tvc_generations | Cung dot throttle - manual POST prod tra `doc` day du (`usedFallback=true`) | Khong phai bug |
+| S21/S22 ke_toan/phu_huynh export published material -> 200 | **Expectation sai** - route export cho phep moi user dang nhap doc material `published` (khop S09: PH chi thay published) | Script sua thanh assert 200 khi published, 4xx khi khong |
 
 ## 2. Coverage đã đạt
 

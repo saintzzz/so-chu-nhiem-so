@@ -805,6 +805,43 @@ export async function POST(
   const doc = aiDoc ?? tool.fallback(input, ctx);
   const provider = aiDoc ? ai.provider : "rule-based";
 
+  // A-03: TTS that cho hoi thoai - tach lượt "Name: line", tong hop 2 giong,
+  // upload bucket tvc-media, chen block audio vao dau section hoi thoai.
+  // Khong co OPENAI_API_KEY / TTS loi -> doc giu nguyen, khong chan generate.
+  let audioPath: string | null = null;
+  if (code === "A-03" && doc?.sections?.length) {
+    try {
+      const { extractDialogueTurns, synthesizeDialogue, uploadTtsAudio } =
+        await import("@/lib/tvc/tts");
+      const turns = extractDialogueTurns(doc);
+      if (turns.length >= 2) {
+        const audio = await synthesizeDialogue(turns);
+        if (audio) {
+          audioPath = await uploadTtsAudio(
+            (profile as { school_id?: string | null }).school_id ?? null,
+            audio,
+          );
+          if (audioPath) {
+            const secIdx = doc.sections.findIndex((s) =>
+              extractDialogueTurns({ sections: [s] }).length >= 2,
+            );
+            const target = secIdx >= 0 ? secIdx : 0;
+            doc.sections[target].blocks = [
+              {
+                kind: "audio",
+                path: audioPath,
+                caption: `Audio hội thoại - ${turns.length} lượt`,
+              },
+              ...(doc.sections[target].blocks ?? []),
+            ];
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[a03-tts] skipped:", e instanceof Error ? e.message : e);
+    }
+  }
+
   await supabase.from("tvc_generations").insert({
     user_id: user.id,
     tool_code: code,

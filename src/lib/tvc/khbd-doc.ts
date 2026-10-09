@@ -89,6 +89,8 @@ export function docToPlainText(doc: DocContent, maxChars = 12000): string {
         return b.tex;
       case "image":
         return b.caption ? `[Hình: ${b.caption}]` : "";
+      case "audio":
+        return b.caption ? `[Audio: ${b.caption}]` : "[Audio]";
       case "divider":
         return "";
     }

@@ -206,6 +206,16 @@ export function DocEditor({
         );
       case "divider":
         return <hr className="my-4 border-t" />;
+      case "image":
+      case "audio": {
+        // Media block khong sua truc tiep trong editor - hien read-only.
+        const label = b.kind === "audio" ? "Audio" : "Hình";
+        return (
+          <div className="rounded border border-dashed border-slate-300 px-2 py-1 text-sm text-slate-500">
+            [{label}{b.caption ? `: ${b.caption}` : ""}]
+          </div>
+        );
+      }
     }
   };
 

@@ -61,6 +61,19 @@ function Block({ block }: { block: DocBlock }) {
           ))}
         </div>
       );
+    case "audio": {
+      const src = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${block.path}`;
+      return (
+        <figure className="my-3">
+          <audio controls preload="none" src={src} className="w-full" />
+          {block.caption && (
+            <figcaption className="mt-1 text-xs text-muted-foreground">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      );
+    }
     case "divider":
       return <hr className="my-4 border-t" />;
     case "note":

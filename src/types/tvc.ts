@@ -194,7 +194,8 @@ export type DocBlock =
   | { kind: "kv"; pairs: [string, string][] }
   | { kind: "divider" }
   | { kind: "note"; text: string }
-  | { kind: "image"; svg?: string; path?: string; caption?: string };
+  | { kind: "image"; svg?: string; path?: string; caption?: string }
+  | { kind: "audio"; path: string; caption?: string };
 
 export interface DocSection {
   title: string;

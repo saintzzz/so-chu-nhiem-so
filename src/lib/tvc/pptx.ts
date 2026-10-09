@@ -28,6 +28,8 @@ function blockToLines(b: DocBlock): { text: string; bullet: boolean }[] {
       return [];
     case "image":
       return [];
+    case "audio":
+      return b.caption ? [{ text: `[Audio] ${b.caption}`, bullet: false }] : [];
   }
 }
 

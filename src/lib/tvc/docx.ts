@@ -238,6 +238,16 @@ function blockToElements(
           spacing: { before: 120, after: 120 },
         }),
       ];
+    case "audio":
+      // DOCX khong nhung duoc audio - in caption de nguoi doc biet co file.
+      return b.caption
+        ? [
+            new Paragraph({
+              children: [new TextRun({ text: `[Audio] ${b.caption}`, italics: true })],
+              spacing: { before: 60, after: 60 },
+            }),
+          ]
+        : [];
     case "image": {
       const img = images?.get(b);
       if (!img) return [];

@@ -14,7 +14,10 @@ async function scopedClasses(
   supabase: Supabase,
   profile: Profile,
 ): Promise<ClassRoom[]> {
-  const wideRoles: Role[] = ["bgh", "so_gd", "admin", "to_truong"];
+  // Khop voi ann_ins: chi bgh/pht/admin duoc gui cho lop bat ky;
+  // gvcn (ke ca kiem to_truong) chi gui duoc lop minh chu nhiem -
+  // list rong hon policy se cho user chon lop khong the gui (W03 bug).
+  const wideRoles: Role[] = ["bgh", "pht", "admin"];
   let query = supabase.from("classes").select("*").order("name");
   if (hasAnyRole(profile, wideRoles)) {
     if (profile.school_id) query = query.eq("school_id", profile.school_id);

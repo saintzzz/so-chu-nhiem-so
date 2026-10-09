@@ -380,7 +380,9 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     // URL params: ep page render dung pair day that (tranh cap class+subject khong phan cong)
     await page.goto(`${BASE}/academics/grades?class=${classId}&subject=${subject.id}&term=${term}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
-    const gridInput = page.locator('tbody input[type="number"]').first();
+    // Scope input vao dung row cua s0 (khong dung first() - row order co the khac query order)
+    const s0Row = page.locator(`tr:has-text("${s0?.full_name ?? "__none__"}")`).first();
+    const gridInput = s0Row.locator('input[type="number"]').first();
     if (s0 && (await gridInput.count()) > 0) {
       await gridInput.fill(testScore);
       const saveBtn = page.locator('button:has-text("Lưu")').first();
@@ -416,7 +418,7 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
     // chi chap nhan doc hoan chinh - pending job khong tinh la generate xong
-    check("S18", "gvbm POST DC-01/generate -> 200 + doc", !!r?.ok() && !!j?.doc, `status=${r?.status()} usedFallback=${j?.usedFallback ?? ""} pending=${j?.pending ?? false}`);
+    check("S18", "gvbm POST DC-01/generate -> 200 + doc hoan chinh (khong pending)", !!r?.ok() && !!j?.doc && j.pending !== true, `status=${r?.status()} usedFallback=${j?.usedFallback ?? ""} pending=${j?.pending ?? false}`);
     await new Promise((res) => setTimeout(res, 1500));
     // correlate theo owner + marker duy nhat cua request nay
     const { data: gens } = await admin.from("tvc_generations").select("id,user_id,input,output")

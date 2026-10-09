@@ -107,3 +107,20 @@ Các fail còn lại sau run 44/49 đều là state-drift/latency của test, KH
 3. **W31 global selection**: `proposed` appointment = 0 (consumed). Fix: seed `proposed` appointment với `teacher_id=anhptl` + student/parent thật trong lớp chủ nhiệm, assert exact `id` → `confirmed`.
 4. **W30 race**: click `Duyệt` rồi sleep 2.5s cố định - server action trên lambda lạnh vượt quá → assert đọc trước khi commit (sau đó DB confirm plan đã `approved` đúng). Fix: poll DB tới 12s chờ transition. Cùng pattern áp cho W29/W31.
 5. **W22 flake**: settle 1.5s chưa đủ khi portal vừa được optimize - bump 2.5s + log body length.
+
+## 10. Review vòng 3 (OpenRouter nemotron-550b, cross-model) + infra finding
+
+**Verdict v3: REJECT - 8 findings.** Triage + đã fix trong `scripts/` (uncommitted tại thời điểm viết - rerun khi infra hồi):
+
+| # | Finding | Xử lý |
+|---|---|---|
+| 1 | W03 không verify lớp đã chọn | FIX: assert `announcements.class_id = lớp CN` |
+| 2 | W26a/W26c fixed sleep 2.5s | FIX: poll DB 12s (cùng pattern W29-31) |
+| 3 | W29/W31 seed không cleanup | FIX: delete row sau assert |
+| 4 | E13 `first()` input không correlate s0 | FIX: scope `tr:has-text(s0)` - PASS độc lập |
+| 5 | S18 không reject pending explicit | FIX: `j.pending !== true` |
+| 6 | E2E rate-limit mask | REBUT: infra flake đã document §4, không che assert |
+| 7 | Admin matrix chỉ HTTP | REBUT: matrix HTTP cho mọi role - thiết kế; E2E browser ở write-flows + S16/S17 |
+| 8 | Console gate bỏ sót trang timeout | REBUT: listener gắn page object, không discard khi goto timeout |
+
+**Infra blocker phát hiện trong rerun (quan trọng cho demo):** Supabase free/micro **compute throttling** - cạn CPU credit sau ~7 suite QA. `auth/v1/token` 504 → login treo; PostgREST 3.6s→>15s cho query 1 row; `pg_stat_activity` sạch. Không phải incident nền tảng (status page green) mà là hành vi thiết kế free tier. Chi tiết + khuyến nghị Pro+Small (~$40/tháng) + roadmap scale trong `docs/qa/HANDOVER-2026-10-09.md`.

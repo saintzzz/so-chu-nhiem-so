@@ -41,7 +41,9 @@ async function loginCtx(email) {
   await p.fill("#email", email);
   await p.fill("input[type=password]", "demo1234");
   await p.click("button[type=submit]");
-  await p.waitForTimeout(5000);
+  // Doi login + redirect hop (thay vi sleep co dinh - lambda lanh co the ~10s)
+  await p.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 30000 }).catch(() => {});
+  await p.waitForTimeout(2000);
   return { ctx, p };
 }
 const settle = async (p, ms = 800) => {
@@ -170,9 +172,11 @@ const MARK = `FULL-${Date.now()}`;
   const btnDisabled = await sendBtn.isDisabled().catch(() => "err");
   await sendBtn.click({ timeout: 10000 }).catch(() => sendBtn.click({ force: true }).catch(() => {}));
   const fbOk = await p.locator('text=/Đã gửi thông báo/').first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
-  const { data: an } = await db.from("announcements").select("id").ilike("content", `%${MARK}%`).limit(1);
+  const { data: an } = await db.from("announcements").select("id,class_id").ilike("content", `%${MARK}%`).limit(1);
   const fbText = fbOk ? "" : `btnDisabled=${btnDisabled} ` + ((await p.locator("body").innerText()).match(/Đã lưu[^.\n]*|không gửi được[^.\n]*|lỗi[^.\n]*/i)?.[0] ?? "no-feedback");
-  check("W03", "Thong bao PH -> DB", (an?.length ?? 0) === 1, fbOk ? "" : `feedback=${fbText}`);
+  check("W03", "Thong bao PH -> DB (dung lop chu nhiem)",
+    (an?.length ?? 0) === 1 && an[0].class_id === myClasses[0].id,
+    `class_match=${an?.[0]?.class_id === myClasses[0].id} ${fbOk ? "" : `feedback=${fbText}`}`);
 
   // W04: Cham diem thi dua - form luu vao currentPeriodVN() (thang hien tai VN)
   const vnNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
@@ -510,8 +514,11 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
       if (target) {
         const gvcnPid = gvcnP.id;
         await row.locator('button:has-text("Nộp sổ")').click();
-        await p.waitForTimeout(2500);
-        const { data: after } = await db.from("register_signoffs").select("id,status,submitted_by").eq("id", target.id).single();
+        let after = null;
+        for (let i = 0; i < 8 && after?.status !== "submitted"; i++) {
+          await p.waitForTimeout(1500);
+          ({ data: after } = await db.from("register_signoffs").select("id,status,submitted_by").eq("id", target.id).single());
+        }
         if (after?.status === "submitted") w26SignoffId = after.id;
         check("W26a", `GVCN nop so ${clsName}/${period} -> pending->submitted (id=${target.id.slice(0, 8)})`,
           after?.status === "submitted" && after?.submitted_by === gvcnPid,
@@ -558,8 +565,11 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
       if (target) {
         const { data: bghP } = await db.from("profiles").select("id").eq("email", "hainv@nd.scn").single();
         await row.locator('button:has-text("Ký duyệt")').first().click();
-        await p.waitForTimeout(2500);
-        const { data: after } = await db.from("register_signoffs").select("id,status,signed_by").eq("id", target.id).single();
+        let after = null;
+        for (let i = 0; i < 8 && after?.status !== "signed"; i++) {
+          await p.waitForTimeout(1500);
+          ({ data: after } = await db.from("register_signoffs").select("id,status,signed_by").eq("id", target.id).single());
+        }
         check("W26c", `BGH ky duyet ${clsName}/${period} -> submitted->signed (id=${target.id.slice(0, 8)})`,
           after?.status === "signed" && after?.signed_by === bghP?.id,
           `after=${after?.status} signed_by_match=${after?.signed_by === bghP?.id}`);
@@ -655,6 +665,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
         after?.status === "team_approved", `id=${w29Id.slice(0,8)} status=${after?.status} by=${after?.team_reviewed_by === ttProf.id}`);
     } else check("W29", "To truong duyet giao an", false, "no approve btn");
   } else check("W29", "To truong duyet giao an", false, "PRECONDITION: seed plan that bai");
+  if (w29Id) await db.from("lesson_plans").delete().eq("id", w29Id);
   await ctx.close();
 }
 
@@ -731,6 +742,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
         after?.status === "confirmed", `id=${w31Id.slice(0,8)} status=${after?.status}`);
     } else check("W31", "GVCN xac nhan lich hen", false, "no confirm btn");
   } else check("W31", "GVCN xac nhan lich hen", false, "PRECONDITION: seed appointment that bai");
+  if (w31Id) await db.from("appointments").delete().eq("id", w31Id);
   await ctx.close();
 }
 

@@ -8,7 +8,7 @@ Vòng 1 bị test lead **REJECT** (Studio/nhập điểm/trường trống chưa
 
 | Suite | Phạm vi | Kết quả |
 |---|---|---|
-| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 11 roles** (kể cả `admin`, oracle tính `concurrent_roles`) + 31 write flows UI→DB + console/pageerror/reqfail/5xx gate | _đang chạy lại_ |
+| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 11 roles** (kể cả `admin`, oracle tính `concurrent_roles`) + 32 write flows UI→DB + console/pageerror/reqfail/5xx gate | **49/49** |
 | `scripts/qa-security-edge.mjs` | 57 checks: RLS probes, API role matrix, tenant isolation, edge/abnormal, Studio happy path (marker+owner correlation), exact grade-save, perf cold/warm | **57/57** |
 | `scripts/e2e-cr034.mjs` | Demo gate: Sở GD tạo trường → admin → tạo GV → GV mới login → isolation → usage → cleanup | **18/18** |
 
@@ -82,6 +82,8 @@ Marker `FULL-*`, `THPT Demo Gate*`, auth users test đã dọn khỏi production
 5. **W14 stale negative control**: minhtv thật sự dạy 6A3 - sửa thành negative control động (lớp cùng trường không dạy: 7A3,8A1,8A2,8A3).
 6. **Suite crash khi goto timeout**: thêm `gotoSafe` - navigation fail không giết suite, check tiếp theo fail đúng.
 7. **Flake ngoại cảnh**: Supabase auth `net::ERR_FAILED` trong 1 window giữa run → 14 write-flow fail dây chuyền (login/seed die). Rerun khi hệ thống khoẻ.
+8. **W03 bug app thật (đã fix `998ddb4`)**: `/parents/compose` liệt kê **toàn bộ lớp trường** cho gvcn kiêm to_truong (`to_truong` nằm trong `wideRoles`) nhưng `ann_ins` chỉ cho gvcn gửi lớp chủ nhiệm → user chọn lớp không gửi được, insert bị RLS chặn "Không lưu được". Fix: `wideRoles = [bgh, pht, admin]` khớp policy. Kèm fix `auth.getUser()` → `getProfile()` trong server actions (getClaims local, tránh silent timeout - AGENTS convention).
+9. **W32 seed động**: gvcn chỉ có 1 lớp CN → seed lớp tạm `TST-*` + 2 HS, test switch roster, cleanup sau. Verify: url + body diff + student names đổi đúng.
 
 ## 8. Findings vòng 2 → trạng thái
 
@@ -95,3 +97,13 @@ Marker `FULL-*`, `THPT Demo Gate*`, auth users test đã dọn khỏi production
 | R2-6 | Admin trong shared matrix | DONE: 20 allow + 77 deny |
 | R2-7 | Browser hygiene + exit code | DONE: console/pageerror/reqfail/5xx + exit 1 |
 | R2-8 | W26 exact signoff ID pending→submitted→signed + actor | DONE: seed chu kỳ, cùng ID qua 2 bước |
+
+## 9. Vòng 3 tiếp - test determinism (49/49)
+
+Các fail còn lại sau run 44/49 đều là state-drift/latency của test, KHÔNG phải bug app - đã fix oracle và rerun xanh:
+
+1. **W26 seed duplicate key**: `register_signoffs_class_id_period_type_key` unique - kỳ sau đã có row signed từ run trước. Fix: quét tối đa 12 kỳ, reuse row chưa signed (reset về pending) hoặc insert kỳ trống. Cùng `w26SignoffId` chạy pending→submitted (W26a, `by_match=true`) → submitted→signed (W26c, `signed_by_match=true`).
+2. **W29 global selection**: query `submitted` không scope school - 2 plan thuộc CVA/Kim Đồng, to_truong Nguyễn Du không thấy nút duyệt. Fix: seed `submitted` plan tại đúng school của to_truong, assert exact `id` → `team_approved` + `team_reviewed_by` đúng actor.
+3. **W31 global selection**: `proposed` appointment = 0 (consumed). Fix: seed `proposed` appointment với `teacher_id=anhptl` + student/parent thật trong lớp chủ nhiệm, assert exact `id` → `confirmed`.
+4. **W30 race**: click `Duyệt` rồi sleep 2.5s cố định - server action trên lambda lạnh vượt quá → assert đọc trước khi commit (sau đó DB confirm plan đã `approved` đúng). Fix: poll DB tới 12s chờ transition. Cùng pattern áp cho W29/W31.
+5. **W22 flake**: settle 1.5s chưa đủ khi portal vừa được optimize - bump 2.5s + log body length.

@@ -381,8 +381,9 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 {
   const { ctx, p } = await loginCtx("annv@nd.scn");
   await gotoSafe(p, `${BASE}/portal/parent`);
-  await settle(p, 1500);
-  check("W22", "Portal PH", /con|điểm|chuyên cần|học/i.test(await p.locator("body").innerText()), "");
+  await settle(p, 2500);
+  const w22Body = await p.locator("body").innerText();
+  check("W22", "Portal PH", /con|điểm|chuyên cần|học/i.test(w22Body), `len=${w22Body.length}`);
   await ctx.close();
 }
 {
@@ -470,13 +471,24 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
       if (w26SignoffId) break;
     }
   }
-  // Tat ca lop da signed ky nay -> dung ky sau de test
+  // Tat ca lop da signed ky nay -> quet ky tiep theo cho toi khi tim duoc
+  // slot trong (row co the da signed o ky sau tu run truoc).
   if (!w26SignoffId && myClasses[0]) {
-    const [y, m] = w26Period.split("-").map(Number);
-    const next = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
-    const { data: ins, error: ie } = await db.from("register_signoffs").insert({ class_id: myClasses[0].id, period: next, type: "so_chu_nhiem", status: "pending" }).select("id").single();
-    if (ie) console.log("  [W26 seed]", ie.message);
-    w26SignoffId = ins?.id ?? null;
+    let [y, m] = w26Period.split("-").map(Number);
+    for (let step = 1; step <= 12 && !w26SignoffId; step++) {
+      m += 1; if (m > 12) { m = 1; y += 1; }
+      const next = `${y}-${String(m).padStart(2, "0")}`;
+      const { data: existing } = await db.from("register_signoffs").select("id,status")
+        .eq("class_id", myClasses[0].id).eq("period", next).eq("type", "so_chu_nhiem").maybeSingle();
+      if (existing && existing.status !== "signed") {
+        await db.from("register_signoffs").update({ status: "pending", submitted_by: null, submitted_at: null, signed_by: null, signed_at: null, reject_reason: null }).eq("id", existing.id);
+        w26SignoffId = existing.id;
+      } else if (!existing) {
+        const { data: ins, error: ie } = await db.from("register_signoffs").insert({ class_id: myClasses[0].id, period: next, type: "so_chu_nhiem", status: "pending" }).select("id").single();
+        if (ie) console.log("  [W26 seed]", ie.message);
+        w26SignoffId = ins?.id ?? null;
+      }
+    }
   }
 }
 {
@@ -596,29 +608,53 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 }
 
 // W29: To truong duyet giao an (submitted -> team_approved)
+// Seed deterministic: can 1 plan submitted tai truong Nguyen Du (scope school).
 {
+  const { data: ttProf } = await db.from("profiles").select("id,school_id")
+    .eq("email", "hanhlth@nd.scn").single();
+  const { data: lp0 } = await db.from("lesson_plans").select("id")
+    .eq("school_id", ttProf.school_id).eq("status", "submitted").limit(1);
+  let w29Id = lp0?.[0]?.id ?? null;
+  if (!w29Id) {
+    const { data: teacher } = await db.from("profiles").select("id")
+      .eq("school_id", ttProf.school_id).eq("role", "gvbm").limit(1);
+    const { data: cls } = await db.from("classes").select("id")
+      .eq("school_id", ttProf.school_id).eq("status", "active").limit(1);
+    const { data: sub } = await db.from("subjects").select("id")
+      .eq("school_id", ttProf.school_id).limit(1);
+    const { data: ins, error: ie } = await db.from("lesson_plans").insert({
+      school_id: ttProf.school_id,
+      teacher_id: teacher[0].id,
+      class_id: cls[0].id,
+      subject_id: sub[0].id,
+      title: "QA-W29 deterministic plan",
+      content: "Noi dung giao an QA",
+      week: 9,
+      status: "submitted",
+    }).select("id").single();
+    if (ie) console.log("  [W29 seed]", ie.message);
+    w29Id = ins?.id ?? null;
+  }
   const { ctx, p } = await loginCtx("hanhlth@nd.scn");
-  const { data: lp } = await db.from("lesson_plans").select("id,title,status")
-    .eq("status", "submitted");
   await gotoSafe(p, `${BASE}/team/lesson-plans`);
   await settle(p, 1500);
-  if (lp?.length) {
-    const approveBtn = p.locator('button[title*="Duyệt"], button:has-text("Duyệt")').first();
+  if (w29Id) {
+    const approveBtn = p.locator('button[title*="Duyệt"]').first();
     if ((await approveBtn.count()) > 0) {
       await approveBtn.click();
       await p.waitForTimeout(800);
-      // Mo o ghi chu -> phai bam "Duyệt" xac nhan
       const confirmBtn = p.locator('button:has-text("Duyệt")').first();
       if ((await confirmBtn.count()) > 0) await confirmBtn.click();
-      await p.waitForTimeout(2500);
-      // UI duyet row dau tien trong bang - kiem bat ky plan nao chuyen sang team_approved
-      const ids = lp.map((x) => x.id);
-      const { data: after } = await db.from("lesson_plans").select("id,status").in("id", ids);
-      const approved = (after ?? []).filter((x) => x.status === "team_approved").length;
+      let after = null;
+      for (let i = 0; i < 8 && after?.status !== "team_approved"; i++) {
+        await p.waitForTimeout(1500);
+        ({ data: after } = await db.from("lesson_plans").select("id,status,team_reviewed_by")
+          .eq("id", w29Id).single());
+      }
       check("W29", "To truong duyet giao an -> team_approved",
-        approved >= 1, `moved=${approved}/${ids.length}`);
+        after?.status === "team_approved", `id=${w29Id.slice(0,8)} status=${after?.status} by=${after?.team_reviewed_by === ttProf.id}`);
     } else check("W29", "To truong duyet giao an", false, "no approve btn");
-  } else check("W29", "To truong duyet giao an", false, "PRECONDITION: khong co lesson_plans submitted");
+  } else check("W29", "To truong duyet giao an", false, "PRECONDITION: seed plan that bai");
   await ctx.close();
 }
 
@@ -634,10 +670,15 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
     const approveBtn = p.locator('button[title="Duyệt"]').first();
     if ((await approveBtn.count()) > 0) {
       await approveBtn.click();
-      await p.waitForTimeout(2500);
+      // Poll DB toi 12s - server action tren lambda lanh co the cham hon
+      // sleep co dinh.
       const ids = lp.map((x) => x.id);
-      const { data: after } = await db.from("lesson_plans").select("id,status").in("id", ids);
-      const approved = (after ?? []).filter((x) => x.status === "approved").length;
+      let approved = 0;
+      for (let i = 0; i < 8 && approved === 0; i++) {
+        await p.waitForTimeout(1500);
+        const { data: after } = await db.from("lesson_plans").select("id,status").in("id", ids);
+        approved = (after ?? []).filter((x) => x.status === "approved").length;
+      }
       check("W30", "BGH duyet giao an -> approved", approved >= 1, `moved=${approved}/${ids.length}`);
     } else check("W30", "BGH duyet giao an", false, "no approve btn at /school/approvals");
   } else check("W30", "BGH duyet giao an", false, "PRECONDITION: khong co lesson_plans team_approved");
@@ -645,23 +686,51 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 }
 
 // W31: GVCN xac nhan lich hen (proposed -> confirmed)
+// Seed deterministic: can 1 appointment proposed cho anhptl (teacher_id = anhptl).
 {
+  const anhptlId = "bb42e98d-f6ca-40ff-98c9-4440beda01a7";
+  const { data: ap0 } = await db.from("appointments").select("id")
+    .eq("teacher_id", anhptlId).eq("status", "proposed").limit(1);
+  let w31Id = ap0?.[0]?.id ?? null;
+  if (!w31Id) {
+    const { data: cls } = await db.from("classes").select("id")
+      .eq("gvcn_id", anhptlId).eq("status", "active").limit(1);
+    const { data: st } = cls?.length
+      ? await db.from("students").select("id").eq("class_id", cls[0].id).limit(1)
+      : { data: [] };
+    const { data: ps } = st?.length
+      ? await db.from("parent_students").select("parent_id").eq("student_id", st[0].id).limit(1)
+      : { data: [] };
+    if (cls?.length && st?.length && ps?.length) {
+      const { data: ins, error: ie } = await db.from("appointments").insert({
+        parent_id: ps[0].parent_id,
+        teacher_id: anhptlId,
+        student_id: st[0].id,
+        scheduled_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        purpose: "QA-W31 deterministic appointment",
+        status: "proposed",
+      }).select("id").single();
+      if (ie) console.log("  [W31 seed]", ie.message);
+      w31Id = ins?.id ?? null;
+    }
+  }
   const { ctx, p } = await loginCtx("anhptl@nd.scn");
-  const { data: appt } = await db.from("appointments").select("id,status")
-    .eq("status", "proposed");
   await gotoSafe(p, `${BASE}/parents/appointments`);
   await settle(p, 1500);
-  if (appt?.length) {
+  if (w31Id) {
     const confirmBtn = p.locator('button:has-text("Xác nhận"), button:has-text("Nhận lịch")').first();
     if ((await confirmBtn.count()) > 0) {
       await confirmBtn.click();
-      await p.waitForTimeout(2500);
-      const ids = appt.map((x) => x.id);
-      const { data: after } = await db.from("appointments").select("id,status").in("id", ids);
-      const moved = (after ?? []).filter((x) => x.status === "confirmed").length;
-      check("W31", "GVCN xac nhan lich hen -> confirmed", moved >= 1, `moved=${moved}/${ids.length}`);
+      let after = null;
+      for (let i = 0; i < 8 && after?.status !== "confirmed"; i++) {
+        await p.waitForTimeout(1500);
+        ({ data: after } = await db.from("appointments").select("id,status,teacher_id")
+          .eq("id", w31Id).single());
+      }
+      check("W31", "GVCN xac nhan lich hen -> confirmed",
+        after?.status === "confirmed", `id=${w31Id.slice(0,8)} status=${after?.status}`);
     } else check("W31", "GVCN xac nhan lich hen", false, "no confirm btn");
-  } else check("W31", "GVCN xac nhan lich hen", false, "PRECONDITION: khong co appointment proposed");
+  } else check("W31", "GVCN xac nhan lich hen", false, "PRECONDITION: seed appointment that bai");
   await ctx.close();
 }
 

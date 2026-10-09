@@ -17,6 +17,26 @@ export function getAiConfig(): AiConfig | null {
 }
 
 /**
+ * Gom tat ca key cua 1 provider thanh nhieu config. Ho tro:
+ * - GEMINI_API_KEY="k1,k2,k3" (comma-separated)
+ * - GEMINI_API_KEY_2, _3... (bien phu bo sung)
+ * Moi key = 1 config -> caller thu lan luot, key quota/loi thi nhay key tiep.
+ */
+export function expandKeys(provider: AiProvider): string[] {
+  const envName = `${provider.toUpperCase()}_API_KEY`;
+  const primary = (process.env[envName] ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const extras: string[] = [];
+  for (let i = 2; i <= 9; i++) {
+    const k = process.env[`${envName}_${i}`]?.trim();
+    if (k) extras.push(k);
+  }
+  return [...new Set([...primary, ...extras])];
+}
+
+/**
  * Danh sách provider có key, theo thứ tự ưu tiên.
  * AI_PROVIDER ép 1 provider; không ép thì thử hết theo chuỗi
  * Gemini -> OpenAI -> Anthropic trước khi fallback Devin.
@@ -37,30 +57,52 @@ export function getAiConfigs(): AiConfig[] {
     openai: process.env.OPENAI_MODEL,
     anthropic: process.env.ANTHROPIC_MODEL,
   };
-  const pick = (provider: AiProvider, key?: string): AiConfig | null =>
+  const pick = (
+    provider: AiProvider,
+    key?: string,
+    modelOverride?: string,
+  ): AiConfig | null =>
     key && (!allowedSet || allowedSet.has(provider))
       ? {
           provider,
           key,
-          model: model ?? providerModel[provider] ?? DEFAULT_MODELS[provider],
+          model:
+            modelOverride ??
+            model ??
+            providerModel[provider] ??
+            DEFAULT_MODELS[provider],
         }
       : null;
 
-  if (forced) {
-    const key =
-      forced === "gemini"
-        ? process.env.GEMINI_API_KEY
-        : forced === "openai"
-          ? process.env.OPENAI_API_KEY
-          : process.env.ANTHROPIC_API_KEY;
-    const cfg = pick(forced, key);
-    return cfg ? [cfg] : [];
-  }
-  return [
-    pick("gemini", process.env.GEMINI_API_KEY),
-    pick("openai", process.env.OPENAI_API_KEY),
-    pick("anthropic", process.env.ANTHROPIC_API_KEY),
-  ].filter((c): c is AiConfig => c !== null);
+  const providers: AiProvider[] = forced
+    ? [forced]
+    : ["gemini", "openai", "anthropic"];
+
+  return providers.flatMap((p) => {
+    const keys = expandKeys(p);
+    // Gemini: key khac nhau ho tro model khac nhau (key OAuth-style chi chay
+    // duoc gemini-flash-latest). Thu theo (model x key): model uu tien qua
+    // tat ca key truoc, roi moi xuong model du phong. GEMINI_MODELS cho phep
+    // ghi de toan bo chuoi model.
+    if (p === "gemini") {
+      const models = (
+        process.env.GEMINI_MODELS ??
+        [
+          model ?? providerModel.gemini ?? DEFAULT_MODELS.gemini,
+          "gemini-flash-latest",
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
+        ].join(",")
+      )
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      return [...new Set(models)].flatMap((m) =>
+        keys.map((k) => pick(p, k, m)),
+      );
+    }
+    return keys.map((key) => pick(p, key));
+  }).filter((c): c is AiConfig => c !== null);
 }
 
 interface GenerateOptions {

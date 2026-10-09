@@ -2,9 +2,12 @@
 //   TTS_PROVIDER - hien chi ho tro 'openai' (default khi co OPENAI_API_KEY)
 //   TTS_MODEL    - default 'gpt-4o-mini-tts' (chat luong tot, re)
 //   TTS_VOICE_A / TTS_VOICE_B - giong 2 nhan vat (default alloy / nova)
-// Khong co key -> tra null, route bo qua audio (khong chan generate).
+// Ho tro nhieu key (OPENAI_API_KEY="k1,k2", OPENAI_API_KEY_2...) qua
+// expandKeys - key loi/quota thi thu key tiep. Het key -> null, route bo
+// qua audio (khong chan generate).
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { expandKeys } from "@/lib/ai";
 
 const TTS_URL = "https://api.openai.com/v1/audio/speech";
 const MAX_TURNS = 12;
@@ -58,23 +61,32 @@ export function extractDialogueTurns(doc: {
   return turns;
 }
 
-async function ttsSegment(text: string, voice: string): Promise<Buffer | null> {
-  const key = process.env.OPENAI_API_KEY;
+async function ttsSegment(
+  text: string,
+  voice: string,
+  keys: string[],
+): Promise<Buffer | null> {
   const model = process.env.TTS_MODEL ?? "gpt-4o-mini-tts";
-  if (!key) return null;
-  const res = await fetch(TTS_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model, voice, input: text.slice(0, 4000) }),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) return null;
-  return Buffer.from(await res.arrayBuffer());
+  for (const key of keys) {
+    try {
+      const res = await fetch(TTS_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, voice, input: text.slice(0, 4000) }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (res.ok) return Buffer.from(await res.arrayBuffer());
+    } catch {
+      // Timeout/network - thu key tiep.
+    }
+  }
+  return null;
 }
 
 // Mp3 la stream frame - noi binary hop le playback trong moi player hien dai.
 export async function synthesizeDialogue(turns: Turn[]): Promise<Buffer | null> {
-  if (!turns.length) return null;
+  const keys = expandKeys("openai");
+  if (!turns.length || !keys.length) return null;
   const voiceA = process.env.TTS_VOICE_A ?? "alloy";
   const voiceB = process.env.TTS_VOICE_B ?? "nova";
   const speakers = new Map<string, string>();
@@ -88,7 +100,7 @@ export async function synthesizeDialogue(turns: Turn[]): Promise<Buffer | null> 
   for (let i = 0; i < turns.length; i += 4) {
     const segs = await Promise.all(
       turns.slice(i, i + 4).map((t) =>
-        ttsSegment(t.line, speakers.get(t.speaker) ?? voiceA),
+        ttsSegment(t.line, speakers.get(t.speaker) ?? voiceA, keys),
       ),
     );
     if (segs.some((s) => !s)) return null;

@@ -26,126 +26,17 @@ const check = (id, name, pass, detail = "") => {
 };
 
 // ===== ACCESS MATRIX (khop requireRoles thuc te) =====
-const MATRIX = {
-  "/dashboard": ["gvcn"],
-  "/attendance/daily": ["gvcn", "bgh"],
-  "/attendance/daily-report": ["gvcn"],
-  "/attendance/history": ["gvcn", "bgh"],
-  "/attendance/leaves": ["gvcn", "bgh"],
-  "/attendance/notify": ["gvcn", "bgh"],
-  "/attendance/tracking": ["gvcn", "bgh"],
-  "/academics/grades": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/academics/exams": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/academics/lesson-plans": ["gvcn", "gvbm"],
-  "/academics/analysis": ["gvcn", "bgh"],
-  "/academics/parent-chat": ["gvcn"],
-  "/academics/plans": ["gvcn", "bgh"],
-  "/academics/support": ["gvcn", "bgh"],
-  "/academics/teacher-chat": ["gvcn", "gvbm", "to_truong"],
-  "/schedule/timetable": ["gvcn", "gvbm", "to_truong", "bgh", "pht"],
-  "/schedule/period-log": ["gvcn", "gvbm", "to_truong"],
-  "/schedule/manage": ["bgh", "pht"],
-  "/conduct/evaluation": ["gvcn", "bgh"],
-  "/conduct/records": ["gvcn", "bgh"],
-  "/conduct/student-chat": ["gvcn", "bgh"],
-  "/counseling/intake": ["gvcn", "bgh"],
-  "/counseling/assessment": ["gvcn", "bgh"],
-  "/counseling/referral": ["gvcn", "bgh"],
-  "/activities/plan": ["gvcn", "bgh"],
-  "/activities/attendance": ["gvcn", "bgh"],
-  "/activities/announce": ["gvcn", "bgh"],
-  "/emulation/scoring": ["gvcn", "bgh"],
-  "/emulation/ranking": ["gvcn", "bgh"],
-  "/parents/compose": ["gvcn", "bgh"],
-  "/parents/inbox": ["gvcn", "bgh"],
-  "/parents/appointments": ["gvcn", "bgh"],
-  "/parents/cmhs": ["gvcn", "bgh"],
-  "/parents/portal": ["gvcn", "bgh"],
-  "/records/students": ["gvcn", "bgh"],
-  "/records/upload": ["gvcn", "bgh"],
-  "/records/intake": ["gvcn", "bgh"],
-  "/records/report": ["gvcn", "bgh"],
-  "/records/history": ["gvcn", "bgh"],
-  "/register/roster": ["gvcn"],
-  "/register/seating": ["gvcn"],
-  "/register/seating-history": ["gvcn"],
-  "/register/kpi": ["gvcn"],
-  "/register/plans": ["gvcn"],
-  "/register/suggestions": ["gvcn"],
-  "/register/export": ["gvcn"],
-  "/register/signoff": ["gvcn", "bgh"],
-  "/register/lock-records": ["gvcn", "bgh"],
-  "/register/audit": ["gvcn", "bgh"],
-  "/register/year-events": ["gvcn"],
-  "/competency/evidence": ["gvcn", "gvbm", "to_truong"],
-  "/competency/self-assessment": ["gvcn", "gvbm", "to_truong"],
-  "/safety/report": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/safety/bgh": ["bgh", "pht"],
-  "/safety/followup": ["gvcn", "bgh"],
-  "/safety/archive": ["gvcn", "bgh"],
-  "/school/dashboard": ["bgh", "pht"],
-  "/school/staff": ["bgh", "pht", "ke_toan"],
-  "/school/users": ["bgh"],
-  "/school/students": ["bgh", "pht"],
-  "/school/announce": ["bgh", "pht"],
-  "/school/approvals": ["bgh", "pht"],
-  "/school/assignments": ["bgh"],
-  "/school/campuses": ["bgh", "pht", "ke_toan"],
-  "/school/daily-reports": ["bgh", "pht"],
-  "/school/equipment": ["bgh", "pht", "ke_toan"],
-  "/school/exam-analytics": ["bgh", "pht"],
-  "/school/journals": ["bgh", "pht"],
-  "/school/nq37": ["bgh", "pht", "ke_toan"],
-  "/school/radar": ["bgh", "pht"],
-  "/school/strategy": ["bgh", "pht"],
-  "/school/substitutes": ["bgh", "pht"],
-  "/school/ai-assistant": ["bgh", "pht"],
-  "/team/home": ["to_truong"],
-  "/team/lesson-plans": ["to_truong"],
-  "/team/meetings": ["to_truong"],
-  "/team/review": ["to_truong"],
-  "/team/teachers": ["to_truong"],
-  "/dept/dashboard": ["so_gd", "ubnd"],
-  "/dept/data": ["so_gd"],
-  "/dept/facilities": ["so_gd", "ubnd"],
-  "/dept/reports": ["so_gd", "ubnd"],
-  "/dept/users": ["so_gd"],
-  "/dept/wards": ["so_gd", "ubnd"],
-  "/dept/schools": ["so_gd"],
-  "/dept/usage": ["so_gd"],
-  "/studio": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/studio/library": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/studio/literature": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/studio/mau-khbd": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/studio/questions": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/studio/yccd": ["gvcn", "gvbm", "to_truong", "bgh"],
-  "/portal/parent": ["phu_huynh"],
-  "/portal/student": ["hoc_sinh"],
-  "/portal/student/hoc-ba": ["hoc_sinh"],
-  "/profile": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "ubnd"],
-  "/notifications": ["gvcn", "gvbm", "to_truong", "bgh", "pht", "ke_toan", "so_gd", "ubnd"],
-};
-// Route alias hop le (redirect duoc cho phep)
-const ALIASES = { "/records/history": "/register/audit" };
+import { MATRIX, ALIASES, ROLE_EMAIL, ROLE_HOME } from "./qa-matrix.mjs";
 
-const ROLE_EMAIL = {
-  gvcn: "anhptl@nd.scn", gvbm: "minhtv@nd.scn", to_truong: "hanhlth@nd.scn",
-  bgh: "hainv@nd.scn", pht: "duclm@nd.scn", ke_toan: "trangpt@nd.scn",
-  so_gd: "sovqt@demo.scn", ubnd: "daonvl@demo.scn",
-  phu_huynh: "annv@nd.scn", hoc_sinh: "baong@nd.scn",
-};
-const ROLE_HOME = {
-  gvcn: "/dashboard", gvbm: "/academics/grades", to_truong: "/team/home",
-  bgh: "/school/dashboard", pht: "/school/dashboard", ke_toan: "/school/staff",
-  so_gd: "/dept/dashboard", ubnd: "/dept/dashboard",
-  phu_huynh: "/portal/parent", hoc_sinh: "/portal/student",
-};
 
 const browser = await chromium.launch();
 async function loginCtx(email) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const p = await ctx.newPage();
-  p.on("console", (m) => { if (m.type() === "error") errors.push(`${email}: ${m.text().slice(0, 120)}`); });
+  p.on("console", (m) => { if (m.type() !== "error") return; const t = m.text(); if (/Failed to load resource.*status of 4\d\d/.test(t)) return; errors.push(`${email}: ${t.slice(0, 120)}`); });
+  p.on("pageerror", (e) => errors.push(`${email} pageerror: ${e.message.slice(0, 120)}`));
+  p.on("requestfailed", (r) => { const err = r.failure()?.errorText ?? ""; if (!err.includes("ERR_ABORTED")) errors.push(`${email} reqfail: ${r.url().slice(0, 80)} ${err}`); });
+  p.on("response", (r) => { if (r.status() >= 500) errors.push(`${email} 5xx: ${r.url().slice(0, 80)}`); });
   await p.goto(`${BASE}/login`, { waitUntil: "networkidle" });
   await p.fill("#email", email);
   await p.fill("input[type=password]", "demo1234");
@@ -501,24 +392,60 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 }
 
 // W26: Signoff state machine - GVCN nop (pending->submitted), BGH ky (submitted->signed)
+// Setup: dam bao co pending signoff cho lop gvcn (seed neu thieu) - cung ID chay qua ca 2 buoc
+let w26SignoffId = null;
+const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).slice(0, 7);
+{
+  for (const c of myClasses) {
+    const { data: existing } = await db.from("register_signoffs").select("id,status")
+      .eq("class_id", c.id).eq("period", w26Period).eq("type", "so_chu_nhiem").maybeSingle();
+    if (existing && existing.status !== "signed") {
+      await db.from("register_signoffs").update({ status: "pending", submitted_by: null, submitted_at: null, signed_by: null, signed_at: null, reject_reason: null }).eq("id", existing.id);
+      w26SignoffId = existing.id;
+      break;
+    }
+    if (!existing) {
+      const { data: ins, error: ie } = await db.from("register_signoffs").insert({ class_id: c.id, period: w26Period, type: "so_chu_nhiem", status: "pending" }).select("id").single();
+      if (ie) console.log("  [W26 seed]", ie.message);
+      w26SignoffId = ins?.id ?? null;
+      if (w26SignoffId) break;
+    }
+  }
+  // Tat ca lop da signed ky nay -> dung ky sau de test
+  if (!w26SignoffId && myClasses[0]) {
+    const [y, m] = w26Period.split("-").map(Number);
+    const next = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}`;
+    const { data: ins, error: ie } = await db.from("register_signoffs").insert({ class_id: myClasses[0].id, period: next, type: "so_chu_nhiem", status: "pending" }).select("id").single();
+    if (ie) console.log("  [W26 seed]", ie.message);
+    w26SignoffId = ins?.id ?? null;
+  }
+}
 {
   const { ctx, p } = await loginCtx("anhptl@nd.scn");
-  // Tim signoff pending cua cac lop gvcn chu nhiem
   const myClassIds = myClasses.map((c) => c.id);
   const { data: pending } = await db.from("register_signoffs").select("id,status")
     .in("class_id", myClassIds).eq("status", "pending");
   await p.goto(`${BASE}/register/signoff`);
   await settle(p, 1500);
   if (pending?.length) {
-    const nopBtn = p.locator('button:has-text("Nộp sổ")').first();
-    if ((await nopBtn.count()) > 0) {
-      await nopBtn.click();
-      await p.waitForTimeout(2500);
-      // Nut dau tien co the thuoc lop khac trong so lop CN - check pending giam di
-      const { data: stillPending } = await db.from("register_signoffs").select("id")
-        .in("class_id", myClassIds).eq("status", "pending");
-      check("W26a", "GVCN nop so -> submitted", (stillPending?.length ?? 0) < pending.length,
-        `pending ${pending.length} -> ${stillPending?.length}`);
+    // Correlate dong UI -> exact signoff row (class name + period -> id)
+    const row = p.locator('tr:has(button:has-text("Nộp sổ"))').first();
+    if ((await row.count()) > 0) {
+      const clsName = (await row.locator("td").nth(0).innerText()).trim();
+      const period = (await row.locator("td").nth(1).innerText()).trim();
+      const cls = myClasses.find((c) => c.name === clsName);
+      const { data: target } = cls ? await db.from("register_signoffs").select("id,status")
+        .eq("class_id", cls.id).eq("period", period).eq("status", "pending").maybeSingle() : { data: null };
+      if (target) {
+        const gvcnPid = gvcnP.id;
+        await row.locator('button:has-text("Nộp sổ")').click();
+        await p.waitForTimeout(2500);
+        const { data: after } = await db.from("register_signoffs").select("id,status,submitted_by").eq("id", target.id).single();
+        if (after?.status === "submitted") w26SignoffId = after.id;
+        check("W26a", `GVCN nop so ${clsName}/${period} -> pending->submitted (id=${target.id.slice(0, 8)})`,
+          after?.status === "submitted" && after?.submitted_by === gvcnPid,
+          `before=pending after=${after?.status} by_match=${after?.submitted_by === gvcnPid}`);
+      } else check("W26a", "GVCN nop so", false, `khong map duoc row UI -> signoff pending (${clsName}/${period})`);
     } else check("W26a", "GVCN nop so", false, "no submit btn");
   } else check("W26a", "GVCN nop so", false, "PRECONDITION: khong co pending signoff - seed truoc khi chay");
   await ctx.close();
@@ -540,18 +467,32 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
       `before=${before} after=${after}`);
   } else check("W26b", "BGH tao dot ky", false, "no button");
 
-  // BGH ky duyet 1 dot submitted (nut dau tien co the la row khac - check count giam)
-  const { data: submitted } = await db.from("register_signoffs").select("id")
+  // BGH ky duyet: uu tien id da nop o W26a (cung ID qua pending->submitted->signed)
+  const { data: submitted } = await db.from("register_signoffs").select("id,class_id,period")
     .eq("status", "submitted");
+  const preferred = w26SignoffId ? submitted?.find((s) => s.id === w26SignoffId) : null;
   if (submitted?.length) {
-    const signBtn = p.locator('button:has-text("Ký duyệt")').first();
-    if ((await signBtn.count()) > 0) {
-      await signBtn.click();
-      await p.waitForTimeout(2500);
-      const { data: stillSub } = await db.from("register_signoffs").select("id")
-        .eq("status", "submitted");
-      check("W26c", "BGH ky duyet -> signed", (stillSub?.length ?? 0) < submitted.length,
-        `submitted ${submitted.length} -> ${stillSub?.length}`);
+    let row = p.locator('tr:has(button:has-text("Ký duyệt"))').first();
+    if (preferred) {
+      const { data: prefCls } = await db.from("classes").select("name").eq("id", preferred.class_id).single();
+      const exact = p.locator('tr', { hasText: prefCls?.name ?? "" }).filter({ has: p.locator('button:has-text("Ký duyệt")') }).filter({ hasText: preferred.period }).first();
+      if ((await exact.count()) > 0) row = exact;
+    }
+    if ((await row.count()) > 0) {
+      const clsName = (await row.locator("td").nth(0).innerText()).trim();
+      const period = (await row.locator("td").nth(1).innerText()).trim();
+      const { data: clsAll } = await db.from("classes").select("id,name").eq("name", clsName);
+      const clsIds = new Set((clsAll ?? []).map((c) => c.id));
+      const target = submitted.find((s) => clsIds.has(s.class_id) && s.period === period);
+      if (target) {
+        const { data: bghP } = await db.from("profiles").select("id").eq("email", "hainv@nd.scn").single();
+        await row.locator('button:has-text("Ký duyệt")').first().click();
+        await p.waitForTimeout(2500);
+        const { data: after } = await db.from("register_signoffs").select("id,status,signed_by").eq("id", target.id).single();
+        check("W26c", `BGH ky duyet ${clsName}/${period} -> submitted->signed (id=${target.id.slice(0, 8)})`,
+          after?.status === "signed" && after?.signed_by === bghP?.id,
+          `after=${after?.status} signed_by_match=${after?.signed_by === bghP?.id}`);
+      } else check("W26c", "BGH ky duyet", false, `khong map duoc row UI -> signoff submitted (${clsName}/${period})`);
     } else check("W26c", "BGH ky duyet", false, "no sign btn");
   } else check("W26c", "BGH ky duyet", false, "PRECONDITION: khong co submitted signoff");
   await ctx.close();
@@ -673,3 +614,4 @@ const fails = results.filter((r) => !r.pass);
 console.log(`\n===== ${pass}/${results.length} PASS =====`);
 if (fails.length) { console.log("FAILURES:"); fails.forEach((f) => console.log(`  ${f.id} ${f.name} ${f.detail}`)); }
 await browser.close();
+process.exit(fails.length ? 1 : 0);

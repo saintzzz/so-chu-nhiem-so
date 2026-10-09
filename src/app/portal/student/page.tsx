@@ -29,13 +29,14 @@ export default async function StudentPortalPage() {
   const profile = await requireRoles(["hoc_sinh"]);
   const supabase = await createClient();
 
+  // Embed classes de gop 2 roundtrip tuan tu thanh 1.
   const { data: studentRow } = await supabase
     .from("students")
-    .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id")
+    .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id,classes(id,name,school_id)")
     .eq("profile_id", profile.id)
     .limit(1)
     .single();
-  const student = studentRow as Pick<
+  const student = studentRow as (Pick<
     Student,
     | "id"
     | "class_id"
@@ -46,19 +47,8 @@ export default async function StudentPortalPage() {
     | "gender"
     | "address"
     | "national_id"
-  > | null;
-
-  const { data: classRow } = student
-    ? await supabase
-        .from("classes")
-        .select("id,name,school_id")
-        .eq("id", student.class_id)
-        .single()
-    : { data: null };
-  const classroom = classRow as Pick<
-    ClassRoom,
-    "id" | "name" | "school_id"
-  > | null;
+  > & { classes?: Pick<ClassRoom, "id" | "name" | "school_id"> | null }) | null;
+  const classroom = student?.classes ?? null;
 
   const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes] =
     student ? await Promise.all([

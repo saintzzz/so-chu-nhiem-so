@@ -63,7 +63,13 @@ await asUser("phuongttm@cva.scn", async (c) => {
   const { data: stu } = await c.from("students").select("id, classes!inner(school_id)").limit(500);
   const foreign = (stu ?? []).filter((s) => s.classes?.school_id && s.classes.school_id !== me?.school_id);
   check("S08", "bgh-cva students chi thuoc truong minh", foreign.length === 0, `rows=${(stu ?? []).length} foreign=${foreign.length}`);
-  check("S09", "bgh-cva tvc_materials -> 0 published xa", (await count(c, "tvc_materials")) === 0, "");
+  // tvc_mat_published_read: published = shared library cho user co tvc.profiles;
+  // boundary dung: chi 'published' xa duoc thay, draft/review khong leak.
+  const { data: mats } = await c.from("tvc_materials").select("id,status,school_id");
+  const foreignMats = (mats ?? []).filter((m) => m.school_id && m.school_id !== me?.school_id);
+  const leakedDrafts = foreignMats.filter((m) => m.status !== "published");
+  check("S09", "bgh-cva materials xa: chi 'published', 0 draft/review", leakedDrafts.length === 0,
+    `foreign=${foreignMats.length} drafts_leaked=${leakedDrafts.length}`);
 });
 
 // gvbm: chi thay student lop minh day (RLS scope) - verify qua so luong < tong
@@ -83,17 +89,17 @@ await asUser("minhtv@nd.scn", async (c) => {
   check("S13", "devin-callback token sai -> 4xx", r3 && r3.status >= 400 && r3.status < 500, `status=${r3?.status}`);
 }
 
-// S23: tai khoan per-truong (gv*.test) - tenant isolation thuc te.
-// Moi truong co ~100 account gvcn/gvbm/to_truong/bgh - gan nhat voi
-// kich ban demo gate (truong tu dung account cua minh, khong share).
+// S23: tai khoan per-truong (gvcn/gvbm cua tung truong) - tenant isolation thuc te.
+// Moi truong co account gvcn/gvbm rieng - gan nhat voi kich ban demo gate
+// (truong tu dung account cua minh, khong share).
 {
   const { data: schools } = await admin.from("schools").select("id,name");
   const { data: cls } = await admin.from("classes").select("id,school_id").limit(100);
   for (const sch of schools ?? []) {
     const { data: prof } = await admin.from("profiles").select("email")
-      .eq("school_id", sch.id).in("role", ["gvcn", "gvbm"]).like("email", "%.test").limit(1);
+      .eq("school_id", sch.id).in("role", ["gvcn", "gvbm"]).limit(1);
     const email = (prof ?? [])[0]?.email;
-    if (!email) { check(`S23-${sch.name.slice(0, 12)}`, "co account .test", false, "no account"); continue; }
+    if (!email) { check(`S23-${sch.name.slice(0, 12)}`, "co account gvcn/gvbm", false, "no account"); continue; }
     await asUser(email, async (c) => {
       const { data: stus } = await c.from("students").select("id,classes!inner(school_id)").limit(500);
       const foreign = (stus ?? []).filter((s) => s.classes?.school_id !== sch.id).length;
@@ -118,7 +124,16 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext();
 const page = await ctx.newPage();
 const jsErrors = [];
-page.on("pageerror", (e) => jsErrors.push(e.message.slice(0, 120)));
+page.on("pageerror", (e) => jsErrors.push(`pageerror: ${e.message.slice(0, 120)}`));
+page.on("console", (m) => {
+  if (m.type() !== "error") return;
+  const t = m.text();
+  // 4xx tu cac negative test (deny probes) la ket qua mong doi - khong tinh loi
+  if (/Failed to load resource.*status of 4\d\d/.test(t)) return;
+  jsErrors.push(`console: ${t.slice(0, 120)}`);
+});
+page.on("requestfailed", (r) => { const err = r.failure()?.errorText ?? ""; if (!err.includes("ERR_ABORTED")) jsErrors.push(`reqfail: ${r.url().slice(0, 70)} ${err}`); });
+page.on("response", (r) => { if (r.status() >= 500) jsErrors.push(`5xx: ${r.url().slice(0, 70)}`); });
 
 async function login(email, pw = "demo1234") {
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
@@ -222,9 +237,8 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     await page.locator('input[type="email"]').fill("khong-phai-email");
     await page.locator('label:has-text("Mật khẩu") input').fill("demo1234");
     await page.locator('button:has-text("Tạo tài khoản")').click();
-    await page.waitForTimeout(2500);
-    const t = await page.textContent("body");
-    check("E09", "email loi -> 'Email không hợp lệ' + khong tao user", t.includes("Email không hợp lệ"), "");
+    const shown = await page.waitForSelector("text=Email không hợp lệ", { timeout: 15000 }).then(() => true).catch(() => false);
+    check("E09", "email loi -> 'Email không hợp lệ' + khong tao user", shown, "");
     const { data: bad } = await admin.from("profiles").select("id").eq("email", "khong-phai-email").limit(1);
     check("E09b", "user email loi khong ton tai trong DB", (bad ?? []).length === 0, "");
   } else check("E09", "form tao GV", false, "no form");
@@ -268,22 +282,31 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
   const apiChecks = [
     ["S14a", "POST", "/api/ai/dept-brief", { weeks: 1 }],
     ["S14b", "POST", "/api/ai/draft-message", { purpose: "x" }],
-    ["S14c", "POST", "/api/studio/tools/soan-thao/generate", { input: "x" }],
+    // DC-01 = tool code that - 404 chi khi code khong ton tai; PH phai an 401/403
+    ["S14c", "POST", "/api/studio/tools/DC-01/generate", { subject: "toan", grade: "6", lesson: `DENY-${STAMP}` }],
   ];
   for (const [id, method, path, body] of apiChecks) {
     const r = await ctx.request.fetch(`${BASE}${path}`, {
       method, data: body, headers: { "content-type": "application/json" },
     }).catch(() => null);
-    check(id, `phu_huynh ${method} ${path} -> 4xx`, r && r.status() >= 400 && r.status() < 500, `status=${r?.status()}`);
+    const st = r?.status();
+    check(id, `phu_huynh ${method} ${path} -> 401/403`, !!r && (st === 401 || st === 403), `status=${st}`);
   }
-  // hoc_sinh cung bi chan AI routes
+  // hoc_sinh cung bi chan AI + studio routes
   await ctx.clearCookies();
   await login("baong@nd.scn");
   await page.waitForTimeout(3000);
-  const r = await ctx.request.fetch(`${BASE}/api/ai/dept-brief`, {
-    method: "POST", data: { weeks: 1 }, headers: { "content-type": "application/json" },
-  }).catch(() => null);
-  check("S15", "hoc_sinh POST /api/ai/dept-brief -> 4xx", r && r.status() >= 400 && r.status() < 500, `status=${r?.status()}`);
+  for (const [id, path] of [["S15a", "/api/ai/dept-brief"], ["S15b", "/api/studio/tools/DC-01/generate"]]) {
+    const r = await ctx.request.fetch(`${BASE}${path}`, {
+      method: "POST", data: { weeks: 1, subject: "toan", lesson: `DENY-${STAMP}` }, headers: { "content-type": "application/json" },
+    }).catch(() => null);
+    const st = r?.status();
+    check(id, `hoc_sinh POST ${path} -> 401/403`, !!r && (st === 401 || st === 403), `status=${st}`);
+  }
+  // verify khong co generation nao duoc ghi boi role bi chan
+  const { data: denyGens } = await admin.from("tvc_generations").select("id")
+    .contains("input", { lesson: `DENY-${STAMP}` });
+  check("S15c", "denied generate khong ghi tvc_generations", (denyGens ?? []).length === 0, `rows=${(denyGens ?? []).length}`);
 }
 
 // ============ ADMIN ROLE end-to-end ============
@@ -313,35 +336,64 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
   }
 }
 
-// ============ E13: GVBM nhap diem -> DB ============
+// ============ E13: GVBM nhap diem -> DB (exact key correlation) ============
+// Replicate page defaults: class=taught[0], subject="Toán"|subjects[0], term=hk1;
+// first number input = students[0] (VN-name sort) x txCols[0] (first kind present, else mieng-s1)
 {
   await ctx.clearCookies();
   await login("minhtv@nd.scn");
   await page.waitForTimeout(3000);
-  await page.goto(`${BASE}/academics/grades`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(1500);
-  // lay 1 grade row cua gvbm de so sanh truoc/sau
-  const { data: gvbmProf } = await admin.from("profiles").select("id").eq("email", "minhtv@nd.scn").single();
-  const { data: before } = await admin.from("grades").select("id,score,student_id,subject_id,term,assessment_type")
-    .order("id").limit(5);
-  const gridInput = page.locator('input[type="number"]').first();
-  if ((await gridInput.count()) > 0) {
-    // doc gia tri hien tai cua input -> tinh score test (sau khi luu phai khac before)
-    const inputId = await gridInput.getAttribute("data-student-id").catch(() => null);
-    void inputId;
-    const testScore = "4.5";
-    await gridInput.fill(testScore);
-    const saveBtn = page.locator('button:has-text("Lưu")').first();
-    if ((await saveBtn.count()) > 0 && !(await saveBtn.isDisabled())) {
-      await saveBtn.click();
-      await page.waitForTimeout(3000);
-      const { data: after } = await admin.from("grades").select("id,score")
-        .eq("score", 4.5).order("id").limit(20);
-      const beforeIds = new Map((before ?? []).map((b) => [b.id, b.score]));
-      const changed = (after ?? []).some((g) => !beforeIds.has(g.id));
-      check("E13", "GVBM nhap diem -> luu -> DB co row moi score=4.5", changed, `after45=${(after ?? []).length}`);
-    } else check("E13", "GVBM nhap diem", false, "no save btn / disabled");
-  } else check("E13", "GVBM nhap diem", false, "PRECONDITION: khong co editable input tren grades");
+  const { data: gvbmProf } = await admin.from("profiles").select("id,school_id").eq("email", "minhtv@nd.scn").single();
+  const { data: teaching } = await admin.from("timetable_entries").select("class_id,subject_id").eq("teacher_id", gvbmProf.id);
+  const { data: subs } = await admin.from("subjects").select("id,name,assessment_method").eq("school_id", gvbmProf.school_id)
+    .in("id", [...new Set((teaching ?? []).map((t) => t.subject_id))]).order("name");
+  // Pair that te: class+subject phai cung 1 timetable_entry (RLS grades theo phan cong)
+  const toanId = (subs ?? []).find((s) => s.name === "Toán")?.id;
+  const pair = (teaching ?? []).find((t) => t.subject_id === toanId) ?? (teaching ?? [])[0];
+  const classId = pair?.class_id;
+  const subject = (subs ?? []).find((s) => s.id === pair?.subject_id);
+  const term = "hk1";
+  if (!classId || !subject || subject.assessment_method === "comment") {
+    check("E13", "GVBM nhap diem", false, `PRECONDITION: class=${!!classId} subject=${subject?.name ?? "none"} method=${subject?.assessment_method ?? ""}`);
+  } else {
+    const { data: studs } = await admin.from("students").select("id,full_name").eq("class_id", classId);
+    const lastTok = (n) => (n ?? "").trim().split(/\s+/).pop();
+    const s0 = (studs ?? []).sort((a, b) => lastTok(a.full_name).localeCompare(lastTok(b.full_name), "vi") || a.full_name.localeCompare(b.full_name, "vi"))[0];
+    // first tx col: first kind in [mieng,kt15,kt1t,tx] having grades, else "mieng"
+    const { data: txg } = await admin.from("grades").select("subtype,seq")
+      .eq("subject_id", subject.id).eq("term", term).eq("assessment_type", "ddg_tx")
+      .in("student_id", (studs ?? []).map((s) => s.id));
+    const KIND_ORDER = ["mieng", "kt15", "kt1t", "tx"];
+    const kinds = new Set((txg ?? []).map((g) => KIND_ORDER.includes(g.subtype) ? g.subtype : "tx"));
+    const kind = KIND_ORDER.find((k) => kinds.has(k)) ?? "mieng";
+    const key = { student_id: s0?.id, subject_id: subject.id, term, assessment_type: "ddg_tx", subtype: kind === "tx" ? "" : kind, seq: 1 };
+    const getRow = async () => {
+      const { data } = await admin.from("grades").select("id,score,entered_by")
+        .eq("student_id", key.student_id).eq("subject_id", key.subject_id).eq("term", key.term)
+        .eq("assessment_type", key.assessment_type).eq("subtype", key.subtype).eq("seq", key.seq)
+        .maybeSingle();
+      return data;
+    };
+    const before = await getRow();
+    // negative control: chon score dam bao khac before -> neu save khong chay thi assert FAIL
+    const testScore = before?.score === 4.5 ? "3.5" : "4.5";
+    // URL params: ep page render dung pair day that (tranh cap class+subject khong phan cong)
+    await page.goto(`${BASE}/academics/grades?class=${classId}&subject=${subject.id}&term=${term}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1500);
+    const gridInput = page.locator('tbody input[type="number"]').first();
+    if (s0 && (await gridInput.count()) > 0) {
+      await gridInput.fill(testScore);
+      const saveBtn = page.locator('button:has-text("Lưu")').first();
+      if ((await saveBtn.count()) > 0 && !(await saveBtn.isDisabled())) {
+        await saveBtn.click();
+        await page.waitForSelector("text=Đã lưu điểm", { timeout: 15000 }).catch(() => null);
+        const after = await getRow();
+        check("E13", `GVBM nhap ${testScore} -> exact row (student+subject+term+ddg_tx/${key.subtype}#1) = ${testScore}`,
+          !!after && after.score === Number(testScore) && after.entered_by === gvbmProf.id,
+          `before=${before?.score ?? "none"} after=${after?.score ?? "none"} student=${s0.full_name}`);
+      } else check("E13", "GVBM nhap diem", false, "no save btn / disabled");
+    } else check("E13", "GVBM nhap diem", false, `PRECONDITION: student=${!!s0} input=${await gridInput.count()}`);
+  }
 }
 
 // ============ STUDIO happy path: generate -> tvc_generations ============
@@ -349,28 +401,33 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
   await ctx.clearCookies();
   await login("minhtv@nd.scn");
   await page.waitForTimeout(3000);
+  const { data: gvbmP } = await admin.from("profiles").select("id").eq("email", "minhtv@nd.scn").single();
   const { data: sub } = await admin.from("tvc_subjects").select("code").eq("code", "toan").maybeSingle();
   const { data: std } = await admin.from("tvc_curriculum_standards").select("id").limit(1);
   if (!sub || !(std ?? [])[0]) {
     check("S18", "Studio generate", false, "PRECONDITION: thieu tvc_subjects/standards");
   } else {
-    const before = await admin.from("tvc_generations").select("id").limit(1000);
+    const marker = `TEST-${STAMP}`;
     const r = await ctx.request.fetch(`${BASE}/api/studio/tools/DC-01/generate`, {
       method: "POST",
-      data: { subject: "toan", grade: "6", standard_ids: std[0].id, lesson: `TEST-${STAMP}`, duration: "1 tiết" },
+      data: { subject: "toan", grade: "6", standard_ids: std[0].id, lesson: marker, duration: "1 tiết" },
       headers: { "content-type": "application/json" },
       timeout: 120000,
     }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
-    const hasDoc = !!(j?.doc || j?.pending);
-    check("S18", "gvbm POST DC-01/generate -> 200 + doc", !!r?.ok() && hasDoc, `status=${r?.status()} usedFallback=${j?.usedFallback ?? ""} pending=${j?.pending ?? false}`);
+    // chi chap nhan doc hoan chinh - pending job khong tinh la generate xong
+    check("S18", "gvbm POST DC-01/generate -> 200 + doc", !!r?.ok() && !!j?.doc, `status=${r?.status()} usedFallback=${j?.usedFallback ?? ""} pending=${j?.pending ?? false}`);
     await new Promise((res) => setTimeout(res, 1500));
-    const { data: gens } = await admin.from("tvc_generations").select("id,tool_code,input")
-      .eq("tool_code", "DC-01").order("created_at", { ascending: false }).limit(5);
-    const mine = (gens ?? []).find((g) => !(before.data ?? []).find((b) => b.id === g.id));
-    check("S19", "tvc_generations co row moi (DC-01)", !!mine, `rows=${(gens ?? []).length}`);
-    // cleanup generation test
-    if (mine) await admin.from("tvc_generations").delete().eq("id", mine.id);
+    // correlate theo owner + marker duy nhat cua request nay
+    const { data: gens } = await admin.from("tvc_generations").select("id,user_id,input,output")
+      .contains("input", { lesson: marker });
+    const mine = (gens ?? []).find((g) => g.user_id === gvbmP?.id);
+    check("S19", "tvc_generations row moi: owner=gvbm + lesson=marker", !!mine, `matched=${(gens ?? []).length}`);
+    if (mine) {
+      const hasOutput = !!mine.output && Object.keys(mine.output).length > 0;
+      check("S19b", "generation co output content", hasOutput, "");
+      await admin.from("tvc_generations").delete().eq("id", mine.id);
+    }
   }
 }
 
@@ -393,13 +450,13 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     await login("trangpt@nd.scn");
     await page.waitForTimeout(2500);
     const r2 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
-    check("S21", "ke_toan export material -> 4xx", !!r2 && r2.status() >= 400, `status=${r2?.status()} (published=${mat.status === "published"})`);
+    check("S21", "ke_toan export material -> 401/403/404", !!r2 && [401, 403, 404].includes(r2.status()), `status=${r2?.status()} (published=${mat.status === "published"})`);
     // phu_huynh export -> 4xx
     await ctx.clearCookies();
     await login("annv@nd.scn");
     await page.waitForTimeout(2500);
     const r3 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
-    check("S22", "phu_huynh export material -> 4xx", !!r3 && r3.status() >= 400, `status=${r3?.status()}`);
+    check("S22", "phu_huynh export material -> 401/403/404", !!r3 && [401, 403, 404].includes(r3.status()), `status=${r3?.status()}`);
   }
 }
 

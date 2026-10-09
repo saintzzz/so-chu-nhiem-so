@@ -60,9 +60,13 @@ export default async function ParentPortalPage({
 
   // maybeSingle: 0 row la hop le (PH chua lien ket), chi loi query moi
   // tinh la loadError - tranh bao "chua co HS" khi lookup that bai.
+  // Gop chain parents->parent_students->students->classes thanh 1 query
+  // (truoc 4 roundtrip tuan tu ~1s tren serverless).
   const { data: parentRow, error: parentErr } = await supabase
     .from("parents")
-    .select("id,full_name,relationship")
+    .select(
+      "id,full_name,relationship,parent_students(parent_id,student_id,students(id,class_id,full_name,code,classes(id,name,school_id,gvcn_id)))",
+    )
     .eq("profile_id", profile.id)
     .limit(1)
     .maybeSingle();
@@ -71,44 +75,25 @@ export default async function ParentPortalPage({
     "id" | "full_name" | "relationship"
   > | null;
 
-  const { data: linkRows, error: linkErr } = parent
-    ? await supabase
-        .from("parent_students")
-        .select("parent_id,student_id")
-        .eq("parent_id", parent.id)
-    : { data: [], error: null };
-  const links = (linkRows ?? []) as ParentStudentLink[];
-  const studentIds = links.map((l) => l.student_id);
-
-  const { data: studentRows, error: stuErr } =
-    studentIds.length > 0
-      ? await supabase
-          .from("students")
-          .select("id,class_id,full_name,code")
-          .in("id", studentIds)
-      : { data: [], error: null };
-  const children = (studentRows ?? []) as Pick<
+  type LinkedStudent = Pick<
     Student,
     "id" | "class_id" | "full_name" | "code"
-  >[];
+  > & { classes: Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id"> | null };
+  const linkRows = (
+    (parentRow as { parent_students?: (ParentStudentLink & { students: LinkedStudent | null })[] } | null)
+      ?.parent_students ?? []
+  );
+  const children = linkRows
+    .map((l) => l.students)
+    .filter((s): s is LinkedStudent => !!s);
   const student =
     children.find((s) => s.id === sp.child) ?? children[0] ?? null;
 
-  const { data: classRows, error: clsErr } =
-    children.length > 0
-      ? await supabase
-          .from("classes")
-          .select("id,name,school_id,gvcn_id")
-          .in(
-            "id",
-            [...new Set(children.map((c) => c.class_id))],
-          )
-      : { data: [], error: null };
   const classById = new Map(
-    ((classRows ?? []) as Pick<
-      ClassRoom,
-      "id" | "name" | "school_id" | "gvcn_id"
-    >[]).map((c) => [c.id, c]),
+    children
+      .map((s) => s.classes)
+      .filter((c): c is Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id"> => !!c)
+      .map((c) => [c.id, c]),
   );
   const classroom = student ? (classById.get(student.class_id) ?? null) : null;
   const classNameOf = (classId: string) => classById.get(classId)?.name ?? "-";
@@ -300,19 +285,6 @@ export default async function ParentPortalPage({
   };
 
   const teacherIds = [...new Set(appointments.map((a) => a.teacher_id))];
-  const { data: teacherRows, error: teacherErr } = teacherIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id,full_name")
-        .in("id", teacherIds)
-    : { data: [], error: null };
-  const teacherNameOf = new Map(
-    ((teacherRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((t) => [
-      t.id,
-      t.full_name,
-    ]),
-  );
-
   const gvcnId = classroom?.gvcn_id ?? null;
   const rawMessages = (msgRes.data ?? []) as {
     id: string;
@@ -323,12 +295,34 @@ export default async function ParentPortalPage({
   const senderIds = [
     ...new Set([...rawMessages.map((m) => m.sender_id), gvcnId].filter(Boolean)),
   ] as string[];
-  const { data: senderRows, error: senderErr } = senderIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id,full_name")
-        .in("id", senderIds)
-    : { data: [], error: null };
+  const rawActivities = (actRes.data ?? []) as {
+    id: string;
+    title: string;
+    activity_date: string;
+    status: string;
+  }[];
+  const [{ data: teacherRows, error: teacherErr }, { data: senderRows, error: senderErr }, { data: actAttRows, error: actAttErr }] =
+    await Promise.all([
+      teacherIds.length
+        ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+        : Promise.resolve({ data: [], error: null }),
+      senderIds.length
+        ? supabase.from("profiles").select("id,full_name").in("id", senderIds)
+        : Promise.resolve({ data: [], error: null }),
+      rawActivities.length > 0 && student
+        ? supabase
+            .from("activity_attendance")
+            .select("activity_id,status")
+            .eq("student_id", student.id)
+            .in("activity_id", rawActivities.map((a) => a.id))
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+  const teacherNameOf = new Map(
+    ((teacherRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((t) => [
+      t.id,
+      t.full_name,
+    ]),
+  );
   const senderNameOf = new Map(
     ((senderRows ?? []) as Pick<Profile, "id" | "full_name">[]).map((p) => [
       p.id,
@@ -343,23 +337,6 @@ export default async function ParentPortalPage({
         : (senderNameOf.get(m.sender_id) ?? "Giáo viên"),
   }));
 
-  const rawActivities = (actRes.data ?? []) as {
-    id: string;
-    title: string;
-    activity_date: string;
-    status: string;
-  }[];
-  const { data: actAttRows, error: actAttErr } =
-    rawActivities.length > 0 && student
-      ? await supabase
-          .from("activity_attendance")
-          .select("activity_id,status")
-          .eq("student_id", student.id)
-          .in(
-            "activity_id",
-            rawActivities.map((a) => a.id),
-          )
-      : { data: [], error: null };
   const attByActivity = new Map(
     ((actAttRows ?? []) as { activity_id: string; status: string }[]).map(
       (r) => [r.activity_id, r.status],
@@ -376,9 +353,6 @@ export default async function ParentPortalPage({
   // "Chua co ..." chi render khi query THANH CONG va tra ve 0 row.
   const srcErrors = Object.entries({
     parents: parentErr,
-    parent_students: linkErr,
-    students: stuErr,
-    classes: clsErr,
     attendance_records: attRes.error,
     grades: gradeRes.error,
     announcements: annRes.error,

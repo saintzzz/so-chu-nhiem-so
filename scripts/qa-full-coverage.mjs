@@ -700,9 +700,10 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 // Seed deterministic: can 1 appointment proposed cho anhptl (teacher_id = anhptl).
 {
   const anhptlId = "bb42e98d-f6ca-40ff-98c9-4440beda01a7";
-  const { data: ap0 } = await db.from("appointments").select("id")
+  const { data: ap0 } = await db.from("appointments").select("id,purpose")
     .eq("teacher_id", anhptlId).eq("status", "proposed").limit(1);
   let w31Id = ap0?.[0]?.id ?? null;
+  let w31Purpose = ap0?.[0]?.purpose ?? "";
   if (!w31Id) {
     const { data: cls } = await db.from("classes").select("id")
       .eq("gvcn_id", anhptlId).eq("status", "active").limit(1);
@@ -723,13 +724,21 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
       }).select("id").single();
       if (ie) console.log("  [W31 seed]", ie.message);
       w31Id = ins?.id ?? null;
+      if (w31Id) w31Purpose = "QA-W31 deterministic appointment";
     }
   }
   const { ctx, p } = await loginCtx("anhptl@nd.scn");
   await gotoSafe(p, `${BASE}/parents/appointments`);
   await settle(p, 1500);
   if (w31Id) {
-    const confirmBtn = p.locator('button:has-text("Xác nhận"), button:has-text("Nhận lịch")').first();
+    // Scope vao dung row duoc seed/chon - .first() toan trang co the click
+    // nham appointment proposed khac khi co nhieu row cung luc.
+    const rowSel = w31Purpose
+      ? `tr:has-text("${w31Purpose.replace(/"/g, '\\"')}")`
+      : "tr";
+    const confirmBtn = p.locator(
+      `${rowSel} button:has-text("Xác nhận"), ${rowSel} button:has-text("Nhận lịch")`,
+    ).first();
     if ((await confirmBtn.count()) > 0) {
       await confirmBtn.click();
       let after = null;

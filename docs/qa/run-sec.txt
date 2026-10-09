@@ -19,9 +19,9 @@ PASS S12 cron ?secret= sai -> 401 (header-only) - status=401
 PASS S13 devin-callback token sai -> 4xx - status=400
 PASS S23-THCS Nguyễn Du minhlh@nd.scn chi thay HS truong minh - rows=435 foreign=0
 PASS S24-THCS Nguyễn Du query HS lop truong khac -> 0 - leak=0
-PASS S23-Tiểu học Chu V nhihm@cva.scn chi thay HS truong minh - rows=496 foreign=0
+PASS S23-Tiểu học Chu V anhhd@cva.scn chi thay HS truong minh - rows=496 foreign=0
 PASS S24-Tiểu học Chu V query HS lop truong khac -> 0 - leak=0
-PASS S23-Tiểu học Kim Đ hanghh@kd.scn chi thay HS truong minh - rows=341 foreign=0
+PASS S23-Tiểu học Kim Đ hanhvb@kd.scn chi thay HS truong minh - rows=341 foreign=0
 PASS S24-Tiểu học Kim Đ query HS lop truong khac -> 0 - leak=0
 PASS E01 sai MK -> loi inline + o lai /login - https://sochunhiem.vieschool.com/login
 PASS E02 email khong ton tai -> o lai /login
@@ -44,25 +44,31 @@ PASS S15b hoc_sinh POST /api/studio/tools/DC-01/generate -> 401/403 - status=403
 PASS S15c denied generate khong ghi tvc_generations - rows=0
 PASS S16 admin role -> /dept/schools accessible - status=200
 PASS S17 admin -> /register/roster denied - status=200 loc=
-PASS E13 GVBM nhap 3.5 -> exact row (student+subject+term+ddg_tx/#1) = 3.5 - before=4.5 after=3.5 student=Hoàng Kim Anh
-PASS S18 gvbm POST DC-01/generate -> 200 + doc - status=200 usedFallback=true pending=false
-PASS S19 tvc_generations row moi: owner=gvbm + lesson=marker - matched=1
-PASS S19b generation co output content
-PASS S20 export docx material "KẾ HOẠCH BÀI DẠY - PHÉP CỘNG C" - status=200 bytes=9619
-PASS S21 ke_toan export material -> 401/403/404 - status=404 (published=true)
-PASS S22 phu_huynh export material -> 401/403/404 - status=404
-  perf anhptl@nd.scn /dashboard: cold=4961ms warm-ttfb=829ms warm-total=1326ms
-  perf anhptl@nd.scn /academics/grades: cold=2351ms warm-ttfb=673ms warm-total=1184ms
-  perf anhptl@nd.scn /records/report: cold=513ms warm-ttfb=659ms warm-total=1156ms
-  perf hainv@nd.scn /school/dashboard: cold=921ms warm-ttfb=846ms warm-total=1356ms
-  perf hainv@nd.scn /school/exam-analytics: cold=1535ms warm-ttfb=700ms warm-total=1204ms
-  perf hainv@nd.scn /school/radar: cold=2492ms warm-ttfb=1497ms warm-total=1989ms
-  perf annv@nd.scn /portal/parent: cold=3167ms warm-ttfb=1770ms warm-total=2268ms
-  perf baong@nd.scn /portal/student: cold=1160ms warm-ttfb=548ms warm-total=1056ms
-  perf sovqt@demo.scn /dept/usage: cold=1878ms warm-ttfb=940ms warm-total=1448ms
-PASS P01 warm load < 8s (9 trang) - max=2268ms
+FAIL E13 GVBM nhap 3.5 -> exact row (student+subject+term+ddg_tx/#1) = 3.5 - before=4.5 after=4.5 student=Hoàng Kim Anh
+FAIL S18 gvbm POST DC-01/generate -> 200 + doc hoan chinh (khong pending) - status=200 usedFallback= pending=false
+FAIL S19 tvc_generations row moi: owner=gvbm + lesson=marker - matched=0
+PASS S20 export docx material "KẾ HOẠCH BÀI DẠY - PHÉP CỘNG C" - status=200 bytes=15820
+FAIL S21 ke_toan export material -> 401/403/404 - status=200 (published=true)
+FAIL S22 phu_huynh export material -> 401/403/404 - status=200
+  perf anhptl@nd.scn /dashboard: cold=306ms warm-ttfb=273ms warm-total=775ms
+  perf anhptl@nd.scn /academics/grades: cold=478ms warm-ttfb=293ms warm-total=794ms
+  perf anhptl@nd.scn /records/report: cold=304ms warm-ttfb=283ms warm-total=785ms
+  perf hainv@nd.scn /school/dashboard: cold=355ms warm-ttfb=276ms warm-total=778ms
+  perf hainv@nd.scn /school/exam-analytics: cold=307ms warm-ttfb=287ms warm-total=787ms
+  perf hainv@nd.scn /school/radar: cold=293ms warm-ttfb=279ms warm-total=780ms
+  perf annv@nd.scn /portal/parent: cold=326ms warm-ttfb=281ms warm-total=782ms
+  perf baong@nd.scn /portal/student: cold=294ms warm-ttfb=286ms warm-total=787ms
+  perf sovqt@demo.scn /dept/usage: cold=294ms warm-ttfb=281ms warm-total=784ms
+PASS P01 warm load < 8s (9 trang) - max=794ms
 PASS P02 warm TTFB < 2s - ok
-PASS P03 cold start < 15s (lambda init) - max=4961ms
-PASS E12 khong co pageerror JS trong suite
+PASS P03 cold start < 15s (lambda init) - max=478ms
+FAIL E12 khong co pageerror JS trong suite - 5xx: https://cxjpgfhqchjoernfmcra.supabase.co/rest/v1/rpc/scn_save_grades | console: Failed to load resource: the server responded with a status of 500 () | console: [grades-editor] scn_save_grades: canceling statement due to statement timeout
 
-===== 57/57 PASS =====
+===== 50/56 PASS =====
+FAILURES:
+  E13 GVBM nhap 3.5 -> exact row (student+subject+term+ddg_tx/#1) = 3.5 
+  S18 gvbm POST DC-01/generate -> 200 + doc hoan chinh (khong pending) 
+  S19 tvc_generations row moi: owner=gvbm + lesson=marker 
+  S21 ke_toan export material -> 401/403/404 
+  S22 phu_huynh export material -> 401/403/404 
+  E12 khong co pageerror JS trong suite 

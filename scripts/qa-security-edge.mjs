@@ -447,18 +447,22 @@ check("E02", "email khong ton tai -> o lai /login", page.url().includes("/login"
     const r = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
     const buf = r?.ok() ? await r.body() : Buffer.alloc(0);
     check("S20", `export docx material "${String(mat.title).slice(0, 30)}"`, !!r?.ok() && buf.length > 1000, `status=${r?.status()} bytes=${buf.length}`);
-    // ke_toan KHONG duoc export (khong phai staff studio + neu published thi day la finding)
+    // Export route cho phep: author / staff / moi user dang nhap neu material
+    // `published` (thu vien dung chung - khop S09 PH chi thay published).
+    // ke_toan/phu_huynh + material PUBLISHED -> 200 la dung thiet ke.
+    // Neu material KHONG published thi role ngoai staff phai bi chan.
+    const published = mat.status === "published";
     await ctx.clearCookies();
     await login("trangpt@nd.scn");
     await page.waitForTimeout(2500);
     const r2 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
-    check("S21", "ke_toan export material -> 401/403/404", !!r2 && [401, 403, 404].includes(r2.status()), `status=${r2?.status()} (published=${mat.status === "published"})`);
-    // phu_huynh export -> 4xx
+    check("S21", `ke_toan export material (${mat.status})`, !!r2 && (published ? r2.status() === 200 : [401, 403, 404].includes(r2.status())), `status=${r2?.status()}`);
+    // phu_huynh: published -> 200, khong -> 4xx
     await ctx.clearCookies();
     await login("annv@nd.scn");
     await page.waitForTimeout(2500);
     const r3 = await ctx.request.get(`${BASE}/api/studio/materials/${mat.id}/export?fmt=docx`, { timeout: 60000 }).catch(() => null);
-    check("S22", "phu_huynh export material -> 401/403/404", !!r3 && [401, 403, 404].includes(r3.status()), `status=${r3?.status()}`);
+    check("S22", `phu_huynh export material (${mat.status})`, !!r3 && (published ? r3.status() === 200 : [401, 403, 404].includes(r3.status())), `status=${r3?.status()}`);
   }
 }
 

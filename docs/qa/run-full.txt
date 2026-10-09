@@ -11,8 +11,8 @@ PASS AM-phu_huynh phu_huynh: 1 allow + 96 deny 1+96 ok
 PASS AM-hoc_sinh hoc_sinh: 2 allow + 95 deny 2+95 ok
 PASS W01 Diem danh -> DB excused
 PASS W02 Ghi nhan HK -> DB 
-PASS W03 Thong bao PH -> DB 
-PASS W04 Diem thi dua -> DB period=2026-T10 scores=27,15,16,8
+PASS W03 Thong bao PH -> DB (dung lop chu nhiem) class_match=true 
+PASS W04 Diem thi dua -> DB period=2026-T10 scores=27,15,16,9
 PASS W05 Sua HS -> DB + history student=1 hist=1
 PASS W05b NationalID qua server action -> history hist=1 stu=1
 PASS W32 Roster doi lop -> data doi theo url=true diff=true cls=true stu=true
@@ -34,20 +34,22 @@ PASS W20 To truong meetings
 PASS W21 Ke toan equipment 
 PASS W-so_gd so_gd /dept/dashboard 
 PASS W-ubnd ubnd /dept/facilities 
-PASS W22 Portal PH len=1695
+PASS W22 Portal PH len=1829
 PASS W23 Hoc ba HS 
 PASS W24 Luu so dau bai -> period_logs rows=1
 PASS W25 Nop giao an -> lesson_plans rows=1 status=submitted
-PASS W26a GVCN nop so 8A2/2027-02 -> pending->submitted (id=8124ba2a) before=pending after=submitted by_match=true
-PASS W26b BGH tao dot ky (insert hoac idempotent) before=53 after=53
-PASS W26c BGH ky duyet 8A2/2027-02 -> submitted->signed (id=8124ba2a) after=signed signed_by_match=true
+PASS W26a GVCN nop so 8A2/2027-03 -> pending->submitted (id=1c25859a) before=pending after=submitted by_match=true
+PASS W26b BGH tao dot ky (insert hoac idempotent) before=54 after=54
+PASS W26c BGH ky duyet 8A2/2027-03 -> submitted->signed (id=1c25859a) after=signed signed_by_match=true
 PASS W27 Tao buoi sinh hoat -> dept_meetings rows=1
 PASS W28 PH dat lich hen -> appointments rows=1 status=proposed
-PASS W29 To truong duyet giao an -> team_approved id=0dc40a3a status=team_approved by=true
-PASS W30 BGH duyet giao an -> approved moved=1/5
-PASS W31 GVCN xac nhan lich hen -> confirmed id=092ec8d3 status=confirmed
+PASS W29 To truong duyet giao an -> team_approved id=72dfe7d3 status=team_approved by=true
+PASS W30 BGH duyet giao an -> approved moved=1/4
+FAIL W31 GVCN xac nhan lich hen -> confirmed id=74d4c982 status=proposed
 
 === console errors: 0
 PASS CONSOLE 0 console errors 
 
-===== 49/49 PASS =====
+===== 48/49 PASS =====
+FAILURES:
+  W31 GVCN xac nhan lich hen -> confirmed id=74d4c982 status=proposed

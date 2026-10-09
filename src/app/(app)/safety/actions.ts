@@ -17,10 +17,6 @@ export async function createIncident(input: {
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.description.trim()) {
     return { error: "Vui lòng mô tả sự cố." };
   }
@@ -64,7 +60,7 @@ export async function createIncident(input: {
   )
     .filter(
       (p) =>
-        p.id !== user.id &&
+        p.id !== profile.id &&
         (p.role === "bgh" ||
           !incidentCampusId ||
           p.campus_id === incidentCampusId),
@@ -91,11 +87,8 @@ export async function toggleReportedToBgh(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh"]);
   if (deny) return { error: deny };
+  if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   const { error } = await supabase
     .from("incidents")
     .update({ reported_to_bgh: reported })
@@ -117,11 +110,8 @@ export async function followupIncident(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
   // R11-01: append ghi chu + doi status trong 1 UPDATE nguyen tu phia DB
   // (rpc scn_incident_followup, SECURITY INVOKER) - tranh lost update khi 2

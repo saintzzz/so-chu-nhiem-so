@@ -3,22 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
-import { checkActionRole } from "@/lib/auth";
+import { checkActionRole, getProfile } from "@/lib/auth";
 import type { Activity, Profile } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
 
+// getClaims qua getProfile (local JWT, cached) - getUser() goi Auth server
+// co the timeout im lang trong server action.
 async function getContext() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, profile: null };
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-  return { supabase, user, profile: (data ?? null) as Profile | null };
+  const profile = await getProfile();
+  return { supabase, user: profile ? { id: profile.id } : null, profile };
 }
 
 export async function createActivity(input: {

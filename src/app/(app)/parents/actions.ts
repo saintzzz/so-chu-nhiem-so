@@ -22,17 +22,16 @@ export async function sendAnnouncement(input: {
 }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
+  // getClaims qua getProfile (local JWT, cached) - getUser() goi Auth server
+  // co the timeout im lang trong server action (W03: click nhung 0 row).
+  const profile = await getProfile();
+  if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.title.trim() || !input.content.trim()) {
     return { error: "Vui lòng nhập tiêu đề và nội dung." };
   }
-  const profile = await getProfile();
+  const supabase = await createClient();
   const { error } = await supabase.from("announcements").insert({
-    sender_id: user.id,
+    sender_id: profile.id,
     school_id: profile?.school_id ?? null,
     class_id: input.classId,
     student_id: input.studentId,
@@ -61,16 +60,14 @@ export async function markMessageRead(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const me = await getProfile();
+  if (!me) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   const { error } = await supabase
     .from("messages")
     .update({ read_at: new Date().toISOString() })
     .eq("id", messageId)
-    .eq("recipient_id", user.id)
+    .eq("recipient_id", me.id)
     .is("read_at", null);
   if (error) {
     console.error("[messages] markRead failed:", error.message);
@@ -88,14 +85,11 @@ export async function replyMessage(input: {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.content.trim()) return { error: "Vui lòng nhập nội dung trả lời." };
   // R2-02: kiểm tra quan hệ người nhận - học sinh ở tầng action (RLS
   // scn_can_message là tuyến phòng thủ cuối cho client insert trực tiếp).
   const profile = await getProfile();
+  if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.studentId) {
     return { error: "Thiếu học sinh liên quan đến tin nhắn." };
   }
@@ -139,7 +133,7 @@ export async function replyMessage(input: {
     .eq("id", input.recipientId)
     .maybeSingle();
   const { error } = await supabase.from("messages").insert({
-    sender_id: user.id,
+    sender_id: profile.id,
     recipient_id: input.recipientId,
     student_id: input.studentId,
     content: input.content.trim(),
@@ -167,11 +161,8 @@ export async function updateAppointmentStatus(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   const { error } = await supabase
     .from("appointments")
     .update({ status })

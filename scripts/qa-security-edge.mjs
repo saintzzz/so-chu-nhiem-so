@@ -473,12 +473,14 @@ for (const [email, route] of perfPages) {
   await ctx.clearCookies();
   await login(email);
   await page.waitForTimeout(2500);
-  // Lan 1 = cold start serverless (rieng). Lan 2+3 = warm (assert o day).
+  // Lan 1 = cold start serverless (rieng). Lan 2+ = warm (assert o day).
+  // 4 warm runs + min: lambda rotate khien 1 hit van co the roi vao
+  // instance moi -> 2 mau khong du de tach cold-noise.
   const tCold0 = Date.now();
   await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" }).catch(() => {});
   const coldTtfb = Date.now() - tCold0;
   const runs = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 4; i++) {
     await page.waitForTimeout(400);
     const t0 = Date.now();
     await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded" });

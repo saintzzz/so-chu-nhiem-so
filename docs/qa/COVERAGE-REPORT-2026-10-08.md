@@ -1,16 +1,16 @@
-# QA Coverage Report - Go-live demo gate 15/10/2026 (v2)
+# QA Coverage Report - Go-live demo gate 15/10/2026 (v3)
 
-Ngày: 09/10/2026. Môi trường: **production** `https://sochunhiem.vieschool.com` (commit `a07720b` + migration `20261009_rls_setof_helpers_perf`).
+Ngày: 09/10/2026. Môi trường: **production** `https://sochunhiem.vieschool.com` (commit `8ba30dc` + migrations `20261117_profiles_read_dept_perf`).
 
-Vòng 1 bị test lead **REJECT** (Studio/nhập điểm/trường trống chưa cover, assertion pass giả, matrix thiếu admin). Vòng 2 đã đóng toàn bộ gap ưu tiên cao.
+Vòng 1 bị test lead **REJECT** (Studio/nhập điểm/trường trống chưa cover, assertion pass giả, matrix thiếu admin). Vòng 2 đã đóng toàn bộ gap ưu tiên cao. Vòng 3 (này) đóng 8 finding còn lại của review vòng 2 + 2 bug app thật phát hiện thêm qua perf gate.
 
 ## 1. Kết quả cuối
 
 | Suite | Phạm vi | Kết quả |
 |---|---|---|
-| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 10 roles** (allow→200 đúng route, deny→redirect role home) + 31 write flows UI→DB + console-error gate | **48/48** |
-| `scripts/qa-security-edge.mjs` | 54 checks: RLS probes, API role matrix, tenant isolation per-school, edge/abnormal, Studio happy path, perf cold/warm | **54/54** |
-| `scripts/e2e-cr034.mjs` | Demo gate: Sở GD tạo trường → admin → tạo GV → GV mới login → isolation → usage dashboard | **13/14** (xem §4) |
+| `scripts/qa-full-coverage.mjs` | Access matrix **97 routes × 11 roles** (kể cả `admin`, oracle tính `concurrent_roles`) + 31 write flows UI→DB + console/pageerror/reqfail/5xx gate | _đang chạy lại_ |
+| `scripts/qa-security-edge.mjs` | 57 checks: RLS probes, API role matrix, tenant isolation, edge/abnormal, Studio happy path (marker+owner correlation), exact grade-save, perf cold/warm | **57/57** |
+| `scripts/e2e-cr034.mjs` | Demo gate: Sở GD tạo trường → admin → tạo GV → GV mới login → isolation → usage → cleanup | **18/18** |
 
 ## 2. Coverage đã đạt
 
@@ -72,3 +72,26 @@ Marker `FULL-*`, `THPT Demo Gate*`, auth users test đã dọn khỏi production
 1. `pht` export được `/api/studio/materials/[id]/export` (trong `staff` list) nhưng không vào được trang `/studio/*` - đang để như code, cần xác nhận ý đồ.
 2. `pht` → `/school/students`: ROLE-MATRIX ghi deny, implementation allow - đang follow implementation.
 3. `ke_toan` đọc được `students` (tên HS) qua `students_staff_read` - matrix nói "không tiếp cận hồ sơ học tập", đã siết attendance/grades nhưng roster tên vẫn mở - cần xác nhận.
+
+## 7. Vòng 3 - bug app thật phát hiện + fix qua perf gate
+
+1. **`profiles_read` dept visibility bug (tiền tồn, silent)**: `is_staff()` không chứa `so_gd`/`ubnd` nên nhánh `is_staff() AND scn_is_dept()` không bao giờ khớp → so_gd chỉ đọc được chính mình, `/dept/usage` đếm **0 tài khoản mọi trường** từ trước tới nay. Fix: đưa `scn_is_dept()` ra nhánh uncorrelated riêng → usage giờ trả đúng 130 profiles.
+2. **`profiles_family_read` per-row correlated EXISTS** (`students×classes×timetable` cho mọi profiles row, mọi caller) → `/dept/usage` warm TTFB 3.4s. Fix: `CASE my_role() in ('hoc_sinh','phu_huynh')` gate → **940ms**. Migration `20261117_profiles_read_dept_perf` (2 migration apply trực tiếp + file audit trong repo).
+3. **Portal TTFB** (P02 fail ban đầu): `/portal/parent` 2358ms → **~300ms** (gộp chain parents→parent_students→students→classes thành 1 embed query + song song hoá 3 lookup đuôi); `/portal/student` 2322ms → **~500ms** (embed classes). Commit `8ba30dc`.
+4. **Matrix oracle thiếu concurrent_roles**: `anhptl` (gvcn + concurrent to_truong) vào `/team/*` là hợp lệ - oracle giờ fetch `concurrent_roles` từ DB và tính effective roles. Không phải bug app.
+5. **W14 stale negative control**: minhtv thật sự dạy 6A3 - sửa thành negative control động (lớp cùng trường không dạy: 7A3,8A1,8A2,8A3).
+6. **Suite crash khi goto timeout**: thêm `gotoSafe` - navigation fail không giết suite, check tiếp theo fail đúng.
+7. **Flake ngoại cảnh**: Supabase auth `net::ERR_FAILED` trong 1 window giữa run → 14 write-flow fail dây chuyền (login/seed die). Rerun khi hệ thống khoẻ.
+
+## 8. Findings vòng 2 → trạng thái
+
+| # | Finding | Trạng thái |
+|---|---|---|
+| R2-1 | E13 correlate exact grade row | DONE: student+subject+term+ddg_tx#1, before=3.5→after=4.5 |
+| R2-2 | S14c/S15 strict 401/403 PH+HS + no-persistence | DONE |
+| R2-3 | S18/S19 generation correlate marker+owner, pending reject | DONE: matched=1 owner=gvbm |
+| R2-4 | e2e-cr034 DB assertions + exact redirect + cleanup | DONE: 18/18 |
+| R2-5 | Spec matrix: pht denied /school/students | DONE: code siết theo spec + matrix shared |
+| R2-6 | Admin trong shared matrix | DONE: 20 allow + 77 deny |
+| R2-7 | Browser hygiene + exit code | DONE: console/pageerror/reqfail/5xx + exit 1 |
+| R2-8 | W26 exact signoff ID pending→submitted→signed + actor | DONE: seed chu kỳ, cùng ID qua 2 bước |

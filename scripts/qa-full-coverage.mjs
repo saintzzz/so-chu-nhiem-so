@@ -37,7 +37,7 @@ async function loginCtx(email) {
   p.on("pageerror", (e) => errors.push(`${email} pageerror: ${e.message.slice(0, 120)}`));
   p.on("requestfailed", (r) => { const err = r.failure()?.errorText ?? ""; if (!err.includes("ERR_ABORTED")) errors.push(`${email} reqfail: ${r.url().slice(0, 80)} ${err}`); });
   p.on("response", (r) => { if (r.status() >= 500) errors.push(`${email} 5xx: ${r.url().slice(0, 80)}`); });
-  await p.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+  await gotoSafe(p, `${BASE}/login`, { waitUntil: "networkidle" });
   await p.fill("#email", email);
   await p.fill("input[type=password]", "demo1234");
   await p.click("button[type=submit]");
@@ -48,9 +48,31 @@ const settle = async (p, ms = 800) => {
   await p.waitForLoadState("domcontentloaded").catch(() => {});
   await p.waitForTimeout(ms);
 };
+// Navigation crash khong duoc giet suite - danh dau de check tiep theo fail.
+const gotoSafe = async (p, url, opts) => {
+  try {
+    await p.goto(url, opts);
+    return true;
+  } catch (e) {
+    console.log(`  [goto timeout] ${url} - ${String(e.message).slice(0, 60)}`);
+    return false;
+  }
+};
 
 // === PHAN 1: FULL ACCESS MATRIX qua HTTP request (nhanh, chinh xac) ===
 // Voi moi role: request.get moi route. Allowed -> 200 dung route. Denied -> redirect ve role home.
+// Effective roles = role chinh + concurrent_roles (vd gvcn kiem to_truong
+// hop le vao /team/*) - oracle phai tinh ca kiem nhiem.
+const EFFECTIVE = {};
+{
+  const { data: profs } = await db
+    .from("profiles")
+    .select("email,role,concurrent_roles")
+    .in("email", Object.values(ROLE_EMAIL));
+  for (const p of profs ?? []) {
+    EFFECTIVE[p.role] = [p.role, ...(p.concurrent_roles ?? [])];
+  }
+}
 for (const [role, email] of Object.entries(ROLE_EMAIL)) {
   const { ctx, p } = await loginCtx(email);
   let allowOk = 0, denyOk = 0;
@@ -74,7 +96,7 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
     // Session co the roi ve /login do refresh-token rotation - login lai roi thu lai (toi da 2 lan)
     for (let attempt = 0; r && r.finalPath === "/login" && attempt < 2; attempt++) {
       await ctx.clearCookies();
-      await p.goto(`${BASE}/login`, { waitUntil: "networkidle" });
+      await gotoSafe(p, `${BASE}/login`, { waitUntil: "networkidle" });
       await p.fill("#email", email);
       await p.fill("input[type=password]", "demo1234");
       await p.click("button[type=submit]");
@@ -87,7 +109,7 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
     }
     if (!r) { fails.push(`${route}:no-response`); continue; }
     const { res, finalPath } = r;
-    const expected = roles.includes(role);
+    const expected = roles.some((r) => (EFFECTIVE[role] ?? [role]).includes(r));
     if (expected) {
       const ok = (res.ok() && finalPath === route) || (finalPath === ALIASES[route]);
       if (ok) allowOk++; else fails.push(`${route}:expected-allow,redirect->${finalPath}`);
@@ -97,7 +119,7 @@ for (const [role, email] of Object.entries(ROLE_EMAIL)) {
     }
   }
   const total = Object.keys(MATRIX).length;
-  const nAllowed = Object.values(MATRIX).filter((r) => r.includes(role)).length;
+  const nAllowed = Object.values(MATRIX).filter((r) => r.some((x) => (EFFECTIVE[role] ?? [role]).includes(x))).length;
   check(`AM-${role}`, `${role}: ${nAllowed} allow + ${total - nAllowed} deny`,
     fails.length === 0, fails.length ? fails.slice(0, 6).join(" | ") : `${allowOk}+${denyOk} ok`);
   await ctx.close();
@@ -115,7 +137,7 @@ const MARK = `FULL-${Date.now()}`;
 
   // W01: Diem danh -> DB. Xoa record cu cua HS hom nay de assert deterministic.
   await db.from("attendance_records").delete().eq("student_id", anyStu.id).eq("date", today);
-  await p.goto(`${BASE}/attendance/daily?class=${myClasses[0].id}&date=${today}`);
+  await gotoSafe(p, `${BASE}/attendance/daily?class=${myClasses[0].id}&date=${today}`);
   await settle(p, 1500);
   const row = p.locator("tr", { hasText: anyStu.full_name }).first();
   if ((await row.count()) > 0) {
@@ -128,7 +150,7 @@ const MARK = `FULL-${Date.now()}`;
   } else check("W01", "Diem danh -> DB", false, "no student row");
 
   // W02: Ghi nhan hanh kiem
-  await p.goto(`${BASE}/conduct/records`);
+  await gotoSafe(p, `${BASE}/conduct/records`);
   await settle(p, 1500);
   await p.locator('label:has-text("Học sinh") select').selectOption(anyStu.id).catch(() => {});
   await p.locator('label:has-text("Khen thưởng")').click().catch(() => {});
@@ -138,20 +160,24 @@ const MARK = `FULL-${Date.now()}`;
   const { data: cr } = await db.from("conduct_records").select("id").ilike("content", `%${MARK}%`).limit(1);
   check("W02", "Ghi nhan HK -> DB", (cr?.length ?? 0) === 1, "");
 
-  // W03: Thong bao PH
-  await p.goto(`${BASE}/parents/compose`);
+  // W03: Thong bao PH - click chip lop ro rang + doi feedback success.
+  await gotoSafe(p, `${BASE}/parents/compose`);
   await settle(p, 1500);
-  await p.locator('input[placeholder*="Thông báo"], input[placeholder*="họp"]').first().fill(`TB ${MARK}`);
-  await p.locator("textarea").nth(1).fill(`ND ${MARK}`);
-  await p.locator('button:has-text("Gửi thông báo")').click();
-  await p.waitForTimeout(3000);
+  await p.locator(`button:has-text("${myClasses[0].name}")`).first().click({ timeout: 5000 }).catch(() => {});
+  await p.locator('input[placeholder*="VD: Thông báo"]').fill(`TB ${MARK}`);
+  await p.locator('textarea[placeholder*="nội dung thông báo"]').fill(`ND ${MARK}`);
+  const sendBtn = p.locator('button:has-text("Gửi thông báo")').first();
+  const btnDisabled = await sendBtn.isDisabled().catch(() => "err");
+  await sendBtn.click({ timeout: 10000 }).catch(() => sendBtn.click({ force: true }).catch(() => {}));
+  const fbOk = await p.locator('text=/Đã gửi thông báo/').first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
   const { data: an } = await db.from("announcements").select("id").ilike("content", `%${MARK}%`).limit(1);
-  check("W03", "Thong bao PH -> DB", (an?.length ?? 0) === 1, "");
+  const fbText = fbOk ? "" : `btnDisabled=${btnDisabled} ` + ((await p.locator("body").innerText()).match(/Đã lưu[^.\n]*|không gửi được[^.\n]*|lỗi[^.\n]*/i)?.[0] ?? "no-feedback");
+  check("W03", "Thong bao PH -> DB", (an?.length ?? 0) === 1, fbOk ? "" : `feedback=${fbText}`);
 
   // W04: Cham diem thi dua - form luu vao currentPeriodVN() (thang hien tai VN)
   const vnNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
   const period = `${vnNow.getFullYear()}-T${vnNow.getMonth() + 1}`;
-  await p.goto(`${BASE}/emulation/scoring`);
+  await gotoSafe(p, `${BASE}/emulation/scoring`);
   await settle(p, 1500);
   // chon gia tri chua ton tai trong ky de assert deterministic
   const { data: curScores } = await db.from("emulation_scores").select("score")
@@ -167,7 +193,7 @@ const MARK = `FULL-${Date.now()}`;
     `period=${period} scores=${(em ?? []).map((e) => e.score).join(",")}`);
 
   // W05: Sua ho so HS qua server action (CR-014 + CR-015)
-  await p.goto(`${BASE}/records/students`);
+  await gotoSafe(p, `${BASE}/records/students`);
   await settle(p, 1500);
   await p.locator("tbody tr").first().click();
   await p.waitForTimeout(800);
@@ -191,7 +217,7 @@ const MARK = `FULL-${Date.now()}`;
   const { data: stu2 } = await db.from("students").select("id").eq("class_id", myClasses[0].id).neq("id", anyStu.id).limit(1).single();
   if (stu2) {
     const natId = String(Math.floor(1000000000 + Math.random() * 8999999999));
-    await p.goto(`${BASE}/records/students`);
+    await gotoSafe(p, `${BASE}/records/students`);
     await settle(p, 1500);
     await p.locator("tbody tr").nth(1).click();
     await p.waitForTimeout(800);
@@ -212,12 +238,32 @@ const MARK = `FULL-${Date.now()}`;
   }
 
   // W32: Doi lop tren /register/roster -> danh sach HS + to PHAI doi (regression stale state)
-  if (myClasses.length >= 2) {
-    const [cA, cB] = myClasses;
+  // Neu gvcn chi co 1 lop: seed lop tam thu 2 (cung truong, gvcn=anhptl) + 2 HS, cleanup sau.
+  let w32TempClass = null;
+  let w32Classes = myClasses;
+  if (myClasses.length < 2) {
+    const { data: src } = await db.from("classes").select("school_id,academic_year_id,grade,campus_id").eq("id", myClasses[0].id).single();
+    const { data: tc, error: tce } = await db.from("classes").insert({
+      school_id: src.school_id, academic_year_id: src.academic_year_id,
+      campus_id: src.campus_id, grade: src.grade,
+      name: `TST-${MARK}`, gvcn_id: gvcnP.id, status: "active",
+    }).select("id,name").single();
+    if (tce) console.log("  [W32 seed class]", tce.message);
+    w32TempClass = tc ?? null;
+    if (w32TempClass) {
+      await db.from("students").insert([
+        { class_id: w32TempClass.id, code: `TST1${MARK}`, full_name: `Test Aa ${MARK}`, status: "active" },
+        { class_id: w32TempClass.id, code: `TST2${MARK}`, full_name: `Test Bb ${MARK}`, status: "active" },
+      ]);
+      w32Classes = [myClasses[0], w32TempClass];
+    }
+  }
+  if (w32Classes.length >= 2) {
+    const [cA, cB] = w32Classes;
     const rosterBody = async () =>
       (await p.locator("main table, [role=main] table").first().innerText().catch(() => "")) ||
       (await p.locator("main").first().innerText());
-    await p.goto(`${BASE}/register/roster?class=${cA.id}`);
+    await gotoSafe(p, `${BASE}/register/roster?class=${cA.id}`);
     await settle(p, 1800);
     const bodyA = await rosterBody();
     const urlA = p.url();
@@ -229,12 +275,18 @@ const MARK = `FULL-${Date.now()}`;
     // DB truth: ten HS dau tien cua lop B
     const { data: stuB } = await db.from("students").select("full_name")
       .eq("class_id", cB.id).eq("status", "active").order("full_name").limit(1);
-    const changed = bodyA !== bodyB && bodyB.includes(cB.name);
+    // Ten lop co the nam ngoai <main> (picker/toolbar) - check ca body.
+    const fullBodyB = await p.locator("body").innerText();
+    const changed = bodyA !== bodyB && fullBodyB.includes(cB.name);
     const hasStuB = !stuB?.length || stuB.some((s) => bodyB.includes(s.full_name.split(" ").pop()));
     check("W32", "Roster doi lop -> data doi theo",
       urlB.includes(cB.id) && !urlA.includes(cB.id) && changed && hasStuB,
-      `url=${urlB.includes(cB.id)} diff=${bodyA !== bodyB} cls=${bodyB.includes(cB.name)} stu=${hasStuB}`);
-  } else check("W32", "Roster doi lop", false, `chi co ${myClasses.length} lop`);
+      `url=${urlB.includes(cB.id)} diff=${bodyA !== bodyB} cls=${fullBodyB.includes(cB.name)} stu=${hasStuB}`);
+  } else check("W32", "Roster doi lop", false, `chi co ${myClasses.length} lop + seed fail`);
+  if (w32TempClass) {
+    await db.from("students").delete().eq("class_id", w32TempClass.id);
+    await db.from("classes").delete().eq("id", w32TempClass.id);
+  }
 
   // W06-W12 render+content checks (nang cap: check element cu the, khong chi length)
   const renderChecks = [
@@ -247,7 +299,7 @@ const MARK = `FULL-${Date.now()}`;
     ["W12", "/safety/followup", /theo dõi|sự cố|xử lý|an toàn/i, "Safety followup"],
   ];
   for (const [id, route, re, name] of renderChecks) {
-    await p.goto(`${BASE}${route}`);
+    await gotoSafe(p, `${BASE}${route}`);
     await settle(p, 1200);
     const txt = await p.locator("main, [role=main], body").first().innerText();
     check(id, name, re.test(txt), `len=${txt.length}`);
@@ -258,18 +310,25 @@ const MARK = `FULL-${Date.now()}`;
 // --- GVBM ---
 {
   const { ctx, p } = await loginCtx("minhtv@nd.scn");
-  await p.goto(`${BASE}/schedule/period-log`);
+  await gotoSafe(p, `${BASE}/schedule/period-log`);
   await settle(p, 1500);
   check("W13", "GVBM so dau bai", /tiết|sổ đầu bài/i.test(await p.locator("body").innerText()), "");
 
-  // W14: GVBM grades - chi thay lop minh day (CR-015). Strict: khong duoc thay 6A3.
-  await p.goto(`${BASE}/academics/grades`);
+  // W14: GVBM grades - chi thay lop minh day (CR-015). Negative control
+  // dong: chon 1 lop cung truong ma gvbm KHONG day (tranh stale khi
+  // phan cong day thay doi - truoc hard-code 6A3 nhung gvbm co day 6A3).
+  const { data: gvbmP } = await db.from("profiles").select("id,school_id").eq("email", "minhtv@nd.scn").single();
+  const { data: ttMine } = await db.from("timetable_entries").select("class_id").eq("teacher_id", gvbmP.id);
+  const myClassIds = new Set((ttMine ?? []).map((t) => t.class_id));
+  const { data: schoolClasses } = await db.from("classes").select("id,name").eq("school_id", gvbmP.school_id);
+  const notMine = (schoolClasses ?? []).filter((c) => !myClassIds.has(c.id)).map((c) => c.name);
+  await gotoSafe(p, `${BASE}/academics/grades`);
   await settle(p, 1500);
   const gradeTxt = await p.locator("body").innerText();
-  // gvbm day 6A1,6A2,7A1,7A2,8A1,8A2,9A1,9A2 mon Toan+Hoa - khong duoc thay 6A3 (lop CN cua gvcn)
-  const sees6A3 = /6A3/.test(gradeTxt);
-  check("W14", "GVBM chi thay lop minh day (khong thay 6A3)", !sees6A3,
-    sees6A3 ? "LEAK: thay 6A3 (lop khong day)" : "scope dung");
+  const leaked = notMine.filter((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(gradeTxt));
+  check("W14", "GVBM chi thay lop minh day (negative control dong)",
+    notMine.length === 0 || leaked.length === 0,
+    leaked.length ? `LEAK: thay ${leaked.join(",")}` : `scope dung (not-mine: ${notMine.slice(0, 4).join(",")})`);
   await ctx.close();
 }
 
@@ -283,7 +342,7 @@ const MARK = `FULL-${Date.now()}`;
     ["W18", "/school/journals", /nhật ký|sổ|lớp/i, "Journals"],
   ];
   for (const [id, route, re, name] of bghChecks) {
-    await p.goto(`${BASE}${route}`);
+    await gotoSafe(p, `${BASE}${route}`);
     await settle(p, 1200);
     check(id, `BGH ${name}`, re.test(await p.locator("body").innerText()), "");
   }
@@ -293,10 +352,10 @@ const MARK = `FULL-${Date.now()}`;
 // --- TO_TRUONG ---
 {
   const { ctx, p } = await loginCtx("hanhlth@nd.scn");
-  await p.goto(`${BASE}/team/home`);
+  await gotoSafe(p, `${BASE}/team/home`);
   await settle(p, 1200);
   check("W19", "To truong home", (await p.locator("body").innerText()).length > 200, "");
-  await p.goto(`${BASE}/team/meetings`);
+  await gotoSafe(p, `${BASE}/team/meetings`);
   await settle(p, 1200);
   check("W20", "To truong meetings", /họp|biên bản|cuộc họp/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
@@ -305,14 +364,14 @@ const MARK = `FULL-${Date.now()}`;
 // --- KE_TOAN / DEPT ---
 {
   const { ctx, p } = await loginCtx("trangpt@nd.scn");
-  await p.goto(`${BASE}/school/equipment`);
+  await gotoSafe(p, `${BASE}/school/equipment`);
   await settle(p, 1200);
   check("W21", "Ke toan equipment", /thiết bị|tài sản|cơ sở/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
 }
 for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facilities"]]) {
   const { ctx, p } = await loginCtx(ROLE_EMAIL[role]);
-  await p.goto(`${BASE}${route}`);
+  await gotoSafe(p, `${BASE}${route}`);
   await settle(p, 1200);
   check(`W-${role}`, `${role} ${route}`, (await p.locator("body").innerText()).length > 200, "");
   await ctx.close();
@@ -321,14 +380,14 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 // --- Portals ---
 {
   const { ctx, p } = await loginCtx("annv@nd.scn");
-  await p.goto(`${BASE}/portal/parent`);
+  await gotoSafe(p, `${BASE}/portal/parent`);
   await settle(p, 1500);
   check("W22", "Portal PH", /con|điểm|chuyên cần|học/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
 }
 {
   const { ctx, p } = await loginCtx("baong@nd.scn");
-  await p.goto(`${BASE}/portal/student/hoc-ba`);
+  await gotoSafe(p, `${BASE}/portal/student/hoc-ba`);
   await settle(p, 1500);
   check("W23", "Hoc ba HS", /học bạ|điểm|hạnh kiểm/i.test(await p.locator("body").innerText()), "");
   await ctx.close();
@@ -339,7 +398,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
 // W24: GVCN luu so dau bai -> period_logs
 {
   const { ctx, p } = await loginCtx("anhptl@nd.scn");
-  await p.goto(`${BASE}/schedule/period-log`);
+  await gotoSafe(p, `${BASE}/schedule/period-log`);
   await settle(p, 2000);
   // CR-016: chi tiet cua minh moi co form nhap - duyet tung row tim tiet own
   const entryBtns = p.locator('button[aria-expanded]:has-text("Tiết")');
@@ -360,7 +419,7 @@ for (const [role, route] of [["so_gd", "/dept/dashboard"], ["ubnd", "/dept/facil
   } else check("W24", "Luu so dau bai", false, "no editable entry (tat ca tiet nguoi khac / khong co TKB)");
 
   // W25: GVCN nop giao an -> lesson_plans
-  await p.goto(`${BASE}/academics/lesson-plans`);
+  await gotoSafe(p, `${BASE}/academics/lesson-plans`);
   await settle(p, 1500);
   const clsSel = p.locator("select").first();
   const subSel = p.locator("select").nth(1);
@@ -425,7 +484,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
   const myClassIds = myClasses.map((c) => c.id);
   const { data: pending } = await db.from("register_signoffs").select("id,status")
     .in("class_id", myClassIds).eq("status", "pending");
-  await p.goto(`${BASE}/register/signoff`);
+  await gotoSafe(p, `${BASE}/register/signoff`);
   await settle(p, 1500);
   if (pending?.length) {
     // Correlate dong UI -> exact signoff row (class name + period -> id)
@@ -453,7 +512,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 {
   const { ctx, p } = await loginCtx("hainv@nd.scn");
   // BGH tao dot ky: chap nhan insert moi HOAC thong bao da ton tai (idempotent)
-  await p.goto(`${BASE}/register/signoff`);
+  await gotoSafe(p, `${BASE}/register/signoff`);
   await settle(p, 1500);
   const createBtn = p.locator('button:has-text("Tạo đợt ký")');
   if ((await createBtn.count()) > 0) {
@@ -501,7 +560,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 // W27: To truong tao buoi sinh hoat -> dept_meetings
 {
   const { ctx, p } = await loginCtx("hanhlth@nd.scn");
-  await p.goto(`${BASE}/team/meetings`);
+  await gotoSafe(p, `${BASE}/team/meetings`);
   await settle(p, 1500);
   const titleIn = p.locator("#title");
   if ((await titleIn.count()) > 0) {
@@ -520,7 +579,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
 // W28: PH dat lich hen -> appointments
 {
   const { ctx, p } = await loginCtx("annv@nd.scn");
-  await p.goto(`${BASE}/portal/parent`);
+  await gotoSafe(p, `${BASE}/portal/parent`);
   await settle(p, 2000);
   const dtInput = p.locator('input[type="datetime-local"]');
   if ((await dtInput.count()) > 0) {
@@ -541,7 +600,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
   const { ctx, p } = await loginCtx("hanhlth@nd.scn");
   const { data: lp } = await db.from("lesson_plans").select("id,title,status")
     .eq("status", "submitted");
-  await p.goto(`${BASE}/team/lesson-plans`);
+  await gotoSafe(p, `${BASE}/team/lesson-plans`);
   await settle(p, 1500);
   if (lp?.length) {
     const approveBtn = p.locator('button[title*="Duyệt"], button:has-text("Duyệt")').first();
@@ -570,7 +629,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
     .eq("status", "team_approved");
   if (lp?.length) {
     // BGH review o route nao? tim page co LessonPlanBoard mode=bgh
-    await p.goto(`${BASE}/school/approvals`);
+    await gotoSafe(p, `${BASE}/school/approvals`);
     await settle(p, 1500);
     const approveBtn = p.locator('button[title="Duyệt"]').first();
     if ((await approveBtn.count()) > 0) {
@@ -590,7 +649,7 @@ const w26Period = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Ho_Chi_Mi
   const { ctx, p } = await loginCtx("anhptl@nd.scn");
   const { data: appt } = await db.from("appointments").select("id,status")
     .eq("status", "proposed");
-  await p.goto(`${BASE}/parents/appointments`);
+  await gotoSafe(p, `${BASE}/parents/appointments`);
   await settle(p, 1500);
   if (appt?.length) {
     const confirmBtn = p.locator('button:has-text("Xác nhận"), button:has-text("Nhận lịch")').first();

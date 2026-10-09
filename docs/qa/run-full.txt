@@ -1,29 +1,30 @@
-PASS AM-gvcn gvcn: 62 allow + 35 deny 62+35 ok
+PASS AM-gvcn gvcn: 67 allow + 30 deny 67+30 ok
 PASS AM-gvbm gvbm: 17 allow + 80 deny 17+80 ok
-PASS AM-to_truong to_truong: 21 allow + 76 deny 21+76 ok
-PASS AM-bgh bgh: 65 allow + 32 deny 65+32 ok
-PASS AM-pht pht: 20 allow + 77 deny 20+77 ok
+PASS AM-to_truong to_truong: 22 allow + 75 deny 22+75 ok
+PASS AM-bgh bgh: 70 allow + 27 deny 70+27 ok
+PASS AM-pht pht: 33 allow + 64 deny 33+64 ok
 PASS AM-ke_toan ke_toan: 6 allow + 91 deny 6+91 ok
 PASS AM-so_gd so_gd: 10 allow + 87 deny 10+87 ok
 PASS AM-ubnd ubnd: 6 allow + 91 deny 6+91 ok
+PASS AM-admin admin: 20 allow + 77 deny 20+77 ok
 PASS AM-phu_huynh phu_huynh: 1 allow + 96 deny 1+96 ok
 PASS AM-hoc_sinh hoc_sinh: 2 allow + 95 deny 2+95 ok
 PASS W01 Diem danh -> DB excused
 PASS W02 Ghi nhan HK -> DB 
-PASS W03 Thong bao PH -> DB 
-PASS W04 Diem thi dua -> DB period=2026-T10 scores=8
+FAIL W03 Thong bao PH -> DB feedback=no-feedback
+PASS W04 Diem thi dua -> DB period=2026-T10 scores=27,15,16,8
 PASS W05 Sua HS -> DB + history student=1 hist=1
 PASS W05b NationalID qua server action -> history hist=1 stu=1
-PASS W32 Roster doi lop -> data doi theo url=true diff=true cls=true stu=true
-PASS W06 So dau bai len=1531
-PASS W07 Don nghi phep len=2287
-PASS W08 So do cho ngoi len=1185
-PASS W09 Upload HS len=1345
-PASS W10 KPI len=776
-PASS W11 Hộp thư PH len=979
-PASS W12 Safety followup len=3028
+FAIL W32 Roster doi lop -> data doi theo url=true diff=true cls=false stu=true
+PASS W06 So dau bai len=1515
+PASS W07 Don nghi phep len=5278
+PASS W08 So do cho ngoi len=1294
+PASS W09 Upload HS len=1415
+PASS W10 KPI len=936
+PASS W11 Hộp thư PH len=863
+PASS W12 Safety followup len=1483
 PASS W13 GVBM so dau bai 
-PASS W14 GVBM chi thay lop minh day (khong thay 6A3) scope dung
+PASS W14 GVBM chi thay lop minh day (negative control dong) scope dung (not-mine: 7A3,8A1,8A2,8A3)
 PASS W15 BGH Thong bao truong 
 PASS W16 BGH Approvals 
 PASS W17 BGH Safety 
@@ -37,16 +38,19 @@ PASS W22 Portal PH
 PASS W23 Hoc ba HS 
 PASS W24 Luu so dau bai -> period_logs rows=1
 PASS W25 Nop giao an -> lesson_plans rows=1 status=submitted
-PASS W26a GVCN nop so -> submitted pending 1 -> 0
-PASS W26b BGH tao dot ky (insert hoac idempotent) before=27 after=27
-PASS W26c BGH ky duyet -> signed submitted 1 -> 0
+PASS W26a GVCN nop so 8A2/2026-11 -> pending->submitted (id=08c2d0a9) before=pending after=submitted by_match=true
+PASS W26b BGH tao dot ky (insert hoac idempotent) before=50 after=50
+PASS W26c BGH ky duyet 8A2/2026-11 -> submitted->signed (id=08c2d0a9) after=signed signed_by_match=true
 PASS W27 Tao buoi sinh hoat -> dept_meetings rows=1
 PASS W28 PH dat lich hen -> appointments rows=1 status=proposed
 PASS W29 To truong duyet giao an -> team_approved moved=1/3
-PASS W30 BGH duyet giao an -> approved moved=1/1
+PASS W30 BGH duyet giao an -> approved moved=1/4
 PASS W31 GVCN xac nhan lich hen -> confirmed moved=1/1
 
 === console errors: 0
 PASS CONSOLE 0 console errors 
 
-===== 48/48 PASS =====
+===== 47/49 PASS =====
+FAILURES:
+  W03 Thong bao PH -> DB feedback=no-feedback
+  W32 Roster doi lop -> data doi theo url=true diff=true cls=false stu=true

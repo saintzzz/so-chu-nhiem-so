@@ -1,6 +1,6 @@
-# Mô tả chức năng - Sổ Chủ Nhiệm Số
+# Mô tả chức năng - Sổ Chủ Nhiệm Số & Studio TVC360
 
-Phiên bản: 1.0 · Ngày: 21/09/2026 · Môi trường: https://so-chu-nhiem-so-theta.vercel.app
+Phiên bản: 2.0 · Ngày: 09/10/2026 · Môi trường: https://sochunhiem.vieschool.com
 
 ## 1. Tổng quan
 

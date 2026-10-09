@@ -1,8 +1,8 @@
-# Kịch bản demo - Sổ Chủ Nhiệm Số
+# Kịch bản demo - Sổ Chủ Nhiệm Số & Công cụ số Giáo viên
 
-Phiên bản: 1.0 · Ngày: 2026 (CR-036) · Môi trường: https://sochunhiem.vieschool.com
+Phiên bản: 2.0 · Ngày demo: 15/10/2026 · Môi trường: https://sochunhiem.vieschool.com
 
-Tài liệu này là kịch bản demo theo vai trò, dùng bộ dữ liệu thực tế được seed lại theo CR-036. Mật khẩu demo chung: `demo1234`.
+Tài liệu này là kịch bản demo theo vai trò, dùng bộ dữ liệu thực tế được seed lại theo CR-036. Mật khẩu demo chung: `demo1234`. Một ứng dụng duy nhất gồm 2 module: Sổ Chủ Nhiệm Số (vận hành lớp/nhà trường) và Studio - công cụ số giáo viên TVC360 (soạn học liệu, ngân hàng câu hỏi, đề kiểm tra).
 
 ---
 
@@ -109,6 +109,20 @@ Phân quyền kiêm nhiệm được quản trị tại `/school/users` (BGH tic
 trò kiêm nhiệm; chỉ vai trò nhân sự được chọn, `admin` không thể kiêm).
 Menu và quyền được tính từ "vai trò chính + kiêm nhiệm" ở mọi tầng
 (UI, server action, RLS database).
+
+### Luồng H - Studio công cụ số giáo viên (minhtv@nd.scn, ~5 phút)
+
+Studio là module TVC360 tích hợp ngay trong app - cùng đăng nhập, cùng
+phân quyền, ngân hàng câu hỏi chung của trường.
+
+1. **Tất cả công cụ** (`/studio`): nhóm DC (soạn - đánh giá), T (Toán), V (Văn), A (Anh). Môn tự preselect theo môn phụ trách của GV.
+2. **DC-01 Kế hoạch bài dạy**: chọn môn/khối/bài → Sinh → KHBD đúng khung CV 5512 (5 phần a-đ) → chỉnh sửa → lưu Thư viện → xuất DOCX.
+3. **DC-02 → DC-03**: lập ma trận đề theo YCCĐ → sinh đề rút câu từ ngân hàng của trường, kèm đáp án + biên bản phản biện.
+4. **Ngân hàng câu hỏi** (`/studio/questions`): filter Cả trường / Của tôi / Môn của tổ; câu hỏi đã được dọn trùng (mỗi câu gộp đủ YCCĐ); môn Ngữ văn chỉ khối 6-12, Tiếng Việt 1-5 đúng CTGDPT 2018.
+5. **A-03 Hội thoại + bài nghe Tiếng Anh**: sinh hội thoại theo chủ đề → material có **audio nghe thật** (giọng neural, phát ngay trong trình duyệt) - material mẫu "Dialogue: At the Market (A2)" lớp 5 ở trường Chu Văn An, đăng nhập `anhhd@cva.scn` để xem/phát.
+6. **Xuất - chia sẻ**: mọi học liệu xuất DOCX/PDF/PPTX; học liệu `published` mọi người trong trường xem được, bản nháp chỉ tác giả + người duyệt.
+
+Điểm nhấn: AI sinh nội dung có kiểm chứng 2 lớp (khung cứng + bộ lọc lạc đề), hết quota tự chuyển engine rule-based - demo không bao giờ "đứng".
 
 ## 4. Kiểm chứng phân quyền nhanh (security smoke)
 

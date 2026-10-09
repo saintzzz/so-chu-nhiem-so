@@ -67,16 +67,16 @@ function note(s, txt, y = 6.9) {
 {
   const s = p.addSlide();
   s.background = { color: C.code };
-  s.addText("KỊCH BẢN DEMO - SỔ CHỦ NHIỆM SỐ", {
-    x: 0.8, y: 2.0, w: 11.7, h: 1.0, fontFace: FONT, fontSize: 34, bold: true, color: C.white,
+  s.addText("KỊCH BẢN DEMO - SỔ CHỦ NHIỆM SỐ & CÔNG CỤ SỐ GIÁO VIÊN", {
+    x: 0.8, y: 2.0, w: 11.7, h: 1.0, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
   });
-  s.addText("Nền tảng số hóa công tác chủ nhiệm & công cụ giáo viên - VieSchool", {
+  s.addText("Một nền tảng: số hóa công tác chủ nhiệm + Studio TVC360 tích hợp - VieSchool", {
     x: 0.8, y: 3.0, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 15, color: "5eead4",
   });
   s.addText([
     { text: "URL demo: https://sochunhiem.vieschool.com", options: { breakLine: true } },
     { text: "Mật khẩu demo chung: demo1234", options: { breakLine: true } },
-    { text: "Phiên bản: 10/2026 - CR-036 (data thật) + CR-038 (vai trò kiêm nhiệm)", options: {} },
+    { text: "Phiên bản: demo 15/10/2026 - data thật + vai trò kiêm nhiệm + Studio (A-03 audio, ngân hàng đã dọn trùng)", options: {} },
   ], { x: 0.8, y: 3.9, w: 11.7, h: 1.3, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
 }
 
@@ -296,6 +296,32 @@ function note(s, txt, y = 6.9) {
   ]);
 }
 
+// S11b - Luong H Studio
+{
+  const s = p.addSlide();
+  slideTitle(s, "LUỒNG H - STUDIO CÔNG CỤ SỐ (TVC360)", "minhtv@nd.scn hoặc anhptl@nd.scn - /studio trong cùng app", "~5 phút - chứng minh 2 module trên một nền tảng");
+  bullets(s, [
+    { t: "1. Tất cả công cụ (/studio)", b: true, sub: [
+      "Nhóm DC-01..06: KHBĐ CV 5512, ma trận đề, đề kiểm tra, bộ câu hỏi, phiếu học tập, bài trình chiếu",
+      "Nhóm chuyên môn: Toán (T-01/02), Văn (V-01/02), Anh (A-01..03) - môn tự preselect theo phân công",
+    ] },
+    { t: "2. DC-02 -> DC-03: ma trận -> đề kiểm tra", b: true, sub: [
+      "Ma trận YCCĐ x mức độ đúng tỷ lệ; đề rút câu từ ngân hàng CỦA TRƯỜNG + đáp án + biên bản phản biện",
+    ] },
+    { t: "3. Ngân hàng câu hỏi (/studio/questions)", b: true, sub: [
+      "Đã dọn trùng: mỗi câu gộp đủ YCCĐ, không còn bản lặp; Ngữ văn chỉ khối 6-12 (Tiếng Việt 1-5)",
+      "Duyệt 2 lớp: tổ trưởng -> BGH; filter 'Môn của tổ tôi' cho tổ trưởng kiêm nhiệm",
+    ] },
+    { t: "4. A-03: hội thoại + bài nghe có AUDIO THẬT", b: true, sub: [
+      "Sinh hội thoại -> audio giọng neural phát ngay (material mẫu 'At the Market' lớp 5, login anhhd@cva.scn)",
+    ] },
+    { t: "5. Xuất DOCX/PDF/PPTX - học liệu published cả trường xem, nháp chỉ tác giả + người duyệt", sub: [
+      "AI có kiểm chứng 2 lớp + fallback rule-based khi hết quota - demo không đứng",
+    ] },
+  ]);
+  note(s, "Thông điệp: giáo viên không cần app thứ hai - soạn, duyệt, xuất ngay trong sổ chủ nhiệm.");
+}
+
 // S12 - Security smoke
 {
   const s = p.addSlide();
@@ -353,4 +379,4 @@ function note(s, txt, y = 6.9) {
 
 mkdirSync("docs/user-guide", { recursive: true });
 await p.writeFile({ fileName: "docs/user-guide/KICH-BAN-DEMO.pptx" });
-console.log("Wrote docs/user-guide/KICH-BAN-DEMO.pptx (14 slides)");
+console.log("Wrote docs/user-guide/KICH-BAN-DEMO.pptx (15 slides)");

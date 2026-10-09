@@ -1,6 +1,6 @@
-# Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số
+# Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số & Studio TVC360
 
-Phiên bản: 1.2 · Ngày: 08/10/2026
+Phiên bản: 2.0 · Ngày: 09/10/2026
 Địa chỉ hệ thống: https://sochunhiem.vieschool.com
 
 Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.

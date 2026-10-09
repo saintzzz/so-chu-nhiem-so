@@ -1,11 +1,12 @@
 /**
- * User Guide PPTX - cap nhat theo trang thai moi nhat cua he thong.
- * node scripts/gen-user-guide-pptx.mjs -> docs/handover/USER-GUIDE-vieschool.pptx
+ * User Guide PPTX - ban duy nhat gop "huong dan su dung" + "gioi thieu chuc nang".
+ * node scripts/gen-user-guide-pptx.mjs -> docs/user-guide/USER-GUIDE-vieschool.pptx
+ *   (dong thoi copy sang docs/handover/USER-GUIDE-vieschool.pptx)
  * Nguon du lieu: docs/user-guide/KICH-BAN-DEMO.md, HUONG-DAN-SU-DUNG.md,
- * KHOI-TAO-TRUONG-MOI.md, ma tran quyen trong code (src/lib/nav.ts, ROLE-MATRIX).
+ * MO-TA-CHUC-NANG.md, KHOI-TAO-TRUONG-MOI.md, anh man hinh docs/user-guide/images/.
  */
 import PptxGenJS from "pptxgenjs";
-import { mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 
 const p = new PptxGenJS();
 p.defineLayout({ name: "W", width: 13.33, height: 7.5 });
@@ -62,6 +63,19 @@ function note(s, txt, y = 6.85) {
   s.addText(txt, { x: 0.7, y, w: 12, h: 0.5, fontFace: FONT, fontSize: 10.5, italic: true, color: C.accent });
 }
 
+// Slide co anh man hinh: bullets trai + screenshot phai
+function featureSlide(section, title, items, img, caption) {
+  const s = p.addSlide();
+  slideTitle(s, section, title);
+  const imgPath = `docs/user-guide/images/${img}`;
+  const hasImg = img && existsSync(imgPath);
+  bullets(s, items, { w: hasImg ? 6.2 : 12, fontSize: 12.5 });
+  if (hasImg) {
+    s.addImage({ path: imgPath, x: 7.15, y: 1.95, w: 5.6 });
+    if (caption) s.addText(caption, { x: 7.15, y: 6.2, w: 5.6, h: 0.4, fontFace: FONT, fontSize: 10, italic: true, color: C.muted });
+  }
+}
+
 // ---------- S1 Cover ----------
 {
   const s = p.addSlide();
@@ -73,10 +87,10 @@ function note(s, txt, y = 6.85) {
     x: 0.8, y: 3.15, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4",
   });
   s.addText([
-    { text: "Phiên bản: v2.0 - 10/2026 (gồm vai trò kiêm nhiệm + bộ kit khởi tạo trường)", options: { breakLine: true } },
+    { text: "Phiên bản: v2.1 - demo 15/10/2026 (một deck duy nhất: hướng dẫn + giới thiệu)", options: { breakLine: true } },
     { text: "URL: https://sochunhiem.vieschool.com", options: { breakLine: true } },
     { text: "Phạm vi: CTGDPT 2018, TT 22/2021, TT 27/2025, CV 5512; bảo mật theo Luật 91/2025", options: { breakLine: true } },
-    { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng 1 080+ câu hỏi", options: {} },
+    { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng câu hỏi đã dọn trùng", options: {} },
   ], { x: 0.8, y: 3.95, w: 11.7, h: 1.6, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
 }
 
@@ -94,6 +108,49 @@ function note(s, txt, y = 6.85) {
   ]);
   note(s, "Thiết kế cho quy mô: 100 000 user giai đoạn pilot, lộ trình 1 000 000.");
 }
+
+// ---------- S2b..S2f Feature slides co anh man hinh (hap thu tu deck gioi thieu cu) ----------
+featureSlide("CHỨC NĂNG NỔI BẬT", "Chuyên cần - điểm danh số", [
+  { t: "4 trạng thái/em: Có mặt, Vắng CP, Vắng KP, Đi muộn + ghi chú lý do ngay trên dòng", b: 1 },
+  { t: "Chọn ngày bất kỳ để xem lại / sửa điểm danh ngày cũ; sổ vắng-muộn theo khoảng ngày" },
+  { t: "Thông báo phụ huynh tự động (in-app + email Resend từ no-reply@vieschool.com)" },
+  { t: "Đồng bộ 2 chiều với sổ đầu bài tiết học - một ghi nhận, nhiều nơi cập nhật" },
+], "03-attendance-daily.png", "Điểm danh hàng ngày - tổng quan + ghi chú vắng");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "Sổ điểm giáo viên - chuẩn TT22", [
+  { t: "Cột điểm động: Miệng / 15 phút / 1 tiết (hệ số 1), Giữa kỳ (x2), Cuối kỳ (x3)", b: 1 },
+  { t: "GV chỉ ghi điểm lớp + môn được phân công - bộ chọn môn tự lọc theo phân công" },
+  { t: "Lưu nguyên tử qua transaction; ĐTBm tự tính đúng hệ số, hiển thị HK1 / HK2 / cả năm" },
+  { t: "Import/export Excel, tải template mẫu; môn nhận xét hiển thị Đạt / Chưa đạt" },
+], "07-grades.png", "Sổ điểm cột động theo Thông tư 22");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "Thời khóa biểu & Sổ đầu bài", [
+  { t: "2 chế độ: lịch cá nhân (mọi GV) + theo lớp (GVCN xem lớp CN, BGH toàn trường)", b: 1 },
+  { t: "Sổ đầu bài: chỉ GV được phân công tiết đó mới ghi; điểm danh theo tiết đồng bộ chuyên cần ngày" },
+  { t: "Cộng/trừ điểm rèn luyện ngay trong sổ đầu bài; BGH import TKB hàng loạt từ Excel" },
+], "08-timetable-me.png", "Lịch dạy cá nhân");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "BGH - điều hành trường", [
+  { t: "Trung tâm phê duyệt: kế hoạch HĐ, giáo án, đánh giá - một nơi xử lý", b: 1 },
+  { t: "Radar cảnh báo sớm: lớp/HS rủi ro theo chuyên cần + điểm + sự cố" },
+  { t: "Ký sổ chủ nhiệm: tạo đợt ký - duyệt/từ chối kèm lý do - ký hàng loạt; GVCN không tự ký" },
+  { t: "Chỉ BGH phân công GVCN & lớp năm học; trợ lý AI điều hành hỏi-đáp trên dữ liệu thật" },
+], "23-bgh-radar.png", "Radar cảnh báo sớm toàn trường");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "Phụ huynh & Học sinh - cổng hai chiều", [
+  { t: "PH chỉ thấy con mình (nhiều con: bộ chọn trên đầu portal, dữ liệu tách theo từng em)", b: 1 },
+  { t: "Nhắn tin 2 chiều với GVCN; đặt lịch hẹn trực tuyến - GVCN xác nhận" },
+  { t: "Digest email tuần tự động gửi PH; bounce/complaint được webhook Resend ghi nhận, không retry lặp" },
+  { t: "Học sinh: TKB, điểm số, hạnh kiểm, thông báo - mọi ghi kiểm tra quyền sở hữu ở server" },
+], "30-parent-portal.png", "Portal phụ huynh");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & ngân hàng câu hỏi", [
+  { t: "Bộ công cụ theo môn: DC-01..06 (chung), Toán (T-01/02), Văn (V-01/02), Anh (A-01..03)", b: 1 },
+  { t: "Ngân hàng chung của trường gắn YCCĐ; đã dọn trùng - mỗi câu gộp đủ chuẩn, không bản lặp" },
+  { t: "Môn học đúng cấp: Ngữ văn 6-12, Tiếng Việt 1-5, Tiếng Anh 3-12 theo CTGDPT 2018" },
+  { t: "A-03 sinh hội thoại + bài nghe kèm AUDIO THẬT (giọng neural) phát ngay trong trình duyệt" },
+  { t: "Hình Toán vẽ SVG tham số (deterministic); LaTeX -> Word Equation native khi xuất DOCX" },
+], "17-exams.png", "Ngân hàng câu hỏi và sinh đề theo ma trận");
 
 // ---------- S3 Moi truong demo ----------
 {
@@ -191,8 +248,8 @@ function note(s, txt, y = 6.85) {
   const s = p.addSlide();
   slideTitle(s, "WORKFLOW 2", "Giáo viên bộ môn - biên soạn trên Studio (/studio)");
   bullets(s, [
-    { t: "Chọn công cụ DC-01..DC-06 → điền môn/khối/bài → Sinh (AI hoặc fallback rule-based khi hết quota)" },
-    { sub: ["Môn tự preselect theo môn phụ trách của GV; công thức LaTeX $...$ render KaTeX, xuất DOCX thành Word Equation native"] },
+    { t: "Chọn công cụ DC-01..06 / T-01..02 / V-01..02 / A-01..03 → điền môn/khối/bài → Sinh (AI hoặc fallback rule-based khi hết quota)" },
+    { sub: ["Môn tự preselect theo môn phụ trách của GV; công thức LaTeX $...$ render KaTeX, xuất DOCX thành Word Equation native", "A-03 (Tiếng Anh): hội thoại + bài nghe kèm audio thật (giọng neural), phát ngay trong trang xem học liệu"] },
     { t: "Chỉnh sửa trực tiếp → Lưu vào Thư viện của tôi (/studio/library)" },
     { t: "Gửi duyệt → tổ trưởng nhận notification → BGH duyệt cuối → published" },
     { t: "Xuất: DOCX (đề/KHBĐ/phiếu), PDF (trang in), PPTX (DC-06)" },
@@ -250,6 +307,8 @@ function note(s, txt, y = 6.85) {
   slideTitle(s, "NGÂN HÀNG CÂU HỎI", "Ngân hàng chung của trường (/studio/questions)");
   bullets(s, [
     { t: "GV cùng trường đóng góp chung; filter: Cả trường / Của tôi / Môn của tổ tôi; phân trang server" },
+    { t: "Đã dọn trùng toàn bank: gộp theo (câu hỏi, khối, môn, dạng), giữ bản đã duyệt, union đủ YCCĐ - 0 câu lặp" },
+    { t: "Môn đúng cấp học: Ngữ văn chỉ khối 6-12 (Tiếng Việt 1-5), Tiếng Anh 3-12 - bộ chọn khối theo môn tự lọc" },
     { t: "Thêm tay hoặc import ảnh/PDF (AI đọc) hoặc template Excel; validate: đúng qtype, mức độ, YCCĐ, stem tham chiếu hình phải kèm media" },
     { t: "Duyệt: từng câu hoặc bulk (tối đa 200 câu/lần); trạng thái: chưa duyệt → đã duyệt / đánh dấu lỗi" },
     { t: "Hình trong câu hỏi: upload ảnh HOẶC hình vẽ tham số SVG cho Toán (tam giác, HCN, tròn, góc, đồng hồ) - deterministic, không AI sinh ảnh" },
@@ -338,15 +397,18 @@ function note(s, txt, y = 6.85) {
     ["HUONG-DAN-SU-DUNG.md", "Thao tác chi tiết theo từng vai trò (kèm kiêm nhiệm), 31 ảnh màn hình"],
     ["KHOI-TAO-TRUONG-MOI.md", "Đưa trường mới lên từ con số 0 - giao diện hoặc import hàng loạt"],
     ["khoi-tao-truong.xlsx", "Workbook mẫu 8 sheet để khởi tạo trường"],
-    ["KICH-BAN-DEMO.md / .pptx", "Kịch bản demo theo luồng vai trò - tài khoản, đường đi, kết quả kỳ vọng"],
+    ["KICH-BAN-DEMO.md / .pptx", "Kịch bản demo 15/10 theo luồng vai trò - tài khoản, đường đi, kết quả kỳ vọng"],
     ["MO-TA-CHUC-NANG.md", "Mô tả chi tiết module, ma trận vai trò, luồng nghiệp vụ"],
+    ["SO-CHU-NHIEM-SO-TAI-LIEU.docx", "Bản Word gộp mô tả + hướng dẫn - dùng in/phát hành nội bộ"],
   ]);
   bullets(s, [
-    { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs", y: 4.6 },
-    { t: "Tái sinh workbook mẫu: node scripts/gen-init-template.mjs; kịch bản demo: gen-demo-pptx.mjs", y: 4.6 },
+    { t: "Deck này là bản duy nhất gộp hướng dẫn + giới thiệu (thay thế SO-CHU-NHIEM-SO-GIOI-THIEU.pptx cũ)" },
+    { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs; workbook mẫu: gen-init-template.mjs; kịch bản demo: gen-demo-pptx.mjs" },
   ], { y: 4.6, fontSize: 12.5 });
 }
 
+mkdirSync("docs/user-guide", { recursive: true });
 mkdirSync("docs/handover", { recursive: true });
-await p.writeFile({ fileName: "docs/handover/USER-GUIDE-vieschool.pptx" });
-console.log("Written docs/handover/USER-GUIDE-vieschool.pptx");
+await p.writeFile({ fileName: "docs/user-guide/USER-GUIDE-vieschool.pptx" });
+copyFileSync("docs/user-guide/USER-GUIDE-vieschool.pptx", "docs/handover/USER-GUIDE-vieschool.pptx");
+console.log("Written docs/user-guide/USER-GUIDE-vieschool.pptx (+ copy docs/handover/)");

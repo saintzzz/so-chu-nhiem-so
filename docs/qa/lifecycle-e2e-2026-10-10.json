@@ -1,0 +1,180 @@
+{
+  "run": "ZCXP",
+  "school": {
+    "name": "THCS QA E2E ZCXP",
+    "code": "QAEZCXP",
+    "level": "THCS",
+    "bghEmail": "bgh.qazcxp@demo.scn",
+    "gvcnEmail": "gvcn.qazcxp@demo.scn",
+    "gvbmEmail": "gvbm.qazcxp@demo.scn",
+    "parentEmail": "ph.qazcxp@demo.scn",
+    "pass": "***",
+    "id": "bc9e9a30-64e5-4d1f-8e78-cea900507ed8",
+    "classId": "f6a9bd02-8e7b-4d19-a958-c20083cf2974",
+    "gvcnId": "3d4508ac-3af5-4367-a40d-4f271eab4261",
+    "studentId": "b1854bcb-c833-40c3-88d1-6c7ce3690717"
+  },
+  "results": [
+    {
+      "stage": "setup",
+      "name": "cleanup truong QAE* cu (pre-clean)",
+      "ok": true,
+      "ms": 1554,
+      "detail": ""
+    },
+    {
+      "stage": "A-so_gd",
+      "name": "tao truong moi (khong seed)",
+      "ok": true,
+      "ms": 5069,
+      "detail": ""
+    },
+    {
+      "stage": "A-so_gd",
+      "name": "DB: schools row",
+      "ok": true,
+      "ms": 136,
+      "detail": "bc9e9a30-64e5-4d1f-8e78-cea900507ed8"
+    },
+    {
+      "stage": "A-so_gd",
+      "name": "DB: nam hoc + to + mon auto-seed",
+      "ok": true,
+      "ms": 252,
+      "detail": "year=1 dept=2 subj=14"
+    },
+    {
+      "stage": "A-so_gd",
+      "name": "DB: profile BGH",
+      "ok": true,
+      "ms": 0,
+      "detail": "[{\"id\":\"2ba65e1b-4c93-421c-b1a6-9abb5da80b9a\",\"role\":\"bgh\"}]"
+    },
+    {
+      "stage": "B-bgh",
+      "name": "login BGH moi",
+      "ok": true,
+      "ms": 1965,
+      "detail": "https://sochunhiem.vieschool.com/"
+    },
+    {
+      "stage": "B-bgh",
+      "name": "tao 2 tai khoan GV (gvcn+gvbm)",
+      "ok": true,
+      "ms": 3091,
+      "detail": "[{\"role\":\"gvcn\"},{\"role\":\"gvbm\"}]"
+    },
+    {
+      "stage": "B-bgh",
+      "name": "tao lop 6A1",
+      "ok": true,
+      "ms": 3580,
+      "detail": "[{\"id\":\"f6a9bd02-8e7b-4d19-a958-c20083cf2974\",\"gvcn_id\":\"2ba65e1b-4c93-421c-b1a6-9abb5da80b9a\"}]"
+    },
+    {
+      "stage": "B-bgh",
+      "name": "import CSV 6 HS vao 6A1",
+      "ok": true,
+      "ms": 1843,
+      "detail": "students=6"
+    },
+    {
+      "stage": "B-bgh",
+      "name": "phan cong GVCN cho 6A1",
+      "ok": true,
+      "ms": 1400,
+      "detail": ""
+    },
+    {
+      "stage": "B-bgh",
+      "name": "BGH xem danh sach HS (6/6 ten hien)",
+      "ok": true,
+      "ms": 1401,
+      "detail": ""
+    },
+    {
+      "stage": "C-gvcn",
+      "name": "login GVCN",
+      "ok": true,
+      "ms": 2340,
+      "detail": "https://sochunhiem.vieschool.com/"
+    },
+    {
+      "stage": "C-gvcn",
+      "name": "diem danh 6 HS (1 vang KP)",
+      "ok": true,
+      "ms": 1701,
+      "detail": "rows=6 unexcused=1"
+    },
+    {
+      "stage": "C-gvcn",
+      "name": "tao + lien ket + cap account PH",
+      "ok": true,
+      "ms": 2956,
+      "detail": "[{\"parent_id\":\"0b1e3377-00c5-4463-b565-779b7be48159\",\"parents\":{\"email\":\"ph.qazcxp@demo.scn\",\"profile_id\":\"681af0f5-e265-4043-8292-f226b1349ce5\"}}]"
+    },
+    {
+      "stage": "C-gvcn",
+      "name": "deny /school/users",
+      "ok": true,
+      "ms": 1591,
+      "detail": "https://sochunhiem.vieschool.com/dashboard"
+    },
+    {
+      "stage": "C-gvcn",
+      "name": "Studio A-01 generate (AI fallback live)",
+      "ok": true,
+      "ms": 7414,
+      "detail": "status=200"
+    },
+    {
+      "stage": "D-gvbm",
+      "name": "login GVBM",
+      "ok": true,
+      "ms": 2343,
+      "detail": "https://sochunhiem.vieschool.com/"
+    },
+    {
+      "stage": "D-gvbm",
+      "name": "deny /records/students (chi gvcn/bgh)",
+      "ok": true,
+      "ms": 1292,
+      "detail": "https://sochunhiem.vieschool.com/academics/grades"
+    },
+    {
+      "stage": "D-gvbm",
+      "name": "deny /school/users",
+      "ok": true,
+      "ms": 1218,
+      "detail": "https://sochunhiem.vieschool.com/academics/grades"
+    },
+    {
+      "stage": "E-parent",
+      "name": "portal PH thay HS duoc lien ket",
+      "ok": true,
+      "ms": 3357,
+      "detail": ""
+    },
+    {
+      "stage": "E-output",
+      "name": "audit_logs ghi lai hanh dong",
+      "ok": true,
+      "ms": 255,
+      "detail": "logs=3 actions=[\"attendance.confirm\",\"Tạo + liên kết phụ huynh\",\"parent.grant_access\"]"
+    },
+    {
+      "stage": "E-output",
+      "name": "profiles school = 4 (bgh+gvcn+gvbm+ph)",
+      "ok": true,
+      "ms": 78,
+      "detail": "[\"bgh\",\"gvcn\",\"gvbm\",\"phu_huynh\"]"
+    },
+    {
+      "stage": "setup",
+      "name": "cleanup truong QAE* cu (post-test)",
+      "ok": true,
+      "ms": 3658,
+      "detail": ""
+    }
+  ]
+}

@@ -39,13 +39,22 @@ export function ReferralCard({
     setError(null);
     startTransition(async () => {
       const supabase = createClient();
-      const { error: err } = await supabase
+      // CAS: chuyen status chi khi ca van o trang thai dang hien thi - tab
+      // cu khong ghi de quyet dinh moi hon cua actor khac.
+      let q = supabase
         .from("counseling_cases")
         .update(patch)
         .eq("id", caseId);
+      if (patch.status) q = q.eq("status", status);
+      const { data: updated, error: err } = await q.select("id");
       if (err) {
         console.error("[referral-card] update case:", err.message);
         setError("Không cập nhật được thông tin chuyển tiếp - vui lòng thử lại.");
+        return;
+      }
+      if (!updated?.length) {
+        setError("Trạng thái ca đã thay đổi ở phiên khác - vui lòng tải lại.");
+        router.refresh();
         return;
       }
       setSaved(true);

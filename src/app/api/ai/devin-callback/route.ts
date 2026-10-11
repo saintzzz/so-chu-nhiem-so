@@ -91,15 +91,18 @@ export async function POST(req: NextRequest) {
     if (bad) {
       // r19 L: UPDATE loi -> job con pending, client poll 15p vo ich.
       // Chi tra bad_doc sau khi xac nhan da chuyen trang thai.
-      const { error: failErr } = await admin
+      const { data: failRows, error: failErr } = await admin
         .from("ai_jobs")
         .update({ status: "failed" })
         .eq("id", row.id)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .select("id");
       if (failErr) {
         console.error("[devin-callback] fail update:", failErr.message);
         return NextResponse.json({ error: "update_failed" }, { status: 500 });
       }
+      if (!failRows?.length)
+        console.error("[devin-callback] job already left pending:", row.id);
       return NextResponse.json({ error: "bad_doc" }, { status: 400 });
     }
   }

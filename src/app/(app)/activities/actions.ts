@@ -48,14 +48,21 @@ export async function submitActivity(
   if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
-  const { error } = await supabase
+  const { data: submitted, error } = await supabase
     .from("activities")
     .update({ status: "pending" })
     .eq("id", activityId)
-    .eq("status", "draft");
+    .eq("status", "draft")
+    .select("id");
   if (error) {
     console.error("[activities] submit failed:", error.message);
     return { error: "Không gửi duyệt được hoạt động. Vui lòng thử lại." };
+  }
+  if ((submitted ?? []).length !== 1) {
+    return {
+      error:
+        "Hoạt động đã được gửi hoặc duyệt ở phiên khác - vui lòng tải lại trang.",
+    };
   }
   revalidatePath("/activities/plan");
   return {};
@@ -221,8 +228,9 @@ export async function announceActivity(
     emailError: claim.email_error ?? undefined,
   };
   if (!claim.email_done) {
-    // Chi claim owner gui email - concurrent khong the gui trung batch.
-    const { data: emailClaimed, error: eClaimErr } = await supabase.rpc(
+    // r25: claim tra token uuid (khong con boolean) - tab thu hai cung tai
+    // khoan khong co token nen khong the cuop claim -> khong gui trung.
+    const { data: emailToken, error: eClaimErr } = await supabase.rpc(
       "scn_announce_email_claim",
       { p_activity_id: activityId },
     );
@@ -236,7 +244,7 @@ export async function announceActivity(
         emailError: "state-unknown",
       };
     }
-    if (emailClaimed === true) {
+    if (typeof emailToken === "string" && emailToken) {
       // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
       // [So Chu Nhiem So] do helper dat).
       mail = await emailClassParents(supabase, {
@@ -256,6 +264,7 @@ export async function announceActivity(
         "scn_announce_email_complete",
         {
           p_activity_id: activityId,
+          p_token: emailToken,
           p_done: emailDone,
           p_emailed: mail.emailed ?? 0,
           p_failed: mail.emailFailed ?? 0,

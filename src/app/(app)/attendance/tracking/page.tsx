@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
 
 interface AttRow {
   student_id: string;
@@ -94,16 +94,19 @@ export default async function AttendanceTrackingPage({
   const prevStart = addDays(anchor, -59);
 
   const { rows: attData } = ids.length
-    ? await fetchAllRows<AttRow>((f, t) =>
-        supabase
-          .from("attendance_records")
-          .select("student_id,date,status")
-          .in("student_id", ids)
-          .in("status", ["unexcused", "late"])
-          .gte("date", prevStart)
-          .lte("date", anchor)
-          .order("id")
-          .range(f, t),
+    ? mustRows(
+        await fetchAllRows<AttRow>((f, t) =>
+          supabase
+            .from("attendance_records")
+            .select("student_id,date,status")
+            .in("student_id", ids)
+            .in("status", ["unexcused", "late"])
+            .gte("date", prevStart)
+            .lte("date", anchor)
+            .order("id")
+            .range(f, t),
+        ),
+        "attendance_records",
       )
     : { rows: [] as AttRow[] };
   const records = attData;

@@ -7,7 +7,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import type { AttendanceRecord } from "@/types";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -58,23 +58,35 @@ export default async function DeptReportsPage() {
   const classIds = classes.map((c) => c.id);
 
   const { rows: studentRows } = classIds.length
-    ? await fetchAllRows<{ id: string; class_id: string }>((f, t) =>
-        supabase
-          .from("students")
-          .select("id,class_id")
-          .in("class_id", classIds)
-          .order("id")
-          .range(f, t),
+    ? mustRows(
+        await fetchAllRows<{ id: string; class_id: string }>((f, t) =>
+          supabase
+            .from("students")
+            .select("id,class_id")
+            .in("class_id", classIds)
+            .order("id")
+            .range(f, t),
+        ),
+        "students",
       )
     : { rows: [] as { id: string; class_id: string }[] };
   const students = studentRows;
   const classSchool = new Map(classes.map((c) => [c.id, c.school_id]));
 
-  const { data: teacherRows } = await must(supabase
-    .from("profiles")
-    .select("id,school_id")
-    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}")
-    .in("school_id", scopedSchoolIds.size ? [...scopedSchoolIds] : ["none"]), "profiles");
+  // r25: .in("school_id") gioi han scope, KHONG gioi han so rows - mot So
+  // co the quan ly >1000 giao vien -> phai phan trang.
+  const { rows: teacherRows } = mustRows(
+    await fetchAllRows<{ id: string; school_id: string }>((f, t) =>
+      supabase
+        .from("profiles")
+        .select("id,school_id")
+        .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}")
+        .in("school_id", scopedSchoolIds.size ? [...scopedSchoolIds] : ["none"])
+        .order("id")
+        .range(f, t),
+    ),
+    "profiles",
+  );
 
   const { data: latestAtt } = await must(supabase
     .from("attendance_records")
@@ -88,7 +100,7 @@ export default async function DeptReportsPage() {
 
   // Loc theo class_id cua hoc sinh qua embedded filter thay vi .in(student_id)
   // voi hang nghin UUID - trainh URL PostgREST phinh to muc khong gui duoc.
-  const { rows: attRows, truncated: attTruncated } = classIds.length
+  const { rows: attRows, truncated: attTruncated, error: attError } = classIds.length
     ? await fetchAllRows<{
         student_id: string;
         status: string;
@@ -102,7 +114,10 @@ export default async function DeptReportsPage() {
           .order("id")
           .range(f, t),
       )
-    : { rows: [] as { student_id: string; status: string; students: { class_id: string } | { class_id: string }[] | null }[], truncated: false };
+    : { rows: [] as { student_id: string; status: string; students: { class_id: string } | { class_id: string }[] | null }[], truncated: false, error: null };
+  // Loi trang nguon -> khong tinh bao cao tren du lieu thieu. truncated van
+  // hien canh bao nhu truoc (du lieu day du den moc canh bao).
+  if (attError) throw new Error(`Không tải được dữ liệu nguồn (attendance).`);
 
   // Gom số liệu theo trường
   const per = new Map<

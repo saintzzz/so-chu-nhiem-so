@@ -14,7 +14,8 @@ import type {
   Subject,
   SupportStaff,
 } from "@/types";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /**
  * Ma trận định mức nhân sự theo tinh thần NQ37 (biên chế giáo dục):
@@ -42,7 +43,7 @@ export default async function StaffPage() {
     { data: classData },
     { data: leaderData },
     { data: teacherData },
-    { data: tsData },
+    { rows: tsData },
     { data: subjectData },
   ] = await Promise.all([
     must(supabase
@@ -66,7 +67,14 @@ export default async function StaffPage() {
       .select("id,full_name,email,role")
       .eq("school_id", sid)
       .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"), "profiles"),
-    must(supabase.from("teacher_subjects").select("teacher_id,subject_id"), "teacher_subjects"),
+    // r25: teacher_subjects toan truong co the >1000 - phan trang.
+    fetchAllRows<{ teacher_id: string; subject_id: string }>((f, t) =>
+      supabase
+        .from("teacher_subjects")
+        .select("teacher_id,subject_id")
+        .order("teacher_id")
+        .range(f, t),
+    ).then((r) => mustRows(r, "teacher_subjects")),
     must(supabase.from("subjects").select("id,name").eq("school_id", sid), "subjects"),
   ]);
 

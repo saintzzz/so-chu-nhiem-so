@@ -42,13 +42,22 @@ export function CaseControls({
     setError(null);
     startTransition(async () => {
       const supabase = createClient();
-      const { error: err } = await supabase
+      // CAS: chi chuyen tu trang thai dang hien thi - tab cu khong ghi de
+      // quyet dinh moi hon (vd BGH da resolved ma GVCN van bam chuyen tuyen).
+      let q = supabase
         .from("counseling_cases")
         .update(patch)
         .eq("id", caseId);
+      if (patch.status) q = q.eq("status", status);
+      const { data: updated, error: err } = await q.select("id");
       if (err) {
         console.error("[case-controls] update case:", err.message);
         setError("Không cập nhật được ca tư vấn - vui lòng thử lại.");
+        return;
+      }
+      if (!updated?.length) {
+        setError("Trạng thái ca đã thay đổi ở phiên khác - vui lòng tải lại.");
+        router.refresh();
         return;
       }
       setSaved(true);

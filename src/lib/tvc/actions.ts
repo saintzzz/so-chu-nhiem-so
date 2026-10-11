@@ -36,13 +36,15 @@ async function audit(
 ) {
   const profile = await getProfile();
   const supabase = await createClient();
-  await supabase.from("tvc_audit_logs").insert({
+  const { error } = await supabase.from("tvc_audit_logs").insert({
     actor_id: profile?.id ?? null,
     action,
     entity,
     entity_id: entityId,
     meta,
   });
+  // Audit best-effort: khong chan thao tac chinh nhung phai log khi ghi loi.
+  if (error) console.error("[tvc] audit insert:", error.message);
 }
 
 // ---------- Materials (sản phẩm các công cụ sinh ra) ----------
@@ -454,6 +456,8 @@ export async function setQuestionReviewState(
   if (err) return { error: err };
   const supabase = await createClient();
   // RLS: owner tu duyet cau minh; to_truong/bgh/admin duyet cau cung truong
+  // cas-ok: review_state la quyet dinh idempotent - nguoi duyet cuoi thang
+  // (ca hai actor cung role), khong co side-effect kep nhu gui email.
   const { data, error } = await supabase
     .from("tvc_questions")
     .update({ review_state: state })
@@ -485,13 +489,14 @@ export async function bulkSetQuestionReviewState(
   const n = data?.length ?? 0;
   if (!n) return { error: "Không cập nhật được (quyền sở hữu)." };
   const profile = await getProfile();
-  await supabase.from("tvc_audit_logs").insert({
+  const { error: auditErr } = await supabase.from("tvc_audit_logs").insert({
     actor_id: profile?.id ?? null,
     action: `question.bulk_${state}`,
     entity: "question",
     entity_id: null,
     meta: { count: n },
   });
+  if (auditErr) console.error("[tvc] audit insert:", auditErr.message);
   return { ok: true, count: n };
 }
 
@@ -715,6 +720,8 @@ export async function saveStandard(input: SaveStandardInput) {
     prerequisite_ids: [],
     school_id: profile.school_id,
   };
+  // cas-ok: edit upsert dat status:"active" co chu dich (sua noi dung =
+  // kich hoat lai chuan); khong phai transition can expected-state.
   const q = input.id
     ? supabase
         .from("tvc_curriculum_standards")
@@ -762,6 +769,8 @@ export async function toggleStandardStatus(id: string, active: boolean) {
   if (err) return { error: err };
   const profile = (await getProfile())!;
   const supabase = await createClient();
+  // cas-ok: toggle active/inactive la idempotent set - dat lai cung trang
+  // thai khong hai; predicate trang thai cu se tao loi gia cho no-op hop le.
   const { data, error } = await supabase
     .from("tvc_curriculum_standards")
     .update({ status: active ? "active" : "inactive" })

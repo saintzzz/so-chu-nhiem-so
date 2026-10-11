@@ -292,20 +292,30 @@ export async function addSchoolKpi(input: {
 export async function updateSchoolKpi(
   id: string,
   patch: { actual?: string; status?: string },
+  expectedStatus?: string,
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "pht"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
-  const { error } = await supabase
+  // CAS: chuyen status chi tu trang thai client dang thay - tab cu khong
+  // ghi de quyet dinh moi hon cua actor khac.
+  let q = supabase
     .from("school_kpis")
     .update(patch)
     .eq("id", id)
     .eq("school_id", profile.school_id);
+  if (patch.status && expectedStatus) q = q.eq("status", expectedStatus);
+  const { data: updated, error } = await q.select("id");
   if (error) {
     console.error("[school] update school_kpis:", error.message);
     return { error: "Không cập nhật được chỉ tiêu - vui lòng thử lại." };
+  }
+  if (!updated?.length) {
+    return {
+      error: "Trạng thái chỉ tiêu đã thay đổi ở phiên khác - vui lòng tải lại.",
+    };
   }
   revalidatePath("/school/strategy");
   return {};

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scanner fixtures - code co y dua theo pattern xau de test gate.
+    "tests/fixtures/**",
   ]),
 ]);
 

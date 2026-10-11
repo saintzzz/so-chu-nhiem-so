@@ -39,12 +39,13 @@ export async function recordAiUsage(
 ): Promise<void> {
   try {
     const supabase = createAdminClient();
-    await supabase.rpc("scn_ai_record_usage", {
+    const { error } = await supabase.rpc("scn_ai_record_usage", {
       p_kind: kind,
       p_provider: provider,
       p_outcome: outcome,
       p_actor: actorId,
     });
+    if (error) console.error("[ai-quota] record usage:", error.message);
   } catch {
     /* best-effort audit */
   }

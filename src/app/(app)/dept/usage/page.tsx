@@ -43,6 +43,7 @@ export default async function DeptUsagePage() {
         supabase
           .from("profiles")
           .select("id,full_name,email,role,school_id,last_sign_in_at")
+          .order("id")
           .range(f, t),
     ),
     must(supabase.from("schools").select("id,name"), "schools"),

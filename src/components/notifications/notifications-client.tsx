@@ -53,11 +53,17 @@ export function NotificationsClient({
     setBusy(true);
     const supabase = createClient();
     const at = new Date().toISOString();
-    await supabase
+    const { error: err } = await supabase
       .from("notifications")
       .update({ read_at: at })
       .eq("profile_id", meId)
       .is("read_at", null);
+    if (err) {
+      console.error("[notifications] mark-all-read:", err.message);
+      setLoadError("Không đánh dấu đã đọc được - vui lòng thử lại.");
+      setBusy(false);
+      return;
+    }
     setItems((ns) => ns.map((n) => ({ ...n, read_at: n.read_at ?? at })));
     setUnread(0);
     setBusy(false);
@@ -67,14 +73,19 @@ export function NotificationsClient({
     if (!n.read_at) {
       const supabase = createClient();
       const at = new Date().toISOString();
-      await supabase
+      const { error: err } = await supabase
         .from("notifications")
         .update({ read_at: at })
         .eq("id", n.id);
-      setItems((ns) =>
-        ns.map((x) => (x.id === n.id ? { ...x, read_at: at } : x)),
-      );
-      setUnread((c) => Math.max(0, c - 1));
+      if (err) {
+        console.error("[notifications] mark-read:", err.message);
+        setLoadError("Không đánh dấu đã đọc được - thông báo vẫn hiện chưa đọc.");
+      } else {
+        setItems((ns) =>
+          ns.map((x) => (x.id === n.id ? { ...x, read_at: at } : x)),
+        );
+        setUnread((c) => Math.max(0, c - 1));
+      }
     }
     if (n.link) router.push(n.link);
   }

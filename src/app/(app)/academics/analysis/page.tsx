@@ -11,7 +11,7 @@ import { semesterAverage, averageScoreBand } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -136,15 +136,18 @@ export default async function AnalysisPage({
   const classYearId =
     classes.find((c) => c.id === classId)?.academic_year_id ?? null;
   const { rows: gradeData } = studentIds.length
-    ? await fetchAllRows<GradeRow>((f, t) =>
-        supabase
-          .from("grades")
-          .select("student_id,subject_id,term,assessment_type,score")
-          .in("student_id", studentIds)
-          .eq("term", term)
-          .or(gradeYearOr(classYearId))
-          .order("id")
-          .range(f, t),
+    ? mustRows(
+        await fetchAllRows<GradeRow>((f, t) =>
+          supabase
+            .from("grades")
+            .select("student_id,subject_id,term,assessment_type,score")
+            .in("student_id", studentIds)
+            .eq("term", term)
+            .or(gradeYearOr(classYearId))
+            .order("id")
+            .range(f, t),
+        ),
+        "grades",
       )
     : { rows: [] as GradeRow[] };
   const grades = gradeData;

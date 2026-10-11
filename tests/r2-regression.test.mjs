@@ -2980,3 +2980,46 @@ test("CR-042C: dashboard gom wave - embed classes + windowed attendance", () => 
   assert.doesNotMatch(page, /latestAtt/); // bo wave latestAtt
   assert.match(page, /gte\("date", since30\)/); // cua so -> suy ra attDate
 });
+
+// --- r25: token-based email claim + fulfill approved recheck + CAS gaps ------
+test("r25: email_claim dung token per-invocation, complete bat token + authz", () => {
+  const mig = read("supabase/migrations/20261209_cr049_r25_fixes.sql");
+  assert.match(mig, /email_claim_token uuid/);
+  assert.match(mig, /p_token uuid/);
+  assert.match(mig, /email_claim_token = p_token/);
+  const comp = mig.slice(mig.indexOf("scn_announce_email_complete"));
+  assert.match(
+    comp,
+    /scn_can_announce_activity/,
+    "email_complete phai re-check quyen announce hien tai",
+  );
+});
+
+test("r25: fulfill re-check activity approved trong transaction", () => {
+  const mig = read("supabase/migrations/20261209_cr049_r25_fixes.sql");
+  const ful = mig.slice(
+    mig.indexOf("scn_announce_fulfill"),
+    mig.indexOf("scn_announce_email_claim"),
+  );
+  assert.match(ful, /for update/);
+  assert.match(ful, /status = 'approved'/);
+});
+
+test("r25: submitActivity CAS phai verify returned rows", () => {
+  const act = readSrc("src/app/(app)/activities/actions.ts");
+  const sub = act.match(/submitActivity[\s\S]*?revalidatePath/);
+  assert.ok(sub && /\.select\("id"\)/.test(sub[0]), "submit phai .select id");
+  assert.ok(
+    sub && /submitted[\s\S]{0,200}length !== 1/.test(sub[0]),
+    "submit phai bao loi khi 0 rows cap nhat",
+  );
+});
+
+test("r25: dept pages fail-closed - dynamic count + fetchAllRows + profiles", () => {
+  const data = readSrc("src/app/(app)/dept/data/page.tsx");
+  assert.match(data, /must\(\s*supabase\s*\n?\s*\.from\(e\.table\)/);
+  const rep = readSrc("src/app/(app)/dept/reports/page.tsx");
+  assert.match(rep, /mustRows\(\s*await fetchAllRows/);
+  const usage = readSrc("src/app/(app)/dept/usage/page.tsx");
+  assert.match(usage, /\.order\("id"\)\s*\n?\s*\.range/);
+});

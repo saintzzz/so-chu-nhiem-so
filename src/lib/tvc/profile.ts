@@ -11,7 +11,7 @@ export async function ensureTvcProfile() {
   const profile = await getProfile();
   if (!profile) return;
   const supabase = await createClient();
-  await supabase.from("tvc_profiles").upsert(
+  const { error } = await supabase.from("tvc_profiles").upsert(
     {
       id: profile.id,
       role: "giao_vien",
@@ -20,4 +20,5 @@ export async function ensureTvcProfile() {
     },
     { onConflict: "id", ignoreDuplicates: true },
   );
+  if (error) console.error("[tvc] ensure profile:", error.message);
 }

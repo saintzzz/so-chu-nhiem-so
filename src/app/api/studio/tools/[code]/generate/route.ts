@@ -852,7 +852,7 @@ export async function POST(
       docBBPB = buildReviewDoc(matrix.title, (matrix.grade ?? 6) <= 5);
     }
 
-    await supabase.from("tvc_generations").insert({
+    const { error: genLogErr1 } = await supabase.from("tvc_generations").insert({
       user_id: user.id,
       tool_code: code,
       input,
@@ -863,6 +863,10 @@ export async function POST(
       provider: "question-bank",
       model: null,
     });
+
+    if (genLogErr1)
+
+      console.error("[generate] tvc_generations insert:", genLogErr1.message);
 
     return NextResponse.json({
       doc: docCT,
@@ -881,7 +885,7 @@ export async function POST(
   // DC-02: rule-based, đồng thời trả cells/spec để lưu ma trận
   if (code === "DC-02") {
     const r = fbMatrix(input, ctx);
-    await supabase.from("tvc_generations").insert({
+    const { error: genLogErr2 } = await supabase.from("tvc_generations").insert({
       user_id: user.id,
       tool_code: code,
       input,
@@ -889,6 +893,8 @@ export async function POST(
       provider: "rule-based",
       model: null,
     });
+    if (genLogErr2)
+      console.error("[generate] tvc_generations insert:", genLogErr2.message);
     return NextResponse.json({
       doc: r.doc,
       matrix: { cells: r.cells, spec: r.spec },
@@ -986,7 +992,7 @@ export async function POST(
       timeoutMs: routeLeftForFallback - 5_000,
     });
     if (job) {
-      await supabase.from("tvc_generations").insert({
+      const { error: genLogErr3 } = await supabase.from("tvc_generations").insert({
         user_id: user.id,
         tool_code: code,
         input,
@@ -994,6 +1000,8 @@ export async function POST(
         provider: "fallback-engine",
         model: null,
       });
+      if (genLogErr3)
+        console.error("[generate] tvc_generations insert:", genLogErr3.message);
       return NextResponse.json({
         pending: true,
         jobId: job.jobId,
@@ -1060,7 +1068,7 @@ export async function POST(
     }
   }
 
-  await supabase.from("tvc_generations").insert({
+  const { error: genLogErr4 } = await supabase.from("tvc_generations").insert({
     user_id: user.id,
     tool_code: code,
     input,
@@ -1068,6 +1076,10 @@ export async function POST(
     provider: provider ?? ai.provider,
     model: null,
   });
+
+  if (genLogErr4)
+
+    console.error("[generate] tvc_generations insert:", genLogErr4.message);
 
   return NextResponse.json({
     doc,

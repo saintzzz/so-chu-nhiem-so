@@ -122,7 +122,11 @@ export function LessonPlanBoard({
         // Don file da upload de khong de lai file mo coi trong bucket.
         if (filePath) {
           const supabase = createClient();
-          await supabase.storage.from("lesson-plans").remove([filePath]);
+          const { error: rmErr } = await supabase.storage
+            .from("lesson-plans")
+            .remove([filePath]);
+          if (rmErr)
+            console.error("[lesson-plan-board] cleanup upload:", rmErr.message);
         }
         setErr(r.error);
       } else {

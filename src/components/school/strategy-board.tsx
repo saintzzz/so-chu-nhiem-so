@@ -63,9 +63,10 @@ export function StrategyBoard({ kpis }: { kpis: Kpi[] }) {
     });
   }
 
-  function setStatus(id: string, status: string) {
+  function setStatus(id: string, status: string, current: string) {
     start(async () => {
-      const r = await updateSchoolKpi(id, { status });
+      // Truyen trang thai dang hien thi lam expected - CAS o server.
+      const r = await updateSchoolKpi(id, { status }, current);
       if (r.error) setErr(r.error);
     });
   }
@@ -133,7 +134,7 @@ export function StrategyBoard({ kpis }: { kpis: Kpi[] }) {
               <select
                 value={k.status}
                 disabled={pending}
-                onChange={(e) => setStatus(k.id, e.target.value)}
+                onChange={(e) => setStatus(k.id, e.target.value, k.status)}
                 className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none"
               >
                 {Object.entries(STATUS).map(([v, s]) => (

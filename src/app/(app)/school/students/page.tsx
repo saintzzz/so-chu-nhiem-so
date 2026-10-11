@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { compareVietnameseName, fmtDateVN } from "@/lib/utils";
 import type { ClassRoom, Student } from "@/types";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
 
 export default async function SchoolStudentsPage({
   searchParams,
@@ -44,7 +44,7 @@ export default async function SchoolStudentsPage({
         .in("class_id", classIds)
         .order("id")
         .range(f, t),
-    ),
+    ).then((r) => mustRows(r, "students")),
   ]);
   const classes = (classRaw ?? []) as Pick<
     ClassRoom,

@@ -1,0 +1,151 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+Doc review so-chu-nhiem-so @ commit f8ba665 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 67e8633 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 3e52900 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 3f3d1c7 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day l…
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 17a73c1 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+REVIEW ROUND 11 - security/privacy verification pass on com…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Review repo saintzzz/so-chu-nhiem-so tai commit bedef17 (ma…
+Review repo saintzzz/so-chu-nhiem-so tai commit b877b8e (br…
+Linh Le Duy
+Plus
+Doc review so-chu-nhiem-so @ commit f8ba665 (master). Vong…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit f8ba665 (master). Vong REVIEW DOC LAP thu 24. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase, quan ly truong hoc VN. r23 vua fix 8 findings - period-log page/board gio check error nguon va chan editor qua loadError; announceActivity dung bang marker activity_announcements (PK activity_id, claim nguyen tu, track email_done/emailed/email_failed/email_error, retry chi resume delivery); createIncident tra committed+incidentId va form reset sau commit; support page check error+truncated cua fetchAllRows roi chan board; question-bank/chat/signoff/appointments/equipment/feature-permissions deu doc ket qua action va render loi.
+
+Kiem adversarial:
+
+Cac site vua sua: con branch nao bo error? marker claim/resume co race hoac stale-state nao (claim bo do giua chung, email_done false nhung announcement_id null)? loadError/disabled co chan het nut ghi?
+Sweep phan CON LAI chua cham: page server components nap du lieu roi render form (conduct, competency, counseling, emulation, register, hoc-ba, dept/, portal/, team/*), src/lib/chat.ts, khbd.ts, message-link.ts.
+RLS/SECURITY DEFINER/PII/alias - con lo nao chung minh duoc? RLS tren activity_announcements co dung scope khong?
+Client components nao bo qua {error} tu action roi cap nhat UI nhu thanh cong? Optimistic state nao khong rollback?
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+3:43 AM
+Worked for 2m 14s
+ChatGPT said:
+
+Đã review source tại f8ba6654fce8cc4aad9da3d620deeba676ad7764 trên master. Không sửa code; working tree sạch. Có 11 findings chứng minh được từ source.
+
+HIGH — RLS marker cho phép nhân viên ngoài quyền thông báo sửa delivery
+
+File:line: supabase/migrations/20261207_cr049_r23_fixes.sql:26
+Kịch bản: Policy FOR ALL chỉ kiểm tra is_staff() và trường. is_staff() bao gồm gvbm, ke_toan, trong khi action chỉ cho gvcn/bgh. Những tài khoản này có thể trực tiếp sửa marker cùng trường: đặt email_done=true để chặn email, đổi announcement_id, hoặc xóa marker để lần gửi sau lặp delivery. Policy cũng không xác thực quan hệ trường của các FK.
+Fix tối thiểu: Tách SELECT khỏi mutation; giới hạn mutation theo quyền hoạt động/lớp, xác thực trường của activity và announcement. Quản lý trạng thái delivery qua RPC có kiểm tra quyền.
+
+MEDIUM — Email không có claim nguyên tử, gửi trùng khi chạy đồng thời
+
+File:line: src/app/(app)/activities/actions.ts:267
+Kịch bản: A đã link announcement nhưng chưa ghi email_done. B đọc marker có announcement_id, email_done=false, vượt qua chặn tạo announcement. Cả hai gọi emailClassParents(). UPDATE sau gửi không có điều kiện/version; kết quả thất bại của một request còn có thể ghi đè thành công của request kia và mở retry gửi tiếp.
+Fix tối thiểu: Claim delivery nguyên tử với token/lease; chỉ owner được gửi và ghi kết quả. Dùng idempotency key cho provider để xử lý crash sau gửi.
+
+MEDIUM — Phục hồi claim quá 60 giây không độc quyền
+
+File:line: src/app/(app)/activities/actions.ts:205
+Kịch bản: Marker bị bỏ dở, announcement_id=null, tuổi trên 60 giây. Hai retry đều có canFulfill=true; cả hai lookup chưa thấy announcement, cùng INSERT rồi UPDATE marker. PK của marker không ngăn announcement trùng.
+Fix tối thiểu: Takeover bằng UPDATE có điều kiện và token ownership, hoặc tạo announcement/link marker trong một transaction với unique mapping theo activity.
+
+MEDIUM — Hai hoạt động cùng tên vẫn dùng chung announcement
+
+File:line: src/app/(app)/activities/actions.ts:218
+Kịch bản: Cùng người gửi/lớp có hoạt động A đã thông báo. Hoạt động B cùng tên nhưng mô tả khác vừa claim marker mới. Lookup “orphan” chạy cả cho claim mới, tìm announcement A rồi link vào B. B không tạo thông báo in-app riêng; email lại dùng nội dung B.
+Fix tối thiểu: Bỏ phục hồi theo (sender,class,title); gắn announcement với activity_id bằng khóa duy nhất.
+
+MEDIUM — Action gửi thông báo không kiểm tra trạng thái approved
+
+File:line: src/app/(app)/activities/actions.ts:117
+Kịch bản: UI chỉ liệt kê approved, nhưng gọi trực tiếp announceActivity() với ID hoạt động draft/pending mà GVCN có quyền truy cập vẫn tạo announcement, gửi email và đăng ký học sinh. Action không kiểm tra activity.status.
+Fix tối thiểu: Kiểm tra approved tại server; với retry, quy định rõ marker nào được resume và kiểm tra trạng thái trong bước claim nguyên tử.
+
+HIGH — Period-log vẫn có đường mất absences khi SELECT bị cắt
+
+File:line: src/app/(app)/schedule/period-log/page.tsx:294
+Kịch bản: Tổng period_absences của các log đang tải vượt giới hạn trả rows của PostgREST. SELECT không phân trang, không báo error nên loadError vẫn null. Mở và lưu một tiết có absences nằm ngoài phần trả về sẽ gửi danh sách thiếu. RPC tại supabase/migrations/20261119_r2_security_fixes.sql:135 xóa toàn bộ absences cũ rồi chèn lại và đồng bộ attendance.
+Fix tối thiểu: Phân trang absences theo khóa ổn định, chặn editor khi error/truncated. Áp dụng tương tự cho các nguồn log/roster có thể vượt cap.
+
+MEDIUM — Support disabled bỏ sót nút ghi của kế hoạch hiện có
+
+File:line: src/components/academics/support-plan-board.tsx:204
+Kịch bản: Grades trả một phần rồi lỗi; page đặt disabled=true nhưng vẫn dựng rows từ phần dữ liệu nhận được. Các nút tạo bị khóa, còn PlanActions vẫn render, không nhận disabled; người dùng vẫn gửi duyệt/duyệt/triển khai/hoàn thành/hủy kế hoạch.
+Fix tối thiểu: Khi nguồn lỗi, không render board ghi; hoặc truyền disabled xuyên xuống PlanActions và chặn handler.
+
+MEDIUM — Signoff báo thành công và gửi notification dù UPDATE 0 rows
+
+File:line: src/components/register/signoff-client.tsx:146, :281
+Kịch bản: Hai tab GVCN cùng thấy pending. Tab A nộp trước; tab B nộp sau bị policy signoff_gvcn_submit lọc vì row đã submitted. UPDATE trả error=null, 0 rows. Tab B vẫn cập nhật UI, ghi audit và gửi thông báo “đã nộp”. Bulk cũng dùng toàn bộ IDs đầu vào thay vì rows thực sự cập nhật.
+Fix tối thiểu: UPDATE có điều kiện trạng thái, .select("id"); chỉ cập nhật UI/audit/notification cho rows trả về. Áp dụng cả lock-records-client.tsx:48.
+
+HIGH — Tab BGH cũ có thể mở lại sổ học bạ đã khóa
+
+File:line: src/components/register/lock-records-client.tsx:111
+Kịch bản: Hai tab cùng thấy submitted. A khóa sổ; B bấm từ chối. UPDATE của B chỉ lọc ID, policy BGH cho phép sửa trong trường, nên đổi locked thành rejected. Không có kiểm tra trạng thái nguồn. Signoff ký/từ chối cũng có kiểu ghi đè quyết định tương tự.
+Fix tối thiểu: Compare-and-set từ submitted, kiểm tra rows affected; từ chối thao tác stale. Bảo vệ transition locked tại DB.
+
+MEDIUM — Các nguồn còn lại vẫn biến lỗi tải thành dữ liệu rỗng hợp lệ
+
+File:line: src/app/(app)/competency/self-assessment/page.tsx:42
+Kịch bản: Lookup assessment lỗi nhưng bị bỏ error, page dựng form mới với ID null, nội dung rỗng và trạng thái draft, kể cả assessment thực tế đã approved. Cùng lỗi phân biệt “không có dữ liệu”/“không tải được” tồn tại ở counseling/assessment/page.tsx:57 (hiện không có ca mở), register/signoff/page.tsx:29, register/lock-records/page.tsx:28, và dept/schools/page.tsx:31 (bỏ cả profilesRes.incomplete, hiển thị số tài khoản thiếu).
+Fix tối thiểu: Kiểm tra error/incomplete từng nguồn; render lỗi tải và chặn form phụ thuộc nguồn đó, không fallback thành trạng thái nghiệp vụ rỗng.
+
+LOW — Resume email còn bỏ error và mất thông tin skipped
+
+File:line: src/app/(app)/activities/actions.ts:308
+Kịch bản: Marker đã email_done=true; query đọc kết quả delivery lỗi nhưng action bỏ error, giữ mặc định emailSkipped=true và trả thông báo “email chưa cấu hình”. Nếu query thành công sau lần gửi skipped, action lại ép emailSkipped=false, báo “không có email phụ huynh”. Cả hai đều có thể sai với kết quả đã lưu.
+Fix tối thiểu: Dùng dữ liệu marker đã đọc; lưu trạng thái skipped riêng và báo rõ lỗi đọc delivery.
+
+Các nhánh {error} mới ở question-bank, chat, appointments, equipment và feature-permissions đã được xử lý tại các call site đã đối chiếu. Chưa xác nhận thêm lỗi riêng trong ba helper chat.ts, khbd.ts, message-link.ts; không bổ sung finding PII/alias/SECURITY DEFINER khi chưa đủ bằng chứng. Đây là review source, không chạy mutation hay kiểm thử trên DB.
+
+VERDICT: NOT-CLEAN
+
+3:45 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++58,758
+-4,646
+Outputs
+Create a file or site

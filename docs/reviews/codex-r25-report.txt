@@ -1,0 +1,51 @@
+ChatGPT said:
+Review độc lập vòng 25 tại c908cbe0ae3f55a792238497797c15680394f4c9. Không sửa code; working tree repo giữ nguyên.
+Có 10 findings từ source:
+HIGH - Same-owner email reclaim vẫn gửi trùng.
+supabase/migrations/20261208_cr049_r24_fixes.sql:177, 
+src/app/(app)/activities/actions.ts:239.
+Kịch bản: hai tab cùng tài khoản gọi announce trước khi email hoàn tất. Request A claim; request B vẫn claim được vì email_claim_by = auth.uid(). Cả hai nhận true, đều gọi emailClassParents. Row lock chỉ tuần tự hóa UPDATE, không loại request B.
+Fix tối thiểu: bỏ reclaim tức thì theo UID; cấp token riêng cho mỗi invocation, complete theo token. Retry claim còn sống phải trả pending. Takeover sau 300s cũng cần chống gửi trùng tại delivery/provider.
+MEDIUM - Fulfill không kiểm tra lại trạng thái approved.
+supabase/migrations/20261208_cr049_r24_fixes.sql:146.
+Kịch bản: claim khi approved, sau đó activity chuyển về draft; caller gọi trực tiếp fulfill vẫn tạo announcement. Helper authz chỉ kiểm tra trường/vai trò/lớp; fulfill chỉ đọc class_id. Policy act_upd trong migration 20260925_cr016_role_scope.sql:318 không ràng buộc trạng thái.
+Fix tối thiểu: khóa và kiểm tra activity vẫn approved trong transaction fulfill trước INSERT.
+MEDIUM - Email complete không kiểm tra scope hiện tại.
+supabase/migrations/20261208_cr049_r24_fixes.sql:192.
+Kịch bản: GVCN claim email rồi bị thay khỏi lớp. Người đó vẫn gọi complete được vì chỉ so email_claim_by = auth.uid(), có thể đặt email_done=true, thay counters và xóa claim dù không còn quyền announce.
+Fix tối thiểu: kiểm tra scn_can_announce_activity trong complete, kèm token invocation và điều kiện lease.
+MEDIUM - Count động còn biến lỗi DB thành số 0.
+src/app/(app)/dept/data/page.tsx:40.
+Kịch bản: một truy vấn trong ENTITIES.map trả error; code chỉ lấy count, rồi render count ?? 0. Trang quản trị báo bảng không có bản ghi. Scanner bỏ sót vì .from(e.table) không khớp regex yêu cầu literal string.
+Fix tối thiểu: wrap từng count query bằng must(), giữ nguyên count; scanner phải nhận tên bảng động.
+MEDIUM - Báo cáo cấp Sở còn bỏ error/truncated của fetchAllRows.
+src/app/(app)/dept/reports/page.tsx:60, 
+line 91.
+Kịch bản: students lỗi trang đầu trả rows=[], hoặc trang sau trả rows một phần; caller chỉ lấy rows. Attendance cũng bỏ error; lỗi trang đầu có truncated=false, nên không hiện cảnh báo. Báo cáo tiếp tục tính quy mô/chuyên cần từ nguồn thiếu.
+Fix tối thiểu: dùng mustRows() cho cả hai kết quả trước khi tổng hợp.
+MEDIUM - Nhân sự trong báo cáo nhiều trường vẫn bị cap.
+src/app/(app)/dept/reports/page.tsx:73.
+Kịch bản: phạm vi quản lý có hơn 1.000 giáo viên. Query profiles không phân trang; vòng tổng hợp tại line 119 đếm danh sách bị cắt thành số giáo viên từng trường. .in("school_id", ...) giới hạn scope, không giới hạn số rows; scanner coi nó là bounded.
+Fix tối thiểu: fetchAllRows với order id và mustRows, hoặc aggregate trong DB.
+MEDIUM - Chuyển trạng thái ca tư vấn còn ghi đè từ tab cũ.
+src/components/counseling/referral-card.tsx:44, 
+case-controls.tsx:47.
+Kịch bản: BGH đánh dấu resolved; tab GVCN cũ bấm “Lưu & chuyển tuyến” ghi lại referred qua .update(patch).eq("id"). Policy cc_upd cho phép cả hai actor, không bảo vệ status. Scanner bỏ sót vì status nằm trong biến patch.
+Fix tối thiểu: predicate status đang hiển thị, .select("id"), kiểm tra zero rows trước báo “Đã lưu”.
+MEDIUM - Notifications cập nhật UI dù write thất bại.
+src/components/notifications/notifications-client.tsx:56, 
+line 70.
+Kịch bản: UPDATE trả {error}; markAllRead vẫn xóa unread count và đánh dấu mọi item đã đọc. open cũng giảm count dù DB chưa lưu. Không có rollback hay thông báo lỗi. Scanner không xét query await dưới dạng expression statement.
+Fix tối thiểu: kiểm tra error trước thay state; hiện lỗi, giữ count/state cũ.
+MEDIUM - Phân trang usage không có ordering.
+src/app/(app)/dept/usage/page.tsx:43.
+Kịch bản: profiles vượt một trang; các request .range() không có .order(), nên không bảo đảm cùng thứ tự. Trang có thể lặp/bỏ rows, nhưng incomplete=false; tổng tài khoản và active counts sai.
+Fix tối thiểu: thêm .order("id") trước range; dùng keyset nếu cần ổn định trước insert/delete đồng thời.
+LOW - Submit activity không phát hiện zero rows.
+src/app/(app)/activities/actions.ts:51.
+Kịch bản: tab cũ gửi activity đã pending/approved hoặc đã bị xóa. Predicate draft cập nhật 0 rows, không có SQL error; action vẫn trả {}. Gate CAS chấp nhận chỉ vì có predicate status, dù thiếu returned-row verification.
+Fix tối thiểu: thêm .select("id"); yêu cầu đúng một row, nếu không trả lỗi yêu cầu tải lại.
+must() giữ nguyên response/count; mustRows() chặn error và truncated; maybeSingle() trả null không error vẫn hợp lệ. Chưa xác nhận lỗi hợp đồng của hai helper. RPC mới có search_path cố định và revoke PUBLIC/anon; các lỗi coordination nêu trên vẫn tồn tại sau các biện pháp đó.
+Kiểm chứng: check-reliability.mjs PASS 4/4 trên snapshot r24, chứng minh gate còn false negatives. check-consistency.mjs không chạy hết vì snapshot thiếu .env.local; không thực hiện mutation DB/E2E.
+VERDICT: NOT-CLEAN
+4:49 AM

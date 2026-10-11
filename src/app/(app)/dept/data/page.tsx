@@ -37,9 +37,10 @@ export default async function DeptDataPage() {
 
   const counts = await Promise.all(
     ENTITIES.map(async (e) => {
-      const { count } = await supabase
-        .from(e.table)
-        .select("*", { count: "exact", head: true });
+      const { count } = await must(
+        supabase.from(e.table).select("*", { count: "exact", head: true }),
+        e.table,
+      );
       return { ...e, count: count ?? 0 };
     }),
   );

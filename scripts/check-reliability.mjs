@@ -23,7 +23,10 @@ import { join, relative, resolve, dirname } from "path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const SRC = join(ROOT, "src");
+// SCAN_SRC: fixture tests quet mot thu muc rieng thay vi src/.
+const SRC = process.env.SCAN_SRC
+  ? resolve(process.env.SCAN_SRC)
+  : join(ROOT, "src");
 
 const files = [];
 (function walk(d) {
@@ -35,8 +38,12 @@ const files = [];
 })(SRC);
 
 const hits = { unchecked: [], unbounded: [], action: [], cas: [] };
-const QRE = /\.from\(\s*['"]|\.rpc\(\s*['"]/g;
-const SAFE_WRAP = /^\s*(must|mustRows|fetchAllRows?|fetchAll)\s*[<(]/;
+// .from()/.rpc() voi MOI dang tham so - ke ca ten bang dong
+// (.from(e.table)) nhur r25 phat hien. Ngoai tru Array.from(...).
+const QRE = /(?<!Array)\.from\s*\(|\.rpc\s*\(/g;
+// fetchAllRows KHONG phai safe-wrap cho Class A: ket qua {rows,error,truncated}
+// van phai di qua mustRows hoac bind error - bo sot r25 (dept/reports).
+const SAFE_WRAP = /^\s*(must|mustRows)\s*[<(]/;
 
 function maskCalls(text, names) {
   let t = text;
@@ -84,8 +91,44 @@ function allQueriesWrapped(text) {
 // B: tables that exceed the ~1000-row PostgREST cap at pilot scale.
 const BIG_TABLES =
   /^(students|grades|attendance_records|period_absences|conduct_evaluations|daily_conduct|notifications|messages|audit_log|timetable_entries|period_logs|daily_reports|early_warnings|incidents|digest_outbox|digest_deliveries|ai_jobs|tvc_questions|tvc_materials|activity_attendance|signoffs|lock_records|support_plans|teacher_assessments|counseling_cases|competency_assessments|competency_evidence|emulation_scores|tasks|profiles|teacher_subjects|student_groups|tvc_curriculum_standards|lesson_plans|assessment_items|student_assessments|parents|parent_students|appointments)$/;
-const BOUNDED =
-  /\.(limit|range|single|maybeSingle)\(|count\s*:|head\s*:|fetchAll|\.in\(\s*['"][a-z_]*id['"]|\.eq\(\s*['"](id|[\w.]*_id)['"]/;
+// Cot scope cardinality cao KHONG gioi han so rows (r25: .in("school_id")
+// tren profiles cua mot So co the >1000 rows). Chi cac khoa tro toi mot
+// thuc the don le moi tinh la bounded.
+const HIGH_CARD_COLS =
+  /^(school_id|academic_year_id|campus_id|org_unit_id|subject_id|term_id|year_id|term|semester|grade|role|status|date|weekday|month|year)$/;
+// Bang moi truong luon < 1000 rows -> .eq("school_id") du de bound.
+// (.in("school_id") = pham vi So -> KHONG bao gio bound.)
+const SCHOOL_SCOPED =
+  /^(profiles|classes|subjects|campuses|departments|school_kpis|feature_grants|digest_configs|literature|schools|academic_years)$/;
+function colBounds(col, tbl, method) {
+  const c = col.split(".").pop();
+  // Khoa unique-ish: lookup theo key/code/token luon <=1 row.
+  if (
+    c === "id" ||
+    c === "key" ||
+    c === "code" ||
+    c === "slug" ||
+    c === "token" ||
+    c === "dedupe_key" ||
+    c.endsWith("_key") ||
+    c.endsWith("_code") ||
+    c.endsWith("_token")
+  )
+    return true;
+  if (c === "school_id") return method === "eq" && SCHOOL_SCOPED.test(tbl);
+  return c.endsWith("_id") && !HIGH_CARD_COLS.test(c);
+}
+function isBounded(t, tbl) {
+  if (
+    /\.(limit|range|single|maybeSingle)\(|count\s*:|head\s*:|fetchAll/.test(t)
+  )
+    return true;
+  for (const m of t.matchAll(/\.(eq|in|is)\(\s*['"]([\w.]+)['"]/g))
+    if (colBounds(m[2], tbl, m[1])) return true;
+  for (const m of t.matchAll(/\.or\(\s*['"]([\w.]+)/g))
+    if (colBounds(m[1], tbl, "or")) return true;
+  return false;
+}
 
 for (const f of files) {
   const src = readFileSync(f, "utf8");
@@ -148,7 +191,9 @@ for (const f of files) {
             x.name.getText(sf) === "error" ||
             x.propertyName?.getText(sf) === "error",
         );
-        if (!hasErr && awaited && !SAFE_WRAP.test(core))
+        // r25: khong bat buoc `awaited` - cond ? await fetchAllRows() :
+        // fallback la conditional initializer, van phai chan error.
+        if (!hasErr && !SAFE_WRAP.test(core) && !allQueriesWrapped(core))
           hits.unchecked.push(`${relative(SRC, f)}:${line} NO-ERR-BIND`);
       } else if (isQuery && awaited && ts.isIdentifier(n.name)) {
         resVars.push({ name: n.name.text, line, initText: core });
@@ -177,12 +222,15 @@ for (const f of files) {
             );
             const elQ = QRE.test(elText);
             QRE.lastIndex = 0;
-            if (
-              elQ &&
-              !hasErr &&
-              !SAFE_WRAP.test(elText) &&
-              !allQueriesWrapped(elText)
-            )
+            // fetchAll/fetchAllRows element khong phai safe-wrap - phai
+            // mustRows hoac bind error/incomplete (r25 SAFE_WRAP qua rong;
+            // {rows,truncated} ma khong bind error van la lo: loi trang dau
+            // tra truncated=false).
+            const elSafe =
+              SAFE_WRAP.test(elText) ||
+              (/^\s*(fetchAllRows?|fetchAll)\s*[<(]/.test(elText) &&
+                /error|incomplete/.test(el.name.getText(sf)));
+            if (elQ && !hasErr && !elSafe && !allQueriesWrapped(elText))
               hits.unchecked.push(`${relative(SRC, f)}:${line} NO-ERR-BIND-EL`);
           }
         });
@@ -201,22 +249,38 @@ for (const f of files) {
         let stmt = n;
         while (stmt.parent && !ts.isStatement(stmt)) stmt = stmt.parent;
         const t = stmt.getText(sf);
-        if (!/\.(insert|update|upsert|delete)\(/.test(t) && !BOUNDED.test(t)) {
+        if (!/\.(insert|update|upsert|delete)\(/.test(t) && !isBounded(t, tbl)) {
           let vdn = n.parent;
           while (vdn && !ts.isVariableDeclaration(vdn)) vdn = vdn.parent;
           const vd = vdn && ts.isIdentifier(vdn.name) ? vdn.name.text : null;
           let boundedLater = false;
           if (vd) {
             const fnText = findFnText(stmt);
-            const re = new RegExp(
-              `\\b${vd}\\b[\\s\\S]{0,400}?(` +
-                `\\.(range|limit|single|maybeSingle)\\(|` +
-                `\\.(eq|in)\\(\\s*['"][a-z_.]*_id['"]|` +
-                `\\.or\\([^)]*_id|` +
-                `fetchAllRows?\\s*[(<]` +
-                `)`,
+            // Query builder dat trong var, bound o chain tiep theo
+            // (.limit/.range/._id predicate/fetchAllRows). Cot cardinality
+            // cao (school_id...) khong tinh - cung HIGH_CARD_COLS.
+            const chainRe = new RegExp(
+              `\\b${vd}\\s*\\.\\s*(range|limit|single|maybeSingle)\\s*\\(`,
             );
-            boundedLater = re.test(fnText);
+            if (chainRe.test(fnText)) boundedLater = true;
+            if (!boundedLater) {
+              const predRe = new RegExp(
+                `\\b${vd}\\s*\\.\\s*(eq|in|is|or)\\s*\\(\\s*['"]([\\w.]+)`,
+                "g",
+              );
+              for (const cm of fnText.matchAll(predRe))
+                if (colBounds(cm[2], tbl, cm[1])) {
+                  boundedLater = true;
+                  break;
+                }
+            }
+            if (
+              !boundedLater &&
+              new RegExp(
+                `fetchAllRows?\\s*[(<][\\s\\S]{0,400}?\\b${vd}\\b`,
+              ).test(fnText)
+            )
+              boundedLater = true;
           }
           if (!boundedLater) {
             const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
@@ -225,6 +289,46 @@ for (const f of files) {
             );
           }
         }
+      }
+    }
+
+    // ---- A: discarded awaited query (r25: notifications-client update) ----
+    // `await supabase.from().update(...)` lam expression statement -> ket qua
+    // bi bo, UI cap nhat du write that bai. Phai must()/bind error.
+    if (
+      ts.isExpressionStatement(n) &&
+      ts.isAwaitExpression(n.expression)
+    ) {
+      let core = n.expression.expression.getText(sf);
+      if (decls.has(core.trim())) core = decls.get(core.trim());
+      const isQ = QRE.test(core);
+      QRE.lastIndex = 0;
+      if (isQ && !SAFE_WRAP.test(core) && !allQueriesWrapped(core)) {
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        hits.unchecked.push(
+          `${relative(SRC, f)}:${line} DISCARDED-QUERY`,
+        );
+      }
+    }
+
+    // ---- B: paginated helper phai .order() (r25: dept/usage) ----
+    // fetchAllRows/fetchAll paging .range() khong co order -> thu tu trang
+    // khong on dinh -> row lap/bo sot, incomplete van false.
+    if (
+      ts.isCallExpression(n) &&
+      ts.isIdentifier(n.expression) &&
+      /^(fetchAllRows?|fetchAll)$/.test(n.expression.text) &&
+      n.arguments[0]
+    ) {
+      const arg = n.arguments[0];
+      let cb = arg.getText(sf);
+      if (ts.isIdentifier(arg) && decls.has(arg.text))
+        cb = decls.get(arg.text);
+      if (/\.range\s*\(/.test(cb) && !/\.order\s*\(/.test(cb)) {
+        const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+        hits.unbounded.push(
+          `${relative(SRC, f)}:${line} PAGINATED-NO-ORDER ${n.expression.text}`,
+        );
       }
     }
 
@@ -293,16 +397,73 @@ for (const f of files) {
     ) {
       let stmt = n;
       while (stmt.parent && !ts.isStatement(stmt)) stmt = stmt.parent;
-      const t = stmt.getText(sf);
-      if (
-        /\.eq\(/.test(t) &&
-        !/\.select\(/.test(t) &&
-        !/\.(eq|in|not)\(\s*['"](status|state|workflow_state|delivery_status)['"]/.test(
-          t,
-        ) &&
+      let t = stmt.getText(sf);
+      // Chain co the tiep tuc qua var o statement khac:
+      //   let q = ...update(patch).eq("id"); if (c) q = q.eq("status", s);
+      //   await q.select("id")
+      const assign = /(?:let|const)\s+(\w+)\s*=[\s\S]*?\.update\s*\(/.exec(t);
+      if (assign) {
+        const v = assign[1];
+        const fnText = findFnText(n);
+        const extra = [
+          ...fnText.matchAll(
+            new RegExp(
+              `\\b${v}\\s*\\.\\s*(?:eq|in|not|is|or|select|single|maybeSingle)\\s*\\([^;)]*\\)`,
+              "g",
+            ),
+          ),
+        ]
+          .map((x) => x[0])
+          .join(" ");
+        t += " " + extra;
+      }
+      // Status-ish: literal trong stmt HOAC update-arg la identifier co
+      // status trong param-type/call-site (r25: .update(patch) bi bo sot).
+      let statusish =
         /status|state|locked|approved|confirmed|completed|archived|published|delivered|processed/i.test(
           t,
+        );
+      const arg = n.arguments[0];
+      if (!statusish && arg && ts.isIdentifier(arg)) {
+        const a = arg.text;
+        const fnText = findFnText(n);
+        // const patch = { status } -> object literal chua status-ish key
+        const decl = decls.get(a);
+        if (decl && /\b(status|state|workflow_state|delivery_status)\b/.test(decl))
+          statusish = true;
+        if (
+          !statusish &&
+          new RegExp(`${a}\\s*:\\s*\\{[^}]*\\b(status|state)\\b`).test(fnText)
         )
+          statusish = true;
+        if (!statusish) {
+          let fn = n.parent;
+          while (fn && !ts.isFunctionLike(fn)) fn = fn.parent;
+          let fname = null;
+          if (fn && ts.isFunctionDeclaration(fn) && fn.name)
+            fname = fn.name.text;
+          if (!fname && fn && ts.isVariableDeclaration(fn.parent))
+            fname = fn.parent.name.getText(sf);
+          if (
+            fname &&
+            new RegExp(
+              `\\b${fname}\\s*\\(\\s*\\{[^}]*\\b(status|state)\\b\\s*:`,
+            ).test(src)
+          )
+            statusish = true;
+        }
+      }
+      // Exemption co chu dich: comment `// cas-ok: <ly do>` ngay tren
+      // statement - duy tri danh sach ngoai le tuong minh trong review.
+      const pre = src.slice(Math.max(0, stmt.getStart() - 200), stmt.getStart());
+      if (
+        statusish &&
+        /\.eq\(/.test(t) &&
+        !/cas-ok/.test(pre + t) &&
+        (!/\.select\(/.test(t) ||
+          !/\.(eq|in|not|is)\(\s*['"](status|state|workflow_state|delivery_status|read_at)['"]/.test(
+            t,
+          ))
       ) {
         const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
         hits.cas.push(

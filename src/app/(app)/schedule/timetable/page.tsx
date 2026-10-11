@@ -5,7 +5,8 @@ import { PageHeader } from "@/components/page-header";
 import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
 import { cn, PERIODS } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
 
@@ -149,7 +150,7 @@ export default async function TimetablePage({
     room: string | null;
   }[] = [];
   if (isBgh) {
-    const [{ data: allSubjects }, { data: allTeachers }, { data: everyEntry }] =
+    const [{ data: allSubjects }, { data: allTeachers }, { rows: everyEntry }] =
       await Promise.all([
         must(supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"), "subjects"),
         must(supabase
@@ -158,11 +159,23 @@ export default async function TimetablePage({
           .or("role.in.(gvcn,gvbm,to_truong,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,bgh}")
           .eq("school_id", profile.school_id ?? "")
           .order("full_name"), "profiles"),
-        must(supabase
-          .from("timetable_entries")
-          .select("class_id,subject_id,teacher_id,weekday,period,room")
-          .order("weekday")
-          .order("period"), "timetable_entries"),
+        // r25: timetable_entries toan truong co the >1000 - phan trang.
+        fetchAllRows<{
+          class_id: string;
+          subject_id: string;
+          teacher_id: string;
+          weekday: number;
+          period: number;
+          room: string | null;
+        }>((f, t) =>
+          supabase
+            .from("timetable_entries")
+            .select("class_id,subject_id,teacher_id,weekday,period,room")
+            .order("weekday")
+            .order("period")
+            .order("class_id")
+            .range(f, t),
+        ).then((r) => mustRows(r, "timetable_entries")),
       ]);
     subjects = (allSubjects ?? []) as { id: string; name: string }[];
     teachers = ((allTeachers ?? []) as { id: string; full_name: string }[]).map(

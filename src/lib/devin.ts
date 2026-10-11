@@ -180,15 +180,18 @@ export async function fallbackToDevin(params: {
   if (!session) {
     // r20 M: neu ca UPDATE failed cung loi, job treo pending mai -
     // phai no 500 de caller biet, khong tra null nhu fallback sach.
-    const { error: failErr } = await supabase
+    const { data: failRows, error: failErr } = await supabase
       .from("ai_jobs")
       .update({ status: "failed" })
       .eq("id", row.id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("id");
     if (failErr) {
       console.error("[devin-fallback] mark failed:", failErr.message);
       throw new Error(`ai_jobs fail-update failed: ${failErr.message}`);
     }
+    if (!failRows?.length)
+      console.error("[devin-fallback] job already left pending:", row.id);
     return null;
   }
   // r20 M: UPDATE session_url loi -> job khong link duoc session nhung

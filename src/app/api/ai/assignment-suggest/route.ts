@@ -5,6 +5,7 @@ import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { aliasNonce, minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 /**
  * AI gợi ý phân công giảng dạy - dùng cho /school/assignments.
@@ -31,7 +32,20 @@ export async function POST(req: Request) {
       .select("id,full_name,role")
       .eq("school_id", sid)
       .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"),
-    supabase.from("teacher_subjects").select("teacher_id,subject_id"),
+    // r25: teacher_subjects khong filter co the >1000 rows - phan trang.
+    fetchAllRows<{ teacher_id: string; subject_id: string }>((f, t) =>
+      supabase
+        .from("teacher_subjects")
+        .select("teacher_id,subject_id")
+        .order("teacher_id")
+        .range(f, t),
+    ).then((r) => ({
+      data: r.error || r.truncated ? null : r.rows,
+      error:
+        r.error || r.truncated
+          ? { message: r.error ?? `truncated>${r.rows.length}` }
+          : null,
+    })),
     supabase.from("subjects").select("id,name").eq("school_id", sid),
     supabase
       .from("classes")

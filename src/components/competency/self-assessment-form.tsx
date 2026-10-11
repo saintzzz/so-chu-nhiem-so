@@ -42,11 +42,19 @@ export function SelfAssessmentForm({
         status: nextStatus,
       };
       if (assessmentId) {
-        const { error: e } = await supabase
+        // CAS: chi chuyen tu trang thai form dang hien thi - tab cu khong
+        // ghi de neu danh gia da duoc luu/duyet o phien khac.
+        const { data: upd, error: e } = await supabase
           .from("teacher_assessments")
           .update(payload)
-          .eq("id", assessmentId);
+          .eq("id", assessmentId)
+          .eq("status", status)
+          .select("id");
         if (e) throw e;
+        if (!upd?.length)
+          throw new Error(
+            "Đánh giá đã thay đổi ở phiên khác - vui lòng tải lại trang.",
+          );
       } else {
         const { error: e } = await supabase
           .from("teacher_assessments")

@@ -30,7 +30,11 @@ export default async function DeptSchoolsPage() {
   const [{ data: schoolsRaw }, profilesRes] = await Promise.all([
     must(supabase.from("schools").select("id,name,code,level").order("name"), "schools"),
     fetchAll<{ school_id: string | null }>((f, t) =>
-      supabase.from("profiles").select("id,school_id").range(f, t)),
+      supabase
+        .from("profiles")
+        .select("id,school_id")
+        .order("id")
+        .range(f, t)),
   ]);
   if (profilesRes.incomplete) {
     // r24: danh sach user bi cat ngang -> so luong user/truong sai lech.

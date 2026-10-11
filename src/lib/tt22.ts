@@ -25,13 +25,15 @@ export interface SemesterAssessment {
 }
 
 /**
- * So diem DDGtx toi thieu theo TT22/2021 Dieu 9 khoan 2:
- *  <=2 tiet/tuan -> 2 diem; >2 den 4 tiet -> 3 diem; >4 tiet -> 4 diem.
- * Khong biet so tiet -> tra san phap ly 2 (moi mon it nhat 2 DDGtx).
+ * So diem DDGtx toi thieu theo TT22/2021 Dieu 9 khoan 2 - tinh theo
+ * TIET/NAM HOC: <=35 tiet -> 2 DDGtx; >35-70 tiet -> 3; >70 tiet -> 4.
+ * subjects.weekly_periods la tiet/tuan; nam hoc 35 tuan -> quy doi:
+ * <=1 tiet/tuan (<=35/nam) -> 2; 2 tiet/tuan (70/nam) -> 3; >=3 -> 4.
+ * Khong biet so tiet -> san phap ly 2 (moi mon it nhat 2 DDGtx).
  */
 export function requiredTxCount(weeklyPeriods: number | null | undefined): number {
-  if (weeklyPeriods == null || weeklyPeriods <= 2) return 2;
-  if (weeklyPeriods <= 4) return 3;
+  if (weeklyPeriods == null || weeklyPeriods <= 1) return 2;
+  if (weeklyPeriods <= 2) return 3;
   return 4;
 }
 

@@ -6,4 +6,4 @@ alter table public.subjects
   check (weekly_periods between 1 and 12);
 
 comment on column public.subjects.weekly_periods is
-  'So tiet/tuan - TT22 D9.2: <=2 tiet -> toi thieu 2 DDGtx, <=4 -> 3, >4 -> 4. Null = chua cau hinh, dung san 2.';
+  'So tiet/tuan - TT22 D9.2 tinh theo tiet/nam (35 tuan): <=1t/tuan (<=35t/nam) -> 2 DDGtx, 2t/tuan (70t/nam) -> 3, >=3t/tuan -> 4. Null = chua cau hinh, dung san 2.';

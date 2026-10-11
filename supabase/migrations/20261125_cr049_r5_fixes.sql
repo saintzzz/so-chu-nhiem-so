@@ -55,6 +55,10 @@ as $function$
 $function$;
 
 -- ===== F4+F5: grade CAS atomic (advisory lock) + year-scoped =====
+-- Drop overloads cu (4-param pre-CAS, 5-param CAS-khong-lock) - editor
+-- gui 5 named params se bind vao overload thieu lock/scope neu con.
+drop function if exists public.scn_save_grades(uuid[],uuid,text,jsonb);
+drop function if exists public.scn_save_grades(uuid[],uuid,text,jsonb,timestamptz);
 create or replace function public.scn_save_grades(
   p_student_ids uuid[], p_subject_id uuid, p_term text, p_rows jsonb,
   p_expected_max timestamptz default null,

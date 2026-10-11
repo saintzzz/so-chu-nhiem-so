@@ -113,7 +113,7 @@ export async function POST(req: Request) {
   };
 
   // CR-049 r8 H4: ghi chu so dau bai la free-text co the chua ten HS.
-  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  const roster = await schoolPiiNames(profile.school_id ?? "");
   if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },

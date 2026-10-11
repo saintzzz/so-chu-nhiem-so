@@ -307,6 +307,8 @@ export function GradesEditor({
   className,
   schoolLevel,
   stateRevision,
+  classId,
+  classYearId,
 }: {
   students: GradeStudent[];
   grades: ExistingGrade[];
@@ -317,6 +319,8 @@ export function GradesEditor({
   className: string;
   schoolLevel: "th" | "thcs" | "thpt" | "lien_cap";
   stateRevision: string | null;
+  classId: string;
+  classYearId: string | null;
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
@@ -897,16 +901,36 @@ export function GradesEditor({
         p_term: term,
         p_rows: rows,
         p_expected_max: expectedMax,
+        // r10: nam hoc chot cung snapshot luc mount - lop doi nam sau
+        // do (year_scope_mismatch) thi save bi reject thay vi ghi sang
+        // nam moi bang du lieu cu.
+        p_academic_year_id: classYearId,
       });
       if (saveErr) {
         console.error("[grades-editor] scn_save_grades:", saveErr.message);
-        const stale = saveErr.message.includes("stale_write");
+        const stale =
+          saveErr.message.includes("stale_write") ||
+          saveErr.message.includes("year_scope_mismatch");
         setError(
           stale
             ? "Điểm vừa được giáo viên khác cập nhật. Tải lại trang để xem bản mới nhất rồi nhập lại."
             : "Không lưu được điểm - vui lòng thử lại.",
         );
         return;
+      }
+      // r10 M: save thanh cong bump grade_book_state len revision MOI -
+      // cap nhat baseRevision ve revision do, neu khong save tiep theo
+      // luon stale_write (state > expected cu).
+      const { data: newState } = await supabase
+        .from("grade_book_state")
+        .select("last_saved_at")
+        .eq(
+          "scope_key",
+          `${subjectId}|${term}|${classYearId ?? ""}|${classId}`,
+        )
+        .maybeSingle();
+      if (newState?.last_saved_at) {
+        baseRevisionRef.current = newState.last_saved_at as string;
       }
       logAudit(supabase, {
         action: "grades.save",

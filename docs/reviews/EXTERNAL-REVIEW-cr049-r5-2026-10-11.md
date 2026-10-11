@@ -185,3 +185,38 @@ Verdict: **NOT-CLEAN - 15 findings (10 HIGH / 5 MEDIUM) + 1 retained risk**
   trigger `scn_grades_state_touch` tren grades; UNIQUE constraint
   `digest_deliveries_parent_week` (contype='u'); CAS smoke `fresh_save=t stale_blocked=t`
 - migration: `20261130_cr049_r9_fixes.sql` (r9 deltas tach khoi r8 file - append-only)
+
+---
+
+## Round 10 - Codex Cloud on 9d58945 (2026-12-01)
+
+Raw report: `docs/reviews/codex-cloud-report-cr049-r10-raw.txt`
+Verdict: **NOT-CLEAN - 16 findings (11 HIGH / 5 MEDIUM)**
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | GV chuyen truong van ghi diem lop cu - leaf helpers khong bind truong HIEN TAI | **Fixed** - `scn_student_in_my_homeroom` + `scn_i_teach_student_subject` (ca teaching + substitute branch) them `c.school_id = my_school_id()` | prod funcdef verified |
+| 2 | H | Direct INSERT/UPDATE policies bypass subject/year tenant check cua RPC | **Fixed** - drop `grades_staff_ins/upd/del` + revoke table grants; `scn_save_grades` la write path duy nhat | prod policies + ACL verified |
+| 3 | H | Direct write race qua CAS (khong advisory lock) | **Fixed** - cung giai phap #2: khong con writer thu hai | prod verified |
+| 4 | H | Trigger `scn_grades_touch_state` chi invalidate NEW scope khi UPDATE doi khoa | **Fixed** - bump ca OLD scope khi student/subject/term/year doi; deterministic order (scope nho truoc) tranh deadlock | prod funcdef verified |
+| 5 | H | Editor khong gui expected year - lop doi nam sau mount van nhan save | **Fixed** - `classYearId` chot luc mount; RPC kiem `p_academic_year_id is distinct from v_year` (ca NULL<->non-NULL) | prod funcdef + test guard |
+| 6 | H | Roster bi active-only filter + campus RLS lam thieu nhung van "thanh cong" | **Fixed** - `schoolPiiNames` chuyen sang admin client, moi lop/HS ke ca inactive, fail-closed moi nguon | test guard |
+| 7 | H | Roster thieu ten GV + PH - free text nhac ten ho khong bi alias | **Fixed** - roster gom profiles (GV) + parents (PH) cung truong | test guard |
+| 8 | H | Serialize-truoc-minimize con sot: daily-report facts + tvc input + generic tools | **Fixed** - `minimizeDeep` tren facts/input TRUOC JSON.stringify | source + test guard |
+| 9 | H | comments tin `name` caller gui (rong/sai -> NLPC text lo ten that) | **Fixed** - pseudonymize NLPC bang roster server-side; alias K### cho ma HS | source |
+| 10 | H | gen-questions gui free-text topic khong minimize | **Fixed** - roster `schoolPiiNames` + `pii.names`, fail-closed | source |
+| 11 | H | Studio deanon truoc TTS -> TTS provider nhan ten HS that | **Fixed** - `extractDialogueTurns(aiDocRaw)` (doc con alias); deanon chi cho response user | test guard |
+| 12 | M | Save thanh cong lam editor cu stale vinh vien (baseRevision khong cap nhat) | **Fixed** - sau save doc lai `grade_book_state` va cap nhat `baseRevisionRef` | source |
+| 13 | M | hoc-ba: lop NULL-year -> OR tautology = diem moi nam hoc | **Fixed** - NULL-year chi rows legacy `academic_year_id.is.null` | test guard |
+| 14 | M | Deanon tren chuoi JSON tho pha cau truc khi ten chua ky tu dac biet | **Fixed** - `deanonymizeDeep` parse-then-restore; ap dung ai-route, comments, studio, devin-callback | test guard |
+| 15 | M | `?retry=` drain ca outbox rows khong lien quan | **Fixed** - `scn_digest_outbox_claim(int, uuid[])` loc `p_parent_ids`; retry truyen retry set | prod funcdef + test guard |
+| 16 | M | Raw-doc gate dua vao audit fire-and-forget - co the gui bytes khi chua ghi bang chung | **Fixed** - `writeAudit` awaited tra error; audit fail -> 500, khong goi provider | test guard |
+
+### Gates r10
+
+- `npx tsc --noEmit` PASS | lint 0 errors (136 warnings) | tests 179/179 (39 PII + 140 regression)
+- `npm run build` PASS | `check-consistency` PASS
+- prod verified: `strict_year_check=t homeroom_bound=t teach_bound=t det_order=t`;
+  `direct_revoked=t` (authenticated khong con INSERT/UPDATE/DELETE tren grades);
+  `scn_digest_outbox_claim(int,uuid[])` dung signature; policies chi con read
+- migration: `20261201_cr049_r10_fixes.sql`

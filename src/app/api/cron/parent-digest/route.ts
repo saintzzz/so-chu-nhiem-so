@@ -447,7 +447,14 @@ async function run(req: NextRequest) {
       truncated: chunks >= MAX_CHUNKS,
     });
   }
-  const sendRes = await sendPhase(supabase, runId, deadlineAt);
+  // r10 M15: retry tuong minh -> sendPhase chi drain PH trong retry set,
+  // khong keo queue khong lien quan; weekly run (retryRun=null) drain het.
+  const sendRes = await sendPhase(
+    supabase,
+    runId,
+    deadlineAt,
+    retryRun ? [...(retryParents ?? [])] : null,
+  );
   const sendBody = (await sendRes.json()) as Record<string, unknown>;
   // F13: send-phase that bai phai giu nguyen status (5xx) de scheduler
   // biet retry - truoc day phase=all goi body vao response 200.
@@ -473,6 +480,9 @@ async function sendPhase(
   supabase: ReturnType<typeof createAdminClient>,
   runId: string,
   deadlineAt: number,
+  // CR-049 r10 M15: retry tuong minh -> chi drain rows cua PH trong
+  // retry set; null = drain toan bo queue (weekly run binh thuong).
+  onlyParentIds: string[] | null = null,
 ) {
   // F14: deadline tuyet doi tinh tu dau invocation - bao gom ca thoi gian
   // enqueue, khong phai chi send loop.
@@ -498,7 +508,7 @@ async function sendPhase(
   while (Date.now() < deadline) {
     const { data: claimed, error: claimErr } = await supabase.rpc(
       "scn_digest_outbox_claim",
-      { p_limit: CLAIM_BATCH },
+      { p_limit: CLAIM_BATCH, p_parent_ids: onlyParentIds },
     );
     if (claimErr) {
       console.error("[parent-digest] outbox claim failed:", claimErr);

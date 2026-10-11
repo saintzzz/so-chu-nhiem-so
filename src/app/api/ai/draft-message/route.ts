@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
   // CR-049 r9 H8: bullets/context la free-text co the chua ten HS.
-  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  const roster = await schoolPiiNames(profile.school_id ?? "");
   if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },

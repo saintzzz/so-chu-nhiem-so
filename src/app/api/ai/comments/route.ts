@@ -3,7 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import {
+  minimizePrompt,
+  deanonymizeDeep,
+  pseudonymizeNames,
+} from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent, semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
@@ -347,13 +352,18 @@ export async function POST(req: Request) {
     }
   }
 
-  const nameList = students.map((s) => s.name).filter(Boolean);
-  const redactNames = (t: string | null): string | null => {
-    if (!t) return t;
-    let out = t;
-    for (const n of nameList) out = out.split(n).join("em");
-    return out;
-  };
+  // CR-049 r10 H9: redact phai dua tren roster TRUONG DAY DU, khong dua
+  // tren `name` caller gui len (caller co the gui name: "" -> NLPC text
+  // chua ten that lo ra provider).
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const redactNames = (t: string | null): string | null =>
+    t ? pseudonymizeNames(t, roster.names) : t;
   const payload = students.map((s) => {
     const id = idByCode.get(s.code);
     const viol = id ? violById.get(id) : undefined;
@@ -396,14 +406,17 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
   // CR-049 r5 F16: ma HS so (9/12 chu so) bi redactPiiText an thanh
   // [so_dinh_danh] va dap laan key - alias HSxxx cho tung ma.
-  const piiNames = students.map((s, i) => ({
+  const codeAliases = students.map((s, i) => ({
     name: s.code,
-    alias: `HS${String(i + 1).padStart(3, "0")}`,
+    alias: `K${String(i + 1).padStart(3, "0")}`,
   }));
-  const safePrompt = minimizePrompt(prompt, piiNames);
+  // Ket hop alias ma HS + alias ten that (roster) - alias prefix khac
+  // nhau nen khong dung do khi deanon.
+  const allNames = [...roster.names, ...codeAliases];
+  const safePrompt = minimizePrompt(prompt, allNames);
   const safeSystem = minimizePrompt(
     "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
-    piiNames,
+    allNames,
   );
 
   const quotaOk = await takeAiQuota("comments", profile.id);
@@ -426,7 +439,7 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
         expectedShape: '{"MA_HS": "nhận xét 1-2 câu"}',
         createdBy: profile.id,
         req,
-        piiMap: piiNames,
+        piiMap: allNames,
       });
       if (job) {
         return NextResponse.json({
@@ -440,12 +453,13 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
   }
 
   try {
-    // alias HSxxx -> ma HS that truoc khi parse keys
-    const cleaned = deanonymizeNames(
-      text.replace(/```json|```/g, "").trim(),
-      piiNames,
+    // r10 M: parse truoc roi deanon tren cau truc - deanon tren chuoi
+    // JSON tho co the pha cau truc khi ten that chua ky tu dac biet.
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const obj = deanonymizeDeep(
+      JSON.parse(cleaned) as Record<string, string>,
+      allNames,
     );
-    const obj = JSON.parse(cleaned) as Record<string, string>;
     const comments: Record<string, string> = {};
     for (const [k, v] of Object.entries(obj)) {
       if (typeof v === "string" && v.trim()) comments[k] = v.trim();

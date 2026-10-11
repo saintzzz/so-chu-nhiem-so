@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
 import { hasAnyRole } from "@/lib/roles";
 import { hasFeature } from "@/lib/permissions";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
  * AI sinh cau hoi theo mon + khoi + chu de - CR-041: tra ve dang AiRow
@@ -88,11 +89,21 @@ export async function POST(req: Request) {
 
   const qtype = kind === "trac_nghiem" ? "multiple_choice" : "essay";
   const supabase = await createClient();
+  // CR-049 r10 H10: chu de tu do co the chua ten HS/GV/PH ("bai tap ve
+  // tinh huong cua em Nguyen Van An") - pseudonymize roster, fail-closed.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   return respondWithAi<{ rows: GenRow[] }>({
     req,
     supabase,
     profile,
     kind: "gen-questions",
+    pii: { names: roster.names },
     system:
       "Bạn là giáo viên trường phổ thông Việt Nam ra đề theo chương trình GDPT 2018. Câu hỏi rõ ràng, có đáp án đúng. Chỉ trả về JSON hợp lệ.",
     prompt: `Sinh ${count} câu hỏi ${kind === "trac_nghiem" ? "trắc nghiệm 4 phương án (A-D)" : "tự luận"} môn ${subject} lớp ${grade}, chủ đề "${topic}", mức độ ${level}.

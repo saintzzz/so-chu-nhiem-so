@@ -193,7 +193,7 @@ export async function POST(req: Request) {
   // CR-049 r7 H5 + r9 H9: cau hoi BGH + tieu de canh bao co the chua
   // ten HS -> pseudonymize theo roster TRUONG (tat ca lop/HS ke ca da
   // nghi hoc - free text lich su van nhac ten ho).
-  const roster = await schoolPiiNames(supabase, sid);
+  const roster = await schoolPiiNames(sid);
   if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },

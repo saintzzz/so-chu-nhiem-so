@@ -6,7 +6,12 @@ import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
 import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText, minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import {
+  redactPiiText,
+  minimizePrompt,
+  minimizeDeep,
+  deanonymizeDeep,
+} from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
@@ -845,13 +850,12 @@ export async function POST(
   }
 
   // Các tool còn lại: AI -> engine dự phòng (quota) -> rule-based
-  const { system, prompt } = tool.buildPrompt(input, ctx);
-  // CR-049 r9 H8: input free-text (van ban/KHBD user dan vao) co the
-  // chua ten HS/GV - pseudonymize theo roster truoc ca provider lan
-  // Devin (fail-closed).
-  const roster = await schoolPiiNames(
-    supabase,
-    (profile as { school_id?: string | null }).school_id ?? "",
+  // CR-049 r9 H8 + r10 H8: input free-text (van ban/KHBD user dan vao)
+  // co the chua ten HS/GV/PH - pseudonymize theo roster truoc ca
+  // provider lan Devin (fail-closed). minimizeDeep TREN input TRUOC
+  // khi buildPrompt JSON.stringify no - serialize truoc se lam ten
+  // thanh chuoi escape khong khop regex redact.
+  const roster = await schoolPiiNames((profile as { school_id?: string | null }).school_id ?? "",
   );
   if (roster.error) {
     return NextResponse.json(
@@ -859,6 +863,10 @@ export async function POST(
       { status: 500 },
     );
   }
+  const { system, prompt } = tool.buildPrompt(
+    minimizeDeep(input, roster.names),
+    ctx,
+  );
   const safePrompt = minimizePrompt(prompt, roster.names);
   // Tool tieng Anh: noi dung phai la tieng Anh - model yeu doi khi viet
   // tieng Viet, validate bat va retry voi nhac nho ro rang.
@@ -929,11 +937,10 @@ export async function POST(
     code === "DC-01" && ai.doc ? sanitizeKhbdDoc(ai.doc) : ai.doc;
   // r9: doc tu provider mang alias HSxxx - khoi phuc ten that truoc
   // khi luu/tra ve (Devin async da duoc callback deanon).
-  const aiDoc = aiDocRaw
-    ? (JSON.parse(
-        deanonymizeNames(JSON.stringify(aiDocRaw), roster.names),
-      ) as typeof aiDocRaw)
-    : aiDocRaw;
+  // r10 M: deanon tren cau truc da co, khong phai chuoi JSON tho -
+  // deanonymizeNames(stringify) co the pha cau truc JSON khi ten that
+  // chua ky tu dac biet.
+  const aiDoc = aiDocRaw ? deanonymizeDeep(aiDocRaw, roster.names) : aiDocRaw;
   const doc = aiDoc ?? tool.fallback(input, ctx);
   const provider = aiDoc ? ai.provider : "rule-based";
 
@@ -947,7 +954,9 @@ export async function POST(
     try {
       const { extractDialogueTurns, synthesizeDialogue, uploadTtsAudio } =
         await import("@/lib/tvc/tts");
-      const turns = extractDialogueTurns(doc);
+      // CR-049 r10 H: TTS doc doc CON ALIAS (aiDocRaw truoc deanon) -
+      // khong gui ten HS/GV that cho TTS provider.
+      const turns = extractDialogueTurns(aiDocRaw ?? doc);
       const routeLeft = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
       if (turns.length >= 2 && routeLeft >= 25_000) {
         const audio = await synthesizeDialogue(turns, routeLeft - 15_000);

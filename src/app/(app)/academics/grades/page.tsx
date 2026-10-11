@@ -353,6 +353,8 @@ export default async function GradesPage({
           className={className}
           schoolLevel={schoolLevel}
           stateRevision={stateRevision}
+          classId={classId}
+          classYearId={classYearId}
         />
       ) : (
         <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

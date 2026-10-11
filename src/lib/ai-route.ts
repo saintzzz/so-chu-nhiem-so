@@ -12,6 +12,7 @@ import {
   redactPiiText,
   pseudonymizeNames,
   deanonymizeNames,
+  deanonymizeDeep,
   type PiiName,
 } from "@/lib/ai-privacy";
 import type { Profile } from "@/types";
@@ -73,7 +74,18 @@ export async function respondWithAi<T>(
 
   if (aiRes.text) {
     const clean = aiRes.text.replace(/```json|```/g, "").trim();
-    const parsed = p.parse(deanonymizeNames(clean, names));
+    // CR-049 r10 M: neu output la JSON thi deanon TREN CAU TRUC da parse
+    // (ten that co the chua ky tu pha JSON - dau ngoac kep, backslash);
+    // fallback deanon text cho output khong phai JSON.
+    let restored = deanonymizeNames(clean, names);
+    if (names.length) {
+      try {
+        restored = JSON.stringify(deanonymizeDeep(JSON.parse(clean), names));
+      } catch {
+        /* output khong phai JSON thuan - giu deanon text */
+      }
+    }
+    const parsed = p.parse(restored);
     if (parsed !== null) {
       return NextResponse.json({ result: parsed });
     }

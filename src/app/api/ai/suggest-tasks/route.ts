@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   // CR-049 r8 H4: tieu de task/su kien co the chua ten HS - an danh hoa
   // theo roster truoc ca provider lan Devin (fail-closed).
-  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  const roster = await schoolPiiNames(profile.school_id ?? "");
   if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },

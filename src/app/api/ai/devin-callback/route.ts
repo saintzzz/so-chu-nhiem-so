@@ -93,13 +93,13 @@ export async function POST(req: NextRequest) {
   // truoc khi luu de client doc ten that thay alias.
   let finalResult = body.result;
   if (Array.isArray(row.pii_map) && row.pii_map.length) {
-    const { deanonymizeNames } = await import("@/lib/ai-privacy");
+    // r10 M: deanon tren cau truc da parse - deanon tren chuoi JSON tho
+    // co the pha cau truc khi ten that chua ky tu dac biet.
+    const { deanonymizeDeep } = await import("@/lib/ai-privacy");
     try {
-      finalResult = JSON.parse(
-        deanonymizeNames(JSON.stringify(body.result), row.pii_map),
-      );
+      finalResult = deanonymizeDeep(body.result, row.pii_map);
     } catch {
-      /* giu result goc neu deanonymize lam hong JSON */
+      /* giu result goc neu deanonymize gap loi */
     }
   }
 

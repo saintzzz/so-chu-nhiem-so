@@ -13,6 +13,40 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * next/server chi import dong o server de file van nam trong client bundle.
  * Loi audit chi log console, khong lam fail business action.
  */
+/**
+ * CR-049 r10 M16: variant AWAIT - bang chung audit phai durable TRUOC
+ * khi side-effect xay ra (vd: gate tai lieu tho gui sang AI provider).
+ * Tra error de caller fail-closed; khong dung cho audit thong thuong.
+ */
+export async function writeAudit(
+  supabase: SupabaseClient,
+  input: {
+    action: string;
+    entity: string;
+    entityId?: string | null;
+    payload?: Record<string, unknown>;
+  },
+): Promise<{ error: string | null }> {
+  try {
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const { error } = await supabase.from("audit_logs").insert({
+      actor_id: (claimsData?.claims?.sub as string | undefined) ?? null,
+      action: input.action,
+      entity: input.entity,
+      entity_id: input.entityId ?? null,
+      payload: input.payload ?? null,
+    });
+    if (error) {
+      console.error("[audit] insert:", error.message);
+      return { error: error.message };
+    }
+    return { error: null };
+  } catch (e) {
+    console.error("[audit]", e);
+    return { error: e instanceof Error ? e.message : "audit failed" };
+  }
+}
+
 export function logAudit(
   supabase: SupabaseClient,
   input: {

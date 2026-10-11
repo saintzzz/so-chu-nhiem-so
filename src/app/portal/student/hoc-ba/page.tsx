@@ -58,12 +58,14 @@ export default async function StudentTranscriptPage() {
           .from("grades")
           .select("id,subject_id,term,assessment_type,subtype,seq,score,result")
           .eq("student_id", student.id)
-          // CR-049: chi diem cua nam hoc lop hien tai (enrollment year);
-          // rows chua gan year (du lieu cu/legacy) van hien.
+          // CR-049 r10 M: chi diem cua nam hoc lop hien tai (enrollment
+          // year); rows legacy chua gan year van hien. Lop CHUA gan
+          // academic_year_id -> chi rows legacy NULL (fail-closed, khong
+          // fallback all-years).
           .or(
             classroom?.academic_year_id
               ? `academic_year_id.is.null,academic_year_id.eq.${classroom.academic_year_id}`
-              : "academic_year_id.not.is.null,academic_year_id.is.null",
+              : "academic_year_id.is.null",
           )
           .order("created_at"),
         supabase

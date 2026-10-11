@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 interface CounselingDraft {
@@ -35,45 +35,17 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  // CR-049 r6 H5 + r7 H4: free-text co the chua ten HS gan voi thong tin
-  // nhay cam -> pseudonymize theo danh sach HS truong. Lookup phai
-  // fail-closed + paginate day du - roster bi cat/loi de lo ten that.
-  const { data: clsRows, error: clsErr } = await supabase
-    .from("classes")
-    .select("id")
-    .eq("school_id", profile.school_id)
-    .eq("status", "active");
-  if (clsErr) {
+  // CR-049 r6 H5 + r7 H4 + r10 H6: free-text co the chua ten HS/GV/PH
+  // gan voi thong tin nhay cam - pseudonymize theo roster TRUONG DAY DU
+  // (admin client), fail-closed.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },
       { status: 500 },
     );
   }
-  const classIds = (clsRows ?? []).map((c) => c.id as string);
-  const stuRes = classIds.length
-    ? await fetchAllRows<{ full_name: string }>((f, t) =>
-        supabase
-          .from("students")
-          .select("full_name")
-          .in("class_id", classIds)
-          .eq("status", "active")
-          .order("id")
-          .range(f, t),
-      )
-    : { rows: [] as { full_name: string }[], error: null, truncated: false };
-  if (stuRes.error || stuRes.truncated) {
-    return NextResponse.json(
-      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
-      { status: 500 },
-    );
-  }
-  const piiNames = stuRes.rows
-    .map((s) => s.full_name)
-    .filter(Boolean)
-    .map((name, i) => ({
-      name,
-      alias: `HS${String(i + 1).padStart(3, "0")}`,
-    }));
+  const piiNames = roster.names;
   return respondWithAi<CounselingDraft>({
     req,
     supabase,

@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
   // CR-049 r8 H4: noi dung bao cao lop la free-text co the chua ten HS -
   // an danh hoa theo roster truong truoc khi gui provider (fail-closed).
-  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  const roster = await schoolPiiNames(profile.school_id ?? "");
   if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },

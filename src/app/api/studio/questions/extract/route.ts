@@ -9,7 +9,7 @@ import {
   type PiiName,
 } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
-import { logAudit } from "@/lib/audit";
+import { writeAudit } from "@/lib/audit";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
 import { fallbackToDevin } from "@/lib/devin";
@@ -123,17 +123,25 @@ export async function POST(req: Request) {
 
   const supabase = await createClient();
   if (inline) {
-    logAudit(supabase, {
+    // CR-049 r10 M16: bang chung dong y phai DURABLE truoc khi raw bytes
+    // roi server sang provider - audit fail thi fail-closed, khong gui.
+    const { error: auditErr } = await writeAudit(supabase, {
       action: "studio.extract_raw_doc",
       entity: "ai_job",
       payload: { mime: body.mime, bytes: body.data!.length },
     });
+    if (auditErr) {
+      return NextResponse.json(
+        { error: "Khong ghi duoc xac nhan, thu lai sau." },
+        { status: 500 },
+      );
+    }
   }
   // CR-049 r9: van ban docx co the chua ten HS (de thi thu, bai kiem tra
   // lop) - pseudonymize theo roster truoc khi goi provider, fail-closed.
   let piiNames: PiiName[] = [];
   if (!inline && profile.school_id) {
-    const roster = await schoolPiiNames(supabase, profile.school_id);
+    const roster = await schoolPiiNames(profile.school_id);
     if (roster.error) {
       return NextResponse.json(
         { error: "Khong tai duoc danh sach de bao ve du lieu." },

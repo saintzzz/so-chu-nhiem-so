@@ -3,7 +3,8 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import { minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import type { Student } from "@/types";
 import { hasRole, hasAnyRole } from "@/lib/roles";
@@ -82,14 +83,24 @@ export async function POST(req: Request) {
     );
   }
 
-  // gui alias HSxxx thay ma/ten HS ra AI provider (CR-049 P3b+r5: ma so
+  // gui alias thay ten that ra AI provider (CR-049 P3b+r5: ma so
   // 9-12 chu so bi redact nham la PII, con ten that la PII) - deanon
   // alias -> ten that khi render.
-  const piiNames = students.map((s, i) => ({
-    name: s.full_name,
-    alias: `HS${String(i + 1).padStart(3, "0")}`,
-  }));
-  const codeOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
+  // r10 H6/H7: noi dung free-text (vi pham, khen thuong) co the nhac ten
+  // HS/GV/PH bat ky trong TRUONG, khong chi lop nay - dung roster truong
+  // day du (admin client), fail-closed khi thieu coverage.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const piiNames = roster.names;
+  const aliasByName = new Map(piiNames.map((n) => [n.name, n.alias]));
+  const codeOf = new Map(
+    students.map((s) => [s.id, aliasByName.get(s.full_name) ?? "?"]),
+  );
   const deanon = (t: string) => deanonymizeNames(t, piiNames);
   const att = (attRes.data ?? []) as {
     student_id: string;
@@ -126,7 +137,10 @@ export async function POST(req: Request) {
     su_co_dang_mo: incidents.map((i) => `${i.type} (${i.severity})`),
   };
 
-  const prompt = `Soạn báo cáo ngày của giáo viên chủ nhiệm gửi Ban Giám Hiệu dựa trên số liệu (JSON): ${JSON.stringify(facts)}.
+  // r10 H: minimizeDeep TREN CAU TRUC truoc JSON.stringify - free-text
+  // trong facts chua ten that, serialize truoc se lam regex redact
+  // khong khop chuoi da escape (\n -> \\n).
+  const prompt = `Soạn báo cáo ngày của giáo viên chủ nhiệm gửi Ban Giám Hiệu dựa trên số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, piiNames))}.
 
 Yêu cầu: 2-4 câu, văn phong báo cáo hành chính giáo dục Việt Nam, nêu sĩ số - chuyên cần - tình hình nổi bật - việc đề xuất BGH hỗ trợ (nếu có). Gọi học sinh bằng mã (HS...) đúng như dữ liệu. Không emoji, không liệt kê máy móc, không bịa sự kiện ngoài số liệu. Nếu ngày bình thường không có gì đặc biệt thì báo cáo ngắn gọn "lớp ổn định".
 

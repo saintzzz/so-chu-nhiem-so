@@ -109,3 +109,24 @@ export function minimizeDeep<T>(value: T, names: PiiName[] = []): T {
   }
   return value;
 }
+
+/** CR-049 r10 M: deanon tren JSON da parse, KHONG tren chuoi JSON tho.
+ *  deanonymizeNames(stringifiedJson) co the pha cau truc neu ten that
+ *  chua ky tu JSON dac biet; deanonDeep di vao tung string value/key
+ *  sau khi parse nen output provider luon hop le. */
+export function deanonymizeDeep<T>(value: T, names: PiiName[]): T {
+  if (typeof value === "string") {
+    return deanonymizeNames(value, names) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => deanonymizeDeep(v, names)) as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[deanonymizeNames(k, names)] = deanonymizeDeep(v, names);
+    }
+    return out as T;
+  }
+  return value;
+}

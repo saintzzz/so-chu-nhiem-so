@@ -545,15 +545,46 @@ export async function POST(
     // va day eligibility filter xuong DB - truoc day limit truoc roi moi
     // loc review_state nen cau hop le nam sau limit bi bo sot.
     const allStdIds = [...new Set(cells.map((c) => c.standard_id))];
-    let bankQ = supabase
-      .from("tvc_questions")
-      .select("*")
-      .overlaps("standard_ids", allStdIds.length ? allStdIds : ["_none_"])
-      .limit(5000);
-    if (approvedOnly) bankQ = bankQ.eq("review_state", "approved");
-    else bankQ = bankQ.neq("review_state", "flagged");
-    const { data: bankData } = await bankQ;
-    const bank = (bankData as Question[]) ?? [];
+    // R2: fetch theo tung standard co cap rieng thay vi 1 query cap chung -
+    // standard "hot" truoc day an het 5000 slots lam cell khac doi cau.
+    // Moi standard lay toi da 300 ung vien (du cho moi cell dung no).
+    const PER_STD_LIMIT = 300;
+    const CHUNK = 8;
+    const rawBank: Question[] = [];
+    let bankFailed = false;
+    for (let i = 0; i < allStdIds.length; i += CHUNK) {
+      const batch = await Promise.all(
+        allStdIds.slice(i, i + CHUNK).map((sid) => {
+          let q = supabase
+            .from("tvc_questions")
+            .select("*")
+            .overlaps("standard_ids", [sid])
+            .limit(PER_STD_LIMIT);
+          if (approvedOnly) q = q.eq("review_state", "approved");
+          else q = q.neq("review_state", "flagged");
+          return q;
+        }),
+      );
+      for (const r of batch) {
+        if (r.error) {
+          bankFailed = true;
+          console.error("[studio] exam bank fetch:", r.error.message);
+        } else {
+          rawBank.push(...((r.data ?? []) as Question[]));
+        }
+      }
+    }
+    // Loi DB khac voi "ngan hang thieu cau" - bao ro de GV khong nham.
+    if (bankFailed) {
+      return NextResponse.json(
+        { error: "Không đọc được ngân hàng câu hỏi - vui lòng thử lại." },
+        { status: 500 },
+      );
+    }
+    const seenQ = new Set<string>();
+    const bank = rawBank.filter((q) =>
+      seenQ.has(q.id) ? false : (seenQ.add(q.id), true),
+    );
 
     const pickFrom = (
       cell: MatrixCell,

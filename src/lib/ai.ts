@@ -36,8 +36,10 @@ export function aiProviderAllowed(name: string): boolean {
 
 /**
  * Base URL cho slot openai (OpenAI-compatible endpoints vd OpenRouter).
- * Neu dat AI_ALLOWED_ENDPOINTS (hostnames, comma-sep) thi endpoint ngoai
- * allowlist bi chan - quay ve api.openai.com (fail-closed, khong leak key).
+ * Fail-closed: endpoint bi tu choi thi NEM LOI (khong lang le quay ve
+ * api.openai.com roi leak bearer key + prompt ra host ngoai allowlist).
+ * AI_ALLOWED_ENDPOINTS (hostnames, comma-sep) khi dat se rang buoc ca
+ * endpoint mac dinh. HTTPS bat buoc tru localhost (dev).
  */
 export function openaiBaseUrl(): string {
   const base = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1")
@@ -46,14 +48,18 @@ export function openaiBaseUrl(): string {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (allow.length) {
-    try {
-      if (!allow.includes(new URL(base).hostname)) {
-        return "https://api.openai.com/v1";
-      }
-    } catch {
-      return "https://api.openai.com/v1";
-    }
+  let u: URL;
+  try {
+    u = new URL(base);
+  } catch {
+    throw new Error("ai_endpoint_invalid");
+  }
+  const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  if (u.protocol !== "https:" && !isLocal) {
+    throw new Error("ai_endpoint_not_https");
+  }
+  if (allow.length && !allow.includes(u.hostname)) {
+    throw new Error("ai_endpoint_not_allowed");
   }
   return base;
 }
@@ -381,7 +387,14 @@ export async function generateTextDetailed(
     signal?: AbortSignal,
   ): Promise<{ text: string | null; error: AiErrorKind | null }> => {
     try {
-      const o = signal ? { ...opts, signal } : opts;
+      const o: GenerateOptions = signal ? { ...opts, signal } : { ...opts };
+      // R2: budget tong ap vao tung lan goi - timeout cua call khong vuot
+      // phan con lai cua deadline (fix "deadline chi check truoc khi ban").
+      if (deadline !== null) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) return { text: null, error: "error" };
+        o.timeoutMs = Math.min(o.timeoutMs ?? 25000, remaining);
+      }
       return cfg.provider === "gemini"
         ? await callGemini(cfg, prompt, o)
         : cfg.provider === "openai"
@@ -435,6 +448,8 @@ export async function generateTextDetailed(
           if (overDeadline()) { miss(); return; }
           callOne(cfg, ctrls[i].signal).then((r) => {
             if (done) { miss(); return; }
+            // Ket qua ve sau deadline khong duoc nhan (rejected-late).
+            if (r.text && overDeadline()) { miss(); return; }
             if (acceptable(r.text)) {
               finish({ cfg, r });
             } else {
@@ -461,6 +476,7 @@ export async function generateTextDetailed(
     if (overDeadline()) break;
     const cfg = configs[idx];
     const r = await callOne(cfg);
+    if (r.text && overDeadline()) { noteError(cfg, "error"); break; }
     if (acceptable(r.text)) return { text: r.text, error: null, provider: cfg.provider };
     noteError(cfg, r.text ? "error" : (r.error ?? "error"));
   }

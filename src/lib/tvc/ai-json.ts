@@ -118,9 +118,15 @@ export async function generateDoc(
   opts?: { validate?: (doc: DocContent) => boolean; retryNote?: string },
 ): Promise<{ doc: DocContent | null; provider: string | null; error: string | null }> {
   // CR-042: KHBD day du ~8-12k output tokens - cap 8192 cat ngang JSON.
-  // 2 lan thu (tong <=110s trong maxDuration 120s): model doi khi viet
-  // sai cu phap JSON ngau nhien, retry re hon nhieu so voi ban khung.
+  // 2 lan thu chia chung 1 budget 105s (maxDuration route 120s): model doi
+  // khi viet sai cu phap JSON ngau nhien, retry re hon nhieu ban khung.
+  // R2: budget tinh 1 lan cho CA operation, khong cap lai 70s moi attempt.
+  const opStart = Date.now();
+  const OP_BUDGET = 105_000;
+  const remaining = () => OP_BUDGET - (Date.now() - opStart);
   for (let attempt = 0; attempt < 2; attempt++) {
+    const left = remaining();
+    if (left <= 5000) break;
     const r = await generateTextDetailed(
       attempt === 0
         ? prompt
@@ -129,16 +135,23 @@ export async function generateDoc(
         system,
         maxTokens: 16384,
         temperature: 0.7,
-        // 25s mac dinh khong du cho doc 40KB+ - 55s/lan van trong budget route.
-        timeoutMs: 55000,
+        // 25s mac dinh khong du cho doc 40KB+ - cap theo budget con lai.
+        timeoutMs: Math.min(55000, left),
         // CR-049: ban song song AI_DOC_RACE (mac dinh 3) config dau, lay cai
         // nhanh nhat - cat do tre khi key dau cham/hang ma van giu fallback.
         race: Math.max(Number(process.env.AI_DOC_RACE ?? 3), 1),
-        // R16: output JSON-mong khong duoc thang race (racer nhanh ma viet
-        // sai cu phap truoc day an ket qua); tong budget 70s cho race +
-        // tuan tu con lai trong 1 attempt.
-        validate: (t) => extractJson(t) !== null,
-        maxTotalMs: 70000,
+        // R2: winner predicate = full validation (shape + tool-specific),
+        // khong chi JSON-parseable - {} parse duoc nhung vo dung tung thang
+        // race va huy ca candidate hop le dang chay cham hon.
+        validate: (t) => {
+          const parsed = extractJson<DocContent>(t);
+          return (
+            parsed !== null &&
+            isDocContent(parsed) &&
+            (opts?.validate?.(parsed) ?? true)
+          );
+        },
+        maxTotalMs: left,
       },
     );
     if (!r.text) return { doc: null, provider: r.provider, error: r.error };

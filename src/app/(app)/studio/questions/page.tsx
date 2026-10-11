@@ -48,7 +48,10 @@ export default async function StudioQuestionsPage() {
     .select(
       "id, owner_id, code, stem, qtype, level, points, standard_ids, subject_code, grade, source, review_state, created_at",
     )
+    // R2: ordering giong keyset trong searchQuestions (created_at,id) desc -
+    // bulk insert share timestamp, SSR ordering khac cursor bo sot rows.
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(0, 99);
   if (reviewerDefaultMyDept) {
     firstQ = firstQ.in("subject_code", deptSubjectCodes);

@@ -767,11 +767,12 @@ export async function saveKhbdTemplate(input: {
     activities: acts,
     include_review: input.include_review,
     include_signoff: input.include_signoff,
-    // Luu luon is_default=false; RPC scn_khbd_set_default bat lai nguyen tu
-    // (clear + set trong 1 transaction, unique partial index phu tro).
-    is_default: false,
     school_id: profile.school_id,
   };
+  // R2: update KHONG cham is_default - sua noi dung cua mau dang default ma
+  // clear default truoc khi RPC chay la cua so de truong mat default.
+  // Insert moi mac dinh khong phai default; RPC scn_khbd_set_default bat
+  // lai nguyen tu (clear + set trong 1 transaction).
   const q = input.id
     ? supabase
         .from("tvc_khbd_templates")
@@ -781,7 +782,7 @@ export async function saveKhbdTemplate(input: {
         .select("id")
     : supabase
         .from("tvc_khbd_templates")
-        .insert({ ...row, created_by: profile.id })
+        .insert({ ...row, is_default: false, created_by: profile.id })
         .select("id");
   const { data, error } = await q;
   if (error || !data?.length) {

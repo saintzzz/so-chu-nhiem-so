@@ -187,6 +187,7 @@ export async function reviewMaterial(
   const fErr = await assertFeature("studio.review");
   if (fErr) return { error: fErr };
   const supabase = await createClient();
+  await ensureTvcProfile();
   const { data, error } = await supabase.rpc("scn_review_material", {
     mid: id,
     decision,

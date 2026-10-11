@@ -183,42 +183,52 @@ export default async function GradesPage({
   // vao o diem nam hien tai, luu lai ghi de sai nam.
   const classYearId =
     classes.find((c) => c.id === classId)?.academic_year_id ?? null;
-  const gradesRes =
-    studentIds.length && subjectId
-      ? await fetchAllRows<GradeRow>((f, t) => {
-          let q = supabase
-            .from("grades")
-            .select(
-              "id,student_id,assessment_type,score,result,comment,level,seq,subtype,updated_at",
-            )
-            .in("student_id", studentIds)
-            .eq("subject_id", subjectId)
-            .eq("term", term)
-            .order("id")
-            .range(f, t);
-          q = classYearId
-            ? q.or(
-                `academic_year_id.is.null,academic_year_id.eq.${classYearId}`,
-              )
-            : q.is("academic_year_id", null);
-          return q;
-        })
-      : { rows: [] as GradeRow[], error: null, truncated: false };
-  const grades = gradesRes.rows;
-
-  // CR-049 r7 H1: revision CAS ben vung nam trong grade_book_state -
-  // sau delete-all khong con row grades de suy ra revision, nen client
-  // phai doc state truc tiep (scope key giong RPC: mon|term|nam|lop).
+  // CR-049 r7 H1 + r8 H2: revision CAS ben vung nam trong
+  // grade_book_state. Doc grades + state rieng le tao race (grades R1
+  // + state R2 -> expected=R2 ghi de luu cua nguoi khac). Bracket:
+  // doc state truoc + sau fetch; state khong doi = snapshot nhat quan
+  // (state tang moi lan luu). Doi thi doc lai - toi da 3 lan.
   const stateScope = `${subjectId}|${term}|${classYearId ?? ""}|${classId}`;
-  const { data: gbState } =
-    studentIds.length && subjectId
-      ? await supabase
-          .from("grade_book_state")
-          .select("last_saved_at")
-          .eq("scope_key", stateScope)
-          .maybeSingle()
-      : { data: null };
-  const stateRevision = (gbState?.last_saved_at as string | undefined) ?? null;
+  const readState = async () => {
+    const { data } = await supabase
+      .from("grade_book_state")
+      .select("last_saved_at")
+      .eq("scope_key", stateScope)
+      .maybeSingle();
+    return (data?.last_saved_at as string | undefined) ?? null;
+  };
+  let grades: GradeRow[] = [];
+  let gradesResError: unknown = null;
+  let stateRevision: string | null = null;
+  if (studentIds.length && subjectId) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const s0 = await readState();
+      const gr = await fetchAllRows<GradeRow>((f, t) => {
+        let q = supabase
+          .from("grades")
+          .select(
+            "id,student_id,assessment_type,score,result,comment,level,seq,subtype,updated_at",
+          )
+          .in("student_id", studentIds)
+          .eq("subject_id", subjectId)
+          .eq("term", term)
+          .order("id")
+          .range(f, t);
+        q = classYearId
+          ? q.or(
+              `academic_year_id.is.null,academic_year_id.eq.${classYearId}`,
+            )
+          : q.is("academic_year_id", null);
+        return q;
+      });
+      const s1 = await readState();
+      gradesResError = gr.error ?? (gr.truncated ? "truncated" : null);
+      if (gradesResError) break;
+      grades = gr.rows;
+      stateRevision = s0;
+      if (s0 === s1) break; // snapshot nhat quan voi revision s0
+    }
+  }
 
   const className = classes.find((c) => c.id === classId)?.name ?? "";
   const subjectName = subject?.name ?? "";
@@ -233,7 +243,7 @@ export default async function GradesPage({
     timetable_entries: teachRes.error?.message ?? null,
     classes_teaching: missingErr?.message ?? null,
     students: studentErr?.message ?? null,
-    grades: gradesRes.error ?? (gradesRes.truncated ? "truncated" : null),
+    grades: gradesResError,
   }).filter(([, e]) => e);
   const loadError = srcErrors.length > 0;
   if (loadError) {

@@ -1,0 +1,175 @@
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Share
+You said:
+
+Whole-repo independent review of github.com/saintzzz/so-chu-nhiem-so at commit c76e4d0 (branch master). Verification round 8 of the CR-049 external review loop - confirm the previous round's 11 fixes and hunt regressions.
+
+Round 7 (on 8526448) reported 11 findings (4 HIGH, 7 MEDIUM). Fixes now in c76e4d0 + migration supabase/migrations/20261128_cr049_r7_fixes.sql:
+
+HIGH CAS asymmetry: grades updated_at uses now() but grade_book_state used clock_timestamp() -> reload permanently stale. Fix: page.tsx now reads grade_book_state.last_saved_at (scope key subject|term|year|class) and passes stateRevision to grades-editor, which merges it into expectedMax. RPC keeps clock_timestamp.
+MED shared CAS revision: scope_key now includes class_id; function raises mixed_class_scope when p_student_ids span classes.
+HIGH direct state mutation: grade_book_state is now select-only for authenticated; scn_save_grades is SECURITY DEFINER with explicit authz via scn_can_write_grade on p_student_ids AND p_rows contents.
+HIGH PII lookup robustness: counseling-summary/incident-report roster lookups now fail-closed (500) and paginated via fetchAllRows; pseudonymizeNames is case-insensitive, Unicode-boundary, whitespace-flexible.
+HIGH free-text PII in warning-advice + advisor: both now build school-roster pii.names, call minimizePrompt for provider AND Devin fallback, deanonymizeNames on output.
+MED AI grade analysis mixed years: class-analysis + comments grade queries now filter (academic_year_id IS NULL or = class year).
+MED pending-parent starvation: scn_digest_pending_parents is now 4-arg (adds p_max_attempts), excludes parents without parent_students links and parents with attempts >= cap.
+MED manual retry dead: new service-role RPC scn_digest_retry_failed(week, parent_ids) flips failed/skipped outbox rows to queued while protecting 'sent' deliveries; route calls it for ?retry= runs.
+MED email config outside timeout: sendEmail races getEmailConfig against the same budgetMs and bounds transport with the remainder.
+MED advisor swallowed source errors: all 8 source queries now fail-closed with 500.
+MED already-sent lookup unbounded: now paginated via fetchAllRows and filtered to batch week_start values; truncation fails closed.
+
+Verify each in source AND migration. Then re-check: scn_save_grades (6-arg only, definer authz correct, advisory lock, year-scoped delete, empty-save revision), AI quota fail-closed, pii_map + callback deanonymize, digest claim/requeue/retry semantics, TT22 tiers, org-scope admin bypass, and hunt NEW issues anywhere in src/ + supabase/migrations/.
+
+For EVERY finding: severity, exact file:line, reproduction/evidence, concrete remediation. End with: VERDICT: CLEAN or VERDICT: NOT-CLEAN. 
+
+…
+Show more
+6:49 PM
+Worked for 7m 59s
+ChatGPT said:
+
+Reviewed 
+c76e4d047d5aad5007079438c319d1ad075dd232. Found 12 actionable issues: 5 HIGH, 7 MEDIUM, including regressions in the new grade authorization and revision handling.
+
+The review copy matches GitHub blob hashes for all 433 checked source, migration, test, and script files. SQL findings are source-confirmed; deployed grants, RLS, and database behavior were not verified live.
+
+Round-7 fix	Verification
+1. Durable CAS revision	Wired at grades page.tsx:213 and grades-editor.tsx:883; migration writes state at 20261128_cr049_r7_fixes.sql:96. Introduces finding 2.
+2. Class-specific CAS scope	Confirmed: migration :57 rejects mixed classes; :62 includes class identity.
+3. Select-only state / definer authorization	State mutation revoked at migration :18; explicit authorization added at :40. Finding 1 bypasses it.
+4. Counseling/incident roster robustness	Error and truncation checks confirmed at counseling route.ts:64, incident route.ts:74; case, whitespace, and boundary matching present. Finding 5 remains.
+5. Advisor/warning prompt minimization	Both provider and Devin receive minimized prompts. Async restoration is incomplete: finding 6.
+6. AI grade year filtering	Confirmed at class-analysis route.ts:99 and comments route.ts:122.
+7. Pending-parent filtering	Four-argument RPC and link/attempt exclusions confirmed at migration :104, :117, :127. Finding 9 leaves another starvation case.
+8. Manual retry revival	Same-week failed/skipped revival and sent protection confirmed at migration :152. Historical retries remain broken: finding 10.
+9. Email configuration deadline	Configuration race present at email.ts:105; findings 7–8 show remaining failures.
+10. Advisor source errors	Eight downstream queries checked at advisor route.ts:110; initial source queries remain unchecked: finding 3.
+11. Already-sent lookup	Confirmed: pagination, batch-week filtering, and fail-closed handling at parent-digest route.ts:506.
+
+HIGH — NULL student arrays bypass the new grade-writing authorization.
+
+Location: supabase/migrations/20261128_cr049_r7_fixes.sql:40, :48, :90.
+
+Evidence/reproduction: Call scn_save_grades as an authenticated user with p_student_ids: null and a valid grade payload for an unauthorized student. unnest(NULL) produces no authorization checks. The payload membership expression evaluates to SQL NULL, so its WHERE selects no violations. The definer then inserts the grade while bypassing grade RLS. This conclusion follows directly from SQL three-valued logic; it was not executed against production.
+
+Remediation: Reject null/empty arrays and null elements. Require authorization results IS TRUE, require payload membership IS TRUE, and independently authorize every payload student before any mutation.
+
+HIGH — The grade loader can pair stale grades with a newer revision, defeating CAS.
+
+Location: src/app/(app)/academics/grades/page.tsx:186, :213; src/components/academics/grades-editor.tsx:883.
+
+Evidence/reproduction: A loads grades at revision R1. B saves R2 before A’s subsequent state query. A receives R1 grades with R2’s revision, submits R2 as expected, and overwrites B without stale_write. Pagination widens this race. The advisory lock protects the write transaction, but cannot repair the inconsistent read snapshot.
+
+Remediation: Return grades and revision from one database snapshot. Alternatively, bracket the complete grade read with revision reads and retry if they differ. Bind the editor’s expected revision to the displayed cell snapshot.
+
+HIGH — Advisor’s initial lookup failures still permit raw-name export and fabricated counts.
+
+Location: src/app/api/ai/advisor/route.ts:34, :42, :178.
+
+Evidence/reproduction: A mocked class-query error produced HTTP 200 and an external prompt containing Nguyễn Văn An: empty classIds silently disables the identity lookup. A mocked initial student-query error also continued, reporting "so_hoc_sinh":0. These queries are outside the new eight-query error check. Their unpaginated results can also truncate school-wide totals.
+
+Remediation: Check both initial errors before constructing context or resolving names. Paginate required roster/source rows, reject incomplete results, and never treat lookup failure as an empty roster.
+
+HIGH — Other AI routes still export names embedded in sensitive free text.
+
+Location: src/app/api/ai/daily-digest/route.ts:77, :88; src/app/api/ai/period-log-summary/route.ts:108, :120; src/app/api/ai/suggest-tasks/route.ts:58, :64.
+
+Evidence/reproduction: A submitted daily report containing Nguyễn Văn An bị bắt nạt survived the actual route’s prompt minimization in a mocked execution. These routes provide no identity map; structured redaction cannot remove names. Period comments and existing task titles follow the same pattern, including Devin fallback.
+
+Remediation: Resolve the relevant identities with complete, fail-closed lookups and minimize all free-text context before either external processor. Persist alias maps for asynchronous results.
+
+HIGH — Canonically equivalent Vietnamese Unicode names evade pseudonymization.
+
+Location: src/lib/ai-privacy.ts:49, :55.
+
+Evidence/reproduction: With NFC roster name Nguyễn Văn An, passing "Nguyễn Văn An".normalize("NFD") through minimizePrompt leaves the visually identical name intact. Case-insensitive Unicode regex matching does not perform canonical normalization.
+
+Remediation: Normalize input and roster names to NFC before matching. Include combining marks in boundary handling and add NFC/NFD privacy regression tests.
+
+MEDIUM — New advisor/warning Devin jobs omit their alias maps.
+
+Location: src/app/api/ai/advisor/route.ts:221; src/app/api/ai/warning-advice/route.ts:108; src/lib/devin.ts:165.
+
+Evidence/reproduction: Mocked provider-quota failures created Devin jobs whose prompts contained HS001, but whose piiMap was undefined. fallbackToDevin consequently stores no map, so the callback cannot restore names. Synchronous deanonymization does not cover these pending responses.
+
+Remediation: Pass piiMap: piiNames in both fallback calls and verify alias restoration through callback persistence and client polling.
+
+MEDIUM — Email timeout remains a per-recipient budget rather than an absolute deadline.
+
+Location: src/lib/email.ts:111, :121, :125.
+
+Evidence/reproduction: A virtual-clock execution with two recipients and timeoutMs:1000 completed after 1800 ms; both transports received a 1000-ms timeout. leftMs is calculated once and reused. Its 1000-ms minimum also permits exceeding the deadline when configuration nearly consumes the budget.
+
+Remediation: Calculate one absolute deadline. Recompute remaining time before each recipient and stop when exhausted; do not increase the remaining budget with a minimum floor.
+
+MEDIUM — Configuration timeout throws outside the email result contract.
+
+Location: src/lib/email.ts:105; src/app/api/cron/parent-digest/route.ts:570.
+
+Evidence/reproduction: A hanging mocked Vault lookup caused sendEmail to reject with email_config_timeout, instead of returning EmailResult. The digest’s Promise.all has no rejection handling, so it aborts before delivery logging and status updates. Claimed rows remain sending; successful sibling sends can lose their audit records.
+
+Remediation: Convert configuration failures into structured per-email results, clear the timeout timer, and use per-job rejection handling so every settled send is recorded.
+
+MEDIUM — Blank-email parents still starve later digest recipients.
+
+Location: supabase/migrations/20261128_cr049_r7_fixes.sql:112; src/app/api/cron/parent-digest/route.ts:307.
+
+Evidence/reproduction: The RPC admits email='' or whitespace because it checks only non-null and .scn. The route skips these parents without creating an outbox row. With 20,000 such linked parents preceding an eligible recipient, every invocation can exhaust the scan limit on the same skipped population.
+
+Remediation: Exclude nullif(btrim(email), '') IS NULL candidates in the RPC, or persist terminal skipped candidates so they cannot repeatedly consume scan slots.
+
+MEDIUM — Manual retry targets the current week instead of the failed delivery’s week.
+
+Location: src/app/api/cron/parent-digest/route.ts:94, :112; supabase/migrations/20261128_cr049_r7_fixes.sql:154.
+
+Evidence/reproduction: A mocked retry for a failed delivery dated 2026-10-05, executed during week 2026-10-12, called scn_digest_retry_failed with p_week:'2026-10-12'. The old failed outbox row remains unchanged; a current-week failed row for that parent can be revived instead.
+
+Remediation: Fetch week_start with the retry deliveries and retry exact parent/week pairs. Preserve sent protection for each pair.
+
+MEDIUM — Radar still lets historical grades override current-year risk detection.
+
+Location: src/lib/school/radar.ts:174, :175.
+
+Evidence/reproduction: The query neither filters nor selects academic year. Executing lowGradeStudentIds with old-year HK2 grades of 9 and current-year HK1 grades of 3 returned zero at-risk students; filtering to the current year returned one. Historical HK2 wins the helper’s term ordering and suppresses the current warning.
+
+Remediation: Resolve each student’s authoritative class year and filter grades before aggregation. Keep academic year in grouping identities wherever historical data is intentionally included.
+
+MEDIUM — Digest week calculation mixes host and Vietnam calendars.
+
+Location: src/app/api/cron/parent-digest/route.ts:65, :67, :68.
+
+Evidence/reproduction: Under UTC, at 2026-10-11T17:30:00Z—Monday 00:30 in Vietnam—the actual calculation returns week start 2026-10-06, instead of 2026-10-12. getDay/setDate use the host calendar, while isoDateVN formats the result in Vietnam. This partitions duplicate protection and retries under an incorrect weekly key.
+
+Remediation: Derive Monday entirely from the Vietnam calendar date, using consistent calendar arithmetic independent of the server timezone.
+
+The requested regression checks otherwise remain present: only the six-argument grade RPC signature survives the migration chain; advisory locking, year-scoped deletion, and empty-save revision writes remain. AI quota helpers deny on errors and use actor UUIDs through service-role-only RPCs, including the TTS gate. Shared pii_map persistence and callback restoration remain wired. Digest claims retain SKIP LOCKED, requeue retains sent reconciliation and all-week recovery, TT22 tiers remain 2/3/4, and both org/profile scope helpers retain the admin bypass.
+
+Validation: 157 tests passed, typecheck passed, lint reported 0 errors / 136 warnings. Targeted mocked executions confirmed the route, privacy, email, retry, and aggregation findings. Build failed on font downloads; the consistency checker could not run without .env.local. Docker access was unavailable, so SQL authorization conclusions remain source-semantic verification.
+
+VERDICT: NOT-CLEAN
+
+6:57 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++51,504
+-4,234
+Outputs
+Create a file or site

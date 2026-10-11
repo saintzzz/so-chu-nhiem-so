@@ -62,10 +62,19 @@ async function run(req: NextRequest) {
   const runId = crypto.randomUUID();
   // F14: mot deadline tuyet doi cho CA invocation (enqueue + send).
   const deadlineAt = Date.now() + SEND_DEADLINE_MS;
+  // CR-049 r8 M12: tinh thu Hai tren lich VN, khong theo host TZ.
+  // getDay()/setDate() chay theo mui gio server (UTC tren Vercel) nen
+  // quanh nua dem VN ra sai tuan - anchor ngay VN vao +07:00 roi tru
+  // (dow+6)%7 ngay trong chinh lich VN.
   const weekStart = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return isoDateVN(d);
+    const vnToday = isoDateVN(new Date()); // YYYY-MM-DD theo lich VN
+    // Anchor ngay VN vao UTC-midnight: getUTCDay() tren instant do cho
+    // dung thu cua ngay lich VN (thuan date math, khong phu thuoc host).
+    const anchored = new Date(`${vnToday}T00:00:00Z`);
+    const dow = anchored.getUTCDay(); // thu trong tuan theo lich VN
+    const monday = new Date(anchored);
+    monday.setUTCDate(anchored.getUTCDate() - ((dow + 6) % 7));
+    return monday.toISOString().slice(0, 10);
   })();
 
   // CR-049 P3d: ?phase=enqueue (ghi queue) | send (drain queue) |
@@ -87,15 +96,21 @@ async function run(req: NextRequest) {
   // fetchAllRows tra error thay vi nuot - query loi phai dung run, khong gui
   // email khi thieu du lieu nguon.
   if (retryRun) {
-    const prev = await fetchAllRows<{ parent_id: string; attempts: number }>(
-      (f, t) =>
-        supabase
-          .from("digest_deliveries")
-          .select("parent_id, attempts")
-          .eq("run_id", retryRun)
-          .in("status", ["failed", "skipped"])
-          .order("id")
-          .range(f, t),
+    // CR-049 r8 M10: delivery failed cua run cu co week_start rieng -
+    // retry phai requeue dung cap (parent, week) do, khong dung tuan
+    // hien tai (se bo sot row cu va co the hoi sinh row tuan nay).
+    const prev = await fetchAllRows<{
+      parent_id: string;
+      attempts: number;
+      week_start: string;
+    }>((f, t) =>
+      supabase
+        .from("digest_deliveries")
+        .select("parent_id, attempts, week_start")
+        .eq("run_id", retryRun)
+        .in("status", ["failed", "skipped"])
+        .order("id")
+        .range(f, t),
     );
     if (prev.error) {
       console.error("[parent-digest] retry lookup failed:", prev.error);
@@ -105,11 +120,18 @@ async function run(req: NextRequest) {
     for (const r of prev.rows) prevAttempts.set(r.parent_id, r.attempts);
     // CR-049 r7 M8: PH da co outbox row (failed/skipped) khong qua
     // duoc pending-RPC -> flip ro rang sang 'queued' de sendPhase giao
-    // lai. 'sent' giu nguyen (RPC tu bao ve).
-    if (retryParents.size) {
+    // lai. 'sent' giu nguyen (RPC tu bao ve). Nhom theo tung week_start
+    // de requeue dung cap (parent, week).
+    const byWeek = new Map<string, string[]>();
+    for (const r of prev.rows) {
+      const arr = byWeek.get(r.week_start) ?? [];
+      arr.push(r.parent_id);
+      byWeek.set(r.week_start, arr);
+    }
+    for (const [week, ids] of byWeek) {
       const { error: retryErr } = await supabase.rpc(
         "scn_digest_retry_failed",
-        { p_week: weekStart, p_parent_ids: [...retryParents] },
+        { p_week: week, p_parent_ids: ids },
       );
       if (retryErr) {
         console.error("[parent-digest] retry requeue failed:", retryErr);

@@ -167,3 +167,103 @@ test("guard: moi route /api/ai deu qua generateText* (lop redact)", () => {
   }
   assert.deepEqual(bad, []);
 });
+
+// --- CR-049 r8: Unicode canonical equivalence (NFD vs NFC) -----------------
+test("r8 H5: ten NFD trong prompt van bi alias", () => {
+  const nfc = "Nguyễn Văn An";
+  const nfd = nfc.normalize("NFD");
+  assert.notEqual(nfc, nfd); // pre-condition: khac codepoint
+  const map = [{ name: nfc, alias: "HS001" }];
+  const out = pseudonymizeNames(`Nhan xet ve ${nfd} va ${nfc}`, map);
+  assert.equal(out, "Nhan xet ve HS001 va HS001");
+});
+
+test("r8 H5: roster NFD + prompt NFC cung khop", () => {
+  const map = [{ name: "Trần Thị Bé".normalize("NFD"), alias: "HS002" }];
+  const out = pseudonymizeNames("Diem cua Trần Thị Bé", map);
+  assert.equal(out, "Diem cua HS002");
+});
+
+// --- CR-049 r8 static guards ------------------------------------------------
+test("guard r8: routes gui free-text co roster pseudonymization", () => {
+  // daily-digest, period-log-summary (respondWithAi pii.names) va
+  // suggest-tasks (minimizePrompt truc tiep) deu phai qua schoolPiiNames.
+  for (const f of [
+    "src/app/api/ai/daily-digest/route.ts",
+    "src/app/api/ai/period-log-summary/route.ts",
+    "src/app/api/ai/suggest-tasks/route.ts",
+    "src/app/api/ai/advisor/route.ts",
+    "src/app/api/ai/warning-advice/route.ts",
+  ]) {
+    const src = read(f);
+    const hasRoster =
+      src.includes("schoolPiiNames") || src.includes("piiNames");
+    assert.ok(hasRoster, `${f} thieu roster PII names`);
+  }
+});
+
+test("guard r8: Devin fallback jobs deu mang piiMap khi co roster", () => {
+  for (const f of [
+    "src/app/api/ai/advisor/route.ts",
+    "src/app/api/ai/warning-advice/route.ts",
+    "src/app/api/ai/suggest-tasks/route.ts",
+  ]) {
+    const src = read(f);
+    assert.match(src, /fallbackToDevin\(\{[\s\S]*?piiMap/,
+      `${f}: fallbackToDevin thieu piiMap - async callback khong deanon duoc`);
+  }
+});
+
+test("guard r8: scn_save_grades reject NULL/empty/null-element arrays", () => {
+  const m = read("supabase/migrations/20261129_cr049_r8_fixes.sql");
+  assert.match(m, /p_student_ids is null/, "thieu NULL array check");
+  assert.match(m, /cardinality\(p_student_ids\) = 0/, "thieu empty check");
+  assert.match(m, /array_position\(p_student_ids, null\)/, "thieu null-element check");
+  assert.match(m, /is not true/, "authz phai IS TRUE (3-valued logic)");
+});
+
+test("guard r8: digest pending RPC loai email rong/khoang trang", () => {
+  const m = read("supabase/migrations/20261129_cr049_r8_fixes.sql");
+  assert.match(m, /nullif\(btrim\(p\.email\), ''\) is not null/,
+    "blank email van chiem scan slot");
+});
+
+test("guard r8: digest retry requeue theo week_start cua delivery", () => {
+  const src = read("src/app/api/cron/parent-digest/route.ts");
+  assert.match(src, /select\("parent_id, attempts, week_start"\)/,
+    "retry lookup phai lay week_start");
+  assert.match(src, /for \(const \[week, ids\] of byWeek\)/,
+    "retry phai group theo tung week");
+});
+
+test("guard r8: email deadline tuyet doi + config loi tra ket qua", () => {
+  const src = read("src/lib/email.ts");
+  assert.match(src, /const deadline = Date\.now\(\) \+ budgetMs/,
+    "phai la deadline tuyet doi, khong per-recipient");
+  assert.match(src, /deadline - Date\.now\(\)/,
+    "moi recipient chi lay budget con lai");
+  assert.match(src, /email_config_timeout|cfg = await Promise\.race/,
+    "config timeout phai tra structured result");
+});
+
+test("guard r8: weekStart tinh theo lich VN (UTC-midnight anchor)", () => {
+  const src = read("src/app/api/cron/parent-digest/route.ts");
+  assert.match(src, /T00:00:00Z/, "anchor ngay VN vao UTC-midnight");
+  assert.match(src, /getUTCDay\(\)/, "dow phai theo UTC cua ngay VN");
+});
+
+test("guard r8: radar loc diem theo academic_year cua lop", () => {
+  const src = read("src/lib/school/radar.ts");
+  assert.match(src, /academic_year_id/, "grades phai mang academic_year_id");
+  assert.match(src, /yearGrades/, "phai filter yearGrades truoc lowGrade");
+});
+
+test("guard r8: grades page bracket state read truoc + sau fetch", () => {
+  const src = read("src/app/(app)/academics/grades/page.tsx");
+  const s0 = src.indexOf("const s0 = await readState()");
+  const s1 = src.indexOf("const s1 = await readState()");
+  const fetch = src.indexOf("fetchAllRows<GradeRow>");
+  assert.ok(s0 >= 0 && fetch > s0 && s1 > fetch,
+    "phai doc state truoc + sau fetch grades");
+  assert.match(src, /if \(s0 === s1\) break/, "state doi phai retry");
+});

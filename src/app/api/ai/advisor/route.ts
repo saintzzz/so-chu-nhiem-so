@@ -31,22 +31,42 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 
-  const { data: classes } = await supabase
+  // CR-049 r8 H3: ca 2 lookup ban dau phai fail-closed + paginate -
+  // classIds rong ao se tat roster lookup (piiNames trong -> lo ten)
+  // va tra so lieu "0" co that quyen.
+  const { data: classes, error: clsErr } = await supabase
     .from("classes")
     .select("id,name")
     .eq("school_id", sid)
     .eq("status", "active");
+  if (clsErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   const cls = (classes ?? []) as { id: string; name: string }[];
   const classIds = cls.map((c) => c.id);
 
-  const { data: students } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id")
-        .in("class_id", classIds)
-        .eq("status", "active")
-    : { data: [] };
-  const studentIds = ((students ?? []) as { id: string }[]).map((s) => s.id);
+  const stuInit = classIds.length
+    ? await fetchAllRows<{ id: string; class_id: string }>((f, t) =>
+        supabase
+          .from("students")
+          .select("id,class_id")
+          .in("class_id", classIds)
+          .eq("status", "active")
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { id: string; class_id: string }[], error: null, truncated: false };
+  if (stuInit.error || stuInit.truncated) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const students = stuInit.rows;
+  const studentIds = students.map((s) => s.id);
 
   const today = todayVN();
   const [
@@ -222,6 +242,7 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
         supabase,
         kind: "advisor",
         prompt: safePrompt,
+        piiMap: piiNames,
         expectedShape: '{"answer": "trả lời ngắn gọn"}',
         createdBy: profile.id,
         req,

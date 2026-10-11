@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -110,11 +111,21 @@ export async function POST(req: Request) {
     }),
   };
 
+  // CR-049 r8 H4: ghi chu so dau bai la free-text co the chua ten HS.
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
     profile,
     kind: "period-log-summary",
+    pii: { names: roster.names },
     system:
       "Bạn là trợ lý tổng hợp sổ đầu bài cho GVCN/BGH trường THCS. Tóm tắt ngắn gọn theo số liệu. Không emoji.",
     prompt: `Tóm tắt sổ đầu bài gần nhất của lớp (JSON): ${JSON.stringify(facts)}.

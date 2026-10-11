@@ -109,6 +109,7 @@ Chi tiết: ${warn.detail ?? "-"}
         supabase,
         kind: "warning-advice",
         prompt: safePrompt,
+        piiMap: piiNames,
         expectedShape: '{"suggestion": "2-3 việc xử lý cụ thể"}',
         createdBy: profile.id,
         req,

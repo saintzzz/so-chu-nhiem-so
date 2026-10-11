@@ -121,3 +121,32 @@ source-confirmed -> fix het.
 - Migration `20261128_cr049_r7_fixes.sql` applied; CAS smoke tren prod
   qua JWT claims: `denied=t reload_save_ok=t stale_blocked=t`
 - Playwright prod: login + grades + /dept denial OK
+
+---
+
+## Round 8 - Codex Cloud on c76e4d0 (2026-11-29)
+
+Raw report: `docs/reviews/codex-cloud-report-cr049-r8-raw.txt`
+Verdict: **NOT-CLEAN - 12 findings (5 HIGH / 7 MEDIUM)**
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | `p_student_ids: NULL` bypass authz (unnest(NULL)=0 rows, 3-valued NULL membership) | **Fixed** - reject NULL/empty/null-element arrays; authz + payload membership yeu cau `IS TRUE` | prod `null_ids_denied=t` |
+| 2 | H | Grades + state doc rieng -> snapshot R1 + revision R2 -> CAS bi vo hieu | **Fixed** - bracket read: doc state truoc+sau fetch, retry toi da 3 lan khi state doi | test guard |
+| 3 | H | advisor bo loi lookup classes/students dau vao -> roster rong (ten that qua) + so lieu ao | **Fixed** - fail-closed 500 + `fetchAllRows` paginate | source |
+| 4 | H | daily-digest / period-log-summary / suggest-tasks gui free-text chua ten HS | **Fixed** - helper `schoolPiiNames` (roster fail-closed); `pii.names` cho respondWithAi; `minimizePrompt` + deanon cho suggest-tasks | test guard |
+| 5 | H | Ten NFD (canonical-equivalent) lo pseudonymize | **Fixed** - `normalize("NFC")` ca text lan roster names | 2 unit tests |
+| 6 | M | advisor/warning Devin jobs thieu `piiMap` -> callback tra alias HS001 cho user | **Fixed** - truyen `piiMap` vao `fallbackToDevin` (ca suggest-tasks) | test guard |
+| 7 | M | `leftMs` per-recipient -> tong thoi gian vuot budget | **Fixed** - `deadline` tuyet doi, moi recipient lay phan con lai, break khi het | test guard |
+| 8 | M | config timeout `throw` -> Promise.all reject -> rows ket 'sending' | **Fixed** - tra structured `{sent:0, failed:n, error}` | test guard |
+| 9 | M | Email `''`/khoang trang chiem scan slot 20k | **Fixed** - RPC loai `nullif(btrim(email),'')` | prod + test guard |
+| 10 | M | `?retry=` goi RPC voi weekStart hien tai | **Fixed** - select `week_start`, group theo tung tuan, requeue dung cap (parent, week) | test guard |
+| 11 | M | Radar tron diem cac nam hoc | **Fixed** - select `academic_year_id`, filter `(NULL or = class year)` truoc `lowGradeStudentIds` | test guard |
+| 12 | M | weekStart tinh theo host TZ + format VN -> sai tuan quanh nua dem | **Fixed** - anchor ngay VN vao UTC-midnight, `getUTCDay()` | test guard |
+
+### Gates r8
+
+- typecheck: PASS | lint: 0 errors (136 warnings) | tests: 168/168
+- build: PASS | check-consistency: PASS
+- prod verify: `null_ids_denied=t` (NULL-array exploit bi chan)
+- migration: `20261129_cr049_r8_fixes.sql` (r7 file revert - append-only)

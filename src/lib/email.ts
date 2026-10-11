@@ -101,15 +101,27 @@ export async function sendEmail(input: {
   // CR-049 r7 M9: budget ap dung cho ca config lookup (Vault RPC) lan
   // transport - config treo khong duoc an het deadline cua worker.
   const budgetMs = Math.max(1_000, input.timeoutMs ?? 15_000);
-  const startedAt = Date.now();
-  const { provider, key, from: fromRaw } = await Promise.race([
-    getEmailConfig(),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("email_config_timeout")), budgetMs),
-    ),
-  ]);
-  const leftMs = Math.max(1_000, budgetMs - (Date.now() - startedAt));
+  const deadline = Date.now() + budgetMs;
   const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
+  // CR-049 r8 M8: config timeout/failure phai tra ket qua co cau truc -
+  // throw lam reject Promise.all cua caller va mat log delivery cho ca
+  // batch, de row outbox ket o 'sending'.
+  let cfg: EmailConfig;
+  try {
+    cfg = await Promise.race([
+      getEmailConfig(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("email_config_timeout")), budgetMs),
+      ),
+    ]);
+  } catch (e) {
+    return {
+      sent: 0,
+      failed: to.length,
+      error: e instanceof Error ? e.message : "email_config_timeout",
+    };
+  }
+  const { provider, key, from: fromRaw } = cfg;
   if (!to.length) return { sent: 0, failed: 0, skipped: true };
   if (!key) return { sent: 0, failed: 0, skipped: true };
 
@@ -119,6 +131,13 @@ export async function sendEmail(input: {
   const ids: Record<string, string> = {};
   // Send individually so one bad address doesn't block others.
   for (const addr of to) {
+    // CR-049 r8 M7: deadline tuyet doi cho ca vong lap - moi recipient
+    // chi lay phan budget con lai, khong reset per-recipient.
+    const leftMs = deadline - Date.now();
+    if (leftMs <= 0) {
+      lastError = "email_deadline_exceeded";
+      break;
+    }
     try {
       const res = await fetch(provider === "brevo" ? BREVO_URL : RESEND_URL, {
         method: "POST",

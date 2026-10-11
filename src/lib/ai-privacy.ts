@@ -42,10 +42,14 @@ export interface PiiName {
  *  Unicode - "nguyen van an" (thuong) van bi alias, con "An" trong
  *  "Anh" khong bi an nham. */
 export function pseudonymizeNames(text: string, names: PiiName[]): string {
-  const sorted = [...names].sort((a, b) => b.name.length - a.name.length);
-  let out = text;
+  // CR-049 r8 H5: canonical-equivalence bypass - input NFD ("Nguyễn")
+  // khong match ten NFC trong roster; chuan hoa ca hai ve NFC.
+  const sorted = [...names]
+    .filter((n) => n.name && n.alias)
+    .map((n) => ({ name: n.name.normalize("NFC"), alias: n.alias }))
+    .sort((a, b) => b.name.length - a.name.length);
+  let out = text.normalize("NFC");
   for (const n of sorted) {
-    if (!n.name || !n.alias) continue;
     const esc = n.name
       .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
       // whitespace linh hoat: "Nguyen  Van  An" (2 spaces) van khop

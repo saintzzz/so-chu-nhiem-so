@@ -81,6 +81,7 @@ type RadarGradeRow = GradeComponent & {
   student_id: string;
   subject_id: string;
   term: string;
+  academic_year_id: string | null;
 };
 
 /**
@@ -100,13 +101,13 @@ export async function buildRadarData(
   };
   const { data: classRows, error: classErr } = await supabase
     .from("classes")
-    .select("id,name,campus_id")
+    .select("id,name,campus_id,academic_year_id")
     .eq("school_id", profile.school_id ?? "")
     .order("name");
   if (classErr) fail("classes", classErr.message);
   let classes = (classRows ?? []) as Pick<
     ClassRoom,
-    "id" | "name" | "campus_id"
+    "id" | "name" | "campus_id" | "academic_year_id"
   >[];
   // PHT chưa phân công campus -> fail-closed, không đọc toàn trường.
   if (hasRole(profile, "pht")) {
@@ -172,7 +173,7 @@ export async function buildRadarData(
       ? fetchAllRows<RadarGradeRow>((f, t) =>
           supabase
             .from("grades")
-            .select("student_id,subject_id,term,assessment_type,score,students!inner(class_id)")
+            .select("student_id,subject_id,term,assessment_type,score,academic_year_id,students!inner(class_id)")
             .in("students.class_id", classIds)
             .order("id")
             .range(f, t),
@@ -210,8 +211,18 @@ export async function buildRadarData(
   if (counselingRes.error) fail("counseling", counselingRes.error.message);
 
   const unexcused = attRes.rows;
+  // CR-049 r8 M11: diem khong filter nam hoc se tron lich su + hien tai
+  // (HK2 cu co the at canh bao HK1 moi). Chi giu row NULL-legacy hoac
+  // dung nam hoc cua lop HS do.
+  const yearOfClass = new Map(
+    classes.map((c) => [c.id, c.academic_year_id ?? null]),
+  );
+  const yearGrades = gradeRes.rows.filter((g) => {
+    const yr = yearOfClass.get(classOfStudent.get(g.student_id) ?? "");
+    return g.academic_year_id == null || g.academic_year_id === yr;
+  });
   // Nhom diem theo (HS, mon, ky) - ky moi nhat quyet dinh, bat bien thu tu hang.
-  const lowGradeStudents = lowGradeStudentIds(gradeRes.rows);
+  const lowGradeStudents = lowGradeStudentIds(yearGrades);
   const incidents = incidentRes.data ?? [];
   const cases = counselingRes.data ?? [];
 

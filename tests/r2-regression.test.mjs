@@ -521,8 +521,13 @@ test("R5-01: radar grades query select term va dung lowGradeStudentIds", () => {
   assert.match(radar,
     /select\("student_id,subject_id,term,assessment_type,score/,
     "grades query phai select term de tach hoc ky");
-  assert.match(radar, /lowGradeStudentIds\(gradeRes\.rows\)/,
-    "phai gom theo (HS, mon, ky) qua ham thuan");
+  // CR-049 r8 M11: radar loc diem theo nam hoc cua lop HS truoc khi gom
+  // (yearGrades = NULL-legacy + dung nam hoc) - khong loc thi diem cu
+  // nam truoc at canh bao nam nay.
+  assert.match(radar, /lowGradeStudentIds\(yearGrades\)/,
+    "phai gom theo (HS, mon, ky) qua ham thuan tren tap da loc nam");
+  assert.match(radar, /academic_year_id/,
+    "grades query phai select academic_year_id de loc nam");
 });
 
 // --- R5-02: radar khong nuot loi nguon -------------------------------------
@@ -2176,8 +2181,10 @@ test("R14-01: grades page check moi loi nguon + gate GradesEditor", () => {
   // check CA error LAN truncated: truncate = du lieu thieu = cam editor.
   assert.match(src, /fetchAllRows<GradeRow>\(\(f, t\) =>[\s\S]*?from\("grades"\)[\s\S]*?\.order\("id"\)[\s\S]*?\.range\(f, t\)/,
     "grades query phai dung fetchAllRows + order id on dinh");
-  assert.match(src, /gradesRes\.error/, "gradesRes.error chua duoc kiem");
-  assert.match(src, /gradesRes\.truncated/, "gradesRes.truncated chua duoc kiem");
+  // CR-049 r8 H2: grades fetch nam trong bracket state-read (snapshot
+  // consistency) - error/truncated gop vao gradesResError de gate editor.
+  assert.match(src, /gr\.error \?\? \(gr\.truncated/, "grades fetch error/truncated chua duoc kiem");
+  assert.match(src, /gradesResError/, "gradesResError chua duoc dung");
   assert.match(src, /const loadError = srcErrors\.length > 0/);
   assert.match(src, /console\.error\(/,
     "loi nguon phai console.error chi tiet server-side");

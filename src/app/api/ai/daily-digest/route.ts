@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { todayVN } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
 
@@ -78,11 +79,22 @@ export async function POST(req: Request) {
     })),
   };
 
+  // CR-049 r8 H4: noi dung bao cao lop la free-text co the chua ten HS -
+  // an danh hoa theo roster truong truoc khi gui provider (fail-closed).
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
     profile,
     kind: "daily-digest",
+    pii: { names: roster.names },
     system:
       "Bạn là trợ lý tổng hợp báo cáo ngày cho Ban Giám Hiệu trường THCS. Gộp các báo cáo lớp thành bản tin ngắn cho lãnh đạo đọc nhanh. Không emoji.",
     prompt: `Gộp báo cáo ngày của các lớp thành bản tin cho BGH (JSON): ${JSON.stringify(facts)}.

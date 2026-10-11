@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText } from "@/lib/ai-privacy";
+import { redactPiiText, minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
@@ -59,9 +60,20 @@ Công việc đã có (không được trùng): ${JSON.stringify([...existing])}
 
 Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
 
+  // CR-049 r8 H4: tieu de task/su kien co the chua ten HS - an danh hoa
+  // theo roster truoc ca provider lan Devin (fail-closed).
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const safePrompt = minimizePrompt(prompt, roster.names);
+
   const quotaOk = await takeAiQuota("suggest-tasks", profile.id);
   const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(prompt, {
+    ? await generateTextDetailed(safePrompt, {
         system:
           "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
         maxTokens: 1500,
@@ -76,7 +88,8 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
       const job = await fallbackToDevin({
         supabase,
         kind: "suggest-tasks",
-        prompt: redactPiiText(`Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${prompt}`),
+        prompt: redactPiiText(`Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${safePrompt}`),
+        piiMap: roster.names,
         expectedShape: '[{"title": "...", "due_date": "YYYY-MM-DD"}]',
         createdBy: profile.id,
         req,
@@ -105,7 +118,11 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
           t.due_date >= today &&
           !existing.has(t.title),
       )
-      .slice(0, 10);
+      .slice(0, 10)
+      .map((t) => ({
+        ...t,
+        title: deanonymizeNames(t.title, roster.names),
+      }));
   } catch {
     parsed = [];
   }

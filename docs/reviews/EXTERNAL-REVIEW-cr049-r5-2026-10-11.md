@@ -52,7 +52,16 @@
 - `ai_jobs.pii_map` luu mapping ten<->alias trong DB noi bo (can thiet cho
   async deanonymize; khong gui ra provider).
 
+## Codex r6 (review tiep theo, commit b877b8e) - ket qua giua chung
+
+Task bi gioi han usage giua chung, nhung 2 provisional findings da duoc
+doc lap verify + fix ngay (commit `74a5e86`):
+
+| Finding | Verify | Fix |
+|---------|--------|-----|
+| `scn_save_grades` con 3 overloads - editor gui 5 named params bind vao ban 5-param KHONG co advisory lock / year-scope (H4/H5 bi bypass tren chinh duong app dung) | prod `pg_proc`: 3 sigs ton tai; editor chi gui 5 params | `drop function` ca 2 overload cu; chi con 6-param; `CHECK:5ARG_BIND_OK` |
+| Nguong DDGtx lech van ban TT22 | TT22/2021 D9.2 tinh theo TIET/NAM: <=35t->2, >35-70t->3, >70t->4 (= tiet/tuan <=1->2, =2->3, >=3->4 voi nam 35 tuan) | `requiredTxCount` sua thanh <=1->2, <=2->3, >2->4; comment col `weekly_periods` cap nhat |
+
 ## Next
 
-- Commit + push -> Vercel deploy -> smoke phase=send (queue rong) -> nop
-  Codex Cloud round tiep theo tren commit moi.
+- Round review tiep theo tren `74a5e86` sau khi Codex reset quota.

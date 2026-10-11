@@ -866,3 +866,22 @@ test("guard r19: suggest-tasks + devin-callback tach loi DB", () => {
   const cb = read("src/app/api/ai/devin-callback/route.ts");
   assert.match(cb, /failErr/, "bad_doc UPDATE phai check error - job khong duoc treo pending");
 });
+
+test("guard r20: fallbackToDevin + allocator + email + review notify deu fail-closed loi DB", () => {
+  const dv = read("src/lib/devin.ts");
+  assert.match(dv, /insErr/, "INSERT ai_jobs phai check error - khong bien thanh fallback thuong");
+  assert.match(dv, /failErr/, "UPDATE status=failed phai check error - job khong treo pending");
+  assert.match(dv, /linkErr/, "UPDATE session_url phai check error - job phai link duoc session");
+  const tv = read("src/lib/tvc/actions.ts");
+  assert.match(tv, /stdErr/, "allocateQuestionCodes phai check loi SELECT chuan");
+  assert.match(tv, /pgErr/, "allocateQuestionCodes phai check loi tung trang codes");
+  assert.match(tv, /"error" in alloc/, "insertQuestionsWithCodes dung truoc INSERT khi allocator loi");
+  assert.match(tv, /matErr/, "reviewMaterial phai check loi lookup tac gia");
+  assert.match(tv, /notiErr/, "reviewMaterial phai check loi INSERT notification");
+  const em = read("src/lib/email.ts");
+  assert.match(em, /get_email_config/, "email doc config qua RPC");
+  assert.match(em, /lookupErr/, "loi RPC email khong duoc cache - lan sau doc lai Vault");
+  assert.match(em, /email_config:/, "loi config phai tra error gui, khong phai skipped");
+  const ex = read("src/app/api/studio/questions/extract/route.ts");
+  assert.match(ex, /topic: deanonymizeNames/, "topic phai deanon nhu cac truong khac");
+});

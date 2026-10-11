@@ -195,14 +195,19 @@ export async function reviewMaterial(
   });
   if (error) return { error: "Không cập nhật được." };
   if (data?.error) return { error: data.error as string };
-  // Thong bao ket qua duyet cho tac gia
-  const { data: mat } = await supabase
+  // Thong bao ket qua duyet cho tac gia - r20 M: ca lookup tac gia lan
+  // INSERT notification deu khong duoc bo error roi tra ok gia.
+  const { data: mat, error: matErr } = await supabase
     .from("tvc_materials")
     .select("author_id, title")
     .eq("id", id)
     .single();
+  if (matErr && matErr.code !== "PGRST116") {
+    console.error("[tvc] review material lookup:", matErr.message);
+    return { error: "Đã duyệt, nhưng không tra được tác giả để gửi thông báo." };
+  }
   if (mat?.author_id) {
-    await supabase.from("notifications").insert({
+    const { error: notiErr } = await supabase.from("notifications").insert({
       profile_id: mat.author_id,
       type: "material_review",
       title:
@@ -210,6 +215,10 @@ export async function reviewMaterial(
       body: `"${mat.title}" - ${decision === "approve" ? "đã qua bước duyệt" : "cần chỉnh sửa"}${note ? `: ${note}` : ""}`,
       link: `/studio/library/${id}`,
     });
+    if (notiErr) {
+      console.error("[tvc] review notification:", notiErr.message);
+      return { error: "Đã duyệt, nhưng gửi thông báo cho tác giả thất bại." };
+    }
   }
   await audit("material.review", "material", id, { decision });
   revalidatePath(`/studio/library/${id}`);
@@ -233,18 +242,29 @@ async function allocateQuestionCodes(
   supabase: SupabaseLike,
   ownerId: string,
   items: { standardIds: string[]; qtype: string }[],
-): Promise<(string | null)[]> {
-  const { data: stds } = await supabase
+): Promise<{ codes: (string | null)[] } | { error: string }> {
+  // r20 M: loi SELECT khong duoc bien thanh du lieu rong - map chuan
+  // rong => code null; trang codes loi => coi nhu het du lieu => trung
+  // seq hoac thieu code. Tra loi, dung truoc INSERT.
+  const { data: stds, error: stdErr } = await supabase
     .from("tvc_curriculum_standards")
     .select("id,code");
+  if (stdErr) {
+    console.error("[tvc] alloc standards:", stdErr.message);
+    return { error: "Không tải được chuẩn YCCĐ để cấp mã." };
+  }
   const existing: { code: string | null }[] = [];
   for (let off = 0; ; off += 1000) {
-    const { data: page } = await supabase
+    const { data: page, error: pgErr } = await supabase
       .from("tvc_questions")
       .select("code")
       .eq("owner_id", ownerId)
       .not("code", "is", null)
       .range(off, off + 999);
+    if (pgErr) {
+      console.error("[tvc] alloc codes page:", pgErr.message);
+      return { error: "Không tải được mã câu hỏi hiện có." };
+    }
     if (!page?.length) break;
     existing.push(...(page as { code: string | null }[]));
     if (page.length < 1000) break;
@@ -258,7 +278,7 @@ async function allocateQuestionCodes(
       .filter((c): c is string => Boolean(c)),
   );
   const nextSeq = new Map<string, number>();
-  return items.map((it) => {
+  const codes = items.map((it) => {
     const stdCode = it.standardIds[0] ? codeById.get(it.standardIds[0]) : null;
     if (!stdCode) return null;
     const prefix = `${stdCode}-${QTYPE_LETTER[it.qtype] ?? "D"}`;
@@ -281,6 +301,7 @@ async function allocateQuestionCodes(
     nextSeq.set(prefix, seq);
     return code;
   });
+  return { codes };
 }
 
 // Insert cau hoi kem cap ma; retry khi trung unique (owner_id, code) do race.
@@ -290,7 +311,10 @@ async function insertQuestionsWithCodes(
   rows: ({ standardIds: string[]; qtype: string } & Record<string, unknown>)[],
 ): Promise<{ error?: string }> {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const codes = await allocateQuestionCodes(supabase, ownerId, rows);
+    const alloc = await allocateQuestionCodes(supabase, ownerId, rows);
+    // r20 M: loi lookup nguon -> dung truoc INSERT, khong retry.
+    if ("error" in alloc) return { error: alloc.error };
+    const codes = alloc.codes;
     const { error } = await supabase
       .from("tvc_questions")
       .insert(

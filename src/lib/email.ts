@@ -39,6 +39,9 @@ interface EmailConfig {
   provider: string;
   key: string | undefined;
   from: string;
+  // r20 M: loi tra cuu Vault (khong phai "chua cau hinh") - caller bao
+  // loi gui thay vi skipped, va KHONG duoc cache de lan sau doc lai.
+  error?: string;
 }
 
 let cachedConfig: EmailConfig | null = null;
@@ -60,33 +63,48 @@ async function getEmailConfig(): Promise<EmailConfig> {
       from: process.env.EMAIL_FROM ?? "VieSchool <no-reply@vieschool.com>",
     };
   }
+  let lookupErr: string | undefined;
   if (!cachedConfig) {
     try {
       const { createAdminClient } = await import("@/lib/supabase/admin");
-      const { data } = await createAdminClient().rpc("get_email_config");
-      const cfg = data as
-        | { provider?: string; api_key?: string; from?: string }
-        | null;
-      cachedConfig = {
-        provider: (cfg?.provider ?? "brevo").toLowerCase(),
-        key: cfg?.api_key ?? undefined,
-        from: cfg?.from ?? "VieSchool <no-reply@vieschool.com>",
-      };
-    } catch {
-      cachedConfig = {
-        provider: "brevo",
-        key: undefined,
-        from: "VieSchool <no-reply@vieschool.com>",
-      };
+      const { data, error } = await createAdminClient().rpc(
+        "get_email_config",
+      );
+      if (error) {
+        // r20 M: RPC loi = loi tam - KHONG cache, lan goi sau doc lai
+        // Vault (DB co the da phuc hoi).
+        console.error("[email] get_email_config:", error.message);
+        lookupErr = error.message;
+      } else {
+        const cfg = data as
+          | { provider?: string; api_key?: string; from?: string }
+          | null;
+        cachedConfig = {
+          provider: (cfg?.provider ?? "brevo").toLowerCase(),
+          key: cfg?.api_key ?? undefined,
+          from: cfg?.from ?? "VieSchool <no-reply@vieschool.com>",
+        };
+      }
+    } catch (e) {
+      console.error("[email] get_email_config threw:", e);
+      lookupErr = e instanceof Error ? e.message : String(e);
     }
   }
-  if (cachedConfig.key) return cachedConfig;
+  const base: EmailConfig = cachedConfig ?? {
+    provider: "brevo",
+    key: undefined,
+    from: "VieSchool <no-reply@vieschool.com>",
+  };
+  if (base.key) return base;
   // Vault unreachable/unconfigured - last-resort env keys.
   const key = process.env.BREVO_API_KEY ?? process.env.RESEND_API_KEY;
   return {
     provider: process.env.BREVO_API_KEY ? "brevo" : "resend",
     key,
-    from: process.env.EMAIL_FROM ?? cachedConfig.from,
+    from: process.env.EMAIL_FROM ?? base.from,
+    // Khong co env key ma lookup Vault loi => caller phai biet day la
+    // loi tam (500-retry duoc), khong phai "chua cau hinh email".
+    error: key ? undefined : lookupErr,
   };
 }
 
@@ -133,7 +151,14 @@ export async function sendEmail(input: {
   }
   const { provider, key, from: fromRaw } = cfg;
   if (!to.length) return { sent: 0, failed: 0, skipped: true };
-  if (!key) return { sent: 0, failed: 0, skipped: true };
+  // r20 M: loi tra cuu config phai no ra error - caller (outbox/digest)
+  // biet de retry thay vi ghi nhan "skipped" nhu the chua cau hinh.
+  if (!key) {
+    if (cfg.error) {
+      return { sent: 0, failed: to.length, error: `email_config: ${cfg.error}` };
+    }
+    return { sent: 0, failed: 0, skipped: true };
+  }
 
   const from = parseFrom(fromRaw);
   let sent = 0;

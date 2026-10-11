@@ -146,7 +146,7 @@ export async function fallbackToDevin(params: {
   const { createHash, randomUUID } = await import("node:crypto");
   const token = randomUUID();
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  const { data: job } = await supabase
+  const { data: job, error: insErr } = await supabase
     .from("ai_jobs")
     .insert({
       kind,
@@ -158,6 +158,12 @@ export async function fallbackToDevin(params: {
     })
     .select("id")
     .single();
+  // r20 M: loi INSERT phai no 500 - khong bien thanh "fallback khong
+  // kha dung" (caller tra null nhu the provider error).
+  if (insErr) {
+    console.error("[devin-fallback] job insert:", insErr.message);
+    throw new Error(`ai_jobs insert failed: ${insErr.message}`);
+  }
   const row = job as { id?: string } | null;
   if (!row?.id) return null;
 
@@ -172,12 +178,27 @@ export async function fallbackToDevin(params: {
     params.timeoutMs,
   );
   if (!session) {
-    await supabase.from("ai_jobs").update({ status: "failed" }).eq("id", row.id);
+    // r20 M: neu ca UPDATE failed cung loi, job treo pending mai -
+    // phai no 500 de caller biet, khong tra null nhu fallback sach.
+    const { error: failErr } = await supabase
+      .from("ai_jobs")
+      .update({ status: "failed" })
+      .eq("id", row.id);
+    if (failErr) {
+      console.error("[devin-fallback] mark failed:", failErr.message);
+      throw new Error(`ai_jobs fail-update failed: ${failErr.message}`);
+    }
     return null;
   }
-  await supabase
+  // r20 M: UPDATE session_url loi -> job khong link duoc session nhung
+  // route van bao pending - phai no 500.
+  const { error: linkErr } = await supabase
     .from("ai_jobs")
     .update({ session_url: session.url })
     .eq("id", row.id);
+  if (linkErr) {
+    console.error("[devin-fallback] session_url:", linkErr.message);
+    throw new Error(`ai_jobs session-link failed: ${linkErr.message}`);
+  }
   return { jobId: row.id, devinUrl: session.url };
 }

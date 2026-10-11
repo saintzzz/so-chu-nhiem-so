@@ -1,0 +1,109 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day l…
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 17a73c1 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+REVIEW ROUND 11 - security/privacy verification pass on com…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Review repo saintzzz/so-chu-nhiem-so tai commit bedef17 (ma…
+Review repo saintzzz/so-chu-nhiem-so tai commit b877b8e (br…
+WHOLE-REPOSITORY REVIEW - ROUND 4 (verification round). Rep…
+You are reviewing the repository at commit 4e39cb3 (master)…
+Confirmation review (round 3). The attached workspace is th…
+Confirmation review (round 3) of student-self-practice-web…
+Linh Le Duy
+Plus
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day la vong REVIEW DOC LAP thu 20 - xac nhan CUOI. 19 vong truoc da triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Thay doi r19:
+
+src/lib/auth.ts + permissions.ts: getProfile/requireProfile/hasFeature gio throw tren loi DB (->500) thay vi null/false. Kiem: co call site nao bi vo boi throw moi (catch sai, page khong co error boundary, middleware)? Con duong nao loi DB -> sai trang thai?
+
+suggest-tasks class lookup tach PGRST116; devin-callback UPDATE failed da check error. Kiem: con UPDATE/INSERT/SELECT nao bo error truoc response/mutation?
+
+Sweep cuoi toan bo src/app/api + src/lib: bat ky .single()/.maybeSingle()/rpc/update/insert/select nao bo error hoac map sai sang 4xx; bat ky alias/PII/RLS/SECURITY DEFINER con sot.
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+1:35 AM
+Worked for 2m 54s
+ChatGPT said:
+
+Review tại 1337d6e68b6b62a30e82ec449913bef25586e0cf, không sửa code. Có 5 finding chứng minh được từ source:
+
+MEDIUM — src/lib/devin.ts:149,175,178 — 
+Source
+fallbackToDevin bỏ error của INSERT job và cả hai UPDATE. INSERT lỗi bị biến thành fallback thông thường; nếu tạo session thất bại rồi UPDATE failed cũng lỗi, job vẫn pending dù không có session xử lý. UPDATE session_url lỗi vẫn trả kết quả thành công.
+Fix tối thiểu: kiểm tra error từng mutation, xác nhận UPDATE có row và propagate lỗi DB về 500.
+
+MEDIUM — src/lib/tvc/actions.ts:237,242 — 
+Source
+allocateQuestionCodes bỏ lỗi SELECT chuẩn và các trang mã hiện có. SELECT chuẩn lỗi → map rỗng → mã câu hỏi thành null; SELECT một trang lỗi → coi như hết dữ liệu. insertQuestionsWithCodes vẫn tiếp tục INSERT dựa trên kết quả thiếu này.
+Fix tối thiểu: trả lỗi ngay từ allocator khi bất kỳ SELECT nào thất bại; dừng trước INSERT.
+
+MEDIUM — src/lib/email.ts:66–80 — 
+Source
+RPC get_email_config lỗi bị bỏ qua rồi cache cấu hình không có key. Với cấu hình email chỉ nằm trong Vault, một lỗi DB tạm thời khiến sendEmail trả skipped; các lần gửi tiếp theo trong cùng module instance không đọc lại Vault, kể cả DB đã hồi phục. Nhánh catch cũng cache thất bại tương tự.
+Fix tối thiểu: kiểm tra RPC error, không cache lookup thất bại; nếu không có cấu hình env dự phòng hợp lệ, trả lỗi gửi thay vì skipped.
+
+MEDIUM — src/lib/tvc/actions.ts:199–217 — 
+Source
+Sau RPC duyệt học liệu thành công, SELECT tác giả và INSERT notifications đều bỏ lỗi. Nếu một trong hai thất bại, tác giả không nhận thông báo nhưng action vẫn trả { ok: true }.
+Fix tối thiểu: kiểm tra cả hai kết quả và báo rõ “đã duyệt, gửi thông báo thất bại”; để đảm bảo nguyên tử, chuyển INSERT thông báo vào transaction RPC duyệt.
+
+LOW — src/app/api/studio/questions/extract/route.ts:257,268–275 — 
+Source
+Output trực tiếp chỉ deanonymize stem, context, answer, solution, bỏ topic. Khi model trả alias của tên trong input ở topic, response vẫn chứa sentinel ⟦…·nonce⟧. Nhánh callback dùng deanonymizeDeep, nên hai đường trả kết quả không nhất quán.
+Fix tối thiểu: deanonymize thêm topic bằng usedNames.
+
+Không xác nhận regression do throw mới của getProfile/requireProfile/hasFeature: proxy không gọi chúng, các call site kiểm tra được không catch thành lỗi quyền, và app có error boundary. Hai sửa đổi r19 ở suggest-tasks và devin-callback đã kiểm tra lỗi DB như mô tả. Không có thêm finding PII/RLS/SECURITY DEFINER đủ bằng chứng để báo cáo.
+
+VERDICT: NOT-CLEAN
+
+1:38 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++56,399
+-4,377
+Outputs
+Create a file or site

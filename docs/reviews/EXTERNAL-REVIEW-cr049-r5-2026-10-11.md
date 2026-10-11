@@ -448,3 +448,28 @@ Raw report: `docs/reviews/codex-r19-report.txt`
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 72/72 dedicated
 - `check-consistency` PASS | `npm run build` PASS (126 pages)
 - Khong co migration moi trong r19 (thuan code fixes)
+
+---
+
+## Round 20 (Codex Cloud @ 1337d6e) - NOT-CLEAN: 5 findings (0H/4M/1L)
+
+Raw report: `docs/reviews/codex-r20-report.txt`
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | M | fallbackToDevin bo error INSERT ai_jobs + 2 UPDATE (failed/session_url): INSERT loi -> fallback thuong; UPDATE loi -> job treo pending hoac session khong link | **Fixed** - insErr/failErr/linkErr throw -> 500 | src/lib/devin.ts |
+| 2 | M | allocateQuestionCodes bo loi SELECT chuan + trang codes -> code null hoac coi nhu het du lieu, INSERT van chay | **Fixed** - stdErr/pgErr -> {error}, insertQuestionsWithCodes dung truoc INSERT | src/lib/tvc/actions.ts |
+| 3 | M | get_email_config RPC loi bi bo qua + cache config khong key -> sendEmail skipped mai du DB phuc hoi | **Fixed** - khong cache lookup loi; loi config -> error gui (retry duoc), khong phai skipped | src/lib/email.ts |
+| 4 | M | reviewMaterial bo loi SELECT tac gia + INSERT notifications -> tra ok:true nhung tac gia khong nhan thong bao | **Fixed** - matErr/notiErr -> bao "da duyet, gui thong bao that bai" | src/lib/tvc/actions.ts |
+| 5 | L | extract route deanon stem/context/answer/solution nhung bo topic -> sentinel alias co the sot trong output | **Fixed** - deanon topic bang usedNames | extract/route.ts |
+
+### Ghi nhan khong phai finding
+
+- Khong xac nhan regression do throw moi cua getProfile/requireProfile/hasFeature (proxy khong goi, call site khong catch thanh quyen, co error boundary).
+- Khong them finding PII/RLS/SECURITY DEFINER du bang chung.
+
+### Gates r20
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 73/73 dedicated
+- `check-consistency` PASS | `npm run build` PASS (126 pages)
+- Khong co migration moi trong r20 (thuan code fixes)

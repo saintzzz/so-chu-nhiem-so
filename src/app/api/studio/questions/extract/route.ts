@@ -273,6 +273,9 @@ export async function POST(req: Request) {
             context: deanonymizeNames(q.context, usedNames),
             answer: deanonymizeNames(q.answer, usedNames),
             solution: deanonymizeNames(q.solution, usedNames),
+            // r20 L: model co the dat alias vao topic - deanon dong nhat
+            // voi nhanh callback (deanonymizeDeep ca object).
+            topic: deanonymizeNames(q.topic, usedNames),
           }
         : q,
     );

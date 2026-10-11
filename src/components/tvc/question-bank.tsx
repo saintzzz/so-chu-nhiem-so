@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import type { CurriculumStandard, QReviewState, Question, Subject } from "@/types/tvc";
-import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, listQuestionsChunk, setQuestionReviewState, bulkSetQuestionReviewState } from "@/lib/tvc/actions";
+import { saveQuestion, deleteQuestion, importQuestions, getQuestionDetail, searchQuestions, setQuestionReviewState, bulkSetQuestionReviewState } from "@/lib/tvc/actions";
 import { setItemAcl, listItemAcl } from "@/app/(app)/school/actions";
 import { LEVEL_LABEL, QTYPE_LABEL } from "@/lib/tvc/types";
 import { MathText } from "@/components/tvc/math-text";
@@ -100,7 +100,11 @@ export function QuestionBank({
   deptSubjectCodes?: string[];
 }) {
   const [questions, setQuestions] = useState(initial);
-  const [loadingMore, setLoadingMore] = useState(total === undefined || initial.length < total);
+  // R16: server-side search + keyset - khong con keo toan bo bank ve client.
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(
+    total === undefined ? initial.length >= 100 : initial.length < total,
+  );
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState({
@@ -144,33 +148,56 @@ export function QuestionBank({
     level: "hieu",
     count: 5,
   });
-  // Trang dau da co san tu server - tai dan cac chunk con lai o background
-  // de filter/tim kiem van hoat dong tren toan bo ngan hang.
+  // R16: loc/tim phia server - trang dau tu SSR da du, filter doi -> fetch
+  // trang moi theo keyset (created_at,id). Debounce 300ms cho o tim kiem.
+  const searchArgs = {
+    subject: filter.subject || undefined,
+    qtype: filter.qtype || undefined,
+    level: filter.level || undefined,
+    review: filter.review || undefined,
+    scope: filter.scope as "all" | "mine" | "mydept",
+    deptCodes: deptSubjectCodes,
+    q: filter.q || undefined,
+  };
+  const firstRender = useRef(true);
   useEffect(() => {
-    // Khong co total (bo count exact) - tai den khi chunk ngan thi dung.
+    if (firstRender.current) {
+      firstRender.current = false;
+      return; // trang SSR da loc dung scope mac dinh
+    }
     let cancelled = false;
-    (async () => {
-      let offset = initial.length;
-      const acc: Question[] = [];
-      while (true) {
-        const r = await listQuestionsChunk(offset);
-        if (cancelled) return;
-        if ("error" in r || !r.rows?.length) break;
-        acc.push(...(r.rows as unknown as Question[]));
-        offset += r.rows.length;
-        if (r.rows.length < 1000) break;
-      }
-      if (!cancelled && acc.length) {
-        setQuestions((p) => {
-          const seen = new Set(p.map((x) => x.id));
-          return [...p, ...acc.filter((x) => !seen.has(x.id))];
-        });
-      }
-      if (!cancelled) setLoadingMore(false);
-    })();
-    return () => { cancelled = true; };
+    const t = setTimeout(async () => {
+      setLoadingMore(true);
+      const r = await searchQuestions(searchArgs);
+      if (cancelled) return;
+      setLoadingMore(false);
+      if ("error" in r || !r.rows) return;
+      setQuestions(r.rows as unknown as Question[]);
+      setHasMore(!!r.hasMore);
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filter]);
+
+  const loadMore = async () => {
+    if (!questions.length) return;
+    setLoadingMore(true);
+    const last = questions[questions.length - 1];
+    const r = await searchQuestions({
+      ...searchArgs,
+      after: { created_at: last.created_at, id: last.id },
+    });
+    setLoadingMore(false);
+    if ("error" in r || !r.rows) return;
+    setQuestions((p) => {
+      const seen = new Set(p.map((x) => x.id));
+      return [
+        ...p,
+        ...(r.rows as unknown as Question[]).filter((x) => !seen.has(x.id)),
+      ];
+    });
+    setHasMore(!!r.hasMore);
+  };
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // dap an/loi giai lazy-load khi expand - list khong ship 2 cot nang nay
@@ -218,27 +245,10 @@ export function QuestionBank({
   }, [form.subject, form.grade]);
 
 
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 100;
-  const filtered = useMemo(
-    () =>
-      questions.filter(
-        (q) =>
-          (!filter.subject || q.subject_code === filter.subject) &&
-          (!filter.qtype || q.qtype === filter.qtype) &&
-          (!filter.level || q.level === filter.level) &&
-          (!filter.review || (q.review_state ?? "unreviewed") === filter.review) &&
-          (filter.scope !== "mine" || q.owner_id === meId) &&
-          (filter.scope !== "mydept" ||
-            (q.subject_code != null && deptSubjectCodes.includes(q.subject_code))) &&
-          (!filter.q || q.stem.toLowerCase().includes(filter.q.toLowerCase())),
-      ),
-    [questions, filter, meId, deptSubjectCodes],
-  );
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  // ve trang 1 khi doi bo loc
-  const setFilterPaged = (f: typeof filter) => { setFilter(f); setPage(1); };
+  // R16: filter chay phia server - questions da la ket qua da loc.
+  const filtered = questions;
+  const pageRows = filtered;
+  const setFilterPaged = (f: typeof filter) => setFilter(f);
 
   // Bulk review (CR-027): chon nhieu cau -> duyet/flag hang loat
   const [selIds, setSelIds] = useState<Set<string>>(new Set());
@@ -1676,27 +1686,17 @@ export function QuestionBank({
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
-          {filtered.length}/{questions.length} câu hỏi - dùng cho công cụ DC-03 (sinh đề theo ma trận)
-          {loadingMore && " - đang tải đủ ngân hàng..."}
+          {filtered.length} câu hỏi - dùng cho công cụ DC-03 (sinh đề theo ma trận)
+          {loadingMore && " - đang tải..."}
         </span>
-        {pageCount > 1 && (
-          <span className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="rounded border px-2 py-0.5 disabled:opacity-40"
-            >
-              Trước
-            </button>
-            Trang {page}/{pageCount}
-            <button
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-              disabled={page >= pageCount}
-              className="rounded border px-2 py-0.5 disabled:opacity-40"
-            >
-              Sau
-            </button>
-          </span>
+        {hasMore && (
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded border px-3 py-1 disabled:opacity-40"
+          >
+            Xem thêm 100 câu
+          </button>
         )}
       </div>
     </div>

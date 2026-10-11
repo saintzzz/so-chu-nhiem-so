@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireRoles } from "@/lib/auth";
+import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { DocRender } from "@/components/tvc/doc-render";
 import { PrintButton } from "@/components/tvc/print-button";
@@ -14,6 +15,9 @@ export default async function StudioPrintPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  // R16: in/PDF la mot dang export - gate giong export API.
+  await requireFeature("studio");
+  await requireFeature("studio.export");
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase

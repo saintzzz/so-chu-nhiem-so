@@ -7,7 +7,7 @@
 // qua audio (khong chan generate).
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { expandKeys } from "@/lib/ai";
+import { expandKeys, aiProviderAllowed } from "@/lib/ai";
 
 const TTS_URL = "https://api.openai.com/v1/audio/speech";
 const MAX_TURNS = 12;
@@ -85,6 +85,9 @@ async function ttsSegment(
 
 // Mp3 la stream frame - noi binary hop le playback trong moi player hien dai.
 export async function synthesizeDialogue(turns: Turn[]): Promise<Buffer | null> {
+  // R16: TTS cung la external AI processor - phai tuan theo
+  // AI_ALLOWED_PROVIDERS giong text providers.
+  if (!aiProviderAllowed("openai")) return null;
   const keys = expandKeys("openai");
   if (!turns.length || !keys.length) return null;
   const voiceA = process.env.TTS_VOICE_A ?? "alloy";

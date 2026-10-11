@@ -21,8 +21,31 @@ export async function POST(req: Request) {
     violations: number;
   }[] = [];
   try {
-    const body = (await req.json()) as { stats?: typeof stats };
-    stats = Array.isArray(body.stats) ? body.stats : [];
+    const body = (await req.json()) as { stats?: unknown };
+    if (!Array.isArray(body.stats)) {
+      return NextResponse.json({ error: "Body không hợp lệ" }, { status: 400 });
+    }
+    // R16: validate runtime shape - tranh 500 khi field sai kieu va gioi
+    // han kich thuoc prompt (phi token).
+    stats = body.stats
+      .filter(
+        (s): s is Record<string, unknown> =>
+          typeof s === "object" && s !== null && typeof s.name === "string",
+      )
+      .slice(0, 100)
+      .map((s) => ({
+        name: String(s.name).slice(0, 100),
+        size: Math.min(Math.max(Number(s.size) || 0, 0), 5000),
+        attendancePct:
+          s.attendancePct === null || s.attendancePct === undefined
+            ? null
+            : Math.min(Math.max(Number(s.attendancePct) || 0, 0), 100),
+        avgScore:
+          s.avgScore === null || s.avgScore === undefined
+            ? null
+            : Math.min(Math.max(Number(s.avgScore) || 0, 0), 10),
+        violations: Math.min(Math.max(Number(s.violations) || 0, 0), 100000),
+      }));
   } catch {
     return NextResponse.json({ error: "Body không hợp lệ" }, { status: 400 });
   }

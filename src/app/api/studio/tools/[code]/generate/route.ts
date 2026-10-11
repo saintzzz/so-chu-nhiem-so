@@ -417,7 +417,19 @@ export async function POST(
   // FK tvc.* -> tvc.profiles: provisiona il profilo tvc al primo uso (CR-023)
   await ensureTvcProfile();
 
-  const input = (await req.json().catch(() => ({}))) as Record<string, string>;
+  // R16: khong tin body la Record<string,string> - coerce tung value ve
+  // string, bo qua object/array/number khong hop le (tranh .split() 500
+  // va prompt injection qua field dai bat thuong).
+  const rawInput = (await req.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
+  const input: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawInput ?? {})) {
+    if (typeof v === "string") input[k] = v.slice(0, 4000);
+    else if (typeof v === "number" || typeof v === "boolean")
+      input[k] = String(v);
+  }
 
   let subject: Subject | null = null;
   let standards: CurriculumStandard[] = [];
@@ -529,20 +541,30 @@ export async function POST(
         ["A", "B", "C", "D"].every((l) =>
           new RegExp(`\\b${l}[.)]`).test(x.stem),
         ));
-    const pickFrom = async (
+    // R16: fetch 1 lan cho toan bo cells (truoc day 2 query noi tiep/cell)
+    // va day eligibility filter xuong DB - truoc day limit truoc roi moi
+    // loc review_state nen cau hop le nam sau limit bi bo sot.
+    const allStdIds = [...new Set(cells.map((c) => c.standard_id))];
+    let bankQ = supabase
+      .from("tvc_questions")
+      .select("*")
+      .overlaps("standard_ids", allStdIds.length ? allStdIds : ["_none_"])
+      .limit(5000);
+    if (approvedOnly) bankQ = bankQ.eq("review_state", "approved");
+    else bankQ = bankQ.neq("review_state", "flagged");
+    const { data: bankData } = await bankQ;
+    const bank = (bankData as Question[]) ?? [];
+
+    const pickFrom = (
       cell: MatrixCell,
       extraQtype: boolean,
-    ): Promise<Question[]> => {
-      // Bank cap truong (CR-028): RLS tra cau cua minh + cau cung truong
-      let q = supabase
-        .from("tvc_questions")
-        .select("*")
-        .contains("standard_ids", [cell.standard_id])
-        .limit(Math.max(cell.count * 8, 24));
-      if (!extraQtype) q = q.eq("qtype", cell.qtype);
-      const { data } = await q;
-      return ((data as Question[]) ?? []).filter((x) => usable(x));
-    };
+    ): Question[] =>
+      bank.filter(
+        (x) =>
+          (x.standard_ids ?? []).includes(cell.standard_id) &&
+          (extraQtype || x.qtype === cell.qtype) &&
+          usable(x),
+      );
 
     const missingQ = (cell: MatrixCell, i: number): Question => ({
       id: `missing-${cell.standard_id}-${cell.qtype}-${cell.level}-${i}`,

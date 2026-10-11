@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
 import { hasAnyRole } from "@/lib/roles";
+import { hasFeature } from "@/lib/permissions";
 
 /**
  * AI sinh cau hoi theo mon + khoi + chu de - CR-041: tra ve dang AiRow
@@ -49,6 +50,10 @@ export async function POST(req: Request) {
     !hasAnyRole(profile, ["gvcn", "gvbm", "to_truong", "bgh"])
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
+  }
+  // R16: dong nhat feature gate voi cac entry point khac cua ngan hang.
+  if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio.questions"))) {
+    return NextResponse.json({ error: "Tính năng đã bị tắt" }, { status: 403 });
   }
   let subject = "";
   let grade = 0;

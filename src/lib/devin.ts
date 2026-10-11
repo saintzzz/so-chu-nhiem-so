@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { aiProviderAllowed } from "@/lib/ai";
 
 const DEVIN_API_BASE = "https://api.devin.ai/v1";
 
@@ -17,8 +18,10 @@ export interface DevinSession {
 
 export function devinEnabled(): boolean {
   // Devin la processor thu 4 (DPIA) - AI_ALLOW_DEVIN_FALLBACK=false de tat
-  // kenh fallback nay du co DEVIN_API_KEY.
+  // kenh fallback nay du co DEVIN_API_KEY. R16: dat AI_ALLOWED_PROVIDERS ma
+  // khong co 'devin' trong list cung la cam processor nay.
   if (process.env.AI_ALLOW_DEVIN_FALLBACK === "false") return false;
+  if (!aiProviderAllowed("devin")) return false;
   return Boolean(process.env.DEVIN_API_KEY);
 }
 
@@ -30,6 +33,7 @@ export async function createDevinSession(
   try {
     const res = await fetch(`${DEVIN_API_BASE}/sessions`, {
       method: "POST",
+      signal: AbortSignal.timeout(20_000),
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
@@ -50,13 +54,29 @@ export async function createDevinSession(
  * otherwise derive from the incoming request (forwarded host on Vercel).
  */
 export function devinCallbackBase(req: Request): string | null {
+  // R16: callback destination di vao prompt + nhan ket qua xu ly ben ngoai -
+  // khong duoc phep suy ra tu forwarded headers (attacker-controlled).
+  // Chi env cau hinh san (DEVIN_CALLBACK_URL / NEXT_PUBLIC_APP_URL) la hop
+  // le, va bat buoc https ngoai moi truong local dev.
   const env =
     process.env.DEVIN_CALLBACK_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (env) return env.replace(/\/$/, "");
+  if (env) {
+    try {
+      const u = new URL(env);
+      const local = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+      if (u.protocol !== "https:" && !local) return null;
+      return env.replace(/\/$/, "");
+    } catch {
+      return null;
+    }
+  }
+  // Dev local: van can callback -> chi cho localhost tu header (khong the
+  // bi tan cong tu xa vi chi dan toi loopback).
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-  if (!host) return null;
-  const proto = req.headers.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
+  if (host && /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host)) {
+    return `http://${host}`;
+  }
+  return null;
 }
 
 /**

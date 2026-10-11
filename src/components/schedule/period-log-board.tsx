@@ -156,85 +156,37 @@ export function PeriodLogBoard({
         draft.content.trim() === "" ? null : draft.content.trim();
       const comment =
         draft.comment.trim() === "" ? null : draft.comment.trim();
-      const logFields = {
-        present_count: presentCount,
-        lesson_title: title,
-        lesson_content: content,
-        teacher_comment: comment,
-        // giữ đồng bộ cột note cũ cho các surface chưa migrate
-        note: comment,
-      };
-      let logId = logs[entryId]?.id ?? null;
-
-      if (logId) {
-        const { error: e } = await supabase
-          .from("period_logs")
-          .update(logFields)
-          .eq("id", logId);
-        if (e) throw e;
-      } else {
-        const { data, error: e } = await supabase
-          .from("period_logs")
-          .insert({
-            timetable_entry_id: entryId,
-            date,
-            logged_by: profileId,
-            ...logFields,
-          })
-          .select("id")
-          .single();
-        if (e) throw e;
-        logId = (data as { id: string }).id;
-      }
-
-      const { error: delErr } = await supabase
-        .from("period_absences")
-        .delete()
-        .eq("period_log_id", logId);
-      if (delErr) throw delErr;
-
-      const rows = Object.entries(draft.marks)
+      // R16-14: 1 RPC nguyen tu - upsert log theo (entry,date) + thay the
+      // absences + dong bo diem danh ngay trong cung transaction. Loi giua
+      // chung rollback het, khong con trang thai nua voi.
+      const absences = Object.entries(draft.marks)
         .filter(([, m]) => m !== "")
-        .map(([student_id, status]) => ({
-          period_log_id: logId,
-          student_id,
-          status,
-        }));
-      if (rows.length > 0) {
-        const { error: insErr } = await supabase
-          .from("period_absences")
-          .insert(rows);
-        if (insErr) throw insErr;
-      }
-
-      // Đồng bộ sổ đầu bài -> điểm danh ngày qua RPC nguyên tử: HS vắng bất
-      // kỳ tiết nào phản ánh vào attendance_records (source=period_log), chỉ
-      // nâng severity record manual - không ghi đè source. Toàn bộ logic
-      // (severity, quét mọi tiết của lớp trong ngày, lock serialize) nằm
-      // trong scn_sync_period_attendance - 1 transaction, không rơi nửa vời.
-      const affectedIds = [
-        ...new Set([
-          ...rows.map((r) => r.student_id),
-          ...(logs[entryId]?.absences ?? []).map((a) => a.student_id),
-        ]),
-      ];
-      if (affectedIds.length > 0) {
-        const { error: syncErr } = await supabase.rpc(
-          "scn_sync_period_attendance",
-          {
-            p_date: date,
-            p_class_id: entries.find((e) => e.id === entryId)?.class_id,
-            p_student_ids: affectedIds,
+        .map(([student_id, status]) => ({ student_id, status }));
+      const { data: logId, error: saveErr } = await supabase.rpc(
+        "scn_save_period_log",
+        {
+          p_entry: entryId,
+          p_date: date,
+          p_log: {
+            present_count: presentCount,
+            lesson_title: title,
+            lesson_content: content,
+            teacher_comment: comment,
           },
-        );
-        if (syncErr) throw syncErr;
-      }
+          p_absences: absences,
+        },
+      );
+      if (saveErr) throw saveErr;
 
       logAudit(supabase, {
         action: "period_log.save",
         entity: "period_logs",
         entityId: logId,
-        payload: { timetable_entry_id: entryId, date, absences: rows.length },
+        payload: {
+          timetable_entry_id: entryId,
+          date,
+          absences: absences.length,
+        },
       });
       setOpenId(null);
       router.refresh();

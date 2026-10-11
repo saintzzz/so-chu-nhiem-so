@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
   if (
     typeof body.result !== "object" ||
     body.result === null ||
-    Array.isArray(body.result) ||
     JSON.stringify(body.result).length > 1_000_000
   ) {
     return NextResponse.json({ error: "bad_result" }, { status: 400 });
@@ -39,10 +38,10 @@ export async function POST(req: NextRequest) {
     .digest("hex");
   const { data: job } = await admin
     .from("ai_jobs")
-    .select("id,callback_token,status")
+    .select("id,callback_token,status,kind")
     .eq("id", body.job_id)
     .single();
-  const row = job as { id: string; callback_token: string; status: string } | null;
+  const row = job as { id: string; callback_token: string; status: string; kind: string } | null;
   // Jobs tao truoc khi doi sang hash van luu plaintext -> chap nhan ca hai.
   const stored = row?.callback_token ?? "";
   const candidate =
@@ -53,6 +52,13 @@ export async function POST(req: NextRequest) {
     timingSafeEqual(Buffer.from(stored), Buffer.from(candidate));
   if (!row || !tokenOk || row.status !== "pending") {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // R16: mot so job kind doi JSON array (suggest-tasks, tvc-question-extract)
+  // - route khac doi object. Tu choi hinh dang sai se de job pending mai.
+  const ARRAY_KINDS = new Set(["suggest-tasks", "tvc-question-extract"]);
+  if (Array.isArray(body.result) !== ARRAY_KINDS.has(row.kind)) {
+    return NextResponse.json({ error: "bad_result_shape" }, { status: 400 });
   }
 
   // Conditional update on status=pending: mot callback duy nhat thang race;

@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -20,89 +19,40 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  // R8-01: PostgREST cat ngam ~1000 rows - moi query nguon phan trang het qua
-  // fetchAllRows (order on dinh) va bat error/truncated. AI khong duoc phan
-  // tich tren du lieu thieu -> tra 500 truoc khi generate.
+  // R16-15: aggregate trong SQL thay vi keo raw students+attendance ve app -
+  // o quy mo 100k HS, 20 ngay diem danh ~2M rows, vuot cap fetchAllRows.
   const cutoff = isoDateVN(new Date(Date.now() - 30 * 86400000));
-  const [schoolRes, classRes, studentRes, attRes] = await Promise.all([
-    fetchAllRows<{ id: string; name: string }>((f, t) =>
-      supabase.from("schools").select("id,name").order("id").range(f, t),
-    ),
-    fetchAllRows<{ id: string; school_id: string }>((f, t) =>
-      supabase
-        .from("classes")
-        .select("id,school_id")
-        .eq("status", "active")
-        .order("id")
-        .range(f, t),
-    ),
-    fetchAllRows<{ id: string; class_id: string }>((f, t) =>
-      supabase
-        .from("students")
-        .select("id,class_id")
-        .eq("status", "active")
-        .order("id")
-        .range(f, t),
-    ),
-    // Tỷ lệ chuyên cần 30 ngày gần theo trường
-    fetchAllRows<{
-      status: string;
-      students: { class_id: string } | { class_id: string }[];
-    }>((f, t) =>
-      supabase
-        .from("attendance_records")
-        .select("status, students!inner(class_id)")
-        .gte("date", cutoff)
-        .order("date")
-        .order("id")
-        .range(f, t),
-    ),
-  ]);
-
-  const srcErrors: string[] = [];
-  for (const [name, r] of [
-    ["schools", schoolRes],
-    ["classes", classRes],
-    ["students", studentRes],
-    ["attendance_records", attRes],
-  ] as const) {
-    if (r.error || r.truncated) {
-      srcErrors.push(`${name}: ${r.error ?? "truncated"}`);
-    }
-  }
-  if (srcErrors.length) {
-    console.error("[ai/dept-brief] source queries:", srcErrors.join("; "));
+  const { data: stats, error: statsErr } = await supabase.rpc(
+    "scn_dept_brief_stats",
+    { p_since: cutoff },
+  );
+  if (statsErr) {
+    console.error("[ai/dept-brief] stats rpc:", statsErr.message);
     return NextResponse.json(
       { error: "Không tải đủ dữ liệu nguồn." },
       { status: 500 },
     );
   }
 
-  const schoolList = schoolRes.rows;
-  const classList = classRes.rows;
-  const studentList = studentRes.rows;
-  const classSchool = new Map(classList.map((c) => [c.id, c.school_id]));
-  const attRows = attRes.rows;
-
-  const perSchool = schoolList.map((s) => {
-    const cls = classList.filter((c) => c.school_id === s.id);
-    const clsIds = new Set(cls.map((c) => c.id));
-    const stu = studentList.filter((st) => clsIds.has(st.class_id));
-    const attMy = attRows.filter((a) => {
-      const st = Array.isArray(a.students) ? a.students[0] : a.students;
-      return st && classSchool.get(st.class_id) === s.id;
-    });
-    const absent = attMy.filter((a) => a.status !== "present").length;
-    return {
-      truong: s.name,
-      so_lop: cls.length,
-      so_hs: stu.length,
+  const statRows = (stats ?? []) as {
+    school_id: string;
+    school_name: string;
+    class_count: number;
+    student_count: number;
+    att_total: number;
+    att_absent: number;
+  }[];
+  const perSchool = statRows.map(
+    (s) => ({
+      truong: s.school_name,
+      so_lop: Number(s.class_count),
+      so_hs: Number(s.student_count),
       chuyen_can_pct:
-        attMy.length > 0
-          ? Math.round(((attMy.length - absent) / attMy.length) * 100)
+        s.att_total > 0
+          ? Math.round(((s.att_total - s.att_absent) / s.att_total) * 100)
           : null,
-    };
-  });
+    }),
+  );
 
   return respondWithAi<{ lines: string[] }>({
     req,

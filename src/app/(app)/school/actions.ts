@@ -411,6 +411,24 @@ export async function saveTimetableEntry(input: {
     return { error: "Thứ không hợp lệ (2-7)." };
   if (input.period < 1 || input.period > 10)
     return { error: "Tiết không hợp lệ (1-10)." };
+  // R16-05: subject/teacher phai thuoc truong - khong chi dung vao unique
+  // constraint de ngan giao vien truong khac bi gan vao TKB.
+  const { data: subj } = await supabase
+    .from("subjects")
+    .select("id")
+    .eq("id", input.subjectId)
+    .eq("school_id", profile.school_id)
+    .maybeSingle();
+  if (!subj) return { error: "Môn học không thuộc trường." };
+  if (input.teacherId) {
+    const { data: tch } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", input.teacherId)
+      .eq("school_id", profile.school_id)
+      .maybeSingle();
+    if (!tch) return { error: "Giáo viên không thuộc trường." };
+  }
 
   // Conflict check cùng ngày-tiết trong trường
   const { data: schoolClasses } = await supabase
@@ -578,6 +596,26 @@ export async function createStaffAccount(input: {
 
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const admin = createAdminClient();
+  // R16-06: campus/department phai thuoc truong cua nguoi tao - service-role
+  // write bo qua RLS nen validate thu cong o day.
+  if (input.campusId) {
+    const { data: c } = await admin
+      .from("campuses")
+      .select("id")
+      .eq("id", input.campusId)
+      .eq("school_id", profile.school_id)
+      .maybeSingle();
+    if (!c) return { error: "Cơ sở không thuộc trường của bạn." };
+  }
+  if (input.departmentId) {
+    const { data: d } = await admin
+      .from("departments")
+      .select("id")
+      .eq("id", input.departmentId)
+      .eq("school_id", profile.school_id)
+      .maybeSingle();
+    if (!d) return { error: "Tổ chuyên môn không thuộc trường của bạn." };
+  }
   const { data, error } = await admin.auth.admin.createUser({
     email: input.email.trim().toLowerCase(),
     password: input.password,

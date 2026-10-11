@@ -17,6 +17,48 @@ export function getAiConfig(): AiConfig | null {
 }
 
 /**
+ * R16: allowlist processor (DPIA) dung chung cho moi transport AI -
+ * text (getAiConfigs), TTS, Devin fallback. Dat AI_ALLOWED_PROVIDERS
+ * (vd "gemini,openai,devin") de khoa ngoai y muon; rong = cho phep het.
+ */
+export function aiAllowedSet(): Set<string> | null {
+  const allowed = (process.env.AI_ALLOWED_PROVIDERS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return allowed.length ? new Set(allowed) : null;
+}
+
+export function aiProviderAllowed(name: string): boolean {
+  const s = aiAllowedSet();
+  return !s || s.has(name);
+}
+
+/**
+ * Base URL cho slot openai (OpenAI-compatible endpoints vd OpenRouter).
+ * Neu dat AI_ALLOWED_ENDPOINTS (hostnames, comma-sep) thi endpoint ngoai
+ * allowlist bi chan - quay ve api.openai.com (fail-closed, khong leak key).
+ */
+export function openaiBaseUrl(): string {
+  const base = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1")
+    .replace(/\/$/, "");
+  const allow = (process.env.AI_ALLOWED_ENDPOINTS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (allow.length) {
+    try {
+      if (!allow.includes(new URL(base).hostname)) {
+        return "https://api.openai.com/v1";
+      }
+    } catch {
+      return "https://api.openai.com/v1";
+    }
+  }
+  return base;
+}
+
+/**
  * Gom tat ca key cua 1 provider thanh nhieu config. Ho tro:
  * - GEMINI_API_KEY="k1,k2,k3" (comma-separated)
  * - GEMINI_API_KEY_2, _3... (bien phu bo sung)
@@ -46,11 +88,7 @@ export function getAiConfigs(): AiConfig[] {
   // Allowlist processor duoc phep nhan du lieu truong (DPIA): chi provider
   // nam trong AI_ALLOWED_PROVIDERS moi duoc goi, ke ca khi co key san.
   // Mac dinh mo het de khong pha cau hinh hien tai.
-  const allowed = (process.env.AI_ALLOWED_PROVIDERS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const allowedSet = allowed.length ? new Set(allowed) : null;
+  const allowedSet = aiAllowedSet();
   const model = process.env.AI_MODEL;
   const providerModel: Record<AiProvider, string | undefined> = {
     gemini: process.env.GEMINI_MODEL,
@@ -121,8 +159,27 @@ interface GenerateOptions {
    * So config dau tien chay SONG SONG (hedged race) - config nao xong truoc
    * thi lay, phan con lai thu tuan tu. Mac dinh 1 (tuan tu nhu cu). Dung cho
    * doc dai (generateDoc) de bo het do tre khi config dau chay cham/loi.
+   * R16: racer thua bi abort (huy request that, khong doi quota vo ich).
    */
   race?: number;
+  /**
+   * Delay (ms) giua cac racer trong race - mac dinh 1200. Config 1 ban ngay;
+   * config 2..N chi ban sau stagger neu config truoc chua xong, giam quota
+   * dot tren duong happy-path.
+   */
+  staggerMs?: number;
+  /**
+   * Nguoi goi validate text tho (vd JSON parse duoc) truoc khi nhan thang
+   * race - ngan "malformed output nhanh nhat thang" (r16 finding 17).
+   */
+  validate?: (text: string) => boolean;
+  /**
+   * Tong budget ms cho toan bo race + thu tuan tu (cac lan goi van co
+   * timeoutMs rieng). Vuot deadline -> dung thu tiep.
+   */
+  maxTotalMs?: number;
+  /** Internal: signal huy request (race abort racers thua). */
+  signal?: AbortSignal;
 }
 
 export type AiErrorKind = "no_key" | "quota" | "error";
@@ -131,6 +188,12 @@ export interface AiResult {
   text: string | null;
   error: AiErrorKind | null;
   provider: AiProvider | null;
+}
+
+/** Timeout + external cancel gop chung cho 1 fetch. */
+function callSignal(opts: GenerateOptions): AbortSignal {
+  const t = AbortSignal.timeout(opts.timeoutMs ?? 25000);
+  return opts.signal ? AbortSignal.any([t, opts.signal]) : t;
 }
 
 function classifyStatus(status: number, body: string): AiErrorKind {
@@ -166,7 +229,7 @@ async function callGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${cfg.key}`,
     {
       method: "POST",
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
+      signal: callSignal(opts),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...(opts.system
@@ -218,11 +281,10 @@ async function callOpenAI(
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
   // OPENAI_BASE_URL cho phep tro sang endpoint OpenAI-compatible
   // (vd OpenRouter https://openrouter.ai/api/v1) ma van giu slot provider.
-  const base = (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1")
-    .replace(/\/$/, "");
+  const base = openaiBaseUrl();
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
+    signal: callSignal(opts),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${cfg.key}`,
@@ -237,6 +299,7 @@ async function callOpenAI(
       ],
     }),
   });
+
   if (!res.ok) {
     return { text: null, error: classifyStatus(res.status, await res.text()) };
   }
@@ -256,7 +319,7 @@ async function callAnthropic(
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    signal: AbortSignal.timeout(opts.timeoutMs ?? 25000),
+    signal: callSignal(opts),
     headers: {
       "Content-Type": "application/json",
       "x-api-key": cfg.key,
@@ -304,46 +367,90 @@ export async function generateTextDetailed(
 
   // Thử lần lượt tất cả provider có key - provider đầu lỗi quota thì
   // provider sau vẫn được thử trước khi rơi vào fallback Devin.
+  // R16: ghi nhan da co "quota" de tra loi deterministic - loi error
+  // generic khong duoc che mat quota (caller can quota de fallback).
   let lastError: AiErrorKind = "error";
   let lastProvider: AiProvider | null = null;
+  let sawQuota = false;
+
+  const deadline = opts.maxTotalMs ? Date.now() + opts.maxTotalMs : null;
+  const overDeadline = () => deadline !== null && Date.now() >= deadline;
 
   const callOne = async (
     cfg: AiConfig,
+    signal?: AbortSignal,
   ): Promise<{ text: string | null; error: AiErrorKind | null }> => {
     try {
+      const o = signal ? { ...opts, signal } : opts;
       return cfg.provider === "gemini"
-        ? await callGemini(cfg, prompt, opts)
+        ? await callGemini(cfg, prompt, o)
         : cfg.provider === "openai"
-          ? await callOpenAI(cfg, prompt, opts)
-          : await callAnthropic(cfg, prompt, opts);
+          ? await callOpenAI(cfg, prompt, o)
+          : await callAnthropic(cfg, prompt, o);
     } catch (e) {
       // CR-042: AbortSignal timeout khi doc sinh dai -> nhu "quota" (qua tai
       // tam thoi) de route day sang engine du phong thay vi ban khung.
-      const isTimeout = e instanceof DOMException && e.name === "TimeoutError";
-      return { text: null, error: isTimeout ? "quota" : "error" };
+      // R16: AbortError (race abort racer thua) cung la ket thuc som.
+      const d = e instanceof DOMException ? e.name : "";
+      return { text: null, error: d === "TimeoutError" || d === "AbortError" ? "quota" : "error" };
     }
   };
+
+  const noteError = (cfg: AiConfig, err: AiErrorKind | null) => {
+    if (err === "quota") sawQuota = true;
+    lastError = err ?? "error";
+    lastProvider = cfg.provider;
+  };
+
+  const acceptable = (text: string | null): text is string =>
+    !!text && (opts.validate?.(text) ?? true);
 
   let idx = 0;
   const raceN = Math.min(Math.max(opts.race ?? 1, 1), configs.length);
   if (raceN > 1) {
-    // Hedged race: ban song song N config dau - cai nao xong truoc thi dung.
-    // Tat ca deu loi thi di tiep tuan tu tu config thu N+1.
+    // Hedged race: ban song song N config dau (staggered de tiet kiem quota)
+    // - config nao tra text HOP LE (qua validate) truoc thi dung, racers con
+    // lai bi abort de huy request that chu khong de chay tiep doi quota.
     const group = configs.slice(0, raceN);
+    const stagger = Math.max(opts.staggerMs ?? 1200, 0);
     const winner = await new Promise<{
       cfg: AiConfig;
       r: { text: string | null; error: AiErrorKind | null };
     } | null>((resolve) => {
       let pending = group.length;
-      for (const cfg of group) {
-        callOne(cfg).then((r) => {
-          if (r.text) resolve({ cfg, r });
-          else {
-            lastError = r.error ?? "error";
-            lastProvider = cfg.provider;
-            if (--pending === 0) resolve(null);
-          }
-        });
+      let done = false;
+      const ctrls = group.map(() => new AbortController());
+      const finish = (v: { cfg: AiConfig; r: { text: string | null; error: AiErrorKind | null } } | null) => {
+        if (done) return;
+        done = true;
+        ctrls.forEach((c) => c.abort());
+        resolve(v);
+      };
+      const miss = () => {
+        if (--pending === 0) finish(null);
+      };
+      group.forEach((cfg, i) => {
+        const launch = () => {
+          if (done) { miss(); return; } // stagger slot den khi da co ket qua
+          if (overDeadline()) { miss(); return; }
+          callOne(cfg, ctrls[i].signal).then((r) => {
+            if (done) { miss(); return; }
+            if (acceptable(r.text)) {
+              finish({ cfg, r });
+            } else {
+              noteError(cfg, r.text ? "error" : (r.error ?? "error"));
+              miss();
+            }
+          });
+        };
+        if (i === 0 || stagger === 0) launch();
+        else setTimeout(launch, i * stagger);
+      });
+      // Deadline tong: het gio van chua co winner -> bo race, khong treo.
+      if (deadline) {
+        const t = deadline - Date.now();
+        if (t <= 0) finish(null);
+        else setTimeout(() => finish(null), t);
       }
     });
     if (winner) return { ...winner.r, provider: winner.cfg.provider };
@@ -351,13 +458,18 @@ export async function generateTextDetailed(
   }
 
   for (; idx < configs.length; idx++) {
+    if (overDeadline()) break;
     const cfg = configs[idx];
     const r = await callOne(cfg);
-    if (r.text) return { ...r, provider: cfg.provider };
-    lastError = r.error ?? "error";
-    lastProvider = cfg.provider;
+    if (acceptable(r.text)) return { text: r.text, error: null, provider: cfg.provider };
+    noteError(cfg, r.text ? "error" : (r.error ?? "error"));
   }
-  return { text: null, error: lastError, provider: lastProvider };
+  // Precedence deterministic: co bat ky quota nao -> quota (fallback Devin).
+  return {
+    text: null,
+    error: sawQuota ? "quota" : lastError,
+    provider: lastProvider,
+  };
 }
 
 /**

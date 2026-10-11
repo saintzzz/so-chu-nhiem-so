@@ -13,22 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function StudioQuestionsPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
+  // R16: trang ngan hang gate theo feature rieng, khong chi studio tong.
   await requireFeature("studio");
+  await requireFeature("studio.questions");
   const supabase = await createClient();
-  // CR-033: khong count exact (cham tren bank lon) - client tu load
-  // het chunk va biet tong that sau khi tai xong.
-  const [{ data: subs }, { data: firstRows }] = await Promise.all([
-    supabase.from("tvc_subjects").select("*").order("code"),
-    supabase
-      .from("tvc_questions")
-      .select(
-        "id, owner_id, code, stem, qtype, level, points, standard_ids, subject_code, grade, source, review_state, created_at",
-      )
-      .order("created_at", { ascending: false })
-      .range(0, 99),
-  ]);
-  const qs = firstRows ?? [];
-
   // CR-032: mon cua to chuyen mon -> to truong loc "Mon cua to toi"
   let deptSubjectCodes: string[] = [];
   if (profile.department_id) {
@@ -48,6 +36,28 @@ export default async function StudioQuestionsPage() {
         .filter((c): c is string => !!c);
     }
   }
+
+  // CR-033: khong count exact (cham tren bank lon) - server-side search
+  // tu trang 2. R16: reviewer mac dinh scope mydept -> SSR loc san de
+  // khong phai refetch ngay khi mount.
+  const reviewerDefaultMyDept =
+    hasAnyRole(profile, ["to_truong", "bgh", "admin"]) &&
+    deptSubjectCodes.length > 0;
+  let firstQ = supabase
+    .from("tvc_questions")
+    .select(
+      "id, owner_id, code, stem, qtype, level, points, standard_ids, subject_code, grade, source, review_state, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .range(0, 99);
+  if (reviewerDefaultMyDept) {
+    firstQ = firstQ.in("subject_code", deptSubjectCodes);
+  }
+  const [{ data: subs }, { data: firstRows }] = await Promise.all([
+    supabase.from("tvc_subjects").select("*").order("code"),
+    firstQ,
+  ]);
+  const qs = firstRows ?? [];
 
   return (
     <div className="mx-auto max-w-6xl">

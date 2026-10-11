@@ -15,8 +15,13 @@ export async function POST(req: Request) {
   if (!profile || !hasAnyRole(profile, ["bgh", "pht", "admin"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
-  const body = (await req.json()) as { question?: string };
-  const question = body.question?.trim();
+  const body = (await req.json().catch(() => null)) as {
+    question?: unknown;
+  } | null;
+  // R16: validate runtime - question phai la string va gioi han do dai
+  // (free text vo han thoi phong prompt + phi token).
+  const question =
+    typeof body?.question === "string" ? body.question.trim().slice(0, 2000) : "";
   if (!question) {
     return NextResponse.json({ error: "Thiếu câu hỏi." }, { status: 400 });
   }

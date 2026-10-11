@@ -134,6 +134,11 @@ export async function generateDoc(
         // CR-049: ban song song AI_DOC_RACE (mac dinh 3) config dau, lay cai
         // nhanh nhat - cat do tre khi key dau cham/hang ma van giu fallback.
         race: Math.max(Number(process.env.AI_DOC_RACE ?? 3), 1),
+        // R16: output JSON-mong khong duoc thang race (racer nhanh ma viet
+        // sai cu phap truoc day an ket qua); tong budget 70s cho race +
+        // tuan tu con lai trong 1 attempt.
+        validate: (t) => extractJson(t) !== null,
+        maxTotalMs: 70000,
       },
     );
     if (!r.text) return { doc: null, provider: r.provider, error: r.error };

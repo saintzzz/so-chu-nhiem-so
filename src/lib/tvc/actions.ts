@@ -466,6 +466,60 @@ export async function listQuestionsChunk(offset: number) {
   return { rows: data ?? [] };
 }
 
+/**
+ * R16: tim/loc ngan hang phia server thay vi keo toan bo ve client.
+ * Keyset (created_at,id) - offset pagination khong on dinh khi co insert.
+ */
+export async function searchQuestions(params: {
+  subject?: string;
+  qtype?: string;
+  level?: string;
+  review?: string;
+  scope?: "all" | "mine" | "mydept";
+  deptCodes?: string[];
+  q?: string;
+  after?: { created_at: string; id: string } | null;
+}): Promise<{ rows?: unknown[]; hasMore?: boolean; error?: string }> {
+  const err = await featErr("studio.questions");
+  if (err) return { error: err };
+  const profile = await getProfile();
+  const supabase = await createClient();
+  const PAGE = 100;
+  let query = supabase
+    .from("tvc_questions")
+    .select(QUESTION_LIST_COLS)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(PAGE + 1);
+  if (params.subject) query = query.eq("subject_code", params.subject);
+  if (params.qtype) query = query.eq("qtype", params.qtype);
+  if (params.level) query = query.eq("level", params.level);
+  if (params.review === "unreviewed") {
+    query = query.or("review_state.is.null,review_state.eq.unreviewed");
+  } else if (params.review) {
+    query = query.eq("review_state", params.review);
+  }
+  if (params.scope === "mine") {
+    query = query.eq("owner_id", profile?.id ?? "");
+  } else if (params.scope === "mydept" && params.deptCodes?.length) {
+    query = query.in("subject_code", params.deptCodes);
+  }
+  const needle = params.q?.trim().replace(/[%_(),\\]/g, "");
+  if (needle) query = query.ilike("stem", `%${needle}%`);
+  if (params.after?.created_at && params.after.id) {
+    const { created_at: c, id } = params.after;
+    query = query.or(
+      `created_at.lt.${c},and(created_at.eq.${c},id.lt.${id})`,
+    );
+  }
+  const { data, error } = await query;
+  if (error) {
+    console.error("[tvc] search questions:", error.message);
+    return { error: "Không tải được câu hỏi." };
+  }
+  return { rows: (data ?? []).slice(0, PAGE), hasMore: (data ?? []).length > PAGE };
+}
+
 export async function getQuestionDetail(id: string) {
   const err = await featErr("studio.questions");
   if (err) return { error: err };
@@ -708,21 +762,14 @@ export async function saveKhbdTemplate(input: {
   await ensureTvcProfile();
 
   const supabase = await createClient();
-  // Chi 1 mac dinh moi truong: dat mac dinh -> bo mac dinh cac mau truong khac
-  if (input.is_default) {
-    await supabase
-      .from("tvc_khbd_templates")
-      .update({ is_default: false })
-      .eq("school_id", profile.school_id)
-      .eq("is_default", true)
-      .neq("id", input.id ?? "00000000-0000-0000-0000-000000000000");
-  }
   const row = {
     name: input.name.trim(),
     activities: acts,
     include_review: input.include_review,
     include_signoff: input.include_signoff,
-    is_default: !!input.is_default,
+    // Luu luon is_default=false; RPC scn_khbd_set_default bat lai nguyen tu
+    // (clear + set trong 1 transaction, unique partial index phu tro).
+    is_default: false,
     school_id: profile.school_id,
   };
   const q = input.id
@@ -740,6 +787,15 @@ export async function saveKhbdTemplate(input: {
   if (error || !data?.length) {
     console.error("[tvc] save khbd_templates:", error?.message ?? "0 rows");
     return { error: "Không lưu được biểu mẫu - vui lòng thử lại." };
+  }
+  if (input.is_default) {
+    const { error: defErr } = await supabase.rpc("scn_khbd_set_default", {
+      p_id: data[0].id,
+    });
+    if (defErr) {
+      console.error("[tvc] set khbd default:", defErr.message);
+      return { error: "Không đặt được biểu mẫu mặc định - vui lòng thử lại." };
+    }
   }
   await audit(
     input.id ? "khbd_template.update" : "khbd_template.create",

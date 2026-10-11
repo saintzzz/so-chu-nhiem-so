@@ -306,10 +306,11 @@ test("R2-07: loi nguon tra 500, insert delivery log khong nuot", () => {
   // digest_deliveries insert error duoc bat
   assert.match(route, /const \{ error: delErr \} = await supabase[\s\S]*?digest_deliveries[\s\S]*?insert\(deliveries\)/,
     "insert digest_deliveries van khong check error");
-  assert.match(route, /fatalError = "delivery log insert failed"/,
-    "delErr phai lam dung run");
-  // Giữ counter partial-send trong response loi
-  assert.match(fatal[0], /sent,[\s\S]*?failed,[\s\S]*?skipped,/,
+  // sendPhase: delErr -> tra 500 ngay (scheduler retry) kem counters
+  // partial-send; rows van 'sending' -> requeue/reconcile run sau.
+  const delBlock = route.match(/if \(delErr\) \{[\s\S]*?status: 500[\s\S]*?\}\);/);
+  assert.ok(delBlock, "delErr phai lam dung run");
+  assert.match(delBlock[0], /sent, failed, skipped/,
     "response 5xx van phai tra counters");
   // Delivery-level errors dem rieng, khong fail ca run
   assert.match(route, /delivery_errors: failed \|\| undefined/);
@@ -753,7 +754,6 @@ test("R7-02: AI routes fetchAllRows + tra 500 khi nguon loi", () => {
     "src/app/api/ai/class-analysis/route.ts",
     "src/app/api/ai/comments/route.ts",
     "src/app/api/ai/attendance-insight/route.ts",
-    "src/app/api/ai/dept-brief/route.ts",
   ]) {
     const src = read(f);
     assert.match(src, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/,
@@ -1213,20 +1213,17 @@ test("R7-04: 3 file R7 goc phai co console.error server-side", () => {
   }
 });
 
-// --- R8-01: dept-brief phan trang het 4 nguon + 500 khi loi -----------------
-test("R8-01: dept-brief fetchAllRows cho schools/classes/students/attendance", () => {
+// --- R8-01: dept-brief tong hop qua RPC (r2 #32 - tranh cap 1000
+// rows tai cho o quy mo 100k HS) + 500 khi loi -----------------
+test("R8-01: dept-brief dung RPC aggregate + 500 khi loi", () => {
   const src = read("src/app/api/ai/dept-brief/route.ts");
-  const fetches = (src.match(/fetchAllRows</g) ?? []).length;
-  assert.ok(fetches >= 4,
-    `dept-brief can >=4 fetchAllRows (schools/classes/students/attendance), thay ${fetches}`);
-  const att = src.match(/from\("attendance_records"\)[\s\S]*?\.range\(f, t\)/);
-  assert.ok(att, "attendance van query .limit(50000) - khong thang PostgREST cap");
-  assert.match(att[0], /students!inner\(class_id\)/,
-    "embed students!inner(class_id) phai giu nguyen");
-  assert.match(att[0], /\.order\("date"\)[\s\S]*?\.order\("id"\)/,
-    "attendance can order on dinh (date, id) cho range paging");
-  assert.match(src, /Không tải đủ dữ liệu nguồn/);
-  assert.match(src, /status: 500/);
+  assert.match(src, /scn_dept_brief_stats/,
+    "dept-brief phai tong hop qua RPC - fetch tai cho vuot PostgREST cap");
+  assert.ok(!/\.limit\(\d+\)/.test(src),
+    "con .limit() cap ngam tren query nguon");
+  assert.match(src, /statsErr/, "statsErr khong duoc bat");
+  assert.match(src, /console\.error\(/, "thieu console.error server-side");
+  assert.match(src, /status: 500/, "khong tra 500 khi RPC loi");
 });
 
 // --- R8-02: NLPC luu nguyen tu qua RPC + nhan loi co dinh -------------------
@@ -2102,9 +2099,12 @@ test("R13-02: parent portal check error moi query + notice co dinh", () => {
   assert.ok(parentQ, "thieu parents lookup");
   assert.match(parentQ[0], /\.maybeSingle\(\)/,
     "parents lookup phai maybeSingle - single() coi 0 row la loi");
-  // Moi query nguon phai gan loi co ten.
-  for (const e of ["parentErr", "linkErr", "stuErr", "clsErr", "teacherErr",
-                   "senderErr", "actAttErr"]) {
+  // Query chain parents->parent_students->students->classes da gop thanh 1
+  // embedded select (8ba30dc TTFB) - 1 parentErr bao ca chain; cac query
+  // doc lap con lai van can loi co ten.
+  assert.match(src, /parent_students\(parent_id,student_id,students\(/,
+    "embedded chain parents->students->classes da thay doi - cap nhat test");
+  for (const e of ["parentErr", "teacherErr", "senderErr", "actAttErr"]) {
     assert.match(src, new RegExp(`error: ${e}`),
       `query chua dat ten loi ${e}`);
   }

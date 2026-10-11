@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { deanonymizeNames } from "@/lib/ai-privacy";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
@@ -63,6 +64,13 @@ export async function POST(req: Request) {
     );
   }
   const students = (studentData ?? []) as { id: string; code: string; full_name: string }[];
+  // CR-049 r5: alias HSxxx thay ma HS (ma so bi redact la PII khi trung
+  // dinh dang CCCD/CMND) - respondWithAi deanonymize alias -> ten.
+  const piiNames = students.map((s, i) => ({
+    name: s.full_name,
+    alias: `HS${String(i + 1).padStart(3, "0")}`,
+  }));
+  const aliasOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
   const ids = students.map((s) => s.id);
   if (!ids.length) {
     return NextResponse.json({ result: { lines: ["Lớp chưa có học sinh."] } });
@@ -129,7 +137,7 @@ export async function POST(req: Request) {
     .filter((s) => s.tb !== null)
     .sort((a, b) => (b.tb ?? 0) - (a.tb ?? 0));
   const studentAvgs = students
-    .map((s) => ({ ma_hs: s.code ?? "HS", tb: avg(byStudent.get(s.id) ?? []) }))
+    .map((s) => ({ ma_hs: aliasOf.get(s.id) ?? "HS", tb: avg(byStudent.get(s.id) ?? []) }))
     .filter((s) => s.tb !== null)
     .sort((a, b) => (b.tb ?? 0) - (a.tb ?? 0));
   const weak = studentAvgs.filter((s) => (s.tb ?? 0) < 5);
@@ -156,13 +164,9 @@ export async function POST(req: Request) {
 Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu mã học sinh), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1200,
+    pii: { names: piiNames },
     parse: (text) => {
-      const deanon = (s: string) => {
-        let out = s;
-        for (const st of students)
-          if (st.code) out = out.split(st.code).join(st.full_name);
-        return out;
-      };
+      const deanon = (s: string) => deanonymizeNames(s, piiNames);
       try {
         const o = JSON.parse(text) as { lines?: string[] };
         if (Array.isArray(o.lines) && o.lines.length) {

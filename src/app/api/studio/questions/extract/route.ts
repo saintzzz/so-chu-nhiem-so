@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { hasFeature } from "@/lib/permissions";
 import { getAiConfig, generateTextDetailed } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { redactPiiText } from "@/lib/ai-privacy";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
 import { fallbackToDevin } from "@/lib/devin";
@@ -105,26 +106,28 @@ export async function POST(req: Request) {
     .join("\n");
   const promptFull = `${prompt}\n\nDANH SACH MA YEU CAU CAN DAT (chon ma gan nhat cho moi cau, de rong neu khong chac):\n${stdList}`;
 
-  const quotaOk = await takeAiQuota(supabase, "tvc-question-extract");
+  const quotaOk = await takeAiQuota("tvc-question-extract", profile.id);
   const r = quotaOk
     ? await generateTextDetailed(promptFull, {
         inline: inline ?? undefined,
         maxTokens: 16384,
         temperature: 0.2,
       })
-    : { text: null, error: "quota" as const, provider: null };
+    // budget_block -> 'error' (khong qua Devin tra phi; chi quota cua
+    // PROVIDER moi fallback).
+    : { text: null, error: "error" as const, provider: null };
   void recordAiUsage(
-    supabase,
     "tvc-question-extract",
+    profile.id,
     r.provider,
-    r.text ? "ok" : r.error ?? "error",
+    quotaOk ? (r.text ? "ok" : r.error ?? "error") : "budget_block",
   );
   if (!r.text) {
     if (r.error === "quota" && !inline) {
       const job = await fallbackToDevin({
         supabase,
         kind: "tvc-question-extract",
-        prompt: promptFull,
+        prompt: redactPiiText(promptFull),
         expectedShape:
           '[{"stem":"...","context":"","qtype":"multiple_choice|true_false_4|short_answer|essay","level":"biet|hieu|van_dung","points":0.25,"answer":"...","solution":"...","topic":"...","subject":"toan|tieng_viet|tieng_anh","grade":3,"standard_code":"TOAN3.1.2"}]',
         createdBy: profile.id,

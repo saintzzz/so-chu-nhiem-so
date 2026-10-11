@@ -49,20 +49,24 @@ export async function respondWithAi<T>(
   const raw = p.pii?.allowRawPrompt === true;
   const safePrompt = raw ? p.prompt : redactPiiText(pseudonymizeNames(p.prompt, names));
   const safeSystem = raw ? p.system : redactPiiText(p.system);
-  // CR-049 P3c: het budget ngay -> khong goi provider, chay fallback
-  // duong duoi (Devin/fallback rule). Over-count theo chieu an toan.
-  const quotaOk = await takeAiQuota(p.supabase, p.kind);
-  const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(safePrompt, {
-        system: safeSystem,
-        maxTokens: p.maxTokens ?? 2048,
-        temperature: p.temperature ?? 0.7,
-        skipPiiRedact: raw,
-      })
-    : { text: null, error: "quota", provider: null };
+  // CR-049 P3c+r5: het budget ngay -> KHONG goi provider VA khong tao
+  // Devin fallback tra phi (budget_block khac provider quota). Chi tra
+  // rule-based fallback. Over-count theo chieu an toan.
+  const quotaOk = await takeAiQuota(p.kind, p.profile.id);
+  if (!quotaOk) {
+    void recordAiUsage(p.kind, p.profile.id, null, "budget_block");
+    const fb = p.fallback?.();
+    return NextResponse.json({ result: fb ?? null });
+  }
+  const aiRes: AiResult = await generateTextDetailed(safePrompt, {
+    system: safeSystem,
+    maxTokens: p.maxTokens ?? 2048,
+    temperature: p.temperature ?? 0.7,
+    skipPiiRedact: raw,
+  });
   void recordAiUsage(
-    p.supabase,
     p.kind,
+    p.profile.id,
     aiRes.provider,
     aiRes.text ? "ok" : (aiRes.error ?? "error"),
   );
@@ -84,6 +88,8 @@ export async function respondWithAi<T>(
       expectedShape: p.expectedShape,
       createdBy: p.profile.id,
       req: p.req,
+      // F18: alias map luu tren job - devin-callback deanonymize output.
+      piiMap: names.length ? names : undefined,
     });
     if (job) {
       return NextResponse.json({

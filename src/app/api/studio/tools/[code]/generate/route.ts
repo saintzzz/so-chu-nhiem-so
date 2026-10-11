@@ -6,6 +6,7 @@ import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
 import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { redactPiiText } from "@/lib/ai-privacy";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
@@ -847,7 +848,7 @@ export async function POST(
   // Tool tieng Anh: noi dung phai la tieng Anh - model yeu doi khi viet
   // tieng Viet, validate bat va retry voi nhac nho ro rang.
   const ENGLISH_TOOLS = new Set(["A-01", "A-03"]);
-  const quotaOk = await takeAiQuota(supabase, `tvc-tool:${code}`);
+  const quotaOk = await takeAiQuota(`tvc-tool:${code}`, user.id);
   const ai = quotaOk
     ? await generateDoc(
         system,
@@ -860,12 +861,14 @@ export async function POST(
           }
         : undefined,
     )
-    : { doc: null, provider: null, error: "quota" };
+    // budget_block -> 'error' (khong qua Devin tra phi; chi quota cua
+    // PROVIDER moi fallback).
+    : { doc: null, provider: null, error: "error" };
   void recordAiUsage(
-    supabase,
     `tvc-tool:${code}`,
+    user.id,
     ai.provider,
-    ai.doc ? "ok" : "quota",
+    quotaOk ? (ai.doc ? "ok" : "error") : "budget_block",
   );
 
   // R4: Devin fallback cung nam trong budget route - tao session toi 20s
@@ -880,7 +883,7 @@ export async function POST(
     const job = await fallbackToDevin({
       supabase,
       kind: `tvc-tool:${code}`,
-      prompt: `${system}\n\n${prompt}`,
+      prompt: redactPiiText(`${system}\n\n${prompt}`),
       expectedShape:
         '{"title":"...","meta":[["nhan","gia tri"]],"sections":[{"title":"...","blocks":[{"kind":"para|list|table|note|kv","text|items|rows|header":"..."}]}]}',
       createdBy: user.id,

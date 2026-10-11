@@ -1,0 +1,183 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+You are reviewing the repository at commit 4e39cb3 (master)…
+Confirmation review (round 3). The attached workspace is th…
+Confirmation review (round 3) of student-self-practice-web…
+Independent whole-repo verification review of this reposito…
+Independent verification review of this repository (so-chu-…
+Independent verification review of this repository (so-chu-…
+You are a senior EdTech code reviewer doing ROUND 3 of a re…
+You are a senior EdTech code reviewer doing ROUND 2 of a re…
+You are a senior EdTech code reviewer. Perform a comprehens…
+This is REVIEW ROUND 2 of the whole repository — a previous…
+You are a senior EdTech code reviewer. Perform a comprehens…
+Set up so-chu-nhiem-so
+Linh Le Duy
+Plus
+You are reviewing the repository at commit 4e39cb3 (master)…
+Share
+You said:
+
+You are reviewing the repository at commit 4e39cb3 (master). This is a VN school-management SaaS (Next.js + Supabase RLS). A large hardening changeset (CR-049) just landed on top of previously-reviewed code. Focus NEW findings on the changeset, but also flag any regression it could cause in existing flows.
+
+CHANGESET (files to read first):
+
+supabase/migrations/20261121_cr049_org_scope_rls.sql - 12 new org-scope helpers (scn_my_scope_*, scn_*_in_scope) + 55 rewritten SELECT policies bounding dept roles (so_gd/ubnd) to their org_units subtree. PHT campus filter must be preserved.
+supabase/migrations/20261122_cr049_profile_grades.sql - grades.academic_year_id + sync_tvc_profile role mirror + scn_save_grades CAS (p_expected_max, raises stale_write)
+supabase/migrations/20261123_cr049_ai_quota.sql - ai_budgets/ai_usage_counters/ai_usage + scn_ai_quota_take + scn_ai_record_usage
+supabase/migrations/20261124_cr049_digest_outbox.sql - digest_outbox + scn_digest_outbox_claim (FOR UPDATE SKIP LOCKED) + scn_digest_outbox_requeue
+src/lib/ai-privacy.ts (NEW) - redactPiiText, pseudonymizeNames, deanonymizeNames
+src/lib/ai.ts - redactPiiText applied to prompt+system before all provider calls; skipPiiRedact opt-out
+src/lib/ai-route.ts - respondWithAi pseudonymize/deanonymize + takeAiQuota gate + recordAiUsage
+src/lib/ai-quota.ts (NEW)
+src/app/api/ai/* (advisor, comments, suggest-tasks, daily-report, warning-advice, assignment-suggest, extract-records) - quota gates + pii wiring
+src/app/api/studio/tools/[code]/generate/route.ts + src/app/api/studio/questions/extract/route.ts - quota gates
+src/app/api/cron/parent-digest/route.ts - split enqueue/send phases, durable outbox
+src/app/portal/student/hoc-ba/page.tsx - academic year filter
+src/lib/tt22.ts - semesterAssessment provisional/final
+
+REVIEW AXES:
+
+SECURITY/RLS: do the 55 rewritten policies actually preserve prior semantics for non-dept roles? Any policy where the scope predicate now EXCLUDES legitimate users (school staff, parents, students)? Any NEW bypass (e.g. scn_my_scope_school_ids returning empty set making policies deny-all vs a function erroring)? Are the new tables (ai_budgets, ai_usage_counters, ai_usage, digest_outbox) properly RLS-locked? Do the new SECURITY DEFINER functions validate auth (auth.uid() null check)?
+CORRECTNESS: quota counter semantics - can a request pass quota but not be counted (or counted twice)? Can budget_block audit insert inside the failing loop abort the whole txn? digest_outbox claim/requeue - can a row be sent twice (unique constraint + status transitions)? Can 'skipped' emails retry forever? Does enqueue+send in one invocation double-send?
+PRIVACY: does redactPiiText miss structured PII patterns common in VN data? Does pseudonymizeNames break on diacritics/substring overlap? Can deanonymizeNames corrupt output (alias appearing inside other words)? Does the Devin fallback path leak the raw prompt anywhere?
+RELIABILITY: cron route - what happens if enqueue partially writes then fails (fatalError mid-chunk)? Is sendPhase deadline handling race-free vs the 10-minute stale requeue? Timeout mid-batch rows stuck in 'sending' >10min retry - OK?
+REGRESSION: grade CAS - does the editor handle stale_write for first-write (null expected)? Does sync_tvc_profile handle role removal mid-session? Does academic_year_id populate correctly for legacy rows (NULL tolerated)?
+
+Report format: numbered findings sorted by severity (CRITICAL/HIGH/MEDIUM/LOW), each with file:line, why it matters, and a minimal fix sketch. End with VERDICT: CLEAN or NOT-CLEAN + count. Be concrete - no speculative style nits. 
+
+…
+Show more
+4:50 PM
+Worked for 6m 12s
+ChatGPT said:
+
+Reviewed 4e39cb3 against the pre-CR-049 checkout. Findings below are source-confirmed; focused Node reproductions confirmed quota fail-open, formatted-phone leakage, alias corruption, and numeric-code collisions. Database concurrency scenarios were not executed against production.
+
+HIGH — Outbox reads expose reports from other schools/campuses.
+supabase/migrations/20261124_cr049_digest_outbox.sql:34
+Staff can select the entire row, including body, when any linked child satisfies scn_parent_in_school. Enqueue combines every linked child’s grades, attendance, and conduct into that body. A parent with children in different schools or campuses therefore exposes the other child’s records to the reader.
+Fix: expose delivery metadata through a restricted view; keep bodies service-only, or split snapshots by school/campus.
+
+HIGH — Budget denial launches paid Devin work.
+src/lib/ai-route.ts:62
+takeAiQuota(false) becomes error: "quota", which enters fallbackToDevin at line 79. The same pattern exists in the direct AI and Studio routes. Once the daily budget is exhausted, requests can continue creating paid sessions.
+Fix: distinguish budget_block from provider exhaustion and terminate external processing on budget denial.
+
+HIGH — Clients can consume shared budgets directly.
+supabase/migrations/20261123_cr049_ai_quota.sql:77
+The definer RPC checks only that auth.uid() exists and grants execution to every authenticated user. Direct RPC calls debit shared counters without performing AI work or passing route authorization. Repeated calls can exhaust a school’s budget—or the shared none pool for schoolless accounts.
+Fix: make reservation server-only, deriving the actor from validated server authentication, and enforce per-user throttling.
+
+HIGH — Grade CAS is not atomic.
+supabase/migrations/20261122_cr049_profile_grades.sql:64
+The revision check and replacement have no shared lock. Two writers can both validate the old maximum; if the second DELETE starts after the first commits, it deletes the newly saved grades without raising stale_write. Clearing all grades also removes the timestamp used to detect subsequent stale writes.
+Fix: lock a persistent revision row for the class/subject/term/year and compare-and-increment its version inside the transaction.
+
+HIGH — Saving grades can erase or relabel another academic year.
+supabase/migrations/20261122_cr049_profile_grades.sql:73
+DELETE and CAS omit academic_year_id, while inserted rows receive the student’s current class year. The editor also loads grades without a year filter. After rollover, saving old loaded scores replaces historical rows with current-year rows. The existing unique key also omits the year.
+Fix: pass an explicit academic year through editor reads, CAS, DELETE, INSERT, and uniqueness constraints.
+
+HIGH — Successful emails can be sent again after recovery.
+src/app/api/cron/parent-digest/route.ts:483
+A failed outbox status update is merely logged. The email may already be delivered and its delivery audit inserted, but the outbox remains sending. Requeue later sends it again without consulting that successful delivery. A crash between provider acceptance and persistence has the same outcome; the unique outbox row does not prevent repeated delivery.
+Fix: use a stable provider idempotency key, persist completion atomically, and reconcile successful delivery audits before retrying.
+
+HIGH — Direct Devin fallbacks bypass the new PII redaction.
+src/app/api/ai/advisor/route.ts:165
+Provider redaction happens inside generateTextDetailed, but the fallback receives the original prompt. Advisor questions, warning details, daily-report conduct text, and existing task titles can therefore send unredacted emails, phones, or identifiers to Devin. Studio direct fallbacks have the same gap.
+Fix: prepare one minimized prompt before branching and pass it to every external processor.
+
+MEDIUM — Quota RPC failures allow uncounted requests.
+src/lib/ai-quota.ts:17
+Both RPC errors and exceptions return true. If the quota transaction fails—including its budget_block audit insert—the counter increments roll back while the provider call proceeds.
+Fix: fail closed with a retryable response. Make audit failure unable to convert denial into permission.
+
+MEDIUM — Usage recording permits anonymous audit inserts.
+supabase/migrations/20261123_cr049_ai_quota.sql:124
+scn_ai_record_usage has no UID check, and the migration does not revoke PostgreSQL’s default PUBLIC function execution. Anonymous callers can insert arbitrary valid usage records with nullable created_by and school_id, despite table RLS.
+Fix: revoke PUBLIC/anon execution and reject missing or unauthorized actors inside the function.
+
+MEDIUM — Admin visibility is unintentionally narrowed.
+supabase/migrations/20261121_cr049_org_scope_rls.sql:137
+scn_is_dept() also includes admin. Previously, admin’s department branch allowed all profiles and org units. The replacement requires school membership or the actor’s org subtree. An admin without org_unit_id loses schoolless department profiles and org units without directly attached schools, affecting /dept/users, /dept/wards, and reporting.
+Fix: preserve an explicit admin allow branch in the scope predicates/policies.
+
+MEDIUM — Skipped emails cannot be retried.
+supabase/migrations/20261124_cr049_digest_outbox.sql:84
+Missing email configuration produces skipped, but requeue handles only sending and failed. Subsequent enqueue—including ?retry=—uses ignoreDuplicates, so it cannot change the existing skipped row. Restoring configuration leaves that week’s report unsent.
+Fix: requeue retryable skips within the attempt cap, distinguishing them from intentionally blocked addresses.
+
+MEDIUM — Previous-week failures remain stranded.
+supabase/migrations/20261124_cr049_digest_outbox.sql:82
+Requeue is restricted to the current week, whereas claim can select queued rows from any week. Once the week changes, old failed or stale sending rows never become claimable again. This is especially relevant to the existing weekly cron schedule.
+Fix: recover all eligible outstanding weeks and schedule recurring drain invocations.
+
+MEDIUM — Default cron execution hides send-phase failures.
+src/app/api/cron/parent-digest/route.ts:394
+phase=all extracts the send response body and creates a new response with default HTTP 200. A claim failure or delivery-log failure returned as 500 by sendPhase becomes apparent scheduler success.
+Fix: preserve sendRes.status when composing the response.
+
+MEDIUM — Send deadline ignores time already spent enqueueing.
+src/app/api/cron/parent-digest/route.ts:414
+The 240-second send budget starts after enqueue, despite a 300-second invocation limit. Enqueue taking more than a minute allows claims beyond the remaining runtime. Deadline checks also occur only between claims, and email transport has no timeout.
+Fix: establish one invocation deadline, pass it through both phases, and bound sends by remaining time.
+
+MEDIUM — Common formatted Vietnamese PII remains intact.
+src/lib/ai-privacy.ts:16
+The regexes require uninterrupted digits. Confirmed examples such as 090 123 4567, +84 90 123 4567, and 0123 4567 8901 pass through unchanged; dotted/dashed formats likewise escape matching. These values can appear in free-text notes and pasted records.
+Fix: recognize validated separator-bearing phone/identifier patterns and redact their complete spans.
+
+MEDIUM — Numeric student codes collide after redaction.
+src/lib/ai-privacy.ts:19
+The central redactor treats every nine-digit code as CMND. In comments generation, distinct valid student codes such as 123456789 and 987654321 both become [so_dinh_danh]; returned keys no longer match comments[s.code]. Twelve-digit codes have the same problem.
+Fix: replace student identifiers with unique opaque aliases before redaction and restore result keys afterward.
+
+MEDIUM — Alias substring replacement assigns the wrong teacher.
+src/lib/ai-privacy.ts:54
+Assignment aliases grow beyond two digits. When GV10 is replaced before GV100, output for teacher 100 becomes teacher 10’s name followed by 0. This was reproduced as Nguyễn Văn An0.
+Fix: replace delimited alias tokens in one pass, using collision-free aliases.
+
+MEDIUM — Async assignment suggestions lose the name mapping.
+src/lib/ai-route.ts:80
+Deanonymization runs only on synchronous provider output. Devin jobs receive GVxx aliases, but their mapping is neither persisted nor applied by the callback. The polling client renders the stored result directly, leaving assignment recommendations with unresolved teacher codes.
+Fix: retain a protected per-job alias map and restore names before publishing the completed result.
+
+MEDIUM — TT22 assessments become “final” before sufficient regular scores exist.
+src/lib/tt22.ts:57
+isFinal requires only one ĐĐGtx score plus midterm and final. TT22’s required regular-assessment count depends on subject teaching periods and is generally two, three, or four. The transcript can therefore remove its provisional marker prematurely.
+Fix: supply the applicable required ĐĐGtx count, including approved exceptions, when determining finality.
+
+VERDICT: NOT-CLEAN — 19 findings (7 HIGH, 12 MEDIUM).
+
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++49,046
+-4,119
+Outputs
+Create a file or site

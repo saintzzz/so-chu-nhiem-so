@@ -11,9 +11,8 @@ import { dirname, join } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
-const { redactPiiText, pseudonymizeNames, deanonymizeNames } = await import(
-  join(ROOT, "src/lib/ai-privacy.ts")
-);
+const { redactPiiText, pseudonymizeNames, deanonymizeNames, minimizePrompt } =
+  await import(join(ROOT, "src/lib/ai-privacy.ts"));
 
 // --- redactPiiText --------------------------------------------------------
 test("redact: email bi cat", () => {
@@ -62,6 +61,57 @@ test("pseudonymize+deanonymize roundtrip", () => {
   const prompt = pseudonymizeNames("Co Le Minh Chau day Toan", names);
   assert.ok(!prompt.includes("Le Minh Chau"));
   assert.equal(deanonymizeNames(prompt, names), "Co Le Minh Chau day Toan");
+});
+
+// --- CR-049 r5: separator-bearing PII (Codex F15) --------------------------
+test("redact r5: SDT co separator (space/dot/dash/+84) bi cat", () => {
+  for (const p of [
+    "090 123 4567",
+    "090.123.4567",
+    "090-123-4567",
+    "+84 90 123 4567",
+    "+84.90.123.4567",
+    "84 912 345 678",
+  ]) {
+    assert.equal(redactPiiText(`SDT ${p}`), "SDT [sdt]", p);
+  }
+});
+
+test("redact r5: so dinh danh co separator bi cat", () => {
+  assert.equal(redactPiiText("CCCD 0123 4567 8901"), "CCCD [so_dinh_danh]");
+  assert.equal(redactPiiText("CCCD 012.345.678.901"), "CCCD [so_dinh_danh]");
+  assert.equal(redactPiiText("CMND 123.456.789"), "CMND [so_dinh_danh]");
+});
+
+// --- CR-049 r5: ma HS so khong bi redact lam mat key (Codex F16) -----------
+test("minimizePrompt: ma HS so -> alias truoc khi redact", () => {
+  const names = [
+    { name: "012345678", alias: "HS001" },
+    { name: "079123456789", alias: "HS002" },
+  ];
+  const out = minimizePrompt("diem cua 012345678 va 079123456789", names);
+  assert.equal(out, "diem cua HS001 va HS002");
+  assert.ok(!out.includes("[so_dinh_danh]"));
+});
+
+// --- CR-049 r5: alias substring collision (Codex F17) -----------------------
+test("deanonymize r5: GV10 khong an vao GV100 (boundary)", () => {
+  const names = [{ name: "Tran Van Muoi", alias: "GV10" }];
+  assert.equal(
+    deanonymizeNames("GV10 va GV100 deu day Toan", names),
+    "Tran Van Muoi va GV100 deu day Toan",
+  );
+});
+
+test("deanonymize r5: GV10 + GV100 cung map - longest-first", () => {
+  const names = [
+    { name: "Tran Van Muoi", alias: "GV10" },
+    { name: "Le Thi Tram", alias: "GV100" },
+  ];
+  assert.equal(
+    deanonymizeNames("GV100 cham GV10", names),
+    "Le Thi Tram cham Tran Van Muoi",
+  );
 });
 
 // --- static guards ---------------------------------------------------------

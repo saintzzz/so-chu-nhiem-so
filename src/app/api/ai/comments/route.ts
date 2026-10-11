@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
 import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent, semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
@@ -370,16 +371,27 @@ Yêu cầu: mỗi nhận xét 1-2 câu, văn phong giáo viên chủ nhiệm Vi�
 
 Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
-  const quotaOk = await takeAiQuota(supabase, "comments");
+  // CR-049 r5 F16: ma HS so (9/12 chu so) bi redactPiiText an thanh
+  // [so_dinh_danh] va dap laan key - alias HSxxx cho tung ma.
+  const piiNames = students.map((s, i) => ({
+    name: s.code,
+    alias: `HS${String(i + 1).padStart(3, "0")}`,
+  }));
+  const safePrompt = minimizePrompt(prompt, piiNames);
+  const safeSystem = minimizePrompt(
+    "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
+    piiNames,
+  );
+
+  const quotaOk = await takeAiQuota("comments", profile.id);
   const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(prompt, {
-        system:
-          "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
+    ? await generateTextDetailed(safePrompt, {
+        system: safeSystem,
         maxTokens: 8000,
         temperature: 0.7,
       })
-    : { text: null, error: "quota", provider: null };
-  void recordAiUsage(supabase, "comments", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
+    : { text: null, error: "error", provider: null };
+  void recordAiUsage("comments", profile.id, aiRes.provider, quotaOk ? (aiRes.text ? "ok" : aiRes.error ?? "error") : "budget_block");
   const text = aiRes.text;
 
   if (!text) {
@@ -387,10 +399,11 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
       const job = await fallbackToDevin({
         supabase,
         kind: "comments",
-        prompt: `Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh.\n\n${prompt}`,
+        prompt: `${safeSystem}\n\n${safePrompt}`,
         expectedShape: '{"MA_HS": "nhận xét 1-2 câu"}',
         createdBy: profile.id,
         req,
+        piiMap: piiNames,
       });
       if (job) {
         return NextResponse.json({
@@ -404,7 +417,11 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
   }
 
   try {
-    const cleaned = text.replace(/```json|```/g, "").trim();
+    // alias HSxxx -> ma HS that truoc khi parse keys
+    const cleaned = deanonymizeNames(
+      text.replace(/```json|```/g, "").trim(),
+      piiNames,
+    );
     const obj = JSON.parse(cleaned) as Record<string, string>;
     const comments: Record<string, string> = {};
     for (const [k, v] of Object.entries(obj)) {

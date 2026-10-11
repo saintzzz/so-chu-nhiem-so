@@ -134,6 +134,9 @@ export async function fallbackToDevin(params: {
   req: Request;
   /** R4: budget con lai cua route - session-create khong vuot deadline. */
   timeoutMs?: number;
+  /** CR-049 F18: alias->name map tren prompt da minimize - callback
+   *  deanonymize output truoc khi luu result. */
+  piiMap?: { name: string; alias: string }[];
 }): Promise<{ jobId: string; devinUrl: string } | null> {
   if (!devinEnabled()) return null;
   const { supabase, kind, prompt, expectedShape, createdBy, req } = params;
@@ -145,7 +148,14 @@ export async function fallbackToDevin(params: {
   const tokenHash = createHash("sha256").update(token).digest("hex");
   const { data: job } = await supabase
     .from("ai_jobs")
-    .insert({ kind, created_by: createdBy, callback_token: tokenHash })
+    .insert({
+      kind,
+      created_by: createdBy,
+      callback_token: tokenHash,
+      // F18: map nam tren job (staff doc duoc qua RLS nhung chi la
+      // alias->name cua nguoi trong pham vi ho da thay).
+      pii_map: params.piiMap?.length ? params.piiMap : null,
+    })
     .select("id")
     .single();
   const row = job as { id?: string } | null;

@@ -884,8 +884,9 @@ export function GradesEditor({
       });
       if (saveErr) {
         console.error("[grades-editor] scn_save_grades:", saveErr.message);
+        const stale = saveErr.message.includes("stale_write");
         setError(
-          saveErr.message.includes("stale_write")
+          stale
             ? "Điểm vừa được giáo viên khác cập nhật. Tải lại trang để xem bản mới nhất rồi nhập lại."
             : "Không lưu được điểm - vui lòng thử lại.",
         );

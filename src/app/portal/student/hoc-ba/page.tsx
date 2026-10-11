@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
-import { semesterAssessment, yearAverage } from "@/lib/tt22";
+import { semesterAssessment, yearAverage, requiredTxCount } from "@/lib/tt22";
 import { fmtDateVN } from "@/lib/utils";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
 
@@ -68,7 +68,7 @@ export default async function StudentTranscriptPage() {
           .order("created_at"),
         supabase
           .from("subjects")
-          .select("id,name,assessment_method")
+          .select("id,name,assessment_method,weekly_periods")
           .eq("school_id", classroom?.school_id ?? ""),
         supabase
           .from("conduct_evaluations")
@@ -90,6 +90,7 @@ export default async function StudentTranscriptPage() {
     id: string;
     name: string;
     assessment_method: string | null;
+    weekly_periods: number | null;
   }[];
   const subjectOf = new Map(subjects.map((s) => [s.id, s]));
   const gradeRows = (gradeRes.data ?? []) as {
@@ -121,8 +122,10 @@ export default async function StudentTranscriptPage() {
   const subjectRows = [...bySubject.entries()]
     .map(([subjectId, rows]) => {
       const sub = subjectOf.get(subjectId);
-      const a1 = semesterAssessment(rows.filter((r) => r.term === "hk1"));
-      const a2 = semesterAssessment(rows.filter((r) => r.term === "hk2"));
+      // CR-049: so DDGtx toi thieu theo TT22 D9.2 (2/3/4 tuy tiet/tuan).
+      const req = { requiredTx: requiredTxCount(sub?.weekly_periods) };
+      const a1 = semesterAssessment(rows.filter((r) => r.term === "hk1"), req);
+      const a2 = semesterAssessment(rows.filter((r) => r.term === "hk2"), req);
       const resultHk1 = rows.find((r) => r.term === "hk1" && r.result != null)?.result ?? null;
       const resultHk2 = rows.find((r) => r.term === "hk2" && r.result != null)?.result ?? null;
       return {
@@ -245,7 +248,7 @@ export default async function StudentTranscriptPage() {
             (s) => (s.hk1 != null && !s.hk1Final) || (s.hk2 != null && !s.hk2Final),
           ) && (
             <p className="px-1 pt-2 text-xs text-muted-foreground">
-              * Điểm tạm tính - chưa đủ cột điểm định kỳ (ĐĐGtx, ĐĐGgk, ĐĐGck)
+              * Điểm tạm tính - chưa đủ số điểm định kỳ tối thiểu theo TT22 (ĐĐGtx theo số tiết/tuần, ĐĐGgk, ĐĐGck)
               theo Thông tư 22/2021, có thể thay đổi khi giáo viên bổ sung.
             </p>
           )}

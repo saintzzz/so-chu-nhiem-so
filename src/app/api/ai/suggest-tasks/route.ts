@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { redactPiiText } from "@/lib/ai-privacy";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
@@ -58,7 +59,7 @@ Công việc đã có (không được trùng): ${JSON.stringify([...existing])}
 
 Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
 
-  const quotaOk = await takeAiQuota(supabase, "suggest-tasks");
+  const quotaOk = await takeAiQuota("suggest-tasks", profile.id);
   const aiRes: AiResult = quotaOk
     ? await generateTextDetailed(prompt, {
         system:
@@ -66,8 +67,8 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
         maxTokens: 1500,
         temperature: 0.5,
       })
-    : { text: null, error: "quota", provider: null };
-  void recordAiUsage(supabase, "suggest-tasks", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
+    : { text: null, error: "error", provider: null };
+  void recordAiUsage("suggest-tasks", profile.id, aiRes.provider, quotaOk ? (aiRes.text ? "ok" : aiRes.error ?? "error") : "budget_block");
   const text = aiRes.text;
 
   if (!text) {
@@ -75,7 +76,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
       const job = await fallbackToDevin({
         supabase,
         kind: "suggest-tasks",
-        prompt: `Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${prompt}`,
+        prompt: redactPiiText(`Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${prompt}`),
         expectedShape: '[{"title": "...", "due_date": "YYYY-MM-DD"}]',
         createdBy: profile.id,
         req,

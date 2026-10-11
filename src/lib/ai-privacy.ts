@@ -12,11 +12,14 @@
  */
 
 const RE_EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-// VN mobile: 0x/84x 10 so bat dau 03x/05x/07x/08x/09x
-const RE_PHONE = /(?<!\d)(?:\+?84|0)(?:3|5|7|8|9)\d{8}(?!\d)/g;
-// CCCD 12 so, CMND 9 so (tranh cham diem 8-9.x / ma so ngan hon)
-const RE_CCCD = /(?<!\d)\d{12}(?!\d)/g;
-const RE_CMND = /(?<!\d)\d{9}(?!\d)/g;
+// VN mobile: 0x/84x 10 so bat dau 03x/05x/07x/08x/09x - cho phep
+// separator . - space giua cac cum so (090 123 4567, +84 90 123 4567)
+const RE_PHONE =
+  /(?<!\d)(?:\+?84[\s.\-]?|0)(?:3|5|7|8|9)(?:[\s.\-]?\d){8}(?!\d)/g;
+// CCCD 12 so, CMND 9 so (tranh cham diem 8-9.x / ma so ngan hon) -
+// cho phep separator giua cac cum (0123 456 789)
+const RE_CCCD = /(?<!\d)\d(?:[\s.\-]?\d){11}(?!\d)/g;
+const RE_CMND = /(?<!\d)\d(?:[\s.\-]?\d){8}(?!\d)/g;
 
 /** Cat PII co cau truc ro rang. KHONG cat dd/mm/yyyy - ngay thang la
  *  noi dung chuong trinh hop le (lich su, ngay le); ngay sinh HS nen
@@ -46,12 +49,24 @@ export function pseudonymizeNames(text: string, names: PiiName[]): string {
   return out;
 }
 
-/** Dao nguoc: alias -> ten that tren output LLM. */
+/** Dao nguoc: alias -> ten that tren output LLM. Alias dai truoc
+ *  (GV100 truoc GV10) + boundary regex: "GV10" khong duoc an vao token
+ *  "GV100" hay "XGV100" khi chi co GV10 trong map. */
 export function deanonymizeNames(text: string, names: PiiName[]): string {
+  const sorted = [...names].sort((a, b) => b.alias.length - a.alias.length);
   let out = text;
-  for (const n of names) {
+  for (const n of sorted) {
     if (!n.name || !n.alias) continue;
-    out = out.split(n.alias).join(n.name);
+    const esc = n.alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(
+      new RegExp(`(?<![A-Za-z0-9])${esc}(?![A-Za-z0-9])`, "g"),
+      () => n.name,
+    );
   }
   return out;
+}
+
+/** Goi gon: pseudonymizeNames + redactPiiText cho moi external call. */
+export function minimizePrompt(text: string, names: PiiName[] = []): string {
+  return redactPiiText(pseudonymizeNames(text, names));
 }

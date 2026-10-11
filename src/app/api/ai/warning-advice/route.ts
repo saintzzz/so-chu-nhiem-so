@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { redactPiiText } from "@/lib/ai-privacy";
 import { fallbackToDevin } from "@/lib/devin";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -51,22 +52,22 @@ Chi tiết: ${warn.detail ?? "-"}
 
 Đề xuất 2-3 việc xử lý cụ thể, khả thi trong trường phổ thông Việt Nam (phân công ai, làm gì, bao lâu). Trả về CHỈ JSON: {"suggestion": "..."}`;
 
-  const quotaOk = await takeAiQuota(supabase, "warning-advice");
+  const quotaOk = await takeAiQuota("warning-advice", profile.id);
   const aiRes: AiResult = quotaOk
     ? await generateTextDetailed(prompt, {
         system: "Bạn là cố vấn quản lý giáo dục. Chỉ trả về JSON hợp lệ.",
         maxTokens: 800,
         temperature: 0.6,
       })
-    : { text: null, error: "quota", provider: null };
-  void recordAiUsage(supabase, "warning-advice", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
+    : { text: null, error: "error", provider: null };
+  void recordAiUsage("warning-advice", profile.id, aiRes.provider, quotaOk ? (aiRes.text ? "ok" : aiRes.error ?? "error") : "budget_block");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {
       const job = await fallbackToDevin({
         supabase,
         kind: "warning-advice",
-        prompt,
+        prompt: redactPiiText(prompt),
         expectedShape: '{"suggestion": "2-3 việc xử lý cụ thể"}',
         createdBy: profile.id,
         req,

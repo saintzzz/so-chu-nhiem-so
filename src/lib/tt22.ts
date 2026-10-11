@@ -18,14 +18,26 @@ export interface SemesterAssessment {
   avg: number | null;
   /**
    * CR-049 TT22: DTBm hoc ky chi "chot" khi du cot diem bat buoc theo quy
-   * dinh danh gia dinh ky - it nhat 1 DDGtx + DDGgk + DDGck. Thieu thanh
-   * phan dinh ky -> diem con la "tam tinh" (co the thay doi khi bo sung).
+   * dinh danh gia dinh ky - du so DDGtx toi thieu theo tiet/tuan + DDGgk
+   * + DDGck. Thieu thanh phan -> diem con la "tam tinh".
    */
   isFinal: boolean;
 }
 
+/**
+ * So diem DDGtx toi thieu theo TT22/2021 Dieu 9 khoan 2:
+ *  <=2 tiet/tuan -> 2 diem; >2 den 4 tiet -> 3 diem; >4 tiet -> 4 diem.
+ * Khong biet so tiet -> tra san phap ly 2 (moi mon it nhat 2 DDGtx).
+ */
+export function requiredTxCount(weeklyPeriods: number | null | undefined): number {
+  if (weeklyPeriods == null || weeklyPeriods <= 2) return 2;
+  if (weeklyPeriods <= 4) return 3;
+  return 4;
+}
+
 export function semesterAssessment(
   rows: GradeComponent[],
+  opts?: { requiredTx?: number },
 ): SemesterAssessment {
   let txSum = 0;
   let txCount = 0;
@@ -47,7 +59,8 @@ export function semesterAssessment(
     denom === 0
       ? null
       : Math.round(((txSum + (gk ?? 0) * 2 + (ck ?? 0) * 3) / denom) * 10) / 10;
-  return { avg, isFinal: txCount >= 1 && gk != null && ck != null };
+  const requiredTx = opts?.requiredTx ?? 2;
+  return { avg, isFinal: txCount >= requiredTx && gk != null && ck != null };
 }
 
 /**

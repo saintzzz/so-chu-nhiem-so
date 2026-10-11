@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
 import { fallbackToDevin } from "@/lib/devin";
 import type { Student } from "@/types";
 import { hasRole, hasAnyRole } from "@/lib/roles";
@@ -62,13 +63,15 @@ export async function POST(req: Request) {
       .in("status", ["new", "following"]),
   ]);
 
-  // gui ma HS thay ho ten ra AI provider (PII minimization); map nguoc khi render
-  const codeOf = new Map(students.map((s) => [s.id, s.code ?? "HS"]));
-  const deanon = (t: string) => {
-    let out = t;
-    for (const s of students) if (s.code) out = out.split(s.code).join(s.full_name);
-    return out;
-  };
+  // gui alias HSxxx thay ma/ten HS ra AI provider (CR-049 P3b+r5: ma so
+  // 9-12 chu so bi redact nham la PII, con ten that la PII) - deanon
+  // alias -> ten that khi render.
+  const piiNames = students.map((s, i) => ({
+    name: s.full_name,
+    alias: `HS${String(i + 1).padStart(3, "0")}`,
+  }));
+  const codeOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
+  const deanon = (t: string) => deanonymizeNames(t, piiNames);
   const att = (attRes.data ?? []) as {
     student_id: string;
     status: string;
@@ -110,26 +113,28 @@ Yêu cầu: 2-4 câu, văn phong báo cáo hành chính giáo dục Việt Nam, 
 
 Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
 
-  const quotaOk = await takeAiQuota(supabase, "daily-report");
+  const safePrompt = minimizePrompt(prompt, piiNames);
+  const quotaOk = await takeAiQuota("daily-report", profile.id);
   const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(prompt, {
+    ? await generateTextDetailed(safePrompt, {
         system:
           "Bạn là trợ lý soạn báo cáo ngày cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
         maxTokens: 1000,
         temperature: 0.6,
       })
-    : { text: null, error: "quota", provider: null };
-  void recordAiUsage(supabase, "daily-report", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
+    : { text: null, error: "error", provider: null };
+  void recordAiUsage("daily-report", profile.id, aiRes.provider, quotaOk ? (aiRes.text ? "ok" : aiRes.error ?? "error") : "budget_block");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {
       const job = await fallbackToDevin({
         supabase,
         kind: "daily-report",
-        prompt: `Bạn là trợ lý soạn báo cáo ngày GVCN.\n\n${prompt}`,
+        prompt: `Bạn là trợ lý soạn báo cáo ngày GVCN.\n\n${safePrompt}`,
         expectedShape: '{"draft": "nội dung báo cáo 2-4 câu"}',
         createdBy: profile.id,
         req,
+        piiMap: piiNames,
       });
       if (job) {
         return NextResponse.json({

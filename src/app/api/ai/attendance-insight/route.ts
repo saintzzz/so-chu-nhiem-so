@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { deanonymizeNames } from "@/lib/ai-privacy";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
     );
   }
   const students = (studentData ?? []) as { id: string; full_name: string; code: string | null }[];
+  // CR-049 r5: alias HSxxx thay ma HS trong facts (ma so co dinh dang
+  // CCCD/CMND se bi redact lam mat key) - respondWithAi deanonymize.
+  const piiNames = students.map((s, i) => ({
+    name: s.full_name,
+    alias: `HS${String(i + 1).padStart(3, "0")}`,
+  }));
+  const aliasOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
   const ids = students.map((s) => s.id);
   if (!ids.length) {
     return NextResponse.json({ result: { lines: ["Lớp chưa có học sinh."] } });
@@ -107,7 +115,7 @@ export async function POST(req: Request) {
       const topDow = [...dowCount.entries()].sort((a, b) => b[1] - a[1])[0];
       const st = students.find((x) => x.id === sid);
       return {
-        ma_hs: st?.code ?? "HS",
+        ma_hs: st ? aliasOf.get(st.id) ?? "HS" : "HS",
         vang_kp: v.statuses.unexcused ?? 0,
         vang_cp: v.statuses.excused ?? 0,
         muon: v.statuses.late ?? 0,
@@ -137,13 +145,9 @@ export async function POST(req: Request) {
 Viết 3-5 nhận xét: ai vắng nhiều nhất, ai có pattern theo ngày trong tuần (VD hay vắng thứ 2), nhóm cần liên hệ phụ huynh ngay, 1-2 đề xuất. Mỗi nhận xét 1 dòng, nêu mã học sinh (ma_hs), không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1000,
+    pii: { names: piiNames },
     parse: (text) => {
-      const deanon = (s: string) => {
-        let out = s;
-        for (const st of students)
-          if (st.code) out = out.split(st.code).join(st.full_name);
-        return out;
-      };
+      const deanon = (s: string) => deanonymizeNames(s, piiNames);
       try {
         const o = JSON.parse(text) as { lines?: string[] };
         if (Array.isArray(o.lines) && o.lines.length) {

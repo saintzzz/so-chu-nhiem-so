@@ -38,10 +38,16 @@ export async function POST(req: NextRequest) {
     .digest("hex");
   const { data: job } = await admin
     .from("ai_jobs")
-    .select("id,callback_token,status,kind")
+    .select("id,callback_token,status,kind,pii_map")
     .eq("id", body.job_id)
     .single();
-  const row = job as { id: string; callback_token: string; status: string; kind: string } | null;
+  const row = job as {
+    id: string;
+    callback_token: string;
+    status: string;
+    kind: string;
+    pii_map: { name: string; alias: string }[] | null;
+  } | null;
   // Jobs tao truoc khi doi sang hash van luu plaintext -> chap nhan ca hai.
   const stored = row?.callback_token ?? "";
   const candidate =
@@ -83,13 +89,27 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // F18: job co pii_map (prompt da pseudonymize) - deanonymize output
+  // truoc khi luu de client doc ten that thay alias.
+  let finalResult = body.result;
+  if (Array.isArray(row.pii_map) && row.pii_map.length) {
+    const { deanonymizeNames } = await import("@/lib/ai-privacy");
+    try {
+      finalResult = JSON.parse(
+        deanonymizeNames(JSON.stringify(body.result), row.pii_map),
+      );
+    } catch {
+      /* giu result goc neu deanonymize lam hong JSON */
+    }
+  }
+
   // Conditional update on status=pending: mot callback duy nhat thang race;
   // callback thu hai tra ve 0 rows -> 409 thay vi ghi de ket qua.
   const { data: updated, error } = await admin
     .from("ai_jobs")
     .update({
       status: "done",
-      result: body.result as Record<string, unknown>,
+      result: finalResult as Record<string, unknown>,
     })
     .eq("id", row.id)
     .eq("status", "pending")

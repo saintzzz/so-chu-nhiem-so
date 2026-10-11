@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import { redactPiiText } from "@/lib/ai-privacy";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
@@ -146,7 +147,7 @@ Câu hỏi của BGH: "${question}"
 
 Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số liệu trên, không bịa số liệu. Nếu câu hỏi ngoài phạm vi dữ liệu thì nói rõ và gợi ý số liệu liên quan đang có. Trả về CHỈ JSON: {"answer": "..."}`;
 
-  const quotaOk = await takeAiQuota(supabase, "advisor");
+  const quotaOk = await takeAiQuota("advisor", profile.id);
   const aiRes: AiResult = quotaOk
     ? await generateTextDetailed(prompt, {
         system:
@@ -154,15 +155,15 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
         maxTokens: 1200,
         temperature: 0.4,
       })
-    : { text: null, error: "quota", provider: null };
-  void recordAiUsage(supabase, "advisor", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
+    : { text: null, error: "error", provider: null };
+  void recordAiUsage("advisor", profile.id, aiRes.provider, quotaOk ? (aiRes.text ? "ok" : aiRes.error ?? "error") : "budget_block");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {
       const job = await fallbackToDevin({
         supabase,
         kind: "advisor",
-        prompt,
+        prompt: redactPiiText(prompt),
         expectedShape: '{"answer": "trả lời ngắn gọn"}',
         createdBy: profile.id,
         req,

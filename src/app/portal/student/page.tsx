@@ -16,7 +16,8 @@ import type {
   Student,
   Subject,
 } from "@/types";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 function formatDate(iso: string): string {
   return fmtDateVN(iso);
@@ -144,10 +145,13 @@ export default async function StudentPortalPage() {
     ...new Set(ttEntries.map((e) => e.teacher_id).filter(Boolean) as string[]),
   ];
   const { data: ttTeacherRows } = ttTeacherIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", ttTeacherIds), "profiles")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        ttTeacherIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const ttTeacherName = new Map(
     ((ttTeacherRows ?? []) as { id: string; full_name: string }[]).map((p) => [

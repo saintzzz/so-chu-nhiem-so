@@ -6,7 +6,7 @@ import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
 import { cn, PERIODS } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
 import { must, mustRows } from "@/lib/supabase/must";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { fetchAllRows, fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
 
@@ -49,7 +49,7 @@ export default async function TimetablePage({
   }
   const [{ data: classesRaw }, { data: ownClsRaw }, { data: taughtRaw }] =
     await Promise.all([
-      allClassesQuery,
+      must(allClassesQuery, "classes"),
       must(supabase
         .from("classes")
         .select("id,name")
@@ -112,7 +112,10 @@ export default async function TimetablePage({
       ? must(supabase.from("subjects").select("id,name").in("id", subjectIds), "subjects")
       : Promise.resolve({ data: [] }),
     teacherIds.length > 0
-      ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
+      ? fetchAllRowsIn((chunk, f, t) =>
+          supabase.from("profiles").select("id,full_name")
+            .in("id", chunk).order("id").range(f, t),
+          teacherIds).then((r) => ({ data: mustRows(r).rows }))
       : Promise.resolve({ data: [] }),
   ]);
   const className = new Map(classes.map((c) => [c.id, c.name]));

@@ -4,6 +4,7 @@
 // loi rieng (emailFailed) thay vi nuot partial failure.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/email";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export interface ParentEmailResult {
   emailed: number;
@@ -45,25 +46,39 @@ export async function emailClassParents(
   const stuIds = ((stuRows ?? []) as { id: string }[]).map((s) => s.id);
   if (!stuIds.length) return empty;
 
-  const { data: linkRows, error: linkErr } = await supabase
-    .from("parent_students")
-    .select("parent_id")
-    .in("student_id", stuIds);
-  if (linkErr) return lookupFail("parent_students", linkErr.message);
+  // r26: .in chunk + phan trang - parent_students khoa kep, khong co id.
+  const linkRes = await fetchAllRowsIn<{ parent_id: string }>(
+    (chunk, f, t) =>
+      supabase
+        .from("parent_students")
+        .select("parent_id")
+        .in("student_id", chunk)
+        .order("student_id")
+        .order("parent_id")
+        .range(f, t),
+    stuIds,
+  );
+  if (linkRes.error || linkRes.truncated)
+    return lookupFail("parent_students", linkRes.error ?? "truncated");
   const parentIds = [
-    ...new Set(
-      ((linkRows ?? []) as { parent_id: string }[]).map((l) => l.parent_id),
-    ),
+    ...new Set(linkRes.rows.map((l) => l.parent_id)),
   ];
   if (!parentIds.length) return empty;
 
-  const { data: parentRows, error: parentErr } = await supabase
-    .from("parents")
-    .select("email")
-    .in("id", parentIds)
-    .not("email", "is", null);
-  if (parentErr) return lookupFail("parents", parentErr.message);
-  const emails = ((parentRows ?? []) as { email: string | null }[])
+  const parentRes = await fetchAllRowsIn<{ email: string | null }>(
+    (chunk, f, t) =>
+      supabase
+        .from("parents")
+        .select("email")
+        .in("id", chunk)
+        .not("email", "is", null)
+        .order("id")
+        .range(f, t),
+    parentIds,
+  );
+  if (parentRes.error || parentRes.truncated)
+    return lookupFail("parents", parentRes.error ?? "truncated");
+  const emails = parentRes.rows
     .map((p) => p.email)
     .filter((e): e is string => Boolean(e));
   if (!emails.length) return empty;

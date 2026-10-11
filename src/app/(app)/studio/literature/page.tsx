@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { LiteratureText } from "@/types/tvc";
 import { ArrowLeft, Copy } from "lucide-react";
 import { LiteratureImport, LiteratureExport } from "@/components/tvc/literature-import";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function StudioLiteraturePage({
     .order("title");
   if (type) query = query.eq("text_type", type);
   if (q) query = query.ilike("title", `%${q}%`);
-  const { data } = await query.limit(100);
+  const { data } = await must(query.limit(100), "query");
   const texts = (data as LiteText[]) ?? [];
   const types = [...new Set(texts.map((t) => t.text_type))];
 

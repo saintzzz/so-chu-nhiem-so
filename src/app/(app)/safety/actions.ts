@@ -158,6 +158,7 @@ export async function followupIncident(
   incidentId: string,
   input: {
     status: "new" | "following" | "resolved" | "archived";
+    expected: "new" | "following" | "resolved" | "archived";
     note: string;
   },
 ): Promise<{ error?: string }> {
@@ -170,10 +171,13 @@ export async function followupIncident(
   // (rpc scn_incident_followup, SECURITY INVOKER) - tranh lost update khi 2
   // GV submit theo doi dong thoi. Stamp ngay duoc tao trong function theo
   // gio VN. id khong khop/bi RLS chan thi update 0 row (chap nhan duoc).
+  // r26 M: p_expected = status client dang thay - tab cu gui 'following'
+  // tren incident da 'resolved' bi UPDATE 0 row -> raise -> bao stale.
   const { error } = await supabase.rpc("scn_incident_followup", {
     p_incident: incidentId,
     p_status: input.status,
     p_note: input.note.trim() || null,
+    p_expected: input.expected,
   });
   if (error) {
     console.error("[safety] followup incident:", error.message);

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import type { Activity } from "@/types";
@@ -106,11 +107,15 @@ export async function announceActivity(
   emailFailed?: number;
   emailSkipped?: boolean;
   emailError?: string;
+  emailPending?: boolean;
 }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
+  // r26: marker RPCs la service-only - chi server action goi duoc qua
+  // admin client + p_actor da xac thuc; browser khong the gia trang thai.
+  const admin = createAdminClient();
 
   const { data: actData, error: actErr } = await supabase
     .from("activities")
@@ -169,9 +174,9 @@ export async function announceActivity(
   // email-claim deu atomic trong DB. RLS marker chi con SELECT nen khong ai
   // ghi truc tiep; quyen announce duoc kiem lai server-side (gvcn lop hoac
   // bgh truong, activity phai approved).
-  const { data: claimRows, error: claimErr } = await supabase.rpc(
+  const { data: claimRows, error: claimErr } = await admin.rpc(
     "scn_announce_claim",
-    { p_activity_id: activityId },
+    { p_activity_id: activityId, p_actor: user.id },
   );
   if (claimErr) {
     console.error("[activity-announce] claim:", claimErr.message);
@@ -201,19 +206,25 @@ export async function announceActivity(
         "Thông báo đang được tạo ở một phiên khác - vui lòng thử lại sau.",
     };
 
-  if (!claim.announcement_id) {
+  let announcementId = claim.announcement_id;
+  if (!announcementId) {
     // claim state = 'claimed': tao announcement + link trong 1 transaction
     // (RPC) - that bai thi rollback ca hai, khong sinh announcement mo coi.
-    const { error: fulErr } = await supabase.rpc("scn_announce_fulfill", {
-      p_activity_id: activityId,
-      p_title: annTitle,
-      p_content: annContent,
-    });
-    if (fulErr) {
-      console.error("[activity-announce] fulfill:", fulErr.message);
+    const { data: fulId, error: fulErr } = await admin.rpc(
+      "scn_announce_fulfill",
+      {
+        p_activity_id: activityId,
+        p_actor: user.id,
+        p_title: annTitle,
+        p_content: annContent,
+      },
+    );
+    if (fulErr || !fulId) {
+      console.error("[activity-announce] fulfill:", fulErr?.message);
       revalidatePath("/activities/announce");
       return { error: "Không lưu được thông báo. Vui lòng thử lại." };
     }
+    announcementId = fulId as string;
   }
 
   let mail: {
@@ -221,6 +232,7 @@ export async function announceActivity(
     emailFailed: number;
     emailSkipped?: boolean;
     emailError?: string;
+    emailPending?: boolean;
   } = {
     emailed: claim.emailed ?? 0,
     emailFailed: claim.email_failed ?? 0,
@@ -230,9 +242,9 @@ export async function announceActivity(
   if (!claim.email_done) {
     // r25: claim tra token uuid (khong con boolean) - tab thu hai cung tai
     // khoan khong co token nen khong the cuop claim -> khong gui trung.
-    const { data: emailToken, error: eClaimErr } = await supabase.rpc(
+    const { data: emailToken, error: eClaimErr } = await admin.rpc(
       "scn_announce_email_claim",
-      { p_activity_id: activityId },
+      { p_activity_id: activityId, p_actor: user.id },
     );
     if (eClaimErr) {
       console.error("[activity-announce] email claim:", eClaimErr.message);
@@ -245,13 +257,30 @@ export async function announceActivity(
       };
     }
     if (typeof emailToken === "string" && emailToken) {
+      // r26 M: email phai di tu snapshot announcement da luu, khong phai
+      // activity hien tai - neu activity bi sua sau fulfill thi email
+      // retry van gui dung noi dung + lop cua announcement.
+      const { data: ann, error: annErr } = await supabase
+        .from("announcements")
+        .select("title,content,class_id")
+        .eq("id", announcementId)
+        .maybeSingle();
+      if (annErr || !ann) {
+        console.error("[activity-announce] announcement lookup:", annErr?.message);
+        revalidatePath("/activities/announce");
+        return {
+          error:
+            "Đã lưu thông báo nhưng không đọc được nội dung đã lưu - bấm lại sẽ thử gửi nếu cần.",
+          emailError: "state-unknown",
+        };
+      }
       // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
       // [So Chu Nhiem So] do helper dat).
       mail = await emailClassParents(supabase, {
-        classId: activity.class_id,
+        classId: ann.class_id,
         studentId: null,
-        title: annTitle,
-        content: annContent,
+        title: ann.title,
+        content: ann.content,
       });
       // email_done khi da gui duoc >=1, chua cau hinh, hoac khong co nguoi
       // nhan. Chi retry khi CHUA gui duoc gi (lookup/provider loi) - resend
@@ -260,10 +289,11 @@ export async function announceActivity(
         Boolean(mail.emailSkipped) ||
         (mail.emailed ?? 0) > 0 ||
         (!mail.emailError && (mail.emailFailed ?? 0) === 0);
-      const { data: done, error: doneErr } = await supabase.rpc(
+      const { data: done, error: doneErr } = await admin.rpc(
         "scn_announce_email_complete",
         {
           p_activity_id: activityId,
+          p_actor: user.id,
           p_token: emailToken,
           p_done: emailDone,
           p_emailed: mail.emailed ?? 0,
@@ -302,12 +332,23 @@ export async function announceActivity(
           emailError: "state-unknown",
         };
       }
-      mail = {
-        emailed: m2?.emailed ?? 0,
-        emailFailed: m2?.email_failed ?? 0,
-        emailSkipped: m2?.email_skipped ?? false,
-        emailError: m2?.email_error ?? undefined,
-      };
+      // r26 M: marker chua complete -> email dang duoc gui o phien khac,
+      // khong duoc bao "khong co email phu huynh" nhu truoc.
+      if (m2 && !m2.email_done) {
+        mail = {
+          emailed: 0,
+          emailFailed: 0,
+          emailSkipped: false,
+          emailPending: true,
+        };
+      } else {
+        mail = {
+          emailed: m2?.emailed ?? 0,
+          emailFailed: m2?.email_failed ?? 0,
+          emailSkipped: m2?.email_skipped ?? false,
+          emailError: m2?.email_error ?? undefined,
+        };
+      }
     }
   }
 
@@ -344,6 +385,7 @@ export async function announceActivity(
         emailFailed: mail.emailFailed,
         emailSkipped: mail.emailSkipped,
         emailError: mail.emailError,
+        emailPending: mail.emailPending,
       };
     }
   }
@@ -356,6 +398,7 @@ export async function announceActivity(
     emailFailed: mail.emailFailed,
     emailSkipped: mail.emailSkipped,
     emailError: mail.emailError,
+    emailPending: mail.emailPending,
   };
 }
 
@@ -375,6 +418,33 @@ export async function saveActivityAttendance(
   if (rows.length === 0) {
     revalidatePath("/activities/attendance");
     return {};
+  }
+  // r26 M: moi student phai thuoc lop cua activity - DB policy
+  // (scn_attendance_pair_ok) cung chan, check o day de tra loi ro rang.
+  const { data: act, error: actErr } = await supabase
+    .from("activities")
+    .select("class_id")
+    .eq("id", activityId)
+    .maybeSingle();
+  if (actErr) {
+    console.error("[activities] attendance activity:", actErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  if (!act) return { error: "Không tìm thấy hoạt động." };
+  const { data: validRows, error: vErr } = await supabase
+    .from("students")
+    .select("id")
+    .eq("class_id", act.class_id)
+    .in("id", rows.map((r) => r.studentId));
+  if (vErr) {
+    console.error("[activities] attendance students:", vErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  const validIds = new Set(
+    ((validRows ?? []) as { id: string }[]).map((s) => s.id),
+  );
+  if (validIds.size !== rows.length) {
+    return { error: "Có học sinh không thuộc lớp của hoạt động này." };
   }
   // PK (activity_id, student_id) -> 1 upsert thay vi N update/insert tuan tu
   // (lop ~45 HS tung mat ~45 RTT).

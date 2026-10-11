@@ -59,7 +59,7 @@ export default async function StudioQuestionsPage() {
   }
   const [{ data: subs }, { data: firstRows }] = await Promise.all([
     must(supabase.from("tvc_subjects").select("*").order("code"), "tvc_subjects"),
-    firstQ,
+    must(firstQ, "tvc_questions"),
   ]);
   const qs = firstRows ?? [];
 

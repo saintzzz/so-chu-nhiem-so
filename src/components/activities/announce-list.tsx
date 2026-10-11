@@ -29,8 +29,14 @@ export function AnnounceList({
     emailFailed?: number;
     emailSkipped?: boolean;
     emailError?: string;
+    emailPending?: boolean;
   }): string {
     const reg = res.registered ?? 0;
+    // r26 M: email dang gui o phien khac - khong bao "khong co email"
+    // nhu truoc; nguoi dung tai lai sau de xem ket qua that.
+    if (res.emailPending) {
+      return `Đã gửi thông báo, đăng ký ${reg} học sinh (email đang được gửi - tải lại sau để xem kết quả).`;
+    }
     if (res.emailSkipped) {
       return `Đã gửi thông báo, đăng ký ${reg} học sinh (email chưa cấu hình).`;
     }

@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { PageHeader } from "@/components/page-header";
 import { SignoffClient } from "@/components/register/signoff-client";
 import {
@@ -50,10 +51,25 @@ export default async function SignoffPage() {
         .filter((x): x is string => Boolean(x)),
     ),
   ];
-  const { data: signerData, error: signerErr } =
+  // r26: .in chunk + phan trang - signerIds co the lon (nhieu nguoi ky).
+  const signerRes =
     signerIds.length > 0
-      ? await supabase.from("profiles").select("id,full_name").in("id", signerIds)
-      : { data: [], error: null };
+      ? await fetchAllRowsIn<Pick<Profile, "id" | "full_name">>(
+          (chunk, f, t) =>
+            supabase
+              .from("profiles")
+              .select("id,full_name")
+              .in("id", chunk)
+              .order("id")
+              .range(f, t),
+          signerIds,
+        )
+      : { rows: [], error: null, truncated: false };
+  const signerData = signerRes.rows;
+  const signerErr =
+    signerRes.error || signerRes.truncated
+      ? { message: signerRes.error ?? "truncated" }
+      : null;
   if (signerErr) {
     console.error("[register/signoff] signers:", signerErr.message);
   }

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { StudentUploader } from "@/components/records/student-uploader";
 import { AiExtract } from "@/components/records/ai-extract";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function RecordsUploadPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -19,7 +20,7 @@ export default async function RecordsUploadPage() {
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  const { data: classData } = await must(classQuery, "query");
   const classes = (classData ?? []) as { id: string; name: string }[];
 
   return (

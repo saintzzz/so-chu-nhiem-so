@@ -37,7 +37,7 @@ export default async function StudentChatPage({
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData } = await must(classQuery.order("name"), "query");
   const classes = (classData ?? []) as ClassRow[];
 
   const selectedClassId =

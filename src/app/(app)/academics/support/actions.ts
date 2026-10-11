@@ -5,6 +5,7 @@ import { checkActionRole, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
 import { hasRole } from "@/lib/roles";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export interface SupportPlanPair {
   studentId: string;
@@ -28,15 +29,25 @@ export async function createSupportPlans(
   const subjectIds = [...new Set(pairs.map((p) => p.subjectId))];
 
   // Verify every student belongs to the user's school and an allowed class.
-  const { data: stData, error: stErr } = await supabase
-    .from("students")
-    .select("id,class_id,classes!inner(id,school_id,gvcn_id)")
-    .in("id", studentIds)
-    .eq("status", "active");
-  if (stErr) {
-    console.error("[support] list students:", stErr.message);
+  // r26: .in chunk + phan trang - bulk create co the truyen >1000 ids.
+  const stRes = await fetchAllRowsIn<{
+    id: string;
+    class_id: string;
+    classes: { school_id: string; gvcn_id: string | null } | { school_id: string; gvcn_id: string | null }[];
+  }>((chunk, f, t) =>
+    supabase
+      .from("students")
+      .select("id,class_id,classes!inner(id,school_id,gvcn_id)")
+      .in("id", chunk)
+      .eq("status", "active")
+      .order("id")
+      .range(f, t),
+  studentIds);
+  if (stRes.error || stRes.truncated) {
+    console.error("[support] list students:", stRes.error ?? "truncated");
     return { created: 0, error: "Không tải được danh sách học sinh - vui lòng thử lại." };
   }
+  const stData = stRes.rows;
 
   const allowed = new Map<string, string>();
   for (const s of (stData ?? []) as {
@@ -70,15 +81,22 @@ export async function createSupportPlans(
   );
 
   // Skip pairs that already have an active plan.
-  const { data: existing, error: exErr } = await supabase
-    .from("support_plans")
-    .select("student_id,subject_id")
-    .in("student_id", studentIds)
-    .neq("status", "cancelled");
-  if (exErr) {
-    console.error("[support] existing plans:", exErr.message);
+  const exRes = await fetchAllRowsIn<{ student_id: string; subject_id: string }>(
+    (chunk, f, t) =>
+      supabase
+        .from("support_plans")
+        .select("student_id,subject_id")
+        .in("student_id", chunk)
+        .neq("status", "cancelled")
+        .order("id")
+        .range(f, t),
+    studentIds,
+  );
+  if (exRes.error || exRes.truncated) {
+    console.error("[support] existing plans:", exRes.error ?? "truncated");
     return { created: 0, error: "Không tải được kế hoạch hiện có để chống trùng - vui lòng thử lại." };
   }
+  const existing = exRes.rows;
   const existingKeys = new Set(
     ((existing ?? []) as { student_id: string; subject_id: string }[]).map(
       (e) => `${e.student_id}:${e.subject_id}`,

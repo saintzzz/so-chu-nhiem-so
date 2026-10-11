@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn, fmtDateTimeVN } from "@/lib/utils";
 import { olderMessagesPredicate } from "@/lib/chat";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import {
   markMessageRead,
   replyMessage,
@@ -66,9 +67,17 @@ export function InboxClient({
     if (!readIds.has(m.id)) {
       // r22 L: chi danh dau da doc khi action thanh cong - rollback trang
       // thai optimistic va bao loi de cham chua doc khong bien mat gia.
+      // r26 L: action cung co the REJECT (getProfile throw, mat ket noi) -
+      // catch de rollback nhu nhanh {error}.
       setReadIds((prev) => new Set(prev).add(m.id));
-      const res = await markMessageRead(m.id);
-      if (res?.error) {
+      let failed = false;
+      try {
+        const res = await markMessageRead(m.id);
+        failed = Boolean(res?.error);
+      } catch {
+        failed = true;
+      }
+      if (failed) {
         setReadIds((prev) => {
           const next = new Set(prev);
           next.delete(m.id);
@@ -109,22 +118,41 @@ export function InboxClient({
       ),
     ];
     const [
-      { data: senders, error: sendersErr },
-      { data: students, error: studentsErr },
+      { rows: senders, error: sendersErr, truncated: sendersTrunc },
+      { rows: students, error: studentsErr, truncated: studentsTrunc },
     ] = await Promise.all([
       senderIds.length
-        ? supabase.from("profiles").select("id,full_name").in("id", senderIds)
-        : Promise.resolve({ data: [], error: null }),
+        ? // r26: .in chunk + phan trang - hop thu dai co the >1000 sender.
+          fetchAllRowsIn<{ id: string; full_name: string }>(
+            (chunk, f, t) =>
+              supabase
+                .from("profiles")
+                .select("id,full_name")
+                .in("id", chunk)
+                .order("id")
+                .range(f, t),
+            senderIds,
+          )
+        : Promise.resolve({ rows: [], error: null, truncated: false }),
       studentIds.length
-        ? supabase.from("students").select("id,full_name").in("id", studentIds)
-        : Promise.resolve({ data: [], error: null }),
+        ? fetchAllRowsIn<{ id: string; full_name: string }>(
+            (chunk, f, t) =>
+              supabase
+                .from("students")
+                .select("id,full_name")
+                .in("id", chunk)
+                .order("id")
+                .range(f, t),
+            studentIds,
+          )
+        : Promise.resolve({ rows: [], error: null, truncated: false }),
     ]);
     // r24: loi resolve ten -> hien loi thay vi render tin nhan voi ten
     // fallback "Phu huynh" sai nguoi gui.
-    if (sendersErr || studentsErr) {
+    if (sendersErr || studentsErr || sendersTrunc || studentsTrunc) {
       console.error(
         "[inbox-client] name lookup:",
-        sendersErr?.message ?? studentsErr?.message,
+        sendersErr ?? studentsErr ?? "truncated",
       );
       setLoadError("Không tải được tin nhắn cũ - vui lòng thử lại.");
       setLoadingMore(false);
@@ -177,11 +205,13 @@ export function InboxClient({
       content: reply,
     });
     setPending(false);
-    if (res.error) {
-      setFeedback(res.error);
-    } else {
+    // r26 M: tin nhan da commit (committed=true) -> xoa draft ngay, ke ca
+    // khi kem loi notification - neu giu draft thi retry tao tin trung.
+    if (res.committed) {
       setReply("");
-      setFeedback("Đã gửi phản hồi.");
+      setFeedback(res.error ?? "Đã gửi phản hồi.");
+    } else {
+      setFeedback(res.error ?? "Không gửi được phản hồi.");
     }
   }
 

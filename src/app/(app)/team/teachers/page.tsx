@@ -6,7 +6,8 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import type { ClassRoom, Profile, Subject } from "@/types";
 import { compareVietnameseName } from "@/lib/utils";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 interface TeacherSubject {
   teacher_id: string;
@@ -32,13 +33,18 @@ export default async function TeamTeachersPage() {
 
   const [tsRes, subjectsRes, classesRes] = await Promise.all([
     teacherIds.length
-      ? must(
-          supabase
-            .from("teacher_subjects")
-            .select("teacher_id,subject_id")
-            .in("teacher_id", teacherIds),
-          "teacher_subjects",
-        )
+      ? // r26: .in chunk + phan trang - teacher_subjects khoa kep, khong co id.
+        fetchAllRowsIn<{ teacher_id: string; subject_id: string }>(
+          (chunk, f, t) =>
+            supabase
+              .from("teacher_subjects")
+              .select("teacher_id,subject_id")
+              .in("teacher_id", chunk)
+              .order("teacher_id")
+              .order("subject_id")
+              .range(f, t),
+          teacherIds,
+        ).then((r) => ({ data: mustRows(r, "teacher_subjects").rows }))
       : Promise.resolve({ data: [] }),
     must(
       supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),

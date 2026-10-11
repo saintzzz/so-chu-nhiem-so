@@ -650,10 +650,10 @@ test("R6-02: query nguon loi -> lookup failed, khong gia danh sach rong", () => 
   const helper = read("src/lib/parent-email.ts");
   assert.match(helper, /emailError: "lookup failed"/,
     "lookupFail phai tra nhan lookup failed co dinh");
-  for (const q of ["stuErr", "linkErr", "parentErr"]) {
+  for (const q of ["students", "parent_students", "parents"]) {
     assert.ok(
-      new RegExp(`${q}\\) return lookupFail`).test(helper),
-      `${q} phai tra lookup failed thay vi xu ly tiep nhu khong co nguoi nhan`);
+      new RegExp(`lookupFail\\("${q}"`).test(helper),
+      `lookup ${q} phai tra lookup failed thay vi xu ly tiep nhu khong co nguoi nhan`);
   }
 });
 
@@ -825,7 +825,7 @@ test("R7-03: substitutes/journals page fetchAllRows cho timetable_entries", () =
     "loi/truncated phai hien notice thay vi render goi y thieu");
 
   const jr = read("src/app/(app)/school/journals/page.tsx");
-  assert.match(jr, /import \{ fetchAllRows \} from "@\/lib\/supabase\/fetch-all"/);
+  assert.match(jr, /import \{[^}]*fetchAllRows[^}]*\} from "@\/lib\/supabase\/fetch-all"/);
   const jtt = jr.match(/from\("timetable_entries"\)[\s\S]*?\.range\(f, t\)/);
   assert.ok(jtt, "journals page van fetch timetable khong phan trang");
   assert.match(jtt[0], /\.in\("class_id", classIds\)/);

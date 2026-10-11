@@ -8,7 +8,8 @@ import { MaterialActions } from "@/components/tvc/material-actions";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { ArrowLeft } from "lucide-react";
 import { effectiveRoles, hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +42,13 @@ export default async function StudioMaterialPage({
       : { data: [] };
 
   const { data: stds } = material.standard_ids?.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("tvc_curriculum_standards")
         .select("id, code, description")
-        .in("id", material.standard_ids), "tvc_curriculum_standards")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        material.standard_ids).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
 
   return (

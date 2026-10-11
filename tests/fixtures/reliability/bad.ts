@@ -44,5 +44,24 @@ export async function bad(supabase: any, e: { table: string }, status: string, i
   // 8. action result discarded
   await notify("x");
 
-  return { count, rows, p };
+  // 9. builder var awaited sau - error khong bind (r26: intake/audit)
+  let bq = supabase.from("audit_logs").select("*").order("created_at");
+  bq = bq.eq("actor_id", "1");
+  const { data: logs } = await bq.range(0, 9);
+
+  // 10. builder var awaited truc tiep - error khong bind
+  const cq = supabase.from("classes").select("*").order("name");
+  const { data: cls } = await cq;
+
+  // 11. .in("class_id") tren bang lon -> khong bound (r26: plans/audit)
+  const { data: st } = await supabase
+    .from("students")
+    .select("id")
+    .in("class_id", ids);
+
+  // 12. discarded await tren chain reo builder var
+  const uq = supabase.from("notifications").update({ read_at: "x" }).eq("id", "1");
+  await uq;
+
+  return { count, rows, p, logs, cls, st };
 }

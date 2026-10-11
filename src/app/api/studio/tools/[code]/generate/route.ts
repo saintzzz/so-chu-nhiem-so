@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { TOOL_MAP } from "@/lib/tvc/registry";
 import { fbMatrix } from "@/lib/tvc/fallbacks";
 import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
@@ -478,17 +479,24 @@ export async function POST(
     .map((s) => s.trim())
     .filter(Boolean);
   if (stdIds.length) {
-    const { data, error } = await supabase
-      .from("tvc_curriculum_standards")
-      .select("*")
-      .in("id", stdIds);
-    if (error) {
+    // r26: .in chunk + phan trang - stdIds do user truyen, co the rat dai.
+    const stdRes = await fetchAllRowsIn<CurriculumStandard>(
+      (chunk, f, t) =>
+        supabase
+          .from("tvc_curriculum_standards")
+          .select("*")
+          .in("id", chunk)
+          .order("id")
+          .range(f, t),
+      stdIds,
+    );
+    if (stdRes.error || stdRes.truncated) {
       return NextResponse.json(
         { error: "Không tải được dữ liệu nguồn." },
         { status: 500 },
       );
     }
-    standards = (data as CurriculumStandard[]) ?? [];
+    standards = stdRes.rows;
   }
 
   const ctx: ToolContext = { subject, grade, standards };
@@ -551,17 +559,23 @@ export async function POST(
     }
     if (!ctx.grade && mat.grade) ctx.grade = mat.grade;
     if (!ctx.standards.length && mat.standard_ids?.length) {
-      const { data, error } = await supabase
-        .from("tvc_curriculum_standards")
-        .select("*")
-        .in("id", mat.standard_ids);
-      if (error) {
+      const stdRes = await fetchAllRowsIn<CurriculumStandard>(
+        (chunk, f, t) =>
+          supabase
+            .from("tvc_curriculum_standards")
+            .select("*")
+            .in("id", chunk)
+            .order("id")
+            .range(f, t),
+        mat.standard_ids,
+      );
+      if (stdRes.error || stdRes.truncated) {
         return NextResponse.json(
           { error: "Không tải được dữ liệu nguồn." },
           { status: 500 },
         );
       }
-      standards = (data as CurriculumStandard[]) ?? [];
+      standards = stdRes.rows;
       ctx.standards = standards;
     }
     ctx.extra = {

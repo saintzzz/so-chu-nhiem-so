@@ -8,7 +8,8 @@ import { StatusBadge } from "@/components/status-badge";
 import type { AuditLog } from "@/components/register/types";
 import type { ClassRoom, Profile, Student } from "@/types";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRows, fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 const PAGE_SIZE = 50;
 
@@ -95,8 +96,10 @@ export default async function AuditPage({
         .order("full_name")
     : null;
   const [{ data: classData }, { data: staffData }] = await Promise.all([
-    classQuery,
-    staffQuery ?? Promise.resolve({ data: [] }),
+    must(classQuery, "classes"),
+    staffQuery
+      ? must(staffQuery, "profiles")
+      : Promise.resolve({ data: [] }),
   ]);
   const classes = (classData ?? []) as ClassRoom[];
   const classIds = classes.map((c) => c.id);
@@ -106,10 +109,15 @@ export default async function AuditPage({
 
   const { data: studentData } =
     type === "records" && classIds.length
-      ? await must(supabase
-          .from("students")
-          .select("id,code,full_name,class_id")
-          .in("class_id", classIds), "students")
+      ? await fetchAllRows<Pick<Student, "id" | "code" | "full_name" | "class_id">>(
+          (from, to) =>
+            supabase
+              .from("students")
+              .select("id,code,full_name,class_id")
+              .in("class_id", classIds)
+              .order("id")
+              .range(from, to),
+        ).then((r) => ({ data: mustRows(r).rows }))
       : { data: [] };
   const students = ((studentData ?? []) as Pick<
     Student,
@@ -134,14 +142,17 @@ export default async function AuditPage({
     let query = supabase
       .from("audit_logs")
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      // r26 L: order phu theo id - bulk insert cung timestamp khong duoc
+      // lam trang offset lap/sot rows.
+      .order("id");
     if (from) query = query.gte("created_at", `${from}T00:00:00`);
     if (to) query = query.lte("created_at", `${to}T23:59:59`);
     if (selectedActor) query = query.eq("actor_id", selectedActor);
     if (q) query = query.or(`action.ilike.%${sanitizeOrTerm(q)}%,entity.ilike.%${sanitizeOrTerm(q)}%`);
-    const { data, count } = await query.range(
-      (page - 1) * PAGE_SIZE,
-      page * PAGE_SIZE - 1,
+    const { data, count } = await must(
+      query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+      "audit_logs",
     );
     logs = (data ?? []) as AuditLog[];
     auditCount = count ?? logs.length;
@@ -152,10 +163,13 @@ export default async function AuditPage({
   ] as string[];
   const { data: logActorData } =
     logActorIds.length > 0
-      ? await must(supabase
+      ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
           .from("profiles")
           .select("id,full_name")
-          .in("id", logActorIds), "profiles")
+          .in("id", chunk).order("id")
+          .range(f, t),
+        logActorIds).then((r) => ({ data: mustRows(r).rows }))
       : { data: [] };
   for (const p of (logActorData ?? []) as Pick<Profile, "id" | "full_name">[]) {
     if (!staffById.has(p.id)) staffById.set(p.id, p.full_name);
@@ -171,16 +185,17 @@ export default async function AuditPage({
         .from("student_record_history")
         .select("*", { count: "exact" })
         .in("student_id", scopedStudentIds)
-        .order("changed_at", { ascending: false });
+        .order("changed_at", { ascending: false })
+        .order("id");
       if (from) query = query.gte("changed_at", `${from}T00:00:00`);
       if (to) query = query.lte("changed_at", `${to}T23:59:59`);
       if (selectedActor) query = query.eq("changed_by", selectedActor);
       if (selectedStudentId)
         query = query.eq("student_id", selectedStudentId);
       if (q) query = query.eq("field", q);
-      const { data, count } = await query.range(
-        (page - 1) * PAGE_SIZE,
-        page * PAGE_SIZE - 1,
+      const { data, count } = await must(
+        query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+        "student_record_history",
       );
       history = (data ?? []) as RecordHistoryRow[];
       recordCount = count ?? history.length;
@@ -204,13 +219,14 @@ export default async function AuditPage({
     let query = supabase
       .from("digest_deliveries")
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id");
     if (from) query = query.gte("created_at", `${from}T00:00:00`);
     if (to) query = query.lte("created_at", `${to}T23:59:59`);
     if (q) query = query.or(`email.ilike.%${sanitizeOrTerm(q)}%,status.ilike.%${sanitizeOrTerm(q)}%`);
-    const { data, count } = await query.range(
-      (page - 1) * PAGE_SIZE,
-      page * PAGE_SIZE - 1,
+    const { data, count } = await must(
+      query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+      "digest_deliveries",
     );
     digests = (data ?? []) as DigestRow[];
     digestCount = count ?? digests.length;
@@ -221,10 +237,13 @@ export default async function AuditPage({
   ] as string[];
   const { data: changerData } =
     changerIds.length > 0
-      ? await must(supabase
+      ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
           .from("profiles")
           .select("id,full_name")
-          .in("id", changerIds), "profiles")
+          .in("id", chunk).order("id")
+          .range(f, t),
+        changerIds).then((r) => ({ data: mustRows(r).rows }))
       : { data: [] };
   for (const p of (changerData ?? []) as Pick<Profile, "id" | "full_name">[]) {
     if (!staffById.has(p.id)) staffById.set(p.id, p.full_name);

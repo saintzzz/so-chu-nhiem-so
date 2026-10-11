@@ -33,6 +33,11 @@ test("reliability scanner flags every known-bad fixture pattern", () => {
     /update\(patch\)|counseling_cases/, // .update(patch) status-in-var
     /\.eq\("status", "draft"\)|activities/, // predicate khong .select() verify
     /DISCARDED notify/, // action result bo qua
+    // r26: builder var - await q.range() / await q (object binding,
+    // discarded chain) va .in("class_id") khong bound tren bang lon.
+    /bad\.ts:\d+ NO-ERR-BIND.*range|NO-ERR-BIND/, // await bq.range() khong error-bind
+    /students :: .*in\("class_id"|students :: /, // .in("class_id") khong bound
+    /DISCARDED-QUERY/, // await uq (builder var chain)
   ];
   for (const re of expectations)
     assert.match(out, re, `scanner phai flag pattern ${re}`);

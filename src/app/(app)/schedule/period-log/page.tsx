@@ -1,7 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { fetchAllRows, fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
@@ -147,17 +147,32 @@ export default async function PeriodLogPage({
       const subClassIds = [...new Set(subReqs.map((r) => r.class_id))];
       // embed classes(school_id) de kiem r.school_id khop truong cua lop
       // dung nhu DB helper.
-      const { data: subEntriesRaw, error: subEntErr } = await supabase
-        .from("timetable_entries")
-        .select("id,class_id,subject_id,teacher_id,period,room,classes(school_id)")
-        .eq("weekday", weekday)
-        .in("class_id", subClassIds);
-      if (subEntErr) {
-        console.error("[period-log] sub entries:", subEntErr.message);
+      // r26: .in chunk + phan trang - subClassIds co the vuot gioi han.
+      const subEntRes = await fetchAllRowsIn<
+        EntryRow & {
+          classes: { school_id: string }[] | { school_id: string } | null;
+        }
+      >(
+        (chunk, f, t) =>
+          supabase
+            .from("timetable_entries")
+            .select("id,class_id,subject_id,teacher_id,period,room,classes(school_id)")
+            .eq("weekday", weekday)
+            .in("class_id", chunk)
+            .order("id")
+            .range(f, t),
+        subClassIds,
+      );
+      const subEntriesRaw = subEntRes.rows;
+      if (subEntRes.error || subEntRes.truncated) {
+        console.error(
+          "[period-log] sub entries:",
+          subEntRes.error ?? "truncated",
+        );
         loadError ??= "Không tải được tiết dạy thay - vui lòng tải lại trang.";
       }
       const known = new Set(entryRows.map((e) => e.id));
-      for (const e of (subEntriesRaw ?? []) as (EntryRow & {
+      for (const e of subEntriesRaw as (EntryRow & {
         classes: { school_id: string }[] | { school_id: string } | null;
       })[]) {
         const entrySchoolId = Array.isArray(e.classes)
@@ -288,21 +303,28 @@ export default async function PeriodLogPage({
       );
 
     const entryIds = entryRows.map((e) => e.id);
-    const { data: logsRaw, error: logsErr } =
+    // r26: .in chunk + phan trang - entryIds co the vuot gioi han.
+    const logsRes =
       entryIds.length > 0
-        ? await supabase
-            .from("period_logs")
-            .select(
-              "id,timetable_entry_id,present_count,note,lesson_title,lesson_content,teacher_comment",
-            )
-            .eq("date", date)
-            .in("timetable_entry_id", entryIds)
-        : { data: [], error: null };
-    if (logsErr) {
-      console.error("[period-log] logs:", logsErr.message);
+        ? await fetchAllRowsIn<LogRow>(
+            (chunk, f, t) =>
+              supabase
+                .from("period_logs")
+                .select(
+                  "id,timetable_entry_id,present_count,note,lesson_title,lesson_content,teacher_comment",
+                )
+                .eq("date", date)
+                .in("timetable_entry_id", chunk)
+                .order("id")
+                .range(f, t),
+            entryIds,
+          )
+        : { rows: [] as LogRow[], error: null, truncated: false };
+    if (logsRes.error || logsRes.truncated) {
+      console.error("[period-log] logs:", logsRes.error ?? "truncated");
       loadError ??= "Không tải được sổ đầu bài - vui lòng tải lại trang.";
     }
-    const logRows = (logsRaw ?? []) as LogRow[];
+    const logRows = logsRes.rows;
 
     const logIds = logRows.map((l) => l.id);
     const absRes =

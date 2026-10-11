@@ -5,7 +5,8 @@ import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { approveAssessment } from "./actions";
 import type { Profile } from "@/types";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type AssessmentStatus = "draft" | "submitted" | "reviewed" | "approved";
 
@@ -41,11 +42,14 @@ export default async function TeamReviewPage() {
   const teacherNameOf = new Map(teachers.map((t) => [t.id, t.full_name]));
 
   const { data: rows } = teacherIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("teacher_assessments")
         .select("id,teacher_id,self_review,plan,status")
-        .in("teacher_id", teacherIds)
-        .neq("status", "draft"), "teacher_assessments")
+        .in("teacher_id", chunk)
+        .neq("status", "draft").order("id")
+          .range(f, t),
+        teacherIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const assessments = (rows ?? []) as TeacherAssessment[];
   const order: Record<AssessmentStatus, number> = {

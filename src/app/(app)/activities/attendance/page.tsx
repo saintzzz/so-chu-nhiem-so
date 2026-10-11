@@ -5,7 +5,8 @@ import { compareVietnameseName } from "@/lib/utils";
 import { AttendanceRoster } from "@/components/activities/attendance-roster";
 import type { Activity, ClassRoom, Profile, Student, Role } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -27,7 +28,7 @@ async function scopedClasses(
   } else {
     query = query.eq("gvcn_id", profile.id);
   }
-  const { data } = await query;
+  const { data } = await must(query, "classes");
   return (data ?? []) as ClassRoom[];
 }
 
@@ -53,12 +54,16 @@ export default async function ActivitiesAttendancePage({
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: actData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("activities")
         .select("*")
-        .in("class_id", classIds)
+        .in("class_id", chunk)
         .in("status", ["approved", "done"])
-        .order("activity_date", { ascending: false }), "activities")
+        .order("activity_date", { ascending: false })
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const activities = (actData ?? []) as Activity[];
 
@@ -84,11 +89,15 @@ export default async function ActivitiesAttendancePage({
 
     const studentIds = attendance.map((r) => r.student_id);
     const { data: studentData } = studentIds.length
-      ? await must(supabase
+      ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
           .from("students")
           .select("id,full_name,code")
-          .in("id", studentIds)
-          .order("full_name"), "students")
+          .in("id", chunk)
+          .order("full_name")
+          .order("id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
       : { data: [] };
     const students = (studentData ?? []) as Pick<
       Student,

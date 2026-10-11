@@ -5,7 +5,8 @@ import { ArchiveTable } from "@/components/safety/archive-table";
 import type { ClassRoom, Incident, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -20,7 +21,7 @@ async function scopedClasses(
   } else {
     query = query.eq("gvcn_id", profile.id);
   }
-  const { data } = await query;
+  const { data } = await must(query, "classes");
   return (data ?? []) as ClassRoom[];
 }
 
@@ -37,12 +38,16 @@ export default async function SafetyArchivePage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: incData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("incidents")
         .select("*")
-        .in("class_id", classIds)
+        .in("class_id", chunk)
         .in("status", ["resolved", "archived"])
-        .order("occurred_at", { ascending: false }), "incidents")
+        .order("occurred_at", { ascending: false })
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const incidents = (incData ?? []) as Incident[];
 
@@ -52,10 +57,13 @@ export default async function SafetyArchivePage() {
     ),
   ];
   const { data: studentData } = studentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name")
-        .in("id", studentIds), "students")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const studentName = new Map(
     ((studentData ?? []) as Pick<Student, "id" | "full_name">[]).map((s) => [

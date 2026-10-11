@@ -666,7 +666,7 @@ test("guard r15: routes fail-closed tren loi nguon con sot", () => {
   assert.match(wa, /clsErr/);
   const dd = read("src/app/api/ai/daily-digest/route.ts");
   assert.match(dd, /clsErr/);
-  assert.match(dd, /repErr/);
+  assert.match(dd, /repRes\.error|repErr/);
 });
 
 test("guard r15: studio generate preserveKeys cho builder", () => {
@@ -898,7 +898,7 @@ test("guard r21: server actions + cron khong bo loi DB truoc mutation/notificati
   assert.match(sch, /delErr/, "item_acl DELETE phai check error truoc audit");
   assert.match(sch, /aclErr|profErr/, "listItemAcl phai check ca 2 SELECT");
   const radar = read("src/app/(app)/school/radar/actions.ts");
-  assert.match(radar, /dedupeErr/, "dedupe lookup phai check error truoc INSERT");
+  assert.match(radar, /dedupeRes\.error|dedupeErr/, "dedupe lookup phai check error truoc INSERT");
   assert.match(radar, /notiErr/, "warning notify phai check error");
   const sub = read("src/app/(app)/school/substitutes/actions.ts");
   assert.match(sub, /tpErr/, "target profiles lookup phai check error");
@@ -916,7 +916,7 @@ test("guard r21: server actions + cron khong bo loi DB truoc mutation/notificati
 
 test("guard r22: nguon loi phai chan form; committed state revalidate truoc return", () => {
   const daily = read("src/app/(app)/attendance/daily/page.tsx");
-  assert.match(daily, /error: attErr/, "attendance SELECT phai check error");
+  assert.match(daily, /attErr/, "attendance SELECT phai check error");
   assert.match(daily, /loadError/, "page phai truyen loadError vao roster");
   const roster = read("src/components/attendance/daily-roster.tsx");
   assert.match(roster, /loadError/, "roster nhan loadError");
@@ -955,7 +955,7 @@ test("guard r22: nguon loi phai chan form; committed state revalidate truoc retu
 
 test("guard r23: marker nguyen tu + nguon loi chan board + client khong nuot error", () => {
   const pl = read("src/app/(app)/schedule/period-log/page.tsx");
-  assert.match(pl, /error: absErr|error: logsErr/, "period_logs/absences SELECT phai check error");
+  assert.match(pl, /absRes\.error|logsRes\.error|error: absErr|error: logsErr/, "period_logs/absences SELECT phai check error");
   assert.match(pl, /loadError/, "page phai truyen loadError vao board");
   const board = read("src/components/schedule/period-log-board.tsx");
   assert.match(board, /if \(blocked\) return/, "editor phai bi chan khi nguon loi");

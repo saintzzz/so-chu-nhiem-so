@@ -4,7 +4,8 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn, sortByVietnameseName } from "@/lib/utils";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
   id: string;
@@ -61,19 +62,27 @@ export default async function ParentChatPage({
   const studentIds = students.map((s) => s.id);
 
   const { data: psData } = studentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("parent_students")
         .select("parent_id,student_id")
-        .in("student_id", studentIds), "parent_students")
+        .in("student_id", chunk)
+          .order("student_id")
+          .order("parent_id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const parentStudents = (psData ?? []) as ParentStudentRow[];
   const parentIds = [...new Set(parentStudents.map((p) => p.parent_id))];
 
   const { data: parentData } = parentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("parents")
         .select("id,profile_id,full_name,phone,email")
-        .in("id", parentIds), "parents")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        parentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const parents = sortByVietnameseName(
     (parentData ?? []) as ParentRow[],

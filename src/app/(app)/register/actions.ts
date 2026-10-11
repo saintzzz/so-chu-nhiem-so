@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { hasRole } from "@/lib/roles";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 /* ---------- CR-034: cap tai khoan dang nhap cho phu huynh ---------- */
 
@@ -50,14 +51,22 @@ export async function grantParentAccess(input: {
   const studentIds = (links ?? []).map((l) => l.student_id);
   if (!studentIds.length)
     return { error: "Liên kết phụ huynh với học sinh trước khi cấp tài khoản." };
-  const { data: studs, error: studsErr } = await supabase
-    .from("students")
-    .select("id,class_id")
-    .in("id", studentIds);
-  if (studsErr) {
-    console.error("[register] students:", studsErr.message);
+  // r26: .in chunk + phan trang - gate khong coi .in("id") la bounded.
+  const studsRes = await fetchAllRowsIn<{ id: string; class_id: string }>(
+    (chunk, f, t) =>
+      supabase
+        .from("students")
+        .select("id,class_id")
+        .in("id", chunk)
+        .order("id")
+        .range(f, t),
+    studentIds,
+  );
+  if (studsRes.error || studsRes.truncated) {
+    console.error("[register] students:", studsRes.error ?? "truncated");
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
+  const studs = studsRes.rows;
   const { data: classes, error: classesErr } = await supabase
     .from("classes")
     .select("id,school_id,gvcn_id")

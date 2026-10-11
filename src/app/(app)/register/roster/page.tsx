@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { PageHeader } from "@/components/page-header";
 import { ClassChips } from "@/components/class-chips";
 import { RosterClient } from "@/components/register/roster-client";
@@ -72,28 +73,53 @@ export default async function RosterPage({
       : { data: [], error: null };
   const roles = (rolesData ?? []) as ClassRoleRow[];
 
-  const { data: linkData, error: linkErr } =
+  // r26: .in chunk + phan trang - parent_students khoa kep (student_id,
+  // parent_id), khong co cot id.
+  const linkRes =
     students.length > 0
-      ? await supabase
-          .from("parent_students")
-          .select("student_id,parent_id")
-          .in(
-            "student_id",
-            students.map((s) => s.id),
-          )
-      : { data: [], error: null };
-  const parentLinks = (linkData ?? []) as {
-    student_id: string;
-    parent_id: string;
-  }[];
+      ? await fetchAllRowsIn<{ student_id: string; parent_id: string }>(
+          (chunk, f, t) =>
+            supabase
+              .from("parent_students")
+              .select("student_id,parent_id")
+              .in("student_id", chunk)
+              .order("student_id")
+              .order("parent_id")
+              .range(f, t),
+          students.map((s) => s.id),
+        )
+      : { rows: [], error: null, truncated: false };
+  const linkData = linkRes.rows;
+  const linkErr =
+    linkRes.error || linkRes.truncated
+      ? { message: linkRes.error ?? "truncated" }
+      : null;
+  const parentLinks = linkData;
 
   const linkedParentIds = [...new Set(parentLinks.map((l) => l.parent_id))];
-  const { data: parentsData, error: parentsErr } = linkedParentIds.length
-    ? await supabase
-        .from("parents")
-        .select("id,full_name,phone,email,relationship")
-        .in("id", linkedParentIds)
-    : { data: [], error: null };
+  const parentsRes = linkedParentIds.length
+    ? await fetchAllRowsIn<{
+        id: string;
+        full_name: string;
+        phone: string | null;
+        email: string | null;
+        relationship: string | null;
+      }>(
+        (chunk, f, t) =>
+          supabase
+            .from("parents")
+            .select("id,full_name,phone,email,relationship")
+            .in("id", chunk)
+            .order("id")
+            .range(f, t),
+        linkedParentIds,
+      )
+    : { rows: [], error: null, truncated: false };
+  const parentsData = parentsRes.rows;
+  const parentsErr =
+    parentsRes.error || parentsRes.truncated
+      ? { message: parentsRes.error ?? "truncated" }
+      : null;
   const parents = (parentsData ?? []) as {
     id: string;
     full_name: string;

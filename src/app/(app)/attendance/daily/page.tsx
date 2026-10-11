@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import type {
   AttendanceRecord,
   AttendanceStatus,
@@ -68,13 +69,26 @@ export default async function AttendanceDailyPage({
       ? dateParam
       : todayVN();
 
-  const { data: attData, error: attErr } = ids.length
-    ? await supabase
-        .from("attendance_records")
-        .select("*")
-        .in("student_id", ids)
-        .eq("date", today)
-    : { data: [] as never[], error: null };
+  // r26: .in chunk + phan trang - roster lon co the vuot URL/page cap.
+  // student_id la duy nhat sau .eq("date") nen order on dinh.
+  const attRes = ids.length
+    ? await fetchAllRowsIn<AttendanceRecord>(
+        (chunk, f, t) =>
+          supabase
+            .from("attendance_records")
+            .select("*")
+            .in("student_id", chunk)
+            .eq("date", today)
+            .order("student_id")
+            .range(f, t),
+        ids,
+      )
+    : { rows: [] as AttendanceRecord[], error: null, truncated: false };
+  const attData = attRes.rows;
+  const attErr =
+    attRes.error || attRes.truncated
+      ? { message: attRes.error ?? "truncated" }
+      : null;
   const loadError =
     (clsErr ?? stuErr ?? attErr) != null
       ? "Không tải được dữ liệu chuyên cần - vui lòng tải lại trang trước khi lưu."

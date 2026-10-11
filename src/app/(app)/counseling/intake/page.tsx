@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { must } from "@/lib/supabase/must";
-import { formatDate } from "@/lib/utils";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
+import { formatDate, sortByVietnameseName } from "@/lib/utils";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -45,32 +46,50 @@ export default async function CounselingIntakePage() {
   const classIds = classes.map((c) => c.id);
 
   const { data: studentData } = classIds.length
-    ? await must(
-        supabase
-          .from("students")
-          .select("id,class_id,code,full_name")
-          .in("class_id", classIds)
-          .eq("status", "active")
-          .order("full_name"),
-        "students",
-      )
+    ? {
+        data: mustRows(
+          await fetchAllRowsIn<StudentRow>(
+            (chunk, f, t) =>
+              supabase
+                .from("students")
+                .select("id,class_id,code,full_name")
+                .in("class_id", chunk)
+                .eq("status", "active")
+                .order("id")
+                .range(f, t),
+            classIds,
+          ),
+          "students",
+        ).rows,
+      }
     : { data: [] };
-  const students = (studentData ?? []) as StudentRow[];
+  const students = sortByVietnameseName(studentData ?? [], (s) => s.full_name);
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
   const { data: caseData } = studentIds.length
-    ? await must(
-        supabase
-          .from("counseling_cases")
-          .select("id,student_id,issue,severity,status,created_at")
-          .in("student_id", studentIds)
-          .eq("status", "new")
-          .order("created_at", { ascending: false }),
-        "counseling_cases",
-      )
+    ? {
+        data: mustRows(
+          await fetchAllRowsIn<CaseRow>(
+            (chunk, f, t) =>
+              supabase
+                .from("counseling_cases")
+                .select("id,student_id,issue,severity,status,created_at")
+                .in("student_id", chunk)
+                .eq("status", "new")
+                .order("created_at", { ascending: false })
+                .order("id")
+                .range(f, t),
+            studentIds,
+          ),
+          "counseling_cases",
+        ).rows,
+      }
     : { data: [] };
-  const newCases = (caseData ?? []) as CaseRow[];
+  // fetchAllRowsIn noi cac chunk - sap lai de giu thu tu created_at toan cuc.
+  const newCases = (caseData ?? []).sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
 
   const formStudents = students.map((s) => ({
     id: s.id,

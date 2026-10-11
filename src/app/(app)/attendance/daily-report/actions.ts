@@ -36,24 +36,30 @@ export async function saveDailyReport(input: {
   }
   if (!cls) return { error: "Bạn không chủ nhiệm lớp này." };
 
-  const { error } = await supabase.from("daily_reports").upsert(
+  // r26 M: upsert tran cho tab cu ghi de ban da nop (submitted->draft +
+  // xoa submitted_at). RPC serialize tren (class_id,date) va chi update
+  // khi row hien tai con draft - 'stale' nghia la da nop, bao reload.
+  const { data: saveResult, error } = await supabase.rpc(
+    "scn_save_daily_report",
     {
-      class_id: input.classId,
-      date: input.date,
-      gvcn_id: profile.id,
-      absent_count: input.absentCount,
-      late_count: input.lateCount,
-      violation_count: input.violationCount,
-      commendation_count: input.commendationCount,
-      content: input.content.trim(),
-      status: input.submit ? "submitted" : "draft",
-      submitted_at: input.submit ? new Date().toISOString() : null,
+      p_class: input.classId,
+      p_date: input.date,
+      p_absent: input.absentCount,
+      p_late: input.lateCount,
+      p_violation: input.violationCount,
+      p_commend: input.commendationCount,
+      p_content: input.content.trim(),
+      p_submit: input.submit,
     },
-    { onConflict: "class_id,date" },
   );
   if (error) {
-    console.error("[daily-report] upsert daily_reports:", error.message);
+    console.error("[daily-report] save daily_reports:", error.message);
     return { error: "Không lưu được báo cáo ngày - vui lòng thử lại." };
+  }
+  if (saveResult === "stale") {
+    return {
+      error: "Báo cáo ngày này đã được nộp - vui lòng tải lại trang.",
+    };
   }
 
   let notifyWarning: string | undefined;

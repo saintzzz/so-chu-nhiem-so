@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppointmentsClient } from "@/components/parents/appointments-client";
 import type { Appointment, Parent, Student } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 function fmtDateTime(iso: string): string {
   return fmtDateTimeVN(iso);
@@ -31,10 +32,16 @@ export default async function AppointmentsPage() {
 
   const [{ data: parentData }, { data: studentData }] = await Promise.all([
     parentIds.length
-      ? must(supabase.from("parents").select("id,full_name").in("id", parentIds), "parents")
+      ? fetchAllRowsIn((chunk, f, t) =>
+          supabase.from("parents").select("id,full_name")
+            .in("id", chunk).order("id").range(f, t),
+          parentIds).then((r) => ({ data: mustRows(r).rows }))
       : Promise.resolve({ data: [] }),
     studentIds.length
-      ? must(supabase.from("students").select("id,full_name").in("id", studentIds), "students")
+      ? fetchAllRowsIn((chunk, f, t) =>
+          supabase.from("students").select("id,full_name")
+            .in("id", chunk).order("id").range(f, t),
+          studentIds).then((r) => ({ data: mustRows(r).rows }))
       : Promise.resolve({ data: [] }),
   ]);
   const parents = (parentData ?? []) as Pick<Parent, "id" | "full_name">[];

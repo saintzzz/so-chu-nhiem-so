@@ -45,3 +45,24 @@ export async function fetchAllRows<T>(
   }
   return { rows, error: null, truncated };
 }
+
+// .in("col", ids) KHONG phai bien bound: list >1000 ids co the tra >1000
+// rows (cat ngam) VA URL dai qua muc PostgREST chap nhan (~8KB -> 400).
+// r26: chia ids thanh chunk nho (~200 uuid < gioi han URL), moi chunk
+// van phan trang .range() qua fetchAllRows - ca hai chet diem deu dong.
+export async function fetchAllRowsIn<T>(
+  run: (chunk: string[], from: number, to: number) => PromiseLike<QueryResult<T>>,
+  ids: string[],
+  chunkSize = 200,
+): Promise<{ rows: T[]; error: string | null; truncated: boolean }> {
+  const rows: T[] = [];
+  let truncated = false;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const r = await fetchAllRows<T>((f, t) => run(chunk, f, t));
+    if (r.error) return { rows, error: r.error, truncated };
+    rows.push(...r.rows);
+    if (r.truncated) truncated = true;
+  }
+  return { rows, error: null, truncated };
+}

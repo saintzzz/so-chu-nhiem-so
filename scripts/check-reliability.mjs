@@ -80,9 +80,9 @@ function maskCalls(text, names) {
 
 function allQueriesWrapped(text) {
   const masked = maskCalls(text, ["must", "mustRows"]);
-  const maskedNoFetch = maskCalls(masked, ["fetchAllRows", "fetchAll"]);
+  const maskedNoFetch = maskCalls(masked, ["fetchAllRows", "fetchAllRowsIn", "fetchAll"]);
   const hadFetch =
-    maskedNoFetch !== masked || /fetchAllRows?|fetchAll/.test(masked);
+    maskedNoFetch !== masked || /fetchAllRows(?:In)?|fetchAll/.test(masked);
   if (hadFetch && !/\bmustRows\s*\(/.test(text)) return false;
   QRE.lastIndex = 0;
   return !QRE.test(maskedNoFetch);
@@ -90,7 +90,7 @@ function allQueriesWrapped(text) {
 
 // B: tables that exceed the ~1000-row PostgREST cap at pilot scale.
 const BIG_TABLES =
-  /^(students|grades|attendance_records|period_absences|conduct_evaluations|daily_conduct|notifications|messages|audit_log|timetable_entries|period_logs|daily_reports|early_warnings|incidents|digest_outbox|digest_deliveries|ai_jobs|tvc_questions|tvc_materials|activity_attendance|signoffs|lock_records|support_plans|teacher_assessments|counseling_cases|competency_assessments|competency_evidence|emulation_scores|tasks|profiles|teacher_subjects|student_groups|tvc_curriculum_standards|lesson_plans|assessment_items|student_assessments|parents|parent_students|appointments)$/;
+  /^(students|grades|attendance_records|period_absences|conduct_evaluations|daily_conduct|notifications|messages|audit_log|audit_logs|student_record_history|activities|announcements|activity_announcements|timetable_entries|period_logs|daily_reports|early_warnings|incidents|digest_outbox|digest_deliveries|ai_jobs|tvc_questions|tvc_materials|activity_attendance|signoffs|lock_records|support_plans|teacher_assessments|counseling_cases|competency_assessments|competency_evidence|emulation_scores|tasks|profiles|teacher_subjects|student_groups|tvc_curriculum_standards|lesson_plans|assessment_items|student_assessments|parents|parent_students|appointments)$/;
 // Cot scope cardinality cao KHONG gioi han so rows (r25: .in("school_id")
 // tren profiles cua mot So co the >1000 rows). Chi cac khoa tro toi mot
 // thuc the don le moi tinh la bounded.
@@ -102,6 +102,11 @@ const SCHOOL_SCOPED =
   /^(profiles|classes|subjects|campuses|departments|school_kpis|feature_grants|digest_configs|literature|schools|academic_years)$/;
 function colBounds(col, tbl, method) {
   const c = col.split(".").pop();
+  // r26 M: .in(*_id) KHONG bao gio bound - kich thuoc list khong kiem
+  // chung duoc tinh (.in("class_id", allSchoolClasses) tren students cua
+  // truong 1200 HS tra >1000 rows, cat ngam khong loi). Ca .in("id")
+  // cung vay - list PK co the vuot cap.
+  if (method === "in") return false;
   // Khoa unique-ish: lookup theo key/code/token luon <=1 row.
   if (
     c === "id" ||
@@ -173,6 +178,37 @@ for (const f of files) {
     return fn.parent ? fn.parent.getText(sf) : src;
   };
 
+  // r26 M: query giu trong bien roi moi await (`let q = supabase.from...
+  // const {data} = await q` / `await q.range()`). Tim identifier goc cua
+  // mot chain de tra decls - QRE chi match .from(/.rpc( truc tiep nen
+  // dang nay truot gate r25 (intake, announce, journals, audit).
+  const rootIdent = (expr) => {
+    let x = expr;
+    while (
+      ts.isCallExpression(x) ||
+      ts.isPropertyAccessExpression(x) ||
+      ts.isParenthesizedExpression(x) ||
+      ts.isAsExpression(x) ||
+      ts.isNonNullExpression(x)
+    ) {
+      x = x.expression;
+    }
+    return ts.isIdentifier(x) ? x.text : null;
+  };
+  const resolveCore = (expr, core) => {
+    const rid = expr && rootIdent(expr);
+    if (rid && decls.has(rid)) {
+      const d = decls.get(rid);
+      QRE.lastIndex = 0;
+      if (QRE.test(d)) {
+        QRE.lastIndex = 0;
+        return d;
+      }
+      QRE.lastIndex = 0;
+    }
+    return core;
+  };
+
   const visit = (n) => {
     // ---- A: unchecked-read ----
     if (ts.isVariableDeclaration(n) && n.initializer) {
@@ -180,7 +216,7 @@ for (const f of files) {
       const awaited = ts.isAwaitExpression(raw);
       let e = raw;
       while (ts.isAwaitExpression(e)) e = e.expression;
-      const core = e.getText(sf);
+      const core = resolveCore(e, e.getText(sf));
       if (ts.isIdentifier(n.name)) decls.set(n.name.text, core);
       const isQuery = QRE.test(core);
       QRE.lastIndex = 0;
@@ -210,11 +246,15 @@ for (const f of files) {
         const els = e.arguments[0].elements;
         n.name.elements.forEach((el, i) => {
           if (ts.isBindingElement(el) && ts.isIdentifier(el.name)) {
-            const elText = els[i] ? els[i].getText(sf) : "";
+            const elText = els[i]
+              ? resolveCore(els[i], els[i].getText(sf))
+              : "";
             resVars.push({ name: el.name.text, line, initText: elText });
           }
           if (ts.isBindingElement(el) && ts.isObjectBindingPattern(el.name)) {
-            const elText = els[i] ? els[i].getText(sf) : "";
+            const elText = els[i]
+              ? resolveCore(els[i], els[i].getText(sf))
+              : "";
             const hasErr = el.name.elements.some(
               (x) =>
                 x.name.getText(sf) === "error" ||
@@ -228,7 +268,7 @@ for (const f of files) {
             // tra truncated=false).
             const elSafe =
               SAFE_WRAP.test(elText) ||
-              (/^\s*(fetchAllRows?|fetchAll)\s*[<(]/.test(elText) &&
+              (/^\s*(fetchAllRows(?:In)?|fetchAll)\s*[<(]/.test(elText) &&
                 /error|incomplete/.test(el.name.getText(sf)));
             if (elQ && !hasErr && !elSafe && !allQueriesWrapped(elText))
               hits.unchecked.push(`${relative(SRC, f)}:${line} NO-ERR-BIND-EL`);
@@ -246,6 +286,20 @@ for (const f of files) {
     ) {
       const tbl = n.arguments[0]?.getText(sf).replace(/['"]/g, "") || "";
       if (BIG_TABLES.test(tbl)) {
+        // Query nam trong callback fetchAllRows*/fetchAll: helper tu phan
+        // trang -> bound theo dinh nghia, bat ke hinh dang var ben trong.
+        let inPager = false;
+        for (let anc = n.parent; anc; anc = anc.parent) {
+          if (
+            ts.isCallExpression(anc) &&
+            ts.isIdentifier(anc.expression) &&
+            /^(fetchAllRows|fetchAllRowsIn|fetchAll)$/.test(anc.expression.text)
+          ) {
+            inPager = true;
+            break;
+          }
+        }
+        if (!inPager) {
         let stmt = n;
         while (stmt.parent && !ts.isStatement(stmt)) stmt = stmt.parent;
         const t = stmt.getText(sf);
@@ -277,17 +331,24 @@ for (const f of files) {
             if (
               !boundedLater &&
               new RegExp(
-                `fetchAllRows?\\s*[(<][\\s\\S]{0,400}?\\b${vd}\\b`,
+                `fetchAllRows(?:In)?\\s*[(<][\\s\\S]{0,400}?\\b${vd}\\b`,
               ).test(fnText)
             )
               boundedLater = true;
           }
+          // Exemption co chu dich: `// bounded-ok: <ly do>` ngay tren -
+          // dung khi list .in nho theo cau truc (vd Set <=3 id) hoac bound
+          // dat o cho scanner khong thay duoc. Luon kem ly do.
           if (!boundedLater) {
-            const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
-            hits.unbounded.push(
-              `${relative(SRC, f)}:${line} ${tbl} :: ${t.slice(0, 120).replace(/\s+/g, " ")}`,
-            );
+            const pre = src.slice(Math.max(0, stmt.getStart() - 200), stmt.getStart());
+            if (!/bounded-ok/.test(pre + t)) {
+              const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+              hits.unbounded.push(
+                `${relative(SRC, f)}:${line} ${tbl} :: ${t.slice(0, 120).replace(/\s+/g, " ")}`,
+              );
+            }
           }
+        }
         }
       }
     }
@@ -301,6 +362,7 @@ for (const f of files) {
     ) {
       let core = n.expression.expression.getText(sf);
       if (decls.has(core.trim())) core = decls.get(core.trim());
+      else core = resolveCore(n.expression.expression, core);
       const isQ = QRE.test(core);
       QRE.lastIndex = 0;
       if (isQ && !SAFE_WRAP.test(core) && !allQueriesWrapped(core)) {
@@ -317,7 +379,7 @@ for (const f of files) {
     if (
       ts.isCallExpression(n) &&
       ts.isIdentifier(n.expression) &&
-      /^(fetchAllRows?|fetchAll)$/.test(n.expression.text) &&
+      /^(fetchAllRows(?:In)?|fetchAll)$/.test(n.expression.text) &&
       n.arguments[0]
     ) {
       const arg = n.arguments[0];

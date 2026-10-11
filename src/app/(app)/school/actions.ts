@@ -7,6 +7,7 @@ import { CONCURRENT_ELIGIBLE } from "@/lib/roles";
 import type { Role } from "@/types";
 import { assertFeature } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export async function assignClassCampus(
   classId: string,
@@ -481,17 +482,30 @@ export async function saveTimetableEntry(input: {
   const schoolClassIds = (schoolClasses ?? []).map(
     (c: { id: string }) => c.id,
   );
-  const { data: conflicts, error: cfErr } = await supabase
-    .from("timetable_entries")
-    .select("id,class_id,teacher_id,room,classes(name)")
-    .eq("weekday", input.weekday)
-    .eq("period", input.period)
-    .in("class_id", schoolClassIds.length ? schoolClassIds : ["none"]);
-  if (cfErr) {
-    console.error("[school] timetable conflicts:", cfErr.message);
+  // r26: .in chunk + phan trang - truong lon co the co >1000 lop.
+  const cfRes = await fetchAllRowsIn<{
+    id: string;
+    class_id: string;
+    teacher_id: string | null;
+    room: string | null;
+    classes: { name: string }[] | { name: string } | null;
+  }>(
+    (chunk, f, t) =>
+      supabase
+        .from("timetable_entries")
+        .select("id,class_id,teacher_id,room,classes(name)")
+        .eq("weekday", input.weekday)
+        .eq("period", input.period)
+        .in("class_id", chunk)
+        .order("id")
+        .range(f, t),
+    schoolClassIds.length ? schoolClassIds : ["none"],
+  );
+  if (cfRes.error || cfRes.truncated) {
+    console.error("[school] timetable conflicts:", cfRes.error ?? "truncated");
     return { error: "Không tải được tiết học để kiểm tra xung đột - vui lòng thử lại." };
   }
-  const others = ((conflicts ?? []) as unknown as {
+  const others = (cfRes.rows as unknown as {
     id: string;
     class_id: string;
     teacher_id: string | null;
@@ -1057,13 +1071,20 @@ export async function listItemAcl(input: {
     return { error: "Không tải được danh sách giới hạn - vui lòng thử lại." };
   }
   if (!rows?.length) return { emails: [] };
-  const { data: profs, error: profErr } = await supabase
-    .from("profiles")
-    .select("id, email")
-    .in("id", rows.map((r) => r.user_id));
-  if (profErr) {
-    console.error("[school] acl profiles:", profErr.message);
+  // r26: .in chunk + phan trang - danh sach user_id co the vuot gioi han.
+  const profRes = await fetchAllRowsIn<{ id: string; email: string | null }>(
+    (chunk, f, t) =>
+      supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", chunk)
+        .order("id")
+        .range(f, t),
+    rows.map((r) => r.user_id),
+  );
+  if (profRes.error || profRes.truncated) {
+    console.error("[school] acl profiles:", profRes.error ?? "truncated");
     return { error: "Không tải được danh sách giới hạn - vui lòng thử lại." };
   }
-  return { emails: (profs ?? []).map((p) => p.email).filter(Boolean) as string[] };
+  return { emails: profRes.rows.map((p) => p.email).filter(Boolean) as string[] };
 }

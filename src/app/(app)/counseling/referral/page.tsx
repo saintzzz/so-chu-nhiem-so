@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
+import { sortByVietnameseName } from "@/lib/utils";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -45,33 +47,51 @@ export default async function CounselingReferralPage() {
   const classIds = classes.map((c) => c.id);
 
   const { data: studentData } = classIds.length
-    ? await must(
-        supabase
-          .from("students")
-          .select("id,class_id,code,full_name")
-          .in("class_id", classIds)
-          .eq("status", "active"),
-        "students",
-      )
+    ? {
+        data: mustRows(
+          await fetchAllRowsIn<StudentRow>(
+            (chunk, f, t) =>
+              supabase
+                .from("students")
+                .select("id,class_id,code,full_name")
+                .in("class_id", chunk)
+                .eq("status", "active")
+                .order("id")
+                .range(f, t),
+            classIds,
+          ),
+          "students",
+        ).rows,
+      }
     : { data: [] };
-  const students = (studentData ?? []) as StudentRow[];
+  const students = sortByVietnameseName(studentData ?? [], (s) => s.full_name);
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
   // Ca nghiêm trọng / mức độ cao hoặc đã chuyển tuyến - chưa kết thúc
   const { data: caseData } = studentIds.length
-    ? await must(
-        supabase
-          .from("counseling_cases")
-          .select("id,student_id,issue,severity,status,referral,notes,created_at")
-          .in("student_id", studentIds)
-          .neq("status", "resolved")
-          .or("severity.eq.critical,severity.eq.high,status.eq.referred")
-          .order("created_at", { ascending: false }),
-        "counseling_cases",
-      )
+    ? {
+        data: mustRows(
+          await fetchAllRowsIn<CaseRow>(
+            (chunk, f, t) =>
+              supabase
+                .from("counseling_cases")
+                .select("id,student_id,issue,severity,status,referral,notes,created_at")
+                .in("student_id", chunk)
+                .neq("status", "resolved")
+                .or("severity.eq.critical,severity.eq.high,status.eq.referred")
+                .order("created_at", { ascending: false })
+                .order("id")
+                .range(f, t),
+            studentIds,
+          ),
+          "counseling_cases",
+        ).rows,
+      }
     : { data: [] };
-  const cases = (caseData ?? []) as CaseRow[];
+  const cases = (caseData ?? []).sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
 
   const critical = cases.filter((c) => c.severity === "critical").length;
   const referred = cases.filter((c) => c.status === "referred").length;

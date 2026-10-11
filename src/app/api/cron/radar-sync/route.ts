@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildRadarData } from "@/lib/school/radar";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import type { Profile } from "@/types";
 
 /**
@@ -53,25 +54,27 @@ async function run(req: NextRequest) {
 
       // r16 M: loi dedupe lookup khong duoc coi la "chua co canh bao" -
       // insert tren gia dinh sai se tao ban ghi trung.
-      const { data: existing, error: dedupeErr } = await supabase
-        .from("early_warnings")
-        .select("dedupe_key")
-        .eq("school_id", schoolId)
-        .in(
-          "dedupe_key",
-          candidates.map((c) => c.dedupe_key),
-        );
-      if (dedupeErr) {
+      // r26: .in chunk + phan trang - candidates tu AI co the vuot URL cap.
+      const dedupeRes = await fetchAllRowsIn<{ dedupe_key: string }>(
+        (chunk, f, t) =>
+          supabase
+            .from("early_warnings")
+            .select("dedupe_key")
+            .eq("school_id", schoolId)
+            .in("dedupe_key", chunk)
+            .order("dedupe_key")
+            .range(f, t),
+        candidates.map((c) => c.dedupe_key),
+      );
+      if (dedupeRes.error || dedupeRes.truncated) {
         console.error(
           `[radar-sync] dedupe lookup failed ${schoolId}:`,
-          dedupeErr.message,
+          dedupeRes.error ?? "truncated",
         );
         errors.push(`${schoolId}: early_warnings dedupe`);
         continue;
       }
-      const have = new Set(
-        ((existing ?? []) as { dedupe_key: string }[]).map((e) => e.dedupe_key),
-      );
+      const have = new Set(dedupeRes.rows.map((e) => e.dedupe_key));
       const fresh = candidates
         .filter((c) => !have.has(c.dedupe_key))
         .map((c) => ({ ...c, school_id: schoolId }));

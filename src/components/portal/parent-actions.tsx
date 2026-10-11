@@ -76,7 +76,9 @@ export function ParentActions({
       content: reply,
     });
     setMessage(res.error ?? "Đã gửi tin nhắn cho giáo viên.");
-    if (!res.error) {
+    // r26 M: tin da commit -> xoa draft ke ca khi kem loi notification;
+    // giu draft chi khi message chua luu (retry an toan).
+    if (res.committed) {
       setReply("");
       setReplyTo(null);
       setComposing(false);

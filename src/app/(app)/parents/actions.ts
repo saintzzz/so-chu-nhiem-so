@@ -30,6 +30,37 @@ export async function sendAnnouncement(input: {
     return { error: "Vui lòng nhập tiêu đề và nội dung." };
   }
   const supabase = await createClient();
+  // r26 H: xac thuc class thuoc truong + gvcn dung lop chu nhiem - DB
+  // policy (ann_ins) cung chan nhung check o day de tra loi ro rang.
+  const { data: cls, error: clsErr } = await supabase
+    .from("classes")
+    .select("school_id,gvcn_id")
+    .eq("id", input.classId)
+    .maybeSingle();
+  if (clsErr) {
+    console.error("[announce] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  if (!cls || cls.school_id !== profile?.school_id) {
+    return { error: "Lớp không thuộc trường của bạn." };
+  }
+  if (hasRole(profile, "gvcn") && cls.gvcn_id !== profile.id) {
+    return { error: "Chỉ gửi thông báo cho lớp bạn chủ nhiệm." };
+  }
+  if (input.studentId) {
+    const { data: stu, error: stuErr } = await supabase
+      .from("students")
+      .select("class_id")
+      .eq("id", input.studentId)
+      .maybeSingle();
+    if (stuErr) {
+      console.error("[announce] student lookup:", stuErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
+    if (!stu || stu.class_id !== input.classId) {
+      return { error: "Học sinh không thuộc lớp đã chọn." };
+    }
+  }
   const { error } = await supabase.from("announcements").insert({
     sender_id: profile.id,
     school_id: profile?.school_id ?? null,
@@ -81,7 +112,7 @@ export async function replyMessage(input: {
   recipientId: string;
   studentId: string | null;
   content: string;
-}): Promise<{error?: string }> {
+}): Promise<{ error?: string; committed?: boolean; messageId?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -144,14 +175,20 @@ export async function replyMessage(input: {
     console.error("[messages] recipient lookup:", recErr.message);
     return { error: "Lỗi tra cứu người nhận - vui lòng thử lại." };
   }
-  const { error } = await supabase.from("messages").insert({
-    sender_id: profile.id,
-    recipient_id: input.recipientId,
-    student_id: input.studentId,
-    content: input.content.trim(),
-  });
-  if (error) {
-    console.error("[messages] reply insert failed:", error.message);
+  // r26 M: tra committed+messageId de client xoa draft ngay khi tin nhan
+  // da luu - retry sau partial commit (notification loi) khong tao ban sao.
+  const { data: inserted, error } = await supabase
+    .from("messages")
+    .insert({
+      sender_id: profile.id,
+      recipient_id: input.recipientId,
+      student_id: input.studentId,
+      content: input.content.trim(),
+    })
+    .select("id")
+    .single();
+  if (error || !inserted) {
+    console.error("[messages] reply insert failed:", error?.message);
     return { error: "Không gửi được tin nhắn. Vui lòng thử lại." };
   }
   const { error: notiErr } = await supabase.from("notifications").insert({
@@ -168,9 +205,13 @@ export async function replyMessage(input: {
   // biet - phai bao ro, khong tra ok gia.
   if (notiErr) {
     console.error("[messages] reply notify:", notiErr.message);
-    return { error: "Đã gửi tin nhắn, nhưng gửi thông báo cho người nhận thất bại." };
+    return {
+      error: "Đã gửi tin nhắn, nhưng gửi thông báo cho người nhận thất bại.",
+      committed: true,
+      messageId: (inserted as { id: string }).id,
+    };
   }
-  return {};
+  return { committed: true, messageId: (inserted as { id: string }).id };
 }
 
 export async function updateAppointmentStatus(

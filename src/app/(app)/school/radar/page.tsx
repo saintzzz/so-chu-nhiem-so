@@ -8,7 +8,8 @@ import type { EarlyWarning } from "@/types";
 import { buildRadarData, type RiskLevel } from "@/lib/school/radar";
 import { WarningList } from "@/components/school/warning-list";
 import { RadarRefreshButton } from "@/components/school/radar-refresh";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 const LEVEL_META: Record<
   RiskLevel,
@@ -62,10 +63,13 @@ export default async function SchoolRadarPage() {
     ...new Set(warnings.map((w) => w.student_id).filter((x): x is string => !!x)),
   ];
   const { data: warnStudents } = warnStudentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name")
-        .in("id", warnStudentIds), "students")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        warnStudentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const warnStudentName = new Map(
     ((warnStudents ?? []) as { id: string; full_name: string }[]).map((s) => [

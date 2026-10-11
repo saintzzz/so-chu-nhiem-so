@@ -33,5 +33,22 @@ export async function good(supabase: any, e: { table: string }) {
   const { data: staff } = await must(
     supabase.from("profiles").select("id").eq("school_id", "s1"),
   );
-  return { count, rows, staff };
+  // builder var + conditional chain BEN TRONG pager callback: fetchAllRows
+  // phan trang nen bound theo dinh nghia - khong duoc flag (dashboard r26).
+  const { rows: attRows } = mustRows(
+    await fetchAllRows((f: number, t: number) => {
+      let q = supabase.from("attendance_records").select("id").in("student_id", ["a", "b"]);
+      q = q.gte("date", "2026-01-01");
+      return q.order("id").range(f, t);
+    }),
+    "attendance_records",
+  );
+  // bounded-ok: Set <=3 id khong the vuot page/URL - exemption hop le.
+  const targets = new Set<string>(["a", "b"]);
+  const { data: profs, error: profsErr } = await supabase
+    .from("profiles")
+    .select("id")
+    .in("id", [...targets]);
+  if (profsErr) return profsErr;
+  return { count, rows, staff, attRows, profs };
 }

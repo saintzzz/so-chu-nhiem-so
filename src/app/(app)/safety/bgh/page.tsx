@@ -6,7 +6,8 @@ import { BghTable } from "@/components/safety/bgh-table";
 import type { ClassRoom, Incident, Student } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 function fmtDateTime(iso: string): string {
   return fmtDateTimeVN(iso);
@@ -28,17 +29,21 @@ export default async function SafetyBghPage() {
       profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
     );
   }
-  const { data: classData } = await classQuery;
+  const { data: classData } = await must(classQuery, "classes");
   const classes = (classData ?? []) as ClassRoom[];
   const classIds = classes.map((c) => c.id);
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: incData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("incidents")
         .select("*")
-        .in("class_id", classIds)
-        .order("occurred_at", { ascending: false }), "incidents")
+        .in("class_id", chunk)
+        .order("occurred_at", { ascending: false })
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const incidents = (incData ?? []) as Incident[];
 
@@ -48,10 +53,13 @@ export default async function SafetyBghPage() {
     ),
   ];
   const { data: studentData } = studentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name")
-        .in("id", studentIds), "students")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const studentName = new Map(
     ((studentData ?? []) as Pick<Student, "id" | "full_name">[]).map((s) => [

@@ -28,7 +28,7 @@ export default async function AttendanceNotifyPage({
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  const { data: classData } = await must(classQuery, "query");
   const classes = (classData ?? []) as ClassRoom[];
   const selected = classes.find((c) => c.id === classParam) ?? classes[0];
 

@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ActivityPlanner } from "@/components/activities/activity-planner";
 import type { Activity, ClassRoom, Profile, Role } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -19,7 +20,7 @@ async function scopedClasses(
   } else {
     query = query.eq("gvcn_id", profile.id);
   }
-  const { data } = await query;
+  const { data } = await must(query, "classes");
   return (data ?? []) as ClassRoom[];
 }
 
@@ -40,11 +41,15 @@ export default async function ActivitiesPlanPage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: actData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("activities")
         .select("*")
-        .in("class_id", classIds)
-        .order("activity_date", { ascending: false }), "activities")
+        .in("class_id", chunk)
+        .order("activity_date", { ascending: false })
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const activities = (actData ?? []) as Activity[];
 

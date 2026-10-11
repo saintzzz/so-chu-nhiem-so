@@ -46,7 +46,13 @@ function FollowupCard({ incident }: { incident: FollowupIncident }) {
   async function handleSave() {
     setPending(true);
     setFeedback(null);
-    const res = await followupIncident(incident.id, { status, note });
+    // r26 M: expected = status hien thi - incident doi status o tab khac
+    // thi update nay bi tu choi thay vi ghi de trang thai moi hon.
+    const res = await followupIncident(incident.id, {
+      status,
+      expected: incident.status,
+      note,
+    });
     setPending(false);
     if (res.error) {
       setFeedback({ kind: "error", text: res.error });

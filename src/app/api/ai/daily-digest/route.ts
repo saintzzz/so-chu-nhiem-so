@@ -5,6 +5,7 @@ import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { minimizeDeep } from "@/lib/ai-privacy";
 import { todayVN } from "@/lib/utils";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { hasRole, hasAnyRole } from "@/lib/roles";
 
 /**
@@ -52,21 +53,36 @@ export async function POST(req: Request) {
   }
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { data: repData, error: repErr } = classes.length
-    ? await supabase
-        .from("daily_reports")
-        .select("class_id,content,absent_count,late_count,violation_count,commendation_count,status")
-        .in("class_id", classes.map((c) => c.id))
-        .eq("date", date)
-    : { data: [], error: null };
-  if (repErr) {
-    console.error("[ai/daily-digest] reports:", repErr.message);
+  // r26: .in chunk + phan trang - truong lon co the co >1000 lop.
+  const repRes = classes.length
+    ? await fetchAllRowsIn<{
+        class_id: string;
+        content: string | null;
+        absent_count: number;
+        late_count: number;
+        violation_count: number;
+        commendation_count: number;
+        status: string;
+      }>(
+        (chunk, f, t) =>
+          supabase
+            .from("daily_reports")
+            .select("class_id,content,absent_count,late_count,violation_count,commendation_count,status")
+            .in("class_id", chunk)
+            .eq("date", date)
+            .order("class_id")
+            .range(f, t),
+        classes.map((c) => c.id),
+      )
+    : { rows: [], error: null, truncated: false };
+  if (repRes.error || repRes.truncated) {
+    console.error("[ai/daily-digest] reports:", repRes.error ?? "truncated");
     return NextResponse.json(
       { error: "Không tải đủ dữ liệu nguồn." },
       { status: 500 },
     );
   }
-  const reports = ((repData ?? []) as {
+  const reports = (repRes.rows as {
     class_id: string;
     content: string | null;
     absent_count: number;

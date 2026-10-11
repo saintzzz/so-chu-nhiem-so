@@ -3,7 +3,8 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InboxClient } from "@/components/parents/inbox-client";
 import type { Profile, Student } from "@/types";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 interface MessageRow {
   id: string;
@@ -52,19 +53,25 @@ export default async function InboxPage() {
   ];
 
   const { data: senderData } = senderIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", senderIds), "profiles")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        senderIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const senders = (senderData ?? []) as Pick<Profile, "id" | "full_name">[];
   const senderName = new Map(senders.map((s) => [s.id, s.full_name]));
 
   const { data: studentData } = studentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name")
-        .in("id", studentIds), "students")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const students = (studentData ?? []) as Pick<Student, "id" | "full_name">[];
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));

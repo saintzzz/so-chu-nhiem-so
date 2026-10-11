@@ -4,7 +4,8 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AnnounceForm } from "@/components/school/announce-form";
 import { fmtDateTimeVN } from "@/lib/utils";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export default async function SchoolAnnouncePage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -26,10 +27,13 @@ export default async function SchoolAnnouncePage() {
   }[];
   const senderIds = [...new Set(items.map((a) => a.sender_id))];
   const { data: senders } = senderIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", senderIds), "profiles")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        senderIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const senderName = new Map(
     ((senders ?? []) as { id: string; full_name: string }[]).map((p) => [

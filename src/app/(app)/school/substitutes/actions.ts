@@ -69,6 +69,7 @@ export async function createSubstituteRequest(input: {
     // Round-3: /school/substitutes chi mo duoc cho bgh/pht - GV bi redirect.
     // Link GV toi trang so dau bai dung ngay duoc phan cong thay the.
     // r21 M: lookup role loi + INSERT loi deu khong duoc tra ok gia.
+    // bounded-ok: targets la Set <= 2 id (nguoi xin + GV thay) - khong the vuot page/URL.
     const { data: targetProfiles, error: tpErr } = await supabase
       .from("profiles")
       .select("id,role,concurrent_roles")
@@ -230,6 +231,7 @@ export async function decideSubstituteRequest(
   if (effectiveSub) targets.add(effectiveSub);
   targets.delete(profile.id);
   if (targets.size) {
+    // bounded-ok: targets la Set <= 3 id (nguoi xin + GV vang + GV thay).
     const { data: targetProfiles, error: tpErr } = await supabase
       .from("profiles")
       .select("id,role,concurrent_roles")

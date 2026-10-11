@@ -97,7 +97,7 @@ export default async function AnalysisPage({
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData } = await must(classQuery.order("name"), "query");
   const classes = (classData ?? []) as (ClassRow & {
     academic_year_id: string | null;
   })[];

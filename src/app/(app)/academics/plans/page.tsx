@@ -7,7 +7,8 @@ import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { PlanActions } from "@/components/academics/plan-actions";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
 interface ClassRow {
   id: string;
@@ -75,7 +76,7 @@ export default async function PlansPage({
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData } = await must(classQuery.order("name"), "query");
   const classes = (classData ?? []) as ClassRow[];
   const classIds = classes.map((c) => c.id);
   const className = new Map(classes.map((c) => [c.id, c.name]));
@@ -87,10 +88,14 @@ export default async function PlansPage({
       : "all";
 
   const { data: studentData } = classIds.length
-    ? await must(supabase
-        .from("students")
-        .select("id,class_id,code,full_name")
-        .in("class_id", classIds), "students")
+    ? await fetchAllRows<StudentRow>((from, to) =>
+        supabase
+          .from("students")
+          .select("id,class_id,code,full_name")
+          .in("class_id", classIds)
+          .order("id")
+          .range(from, to),
+      ).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const students = (studentData ?? []) as StudentRow[];
   const studentMap = new Map(students.map((s) => [s.id, s]));
@@ -98,11 +103,14 @@ export default async function PlansPage({
 
   const [{ data: planData }, { data: subjectData }] = studentIds.length
     ? await Promise.all([
-        must(supabase
-          .from("support_plans")
-          .select("id,student_id,subject_id,reason,plan,status,created_at")
-          .in("student_id", studentIds)
-          .order("created_at", { ascending: false }), "support_plans"),
+        fetchAllRows<PlanRow>((from, to) =>
+          supabase
+            .from("support_plans")
+            .select("id,student_id,subject_id,reason,plan,status,created_at")
+            .in("student_id", studentIds)
+            .order("id")
+            .range(from, to),
+        ).then((r) => ({ data: mustRows(r).rows })),
         must(supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""), "subjects"),
       ])
     : [{ data: [] }, { data: [] }];

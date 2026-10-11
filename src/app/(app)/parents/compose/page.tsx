@@ -7,7 +7,8 @@ import { ComposeForm } from "@/components/parents/compose-form";
 import type { Announcement, ClassRoom, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -25,7 +26,7 @@ async function scopedClasses(
   } else {
     query = query.eq("gvcn_id", profile.id);
   }
-  const { data } = await query;
+  const { data } = await must(query, "classes");
   return (data ?? []) as ClassRoom[];
 }
 
@@ -41,12 +42,16 @@ export default async function ComposePage() {
   const classIds = classes.map((c) => c.id);
 
   const { data: studentData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name,class_id,code")
-        .in("class_id", classIds)
+        .in("class_id", chunk)
         .eq("status", "active")
-        .order("full_name"), "students")
+        .order("full_name")
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const students = (studentData ?? []) as Pick<
     Student,
@@ -64,10 +69,15 @@ export default async function ComposePage() {
   // Coverage: lớp/HS -> số phụ huynh có email (kênh nhận thông báo duy nhất).
   const studentIds = students.map((s) => s.id);
   const { data: linkData } = studentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("parent_students")
         .select("student_id,parent_id")
-        .in("student_id", studentIds), "parent_students")
+        .in("student_id", chunk)
+          .order("student_id")
+          .order("parent_id")
+          .range(f, t),
+        studentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const links = (linkData ?? []) as {
     student_id: string;
@@ -75,10 +85,13 @@ export default async function ComposePage() {
   }[];
   const parentIds = [...new Set(links.map((l) => l.parent_id))];
   const { data: parentData } = parentIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("parents")
         .select("id,email")
-        .in("id", parentIds), "parents")
+        .in("id", chunk).order("id")
+          .range(f, t),
+        parentIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const emailByParent = new Map(
     ((parentData ?? []) as { id: string; email: string | null }[]).map((p) => [

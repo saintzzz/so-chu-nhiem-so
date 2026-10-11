@@ -104,7 +104,7 @@ export async function replyToTeacher(input: {
   recipientId: string;
   studentId: string;
   content: string;
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; committed?: boolean; messageId?: string }> {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -161,14 +161,20 @@ export async function replyToTeacher(input: {
   ) {
     return { error: "Người nhận không phải giáo viên trường của con bạn." };
   }
-  const { error } = await supabase.from("messages").insert({
-    sender_id: user.id,
-    recipient_id: input.recipientId,
-    student_id: input.studentId,
-    content: input.content.trim(),
-  });
-  if (error) {
-    console.error("[portal/parent] insert messages:", error.message);
+  // r26 M: tra committed+messageId de client xoa draft ngay khi tin da
+  // luu - retry sau partial commit (notification loi) khong tao ban sao.
+  const { data: inserted, error } = await supabase
+    .from("messages")
+    .insert({
+      sender_id: user.id,
+      recipient_id: input.recipientId,
+      student_id: input.studentId,
+      content: input.content.trim(),
+    })
+    .select("id")
+    .single();
+  if (error || !inserted) {
+    console.error("[portal/parent] insert messages:", error?.message);
     return { error: "Không gửi được tin nhắn - vui lòng thử lại." };
   }
   const { error: notiErr } = await supabase.from("notifications").insert({
@@ -182,9 +188,13 @@ export async function replyToTeacher(input: {
   revalidatePath("/parents/inbox");
   if (notiErr) {
     console.error("[portal/parent] reply notify:", notiErr.message);
-    return { error: "Đã gửi tin nhắn, nhưng gửi thông báo cho giáo viên thất bại." };
+    return {
+      error: "Đã gửi tin nhắn, nhưng gửi thông báo cho giáo viên thất bại.",
+      committed: true,
+      messageId: (inserted as { id: string }).id,
+    };
   }
-  return {};
+  return { committed: true, messageId: (inserted as { id: string }).id };
 }
 
 export async function registerActivity(input: {

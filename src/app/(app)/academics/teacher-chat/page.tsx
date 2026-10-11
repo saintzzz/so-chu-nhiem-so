@@ -9,7 +9,8 @@ import { STAFF_CHAT_ROLES } from "@/lib/chat";
 import { teacherChatLinkForRole } from "@/lib/message-link";
 import type { Role } from "@/types";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 interface ProfileRow {
   id: string;
@@ -83,13 +84,18 @@ export default async function TeacherChatPage({
   const detailQuery =
     peerRole === "gvbm" && teacherIds.length
       ? Promise.all([
-          must(
-            supabase
-              .from("teacher_subjects")
-              .select("teacher_id,subject_id")
-              .in("teacher_id", teacherIds),
-            "teacher_subjects",
-          ),
+          // r26: .in chunk + phan trang - danh sach GV co the >1000.
+          fetchAllRowsIn<{ teacher_id: string; subject_id: string }>(
+            (chunk, f, t) =>
+              supabase
+                .from("teacher_subjects")
+                .select("teacher_id,subject_id")
+                .in("teacher_id", chunk)
+                .order("teacher_id")
+                .order("subject_id")
+                .range(f, t),
+            teacherIds,
+          ).then((r) => ({ data: mustRows(r, "teacher_subjects").rows })),
           must(
             supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
             "subjects",

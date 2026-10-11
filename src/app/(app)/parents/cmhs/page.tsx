@@ -39,7 +39,7 @@ export default async function CmhsPage({
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData } = await must(classQuery.order("name"), "query");
   const classes = (classData ?? []) as ClassRow[];
 
   const classId =

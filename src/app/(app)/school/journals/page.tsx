@@ -2,10 +2,10 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { fetchAllRows, fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { fmtDateVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
 
 export default async function SchoolJournalsPage({
   searchParams,
@@ -32,7 +32,7 @@ export default async function SchoolJournalsPage({
       profile.campus_id ?? "00000000-0000-0000-0000-000000000000",
     );
   }
-  const { data: clsRaw } = await qCls;
+  const { data: clsRaw } = await must(qCls, "query");
   const classes = (clsRaw ?? []) as {
     id: string;
     name: string;
@@ -74,7 +74,7 @@ export default async function SchoolJournalsPage({
     .order("date", { ascending: false })
     .limit(80);
   if (dateParam) q = q.eq("date", dateParam);
-  const { data: logRaw } = await q;
+  const { data: logRaw } = await must(q, "period_logs");
   const logs = (logRaw ?? []) as {
     id: string;
     timetable_entry_id: string;
@@ -92,7 +92,10 @@ export default async function SchoolJournalsPage({
   const subjectIds = [...new Set(entries.map((e) => e.subject_id))];
   const [{ data: profRaw }, { data: subRaw }] = await Promise.all([
     teacherIds.length
-      ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
+      ? fetchAllRowsIn((chunk, f, t) =>
+          supabase.from("profiles").select("id,full_name").in("id", chunk).order("id")
+          .range(f, t),
+        teacherIds).then((r) => ({ data: mustRows(r).rows }))
       : Promise.resolve({ data: [] }),
     subjectIds.length
       ? must(supabase.from("subjects").select("id,name").in("id", subjectIds), "subjects")

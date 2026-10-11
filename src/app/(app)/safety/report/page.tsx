@@ -7,7 +7,8 @@ import { IncidentForm } from "@/components/safety/incident-form";
 import type { ClassRoom, Incident, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -22,7 +23,7 @@ async function scopedClasses(
   } else {
     query = query.eq("gvcn_id", profile.id);
   }
-  const { data } = await query;
+  const { data } = await must(query, "classes");
   return (data ?? []) as ClassRoom[];
 }
 
@@ -39,12 +40,16 @@ export default async function SafetyReportPage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: studentData } = classIds.length
-    ? await must(supabase
+    ? await fetchAllRowsIn((chunk, f, t) =>
+          supabase
         .from("students")
         .select("id,full_name,class_id,code")
-        .in("class_id", classIds)
+        .in("class_id", chunk)
         .eq("status", "active")
-        .order("full_name"), "students")
+        .order("full_name")
+          .order("id")
+          .range(f, t),
+        classIds).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
   const students = (studentData ?? []) as Pick<
     Student,
@@ -58,6 +63,7 @@ export default async function SafetyReportPage() {
         .select("*")
         .in("class_id", classIds)
         .order("occurred_at", { ascending: false })
+        .order("id")
         .limit(10), "incidents")
     : { data: [] };
   const incidents = (incData ?? []) as Incident[];

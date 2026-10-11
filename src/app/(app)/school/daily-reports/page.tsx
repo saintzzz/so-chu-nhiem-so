@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { Campus, ClassRoom, DailyReport } from "@/types";
 import { hasRole } from "@/lib/roles";
-import { must } from "@/lib/supabase/must";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export default async function SchoolDailyReportsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -48,23 +49,43 @@ export default async function SchoolDailyReportsPage() {
   const d = (latestAtt ?? []) as { date: string }[];
   if (d[0]?.date) today = d[0].date;
 
+  // r26: .in chunk + phan trang - truong lon co the co >1000 lop.
   const { data: repData } = classIds.length
-    ? await must(supabase
-        .from("daily_reports")
-        .select("*")
-        .in("class_id", classIds)
-        .eq("date", today), "daily_reports")
+    ? {
+        data: mustRows(
+          await fetchAllRowsIn<DailyReport>(
+            (chunk, f, t) =>
+              supabase
+                .from("daily_reports")
+                .select("*")
+                .in("class_id", chunk)
+                .eq("date", today)
+                .order("id")
+                .range(f, t),
+            classIds,
+          ),
+          "daily_reports",
+        ).rows,
+      }
     : { data: [] };
-  const reports = (repData ?? []) as DailyReport[];
+  const reports = repData;
   const byClass = new Map(reports.map((r) => [r.class_id, r]));
 
-  const { data: gvcnData } = await must(supabase
-    .from("profiles")
-    .select("id,full_name")
-    .in(
-      "id",
-      classes.map((c) => c.gvcn_id).filter((x): x is string => !!x),
-    ), "profiles");
+  const { data: gvcnData } = {
+    data: mustRows(
+      await fetchAllRowsIn<{ id: string; full_name: string }>(
+        (chunk, f, t) =>
+          supabase
+            .from("profiles")
+            .select("id,full_name")
+            .in("id", chunk)
+            .order("id")
+            .range(f, t),
+        classes.map((c) => c.gvcn_id).filter((x): x is string => !!x),
+      ),
+      "profiles",
+    ).rows,
+  };
   const gvcnName = new Map(
     ((gvcnData ?? []) as { id: string; full_name: string }[]).map((p) => [
       p.id,

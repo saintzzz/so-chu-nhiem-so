@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { buildRadarData } from "@/lib/school/radar";
+import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 /**
  * Dong bo canh bao tinh toan vao early_warnings (dedupe theo lop+nhom).
@@ -35,21 +36,23 @@ export async function refreshRadarWarnings(): Promise<{
   }
 
   // r21 M: lookup dedupe loi -> have rong -> INSERT trung canh bao.
-  const { data: existing, error: dedupeErr } = await supabase
-    .from("early_warnings")
-    .select("dedupe_key")
-    .eq("school_id", profile.school_id ?? "")
-    .in(
-      "dedupe_key",
-      candidates.map((c) => c.dedupe_key),
-    );
-  if (dedupeErr) {
-    console.error("[radar] dedupe lookup:", dedupeErr.message);
+  // r26: .in chunk + phan trang - candidates tu AI co the vuot gioi han URL.
+  const dedupeRes = await fetchAllRowsIn<{ dedupe_key: string }>(
+    (chunk, f, t) =>
+      supabase
+        .from("early_warnings")
+        .select("dedupe_key")
+        .eq("school_id", profile.school_id ?? "")
+        .in("dedupe_key", chunk)
+        .order("dedupe_key")
+        .range(f, t),
+    candidates.map((c) => c.dedupe_key),
+  );
+  if (dedupeRes.error || dedupeRes.truncated) {
+    console.error("[radar] dedupe lookup:", dedupeRes.error ?? "truncated");
     return { error: "Không tải được cảnh báo hiện có để chống trùng - vui lòng thử lại." };
   }
-  const have = new Set(
-    ((existing ?? []) as { dedupe_key: string }[]).map((e) => e.dedupe_key),
-  );
+  const have = new Set(dedupeRes.rows.map((e) => e.dedupe_key));
   const fresh = candidates
     .filter((c) => !have.has(c.dedupe_key))
     .map((c) => ({ ...c, school_id: profile.school_id }));

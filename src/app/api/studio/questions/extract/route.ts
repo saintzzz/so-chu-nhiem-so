@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { hasFeature } from "@/lib/permissions";
 import { getAiConfig, generateTextDetailed } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
 import { fallbackToDevin } from "@/lib/devin";
@@ -104,11 +105,20 @@ export async function POST(req: Request) {
     .join("\n");
   const promptFull = `${prompt}\n\nDANH SACH MA YEU CAU CAN DAT (chon ma gan nhat cho moi cau, de rong neu khong chac):\n${stdList}`;
 
-  const r = await generateTextDetailed(promptFull, {
-    inline: inline ?? undefined,
-    maxTokens: 16384,
-    temperature: 0.2,
-  });
+  const quotaOk = await takeAiQuota(supabase, "tvc-question-extract");
+  const r = quotaOk
+    ? await generateTextDetailed(promptFull, {
+        inline: inline ?? undefined,
+        maxTokens: 16384,
+        temperature: 0.2,
+      })
+    : { text: null, error: "quota" as const, provider: null };
+  void recordAiUsage(
+    supabase,
+    "tvc-question-extract",
+    r.provider,
+    r.text ? "ok" : r.error ?? "error",
+  );
   if (!r.text) {
     if (r.error === "quota" && !inline) {
       const job = await fallbackToDevin({

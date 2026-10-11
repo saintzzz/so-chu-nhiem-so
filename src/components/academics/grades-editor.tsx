@@ -29,6 +29,7 @@ export interface ExistingGrade {
   level: "T" | "H" | "C" | null;
   seq: number | null;
   subtype: string | null;
+  updated_at?: string;
 }
 
 type Level = "" | "T" | "H" | "C";
@@ -864,15 +865,30 @@ export function GradesEditor({
       }
 
       // Delete+insert nguyên tử qua RPC - lỗi insert không làm mất điểm cũ.
+      // CR-049: CAS stale-write - gui max(updated_at) luc load; GV khac da
+      // luu giua chung thi RPC bao stale_write thay vi ghi de lang le.
+      // Scope trong luc load -> gui epoch: moi row xuat hien sau do deu
+      // la conflict (GV khac ghi truoc), khong phai "khong co gi de check".
+      const expectedMax = grades.length
+        ? grades.reduce<string>(
+            (mx, g) => (g.updated_at && g.updated_at > mx ? g.updated_at : mx),
+            "1970-01-01T00:00:00Z",
+          )
+        : "1970-01-01T00:00:00Z";
       const { error: saveErr } = await supabase.rpc("scn_save_grades", {
         p_student_ids: studentIds,
         p_subject_id: subjectId,
         p_term: term,
         p_rows: rows,
+        p_expected_max: expectedMax,
       });
       if (saveErr) {
         console.error("[grades-editor] scn_save_grades:", saveErr.message);
-        setError("Không lưu được điểm - vui lòng thử lại.");
+        setError(
+          saveErr.message.includes("stale_write")
+            ? "Điểm vừa được giáo viên khác cập nhật. Tải lại trang để xem bản mới nhất rồi nhập lại."
+            : "Không lưu được điểm - vui lòng thử lại.",
+        );
         return;
       }
       logAudit(supabase, {

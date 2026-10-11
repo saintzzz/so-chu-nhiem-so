@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
-import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { semesterAssessment, yearAverage } from "@/lib/tt22";
 import { fmtDateVN } from "@/lib/utils";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
 
@@ -43,13 +43,13 @@ export default async function StudentTranscriptPage() {
   const { data: classRow, error: clsErr } = student
     ? await supabase
         .from("classes")
-        .select("id,name,school_id,grade")
+        .select("id,name,school_id,grade,academic_year_id")
         .eq("id", student.class_id)
         .maybeSingle()
     : { data: null, error: null };
   const classroom = classRow as Pick<
-    ClassRoom,
-    "id" | "name" | "school_id" | "grade"
+    ClassRoom & { academic_year_id: string | null },
+    "id" | "name" | "school_id" | "grade" | "academic_year_id"
   > | null;
 
   const [gradeRes, subjectRes, conductRes, attRes] = student
@@ -58,6 +58,13 @@ export default async function StudentTranscriptPage() {
           .from("grades")
           .select("id,subject_id,term,assessment_type,subtype,seq,score,result")
           .eq("student_id", student.id)
+          // CR-049: chi diem cua nam hoc lop hien tai (enrollment year);
+          // rows chua gan year (du lieu cu/legacy) van hien.
+          .or(
+            classroom?.academic_year_id
+              ? `academic_year_id.is.null,academic_year_id.eq.${classroom.academic_year_id}`
+              : "academic_year_id.not.is.null,academic_year_id.is.null",
+          )
           .order("created_at"),
         supabase
           .from("subjects")
@@ -114,17 +121,21 @@ export default async function StudentTranscriptPage() {
   const subjectRows = [...bySubject.entries()]
     .map(([subjectId, rows]) => {
       const sub = subjectOf.get(subjectId);
-      const hk1 = semesterAverage(rows.filter((r) => r.term === "hk1"));
-      const hk2 = semesterAverage(rows.filter((r) => r.term === "hk2"));
+      const a1 = semesterAssessment(rows.filter((r) => r.term === "hk1"));
+      const a2 = semesterAssessment(rows.filter((r) => r.term === "hk2"));
       const resultHk1 = rows.find((r) => r.term === "hk1" && r.result != null)?.result ?? null;
       const resultHk2 = rows.find((r) => r.term === "hk2" && r.result != null)?.result ?? null;
       return {
         subjectId,
         name: sub?.name ?? "Môn học",
         method: sub?.assessment_method ?? "diem",
-        hk1,
-        hk2,
-        year: yearAverage(hk1, hk2),
+        hk1: a1.avg,
+        hk1Final: a1.isFinal,
+        hk2: a2.avg,
+        hk2Final: a2.isFinal,
+        // Ca nam chi chot khi CA 2 hoc ky deu du cot diem bat buoc.
+        year: yearAverage(a1.avg, a2.avg),
+        yearFinal: a1.isFinal && a2.isFinal,
         resultHk1,
         resultHk2,
         // Ket qua ca nam chi tu HK2 - HK1 khong duoc hien thi nhu ket qua nam.
@@ -200,10 +211,23 @@ export default async function StudentTranscriptPage() {
                   </>
                 ) : (
                   <>
-                    <td>{s.hk1 != null ? s.hk1.toFixed(1) : "-"}</td>
-                    <td>{s.hk2 != null ? s.hk2.toFixed(1) : "-"}</td>
+                    <td>
+                      {s.hk1 != null ? s.hk1.toFixed(1) : "-"}
+                      {s.hk1 != null && !s.hk1Final && (
+                        <span className="text-muted-foreground"> *</span>
+                      )}
+                    </td>
+                    <td>
+                      {s.hk2 != null ? s.hk2.toFixed(1) : "-"}
+                      {s.hk2 != null && !s.hk2Final && (
+                        <span className="text-muted-foreground"> *</span>
+                      )}
+                    </td>
                     <td className="font-semibold">
                       {s.year != null ? s.year.toFixed(1) : "-"}
+                      {s.year != null && !s.yearFinal && (
+                        <span className="text-muted-foreground"> *</span>
+                      )}
                     </td>
                   </>
                 )}
@@ -217,6 +241,14 @@ export default async function StudentTranscriptPage() {
               </tr>
             )}
           </DataTable>
+          {subjectRows.some(
+            (s) => (s.hk1 != null && !s.hk1Final) || (s.hk2 != null && !s.hk2Final),
+          ) && (
+            <p className="px-1 pt-2 text-xs text-muted-foreground">
+              * Điểm tạm tính - chưa đủ cột điểm định kỳ (ĐĐGtx, ĐĐGgk, ĐĐGck)
+              theo Thông tư 22/2021, có thể thay đổi khi giáo viên bổ sung.
+            </p>
+          )}
         </div>
 
         {subjectRows.some((s) => s.rows.length > 0 && s.method !== "nhan_xet") && (

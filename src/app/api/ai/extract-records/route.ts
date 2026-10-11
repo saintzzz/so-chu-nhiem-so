@@ -53,6 +53,9 @@ Không markdown. Bỏ qua dòng tiêu đề/ghi chú không phải học sinh.`,
     expectedShape:
       '{"rows":[{"name":"Nguyễn Văn A","dob":"01/01/2012","gender":"Nam","parent_name":"...","phone":"..."}]}',
     maxTokens: 4000,
+    // CR-049 P3b: PII (ten/NS/SDT PH) la muc tieu trich xuat cua chinh
+    // route nay - redact se pha ket qua. Input da gioi han 12k ky tu.
+    pii: { allowRawPrompt: true },
     parse: (t) => {
       const o = parseJsonObject(t);
       const rows = o?.rows;

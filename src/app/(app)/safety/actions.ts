@@ -37,7 +37,7 @@ export async function createIncident(input: {
   // Chỉ báo lãnh đạo cùng trường; PHT chỉ nhận nếu sự cố thuộc cơ sở mình phụ trách.
   const { data: leaderProfiles } = await supabase
     .from("profiles")
-    .select("id,role,campus_id")
+    .select("id,role,campus_id,concurrent_roles")
     .eq("school_id", profile.school_id ?? "")
     .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}");
   let incidentCampusId: string | null = null;
@@ -56,12 +56,15 @@ export async function createIncident(input: {
       id: string;
       role: string;
       campus_id: string | null;
+      concurrent_roles: string[] | null;
     }[]
   )
     .filter(
       (p) =>
         p.id !== profile.id &&
+        // BGH (primary hoac concurrent) nhan toan truong; PHT chi campus phu trach.
         (p.role === "bgh" ||
+          (p.concurrent_roles ?? []).includes("bgh") ||
           !incidentCampusId ||
           p.campus_id === incidentCampusId),
     )

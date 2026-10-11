@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { fallbackToDevin } from "@/lib/devin";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -50,11 +51,15 @@ Chi tiết: ${warn.detail ?? "-"}
 
 Đề xuất 2-3 việc xử lý cụ thể, khả thi trong trường phổ thông Việt Nam (phân công ai, làm gì, bao lâu). Trả về CHỈ JSON: {"suggestion": "..."}`;
 
-  const aiRes = await generateTextDetailed(prompt, {
-    system: "Bạn là cố vấn quản lý giáo dục. Chỉ trả về JSON hợp lệ.",
-    maxTokens: 800,
-    temperature: 0.6,
-  });
+  const quotaOk = await takeAiQuota(supabase, "warning-advice");
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(prompt, {
+        system: "Bạn là cố vấn quản lý giáo dục. Chỉ trả về JSON hợp lệ.",
+        maxTokens: 800,
+        temperature: 0.6,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(supabase, "warning-advice", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {

@@ -32,7 +32,38 @@ const check = (name, n, detail = "") => {
 };
 
 // PostgREST caps responses (~1000 rows) — always paginate.
-async function fetchAll(table, columns) {
+// Keyset (id > last) thay offset: offset tren bang lon (attendance_records
+// prod) quet + bo qua hang chuc nghin row moi trang -> timeout.
+async function fetchAll(table, columns, keyCol = "id") {
+  const rows = [];
+  let last = null;
+  // Cot keyset phai nam trong select - neu khong thi row cuoi khong co
+  // gia tri de phan trang.
+  const cols = columns.split(",").map((c) => c.trim()).includes(keyCol)
+    ? columns
+    : `${keyCol},${columns}`;
+  for (;;) {
+    let q = supabase
+      .from(table)
+      .select(cols)
+      .order(keyCol)
+      .limit(1000);
+    if (last !== null) q = q.gt(keyCol, last);
+    const { data, error } = await q;
+    if (error) {
+      // Bang khong co cot key (composite pk) -> fallback offset.
+      if (/does not exist/.test(error.message)) {
+        return fetchAllOffset(table, columns);
+      }
+      throw new Error(`${table}: ${error.message}`);
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) return rows;
+    last = data[data.length - 1][keyCol];
+  }
+}
+
+async function fetchAllOffset(table, columns) {
   const rows = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase
@@ -43,6 +74,25 @@ async function fetchAll(table, columns) {
     rows.push(...(data ?? []));
     if (!data || data.length < 1000) return rows;
   }
+}
+
+// Loc theo cap (col in list) theo chunk - tranh fetch full bang chi de
+// check subset (A2 chi can attendance cua HS/ngay co period_absence).
+async function fetchFiltered(table, columns, col, values, chunkSize = 200) {
+  const rows = [];
+  for (let i = 0; i < values.length; i += chunkSize) {
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(columns)
+        .in(col, values.slice(i, i + chunkSize))
+        .range(from, from + 999);
+      if (error) throw new Error(`${table}: ${error.message}`);
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return rows;
 }
 
 /* ============ A. DB data linkage ============ */
@@ -88,7 +138,14 @@ for (const [label, table, col, refTable, refCol] of orphans) {
     const d = dateOf.get(p.period_log_id);
     if (d) pairs.add(`${p.student_id}|${d}`);
   }
-  const att = await fetchAll("attendance_records", "student_id,date,status");
+  // Chi fetch attendance cua HS co period_absence (thay vi full table -
+  // attendance_records prod qua lon gay timeout).
+  const att = await fetchFiltered(
+    "attendance_records",
+    "student_id,date,status",
+    "student_id",
+    [...new Set(abs.map((p) => p.student_id))],
+  );
   const attByKey = new Map(att.map((a) => [`${a.student_id}|${a.date}`, a.status]));
   let missing = 0;
   let presentClash = 0;

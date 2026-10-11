@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { fallbackToDevin } from "@/lib/devin";
 import { averageByStudent, semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
@@ -369,12 +370,16 @@ Yêu cầu: mỗi nhận xét 1-2 câu, văn phong giáo viên chủ nhiệm Vi�
 
 Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
-  const aiRes = await generateTextDetailed(prompt, {
-    system:
-      "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
-    maxTokens: 8000,
-    temperature: 0.7,
-  });
+  const quotaOk = await takeAiQuota(supabase, "comments");
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(prompt, {
+        system:
+          "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",
+        maxTokens: 8000,
+        temperature: 0.7,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(supabase, "comments", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
   const text = aiRes.text;
 
   if (!text) {

@@ -1,3 +1,5 @@
+import { redactPiiText } from "@/lib/ai-privacy";
+
 export type AiProvider = "gemini" | "openai" | "anthropic";
 
 interface AiConfig {
@@ -221,6 +223,12 @@ interface GenerateOptions {
    * timeoutMs rieng). Vuot deadline -> dung thu tiep.
    */
   maxTotalMs?: number;
+  /**
+   * CR-049 P3b: bo qua redactPiiText trung tam - CHI dung khi PII la
+   * muc tieu cua chinh request (vd extract-records dan text ho so HS).
+   * Moi route khac de mac dinh (redact).
+   */
+  skipPiiRedact?: boolean;
   /** Internal: signal huy request (race abort racers thua). */
   signal?: AbortSignal;
 }
@@ -408,6 +416,13 @@ export async function generateTextDetailed(
   if (configs.length === 0) {
     return { text: null, error: "no_key", provider: null };
   }
+  // CR-049 P3b: tang cuoi cung truoc provider - cat PII cau truc
+  // (email/SDT/so dinh danh) khoi moi prompt, ke ca caller khong qua
+  // respondWithAi. Ten rieng xu ly bang pseudonymizeNames o tren.
+  const safePrompt = opts.skipPiiRedact ? prompt : redactPiiText(prompt);
+  if (opts.system && !opts.skipPiiRedact) {
+    opts = { ...opts, system: redactPiiText(opts.system) };
+  }
   // Test hook: AI_FORCE_ERROR=quota để mô phỏng hết hạn mức khi test fallback
   if (process.env.AI_FORCE_ERROR === "quota") {
     return { text: null, error: "quota", provider: configs[0].provider };
@@ -443,10 +458,10 @@ export async function generateTextDetailed(
         return { text: null, error: "error" };
       }
       return cfg.provider === "gemini"
-        ? await callGemini(cfg, prompt, o)
+        ? await callGemini(cfg, safePrompt, o)
         : cfg.provider === "openai"
-          ? await callOpenAI(cfg, prompt, o)
-          : await callAnthropic(cfg, prompt, o);
+          ? await callOpenAI(cfg, safePrompt, o)
+          : await callAnthropic(cfg, safePrompt, o);
     } catch (e) {
       // CR-042: AbortSignal timeout khi doc sinh dai -> nhu "quota" (qua tai
       // tam thoi) de route day sang engine du phong thay vi ban khung.

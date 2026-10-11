@@ -52,9 +52,15 @@ export async function POST(req: Request) {
     if (!n) continue;
     subjOf.set(ts.teacher_id, [...(subjOf.get(ts.teacher_id) ?? []), n]);
   }
+  // CR-049 P3b: an danh hoa ten GV bang alias GVxx - provider khong
+  // thay ten that; output duoc deanonymizeNames khoi phuc trong
+  // respondWithAi truoc khi parse.
+  const names = ((teachers ?? []) as { id: string; full_name: string }[]).map(
+    (t, i) => ({ name: t.full_name, alias: `GV${String(i + 1).padStart(2, "0")}` }),
+  );
   const facts = {
     giao_vien: ((teachers ?? []) as { id: string; full_name: string }[]).map(
-      (t) => ({ ten: t.full_name, mon_day: subjOf.get(t.id) ?? [] }),
+      (t, i) => ({ ten: `GV${String(i + 1).padStart(2, "0")}`, mon_day: subjOf.get(t.id) ?? [] }),
     ),
     lop: ((classes ?? []) as { name: string }[]).map((c) => c.name),
     mon_hoc: [...subjName.values()],
@@ -69,9 +75,10 @@ export async function POST(req: Request) {
       "Bạn là trợ lý điều hành phân công giảng dạy cho BGH trường THCS. Đề xuất thực tế theo đội ngũ hiện có. Không emoji.",
     prompt: `Đề xuất phân công giảng dạy năm học từ số liệu (JSON): ${JSON.stringify(facts)}.
 
-Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối lớp hợp lý, GV kiêm nhiệm cần cân đối, lưu ý cho BGH. Mỗi đề xuất 1 dòng, nêu tên cụ thể, không đánh số.`,
+Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối lớp hợp lý, GV kiêm nhiệm cần cân đối, lưu ý cho BGH. Mỗi đề xuất 1 dòng, dùng mã GV (GV01, GV02...), không đánh số.`,
     expectedShape: '{"lines": ["đề xuất 1", "đề xuất 2"]}',
     maxTokens: 1200,
+    pii: { names },
     parse: (text) => {
       try {
         const o = JSON.parse(text) as { lines?: string[] };

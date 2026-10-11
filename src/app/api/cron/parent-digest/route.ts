@@ -22,6 +22,12 @@ const MAX_CHUNKS = 40; // 20k PH/lan chay - du margin; cron goi lai neu can
 // trong tuan nay (khong can ?retry=), toi da MAX_ATTEMPTS lan/PH/tuan.
 // `?retry=<run_id>` van co san de force retry thu cong (bo qua cap).
 const MAX_ATTEMPTS = 3;
+// CR-049 P3d: durable outbox - enqueue ghi snapshot body vao
+// digest_outbox; send claim bang SKIP LOCKED va dung khi gan deadline,
+// run sau tiep tuc khong scan lai.
+const SEND_DEADLINE_MS = 240_000;
+const CLAIM_BATCH = 25;
+const SEND_CONCURRENCY = 10;
 
 const ATT_LABEL: Record<string, string> = {
   excused: "vắng có phép",
@@ -59,6 +65,16 @@ async function run(req: NextRequest) {
     d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     return isoDateVN(d);
   })();
+
+  // CR-049 P3d: ?phase=enqueue (ghi queue) | send (drain queue) |
+  // all (mac dinh - enqueue roi send trong cung invocation; cron weekly
+  // giu nguyen hanh vi nhung durable).
+  const phase = req.nextUrl.searchParams.get("phase") ?? "all";
+  const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(todayVN())}`;
+
+  if (phase === "send") {
+    return sendPhase(supabase, runId, weekStart);
+  }
 
   // CR-021: idempotent - ph da gui thanh cong tuan nay khong gui lai.
   // ?retry=<run_id> chi gui lai cho ph failed/skipped cua run do, tang attempts.
@@ -125,10 +141,24 @@ async function run(req: NextRequest) {
         Math.max(prevAttempts.get(r.parent_id) ?? 0, r.attempts),
       );
     }
+    // CR-049 P3d: PH da co outbox row tuan nay (queued/sending/sent)
+    // khong enqueue lai; 'failed' con han retry duoc requeue o sendPhase.
+    const ob = await fetchAllRows<{ parent_id: string; status: string }>(
+      (f, t) =>
+        supabase
+          .from("digest_outbox")
+          .select("parent_id, status")
+          .eq("week_start", weekStart)
+          .in("status", ["queued", "sending", "sent"])
+          .order("id")
+          .range(f, t),
+    );
+    if (!ob.error) {
+      for (const r of ob.rows) sentThisWeek.add(r.parent_id);
+    }
   }
 
-  const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(todayVN())}`;
-  let sent = 0, skipped = 0, failed = 0, parentsTotal = 0, chunks = 0;
+  let parentsTotal = 0, chunks = 0;
   // Loi nguon du lieu / log delivery: run phai tra 5xx de scheduler biet
   // retry - khong tra 200 (scheduler se ghi nhan thanh cong sai).
   let fatalError: string | undefined;
@@ -236,7 +266,15 @@ async function run(req: NextRequest) {
     const condBySid = bySid(conduct.rows);
     const gradeBySid = bySid(grades.rows);
 
-    const jobs: { parentId: string; email: string; text: string }[] = [];
+    const outboxRows: {
+      week_start: string;
+      parent_id: string;
+      email: string;
+      subject: string;
+      body: string;
+      status: string;
+      attempts: number;
+    }[] = [];
     for (const p of parents as ParentRow[]) {
       if (retryParents ? !retryParents.has(p.id) : sentThisWeek.has(p.id)) continue;
       // Auto-retry cap: khong retry qua MAX_ATTEMPTS lan/PH/tuan (tru
@@ -293,45 +331,31 @@ async function run(req: NextRequest) {
         "Xem chi tiết và trao đổi với giáo viên tại cổng phụ huynh của nhà trường.",
         "Trân trọng.",
       ].join("\n");
-      jobs.push({ parentId: p.id, email: p.email, text });
+      outboxRows.push({
+        week_start: weekStart,
+        parent_id: p.id,
+        email: p.email,
+        subject,
+        body: text,
+        status: "queued",
+        // Cong don attempts tu deliveries truoc - cap MAX_ATTEMPTS giu
+        // nguyen xuyen retry (claim se +1 moi lan nhan).
+        attempts: prevAttempts.get(p.id) ?? 0,
+      });
     }
 
-    const CONCURRENCY = 10;
-    for (let i = 0; i < jobs.length; i += CONCURRENCY) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 1100));
-      const batch = jobs.slice(i, i + CONCURRENCY);
-      const results = await Promise.all(
-        batch.map((j) => sendEmail({ to: [j.email], subject, text: j.text })),
-      );
-      const deliveries = batch.map((j, k) => {
-        const r = results[k];
-        const status = r.skipped ? "skipped" : r.error ? "failed" : "sent";
-        if (r.skipped) skipped++;
-        else if (r.error) failed++;
-        else sent += r.sent;
-        if (r.error) {
-          console.error("[parent-digest] send failed for parent:", j.parentId, r.error);
-        }
-        return {
-          run_id: runId,
-          parent_id: j.parentId,
-          email: j.email,
-          week_start: weekStart,
-          status,
-          error: r.error?.slice(0, 500) ?? null,
-          attempts: (prevAttempts.get(j.parentId) ?? 0) + 1,
-          provider_id: r.ids?.[j.email] ?? null,
-        };
-      });
-      // Khong ghi duoc delivery log => lan chay sau se gui trung email.
-      // Dung run ngay, tra 5xx de scheduler retry thay vi tiep tuc gui
-      // khong tracking.
-      const { error: delErr } = await supabase
-        .from("digest_deliveries")
-        .insert(deliveries);
-      if (delErr) {
-        fatalError = "delivery log insert failed";
-        console.error("[parent-digest] digest_deliveries insert failed:", delErr);
+    // CR-049 P3d: enqueue - ghi snapshot vao outbox (idempotent qua
+    // unique(week_start,parent_id), retry sau khong dup).
+    for (let i = 0; i < outboxRows.length; i += CHUNK) {
+      const { error: obErr } = await supabase
+        .from("digest_outbox")
+        .upsert(outboxRows.slice(i, i + CHUNK), {
+          onConflict: "week_start,parent_id",
+          ignoreDuplicates: true,
+        });
+      if (obErr) {
+        fatalError = "outbox insert failed";
+        console.error("[parent-digest] digest_outbox insert failed:", obErr);
         break;
       }
     }
@@ -347,26 +371,154 @@ async function run(req: NextRequest) {
       {
         run_id: runId,
         error: fatalError,
-        sent,
-        failed,
-        skipped,
-        parents: parentsTotal,
+        enqueued: parentsTotal,
         chunks,
       },
       { status: 500 },
     );
   }
 
+  // phase=all -> drain queue ngay trong cung invocation;
+  // phase=enqueue -> chi ghi queue, send chay o invocation rieng.
+  if (phase === "enqueue") {
+    return NextResponse.json({
+      run_id: runId,
+      phase: "enqueue",
+      enqueued: parentsTotal,
+      chunks,
+      truncated: chunks >= MAX_CHUNKS,
+    });
+  }
+  const sendRes = await sendPhase(supabase, runId, weekStart);
+  const sendBody = (await sendRes.json()) as Record<string, unknown>;
   return NextResponse.json({
     run_id: runId,
+    enqueued: parentsTotal,
+    chunks,
+    truncated: chunks >= MAX_CHUNKS,
+    ...sendBody,
+  });
+}
+
+/**
+ * Drain digest_outbox theo deadline: claim batch (SKIP LOCKED), gui,
+ * update status tung row + ghi digest_deliveries (audit + webhook
+ * provider_id chain giu nguyen). Het deadline -> done:false, run sau
+ * tiep tuc khong scan lai (starvation-free).
+ */
+async function sendPhase(
+  supabase: ReturnType<typeof createAdminClient>,
+  runId: string,
+  weekStart: string,
+) {
+  const deadline = Date.now() + SEND_DEADLINE_MS;
+  let sent = 0, failed = 0, skipped = 0, batches = 0;
+
+  // Requeue: 'sending' cu (worker chet giua chung) + 'failed' con han.
+  const { data: requeued } = await supabase.rpc("scn_digest_outbox_requeue", {
+    p_week_start: weekStart,
+    p_max_attempts: MAX_ATTEMPTS,
+  });
+
+  while (Date.now() < deadline) {
+    const { data: claimed, error: claimErr } = await supabase.rpc(
+      "scn_digest_outbox_claim",
+      { p_limit: CLAIM_BATCH },
+    );
+    if (claimErr) {
+      console.error("[parent-digest] outbox claim failed:", claimErr);
+      return NextResponse.json(
+        { error: "outbox claim failed", sent, failed, skipped },
+        { status: 500 },
+      );
+    }
+    if (!claimed?.length) {
+      return NextResponse.json({
+        run_id: runId,
+        done: true,
+        sent,
+        failed,
+        skipped,
+        batches,
+        requeued: requeued ?? 0,
+        delivery_errors: failed || undefined,
+      });
+    }
+    batches++;
+
+    for (let i = 0; i < claimed.length; i += SEND_CONCURRENCY) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 1100));
+      const batch = claimed.slice(i, i + SEND_CONCURRENCY) as {
+        id: string;
+        parent_id: string;
+        email: string;
+        subject: string;
+        body: string;
+        attempts: number;
+      }[];
+      const results = await Promise.all(
+        batch.map((j) => sendEmail({ to: [j.email], subject: j.subject, text: j.body })),
+      );
+      const deliveries: Record<string, unknown>[] = [];
+      for (let k = 0; k < batch.length; k++) {
+        const j = batch[k];
+        const r = results[k];
+        const status = r.skipped ? "skipped" : r.error ? "failed" : "sent";
+        if (r.skipped) skipped++;
+        else if (r.error) failed++;
+        else sent += r.sent;
+        if (r.error) {
+          console.error("[parent-digest] send failed for parent:", j.parent_id, r.error);
+        }
+        deliveries.push({
+          run_id: runId,
+          parent_id: j.parent_id,
+          email: j.email,
+          week_start: weekStart,
+          status,
+          error: r.error?.slice(0, 500) ?? null,
+          attempts: j.attempts,
+          provider_id: r.ids?.[j.email] ?? null,
+        });
+        const { error: updErr } = await supabase
+          .from("digest_outbox")
+          .update({
+            status,
+            last_error: r.error?.slice(0, 500) ?? null,
+            provider_id: r.ids?.[j.email] ?? null,
+            sent_at: status === "sent" ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", j.id);
+        if (updErr) {
+          console.error("[parent-digest] outbox status update failed:", updErr);
+        }
+      }
+      // Khong ghi duoc delivery log => lan chay sau se gui trung email.
+      // Dung run ngay, tra 5xx de scheduler retry thay vi tiep tuc gui
+      // khong tracking.
+      const { error: delErr } = await supabase
+        .from("digest_deliveries")
+        .insert(deliveries);
+      if (delErr) {
+        console.error("[parent-digest] digest_deliveries insert failed:", delErr);
+        return NextResponse.json(
+          { error: "delivery log insert failed", sent, failed, skipped },
+          { status: 500 },
+        );
+      }
+    }
+  }
+
+  // Het deadline - queue con lai, run sau tiep tuc (durable).
+  return NextResponse.json({
+    run_id: runId,
+    done: false,
     sent,
     failed,
     skipped,
-    parents: parentsTotal,
-    chunks,
-    truncated: chunks >= MAX_CHUNKS,
-    // Loi gui tung email (Resend) khong lam run fail - da log status='failed'
-    // per-parent de retry; chi bao co loi, khong echo noi dung provider.
+    batches,
+    requeued: requeued ?? 0,
     delivery_errors: failed || undefined,
   });
 }

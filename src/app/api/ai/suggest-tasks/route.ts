@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
@@ -57,12 +58,16 @@ Công việc đã có (không được trùng): ${JSON.stringify([...existing])}
 
 Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
 
-  const aiRes = await generateTextDetailed(prompt, {
-    system:
-      "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
-    maxTokens: 1500,
-    temperature: 0.5,
-  });
+  const quotaOk = await takeAiQuota(supabase, "suggest-tasks");
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(prompt, {
+        system:
+          "Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
+        maxTokens: 1500,
+        temperature: 0.5,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(supabase, "suggest-tasks", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
   const text = aiRes.text;
 
   if (!text) {

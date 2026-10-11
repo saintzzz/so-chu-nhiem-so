@@ -34,6 +34,7 @@ interface GradeRow {
   level: "T" | "H" | "C" | null;
   seq: number | null;
   subtype: string | null;
+  updated_at: string;
 }
 
 const TERMS = [
@@ -185,7 +186,7 @@ export default async function GradesPage({
           supabase
             .from("grades")
             .select(
-              "id,student_id,assessment_type,score,result,comment,level,seq,subtype",
+              "id,student_id,assessment_type,score,result,comment,level,seq,subtype,updated_at",
             )
             .in("student_id", studentIds)
             .eq("subject_id", subjectId)

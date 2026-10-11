@@ -5,8 +5,15 @@
  */
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { fallbackToDevin } from "@/lib/devin";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
+import {
+  redactPiiText,
+  pseudonymizeNames,
+  deanonymizeNames,
+  type PiiName,
+} from "@/lib/ai-privacy";
 import type { Profile } from "@/types";
 
 export interface AiRouteParams<T> {
@@ -23,19 +30,46 @@ export interface AiRouteParams<T> {
   parse: (text: string) => T | null;
   /** Rule-based fallback khi cả LLM lẫn Devin đều không khả dụng */
   fallback?: () => T;
+  /**
+   * CR-049 P3b: danh sach ten rieng can an danh hoa truoc khi gui AI
+   * (name -> alias trong prompt, alias -> name trong output). Neu khong
+   * truyen, lop redactPiiText van cat email/SDT/so dinh danh.
+   * allowRawPrompt: bo redact - CHI cho route ma PII la muc tieu trich
+   * xuat (extract-records); prompt van duoc minimize thu cong.
+   */
+  pii?: { names?: PiiName[]; allowRawPrompt?: boolean };
 }
 
 export async function respondWithAi<T>(
   p: AiRouteParams<T>,
 ): Promise<NextResponse> {
-  const aiRes = await generateTextDetailed(p.prompt, {
-    system: p.system,
-    maxTokens: p.maxTokens ?? 2048,
-    temperature: p.temperature ?? 0.7,
-  });
+  // CR-049 P3b: an danh hoa ten + cat PII cau truc truoc khi gui provider.
+  // Devin fallback dung lai cung prompt da minimize -> khong co duong tat.
+  const names = p.pii?.names ?? [];
+  const raw = p.pii?.allowRawPrompt === true;
+  const safePrompt = raw ? p.prompt : redactPiiText(pseudonymizeNames(p.prompt, names));
+  const safeSystem = raw ? p.system : redactPiiText(p.system);
+  // CR-049 P3c: het budget ngay -> khong goi provider, chay fallback
+  // duong duoi (Devin/fallback rule). Over-count theo chieu an toan.
+  const quotaOk = await takeAiQuota(p.supabase, p.kind);
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(safePrompt, {
+        system: safeSystem,
+        maxTokens: p.maxTokens ?? 2048,
+        temperature: p.temperature ?? 0.7,
+        skipPiiRedact: raw,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(
+    p.supabase,
+    p.kind,
+    aiRes.provider,
+    aiRes.text ? "ok" : (aiRes.error ?? "error"),
+  );
 
   if (aiRes.text) {
-    const parsed = p.parse(aiRes.text.replace(/```json|```/g, "").trim());
+    const clean = aiRes.text.replace(/```json|```/g, "").trim();
+    const parsed = p.parse(deanonymizeNames(clean, names));
     if (parsed !== null) {
       return NextResponse.json({ result: parsed });
     }
@@ -46,7 +80,7 @@ export async function respondWithAi<T>(
     const job = await fallbackToDevin({
       supabase: p.supabase,
       kind: p.kind,
-      prompt: `${p.system}\n\n${p.prompt}`,
+      prompt: `${safeSystem}\n\n${safePrompt}`,
       expectedShape: p.expectedShape,
       createdBy: p.profile.id,
       req: p.req,

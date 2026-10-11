@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { fallbackToDevin } from "@/lib/devin";
 import type { Student } from "@/types";
 import { hasRole, hasAnyRole } from "@/lib/roles";
@@ -109,12 +110,16 @@ Yêu cầu: 2-4 câu, văn phong báo cáo hành chính giáo dục Việt Nam, 
 
 Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
 
-  const aiRes = await generateTextDetailed(prompt, {
-    system:
-      "Bạn là trợ lý soạn báo cáo ngày cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
-    maxTokens: 1000,
-    temperature: 0.6,
-  });
+  const quotaOk = await takeAiQuota(supabase, "daily-report");
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(prompt, {
+        system:
+          "Bạn là trợ lý soạn báo cáo ngày cho giáo viên chủ nhiệm trường phổ thông Việt Nam. Chỉ trả về JSON hợp lệ.",
+        maxTokens: 1000,
+        temperature: 0.6,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(supabase, "daily-report", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {

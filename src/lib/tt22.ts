@@ -11,6 +11,22 @@ export interface GradeComponent {
  * Kết quả làm tròn 1 chữ số thập phân.
  */
 export function semesterAverage(rows: GradeComponent[]): number | null {
+  return semesterAssessment(rows).avg;
+}
+
+export interface SemesterAssessment {
+  avg: number | null;
+  /**
+   * CR-049 TT22: DTBm hoc ky chi "chot" khi du cot diem bat buoc theo quy
+   * dinh danh gia dinh ky - it nhat 1 DDGtx + DDGgk + DDGck. Thieu thanh
+   * phan dinh ky -> diem con la "tam tinh" (co the thay doi khi bo sung).
+   */
+  isFinal: boolean;
+}
+
+export function semesterAssessment(
+  rows: GradeComponent[],
+): SemesterAssessment {
   let txSum = 0;
   let txCount = 0;
   let gk: number | null = null;
@@ -27,9 +43,11 @@ export function semesterAverage(rows: GradeComponent[]): number | null {
     }
   }
   const denom = txCount + (gk != null ? 2 : 0) + (ck != null ? 3 : 0);
-  if (denom === 0) return null;
-  const avg = (txSum + (gk ?? 0) * 2 + (ck ?? 0) * 3) / denom;
-  return Math.round(avg * 10) / 10;
+  const avg =
+    denom === 0
+      ? null
+      : Math.round(((txSum + (gk ?? 0) * 2 + (ck ?? 0) * 3) / denom) * 10) / 10;
+  return { avg, isFinal: txCount >= 1 && gk != null && ck != null };
 }
 
 /**

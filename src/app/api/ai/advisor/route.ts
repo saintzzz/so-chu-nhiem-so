@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { generateTextDetailed } from "@/lib/ai";
+import { generateTextDetailed, type AiResult } from "@/lib/ai";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
@@ -145,12 +146,16 @@ Câu hỏi của BGH: "${question}"
 
 Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số liệu trên, không bịa số liệu. Nếu câu hỏi ngoài phạm vi dữ liệu thì nói rõ và gợi ý số liệu liên quan đang có. Trả về CHỈ JSON: {"answer": "..."}`;
 
-  const aiRes = await generateTextDetailed(prompt, {
-    system:
-      "Bạn là trợ lý điều hành nhà trường. Chỉ trả về JSON hợp lệ, tiếng Việt.",
-    maxTokens: 1200,
-    temperature: 0.4,
-  });
+  const quotaOk = await takeAiQuota(supabase, "advisor");
+  const aiRes: AiResult = quotaOk
+    ? await generateTextDetailed(prompt, {
+        system:
+          "Bạn là trợ lý điều hành nhà trường. Chỉ trả về JSON hợp lệ, tiếng Việt.",
+        maxTokens: 1200,
+        temperature: 0.4,
+      })
+    : { text: null, error: "quota", provider: null };
+  void recordAiUsage(supabase, "advisor", aiRes.provider, aiRes.text ? "ok" : aiRes.error ?? "error");
 
   if (!aiRes.text) {
     if (aiRes.error === "quota") {

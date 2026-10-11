@@ -5,6 +5,7 @@ import { fbMatrix } from "@/lib/tvc/fallbacks";
 import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
 import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
+import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
@@ -846,16 +847,25 @@ export async function POST(
   // Tool tieng Anh: noi dung phai la tieng Anh - model yeu doi khi viet
   // tieng Viet, validate bat va retry voi nhac nho ro rang.
   const ENGLISH_TOOLS = new Set(["A-01", "A-03"]);
-  const ai = await generateDoc(
-    system,
-    prompt,
-    ENGLISH_TOOLS.has(code)
-      ? {
+  const quotaOk = await takeAiQuota(supabase, `tvc-tool:${code}`);
+  const ai = quotaOk
+    ? await generateDoc(
+        system,
+        prompt,
+        ENGLISH_TOOLS.has(code)
+          ? {
           validate: sectionsLookEnglish,
           retryNote:
             "output truoc SAI YEU CAU: noi dung viet bang tieng Viet. Hoi thoai/bai doc va bai tap phai viet hoan toan bang TIENG ANH. Tra ve JSON hop le voi noi dung tieng Anh.",
-        }
-      : undefined,
+          }
+        : undefined,
+    )
+    : { doc: null, provider: null, error: "quota" };
+  void recordAiUsage(
+    supabase,
+    `tvc-tool:${code}`,
+    ai.provider,
+    ai.doc ? "ok" : "quota",
   );
 
   // R4: Devin fallback cung nam trong budget route - tao session toi 20s

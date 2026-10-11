@@ -1,0 +1,98 @@
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day la vong REVIEW DOC LAP thu 13 - toan bo findings cac vong truoc da duoc triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+supabase/migrations/20261203_cr049_r12_fixes.sql (moi nhat): bind scn_is_my_homeroom_class + 9 policies (signoff_insert, digest_deliveries, cr_upd/del, inc_upd/del, lp_del, appt_s_upd/del, nlpc_cmt_upd/del) vao truong hien tai cua caller. Sweep THEM: con policy/function SECURITY DEFINER nao check quyen qua gvcn_id/teacher_id/recorded_by/evaluated_by/created_by = auth.uid() HOAC qua join student->class MA KHONG bind school_id = my_school_id() khong? Liet ke tung cai con sot.
+
+src/components/academics/grades-editor.tsx: students + mountStudentIdsRef chot luc mount. Kiem: co duong nao prop refresh lam remount bat ngo (key doi)? Co case HS bi xoa khoi lop nhung van trong snapshot -> save van insert rows cho ho khong? RPC validate gi cho truong hop do?
+
+src/lib/ai-privacy.ts collectUsedNames + src/lib/ai-route.ts + 7 custom-flow AI routes: deanon/pii_map chi pham vi ten trong input caller. Kiem: co route nao deanon/piiMap full roster con sot? co route nao prompt embed data ngoai source (DB fetch khong qua source) ma output co the mang alias khong restore (regression) HOAC nguoc lai lo ten? comments/daily-report/warning-advice/suggest-tasks/advisor/studio generate/questions extract/daily-digest/period-log-summary/class-analysis/attendance-insight/assignment-suggest + cac respondWithAi callers con lai (incident-report, counseling-summary, draft-message, lesson-plan, emulation-summary, gen-questions, meeting-notes, dept-brief, report-analysis, extract-records).
+
+src/lib/devin.ts + api/ai/devin-callback: pii_map trong ai_jobs - job CU van full roster (documented residual). Callback deanon co gioi han gi khac can khong?
+
+Moi van de khac: security/RLS/privacy/correctness ban tim thay khi doc.
+
+Moi finding: severity (CRITICAL/HIGH/MEDIUM/LOW), file:line, kich ban khai thac/loi cu the, fix toi thieu. Chi bao cao dieu chung minh duoc tu source, khong speculation.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+Show less
+10:59 PM
+Worked for 3m 58s
+ChatGPT said:
+
+Đã review source tại 639959b6f64ba0787d2b1e0dfb1ed01c6d0ffcbe. Không sửa code. Các kết luận RLS dưới đây dựa trên migrations; không thực hiện mutation trên DB.
+
+HIGH — signoff_insert vẫn cho BGH ghi sang trường khác.
+File: supabase/migrations/20261203_cr049_r12_fixes.sql:26
+Nhánh bgh/admin chỉ kiểm tra role; school_id chỉ được bind trong nhánh GVCN. BGH trường A có thể INSERT signoff cho class_id trường B, kể cả trạng thái ký duyệt hợp lệ, bằng request không yêu cầu trả lại row. SELECT policy không bảo vệ INSERT này.
+Fix tối thiểu: tách admin global; nhánh BGH phải có scn_class_in_school(class_id).
+
+HIGH — inc_ins còn thiếu toàn bộ kiểm tra trường của đối tượng sự cố.
+File: supabase/migrations/20260925_cr016_role_scope.sql:279
+Policy chỉ yêu cầu role giáo viên/lãnh đạo và recorded_by = auth.uid(). Caller trường A có thể INSERT sự cố gắn class_id hoặc student_id hợp lệ của trường B. r12 chỉ thay UPDATE/DELETE, không thay INSERT.
+Fix tối thiểu: thêm (class_id IS NULL OR scn_class_in_school(class_id)) và điều kiện tương tự cho student_id; kiểm tra học sinh thuộc lớp khi cả hai được cung cấp.
+
+HIGH — competency_evaluations còn nlpc_upd và nlpc_del không bind trường.
+File: supabase/migrations/20260925_cr016_role_scope.sql:577, :580
+Cả hai cho phép evaluated_by = auth.uid() hoặc BGH/admin, không kiểm tra học sinh thuộc trường hiện tại. Đường phá hoại rõ nhất: DELETE không có WHERE và không RETURNING cột chỉ cần DELETE policy; BGH có thể xóa đánh giá của mọi trường. SELECT policy theo trường không chặn dạng lệnh này. Giáo viên chuyển trường cũng còn nhánh DELETE cho đánh giá mình đã ghi ở trường cũ.
+Fix tối thiểu: như nlpc_cmt_upd/del trong r12: bind scn_student_in_school(student_id) cho nhánh self/BGH trong USING và WITH CHECK; giữ admin global riêng.
+
+MEDIUM — tasks còn task_upd và task_del với nhánh creator không bind trường.
+File: supabase/migrations/20260925_cr016_role_scope.sql:436, :443
+created_by = auth.uid() bypass các nhánh kiểm tra lớp. Sau chuyển trường, DELETE không có WHERE/RETURNING cột vẫn có thể xóa công việc caller tạo tại trường cũ. UPDATE có filter có thể bị SELECT policy chặn; không coi đường đó là bypass đã chứng minh.
+Fix tối thiểu: thêm scn_class_in_school(class_id) vào nhánh creator ở cả USING và WITH CHECK.
+
+HIGH — classes_write_ins cho BGH tạo lớp tại trường khác.
+File: supabase/migrations/20260925_cr016_role_scope.sql:36
+INSERT chỉ kiểm tra BGH/admin, khác UPDATE/DELETE vốn có điều kiện trường. BGH trường A có thể gửi INSERT với school_id trường B. Trigger phân công GVCN không bổ sung tenant check cho INSERT này.
+Fix tối thiểu: admin OR (bgh AND school_id = my_school_id()).
+
+MEDIUM — studio generate bỏ sót tên trong context lấy từ DB, gây regression deanon.
+File: src/app/api/studio/tools/[code]/generate/route.ts:870
+DC-06 lấy giáo án vào ctx.extra.khbdText tại dòng 488–523; prompt dùng nguyên văn nội dung đó (src/lib/tvc/prompts.ts:90). Nhưng usedNames chỉ lấy từ input. Tên xuất hiện riêng trong giáo án được đổi thành alias bởi minimizePrompt, rồi không được restore ở output hoặc Devin callback. DC-01 có cùng vấn đề với tên trong activities của template DB.
+Kịch bản: request chỉ chứa material_id; giáo án có “Nguyễn Văn An”. Prompt thành HS…; output giữ HS… vì map rỗng. Đã xác nhận hành vi này bằng chính các helper trong source, không gọi provider.
+Fix tối thiểu: collect tên từ { input, ctx }, đồng thời minimizeDeep(ctx, roster.names) trước buildPrompt.
+
+MEDIUM — report-analysis còn gửi tên thật và PII có newline ra provider.
+File: src/app/api/ai/report-analysis/route.ts:64
+stats[].name nhận chuỗi tùy ý nhưng route không truyền pii.names; dữ liệu còn được JSON.stringify trước redaction. Input hợp lệ như name: "Nguyễn Văn An - 090\n123\n4567" giữ nguyên tên và số điện thoại dạng \\n trong prompt. Đã xác nhận bằng helper thực tế.
+Fix tối thiểu: tải roster fail-closed; minimize dữ liệu trước stringify; truyền pii: { names, source: stats }.
+
+Các điểm kiểm tra còn lại:
+
+Grades editor: key tại src/app/(app)/academics/grades/page.tsx:346 gồm class/subject/term/year. Refresh roster hoặc revision không đổi key; đổi năm học sẽ remount. Snapshot vẫn tạo rows cho học sinh đã rời roster. RPC kiểm tra quyền hiện tại từng ID, cùng lớp và cùng năm: chuyển một học sinh sang lớp khác khiến danh sách bị mixed_class_scope; mất quyền hoặc xóa record khiến save bị từ chối. Tuy nhiên, RPC không kiểm tra status = active và không nhận class ID lúc mount: đổi status vẫn cho save; nếu toàn bộ snapshot chuyển cùng sang một lớp được phép trong cùng năm, RPC dùng lớp mới. Đây là giới hạn validation hiện có.
+Sweep SECURITY DEFINER: không thấy helper quyền giáo viên theo các trường bạn nêu còn thiếu school binding sau khi áp dụng r10–r12. Các omission self-attribution còn lại là inc_ins, nlpc_upd/del, task_upd/del ở trên. ai_jobs và ai_usage vẫn dùng ownership cá nhân không bind trường.
+AI: không thấy đường mới deanon/ghi pii_map bằng full roster trong các route đã liệt kê. Các route không có map như dept-brief/emulation-summary không tạo đường deanon full roster. Omission DB context được xác nhận ở studio generate.
+Devin callback: tại src/app/api/ai/devin-callback/route.ts:98, callback restore toàn bộ map lưu trên job; không lọc lại theo prompt, trường hoặc quyền hiện tại. Token đúng và pending là điều kiện xử lý, rồi conditional update ngăn ghi đè lần hai. Job cũ full-roster vẫn giữ residual bạn đã nêu; không tính lại thành finding mới.
+
+VERDICT: NOT-CLEAN
+
+11:03 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++55,107
+-4,325
+Outputs
+Create a file or site

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { hasAnyRole } from "@/lib/roles";
+import { minimizeDeep } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
  * AI phân tích báo cáo tổng hợp nhiều lớp - dùng cho /records/report.
@@ -54,6 +56,18 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r13 M: stats[].name la chuoi tuy y do caller gui - co the chua
+  // ten HS/GV/PH va PII co newline. Minimize theo roster TRUOC khi
+  // JSON.stringify (serialize truoc se escape va bo sot redact); source la
+  // stats tho de deanon pham vi caller.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const minStats = minimizeDeep(stats, roster.names);
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -62,7 +76,7 @@ export async function POST(req: Request) {
     system:
       "Bạn là trợ lý phân tích dữ liệu giáo dục cho trường phổ thông Việt Nam. Trả lời ngắn gọn, thực tế, không emoji.",
     prompt: `Dữ liệu tổng hợp các lớp (JSON): ${JSON.stringify(
-      stats.map((s) => ({
+      minStats.map((s) => ({
         lop: s.name,
         si_so: s.size,
         chuyen_can_pct: s.attendancePct,
@@ -72,6 +86,7 @@ export async function POST(req: Request) {
     )}. Hãy viết 3-5 nhận xét phân tích ngắn gọn bằng tiếng Việt cho giáo viên chủ nhiệm/ban giám hiệu: lớp nổi bật, lớp cần chú ý, xu hướng và 1-2 đề xuất hành động cụ thể. Mỗi nhận xét một dòng, không đánh số, không ký tự đầu dòng, không markdown.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1024,
+    pii: { names: roster.names, source: stats },
     parse: (text) => {
       try {
         const o = JSON.parse(text) as { lines?: string[] };

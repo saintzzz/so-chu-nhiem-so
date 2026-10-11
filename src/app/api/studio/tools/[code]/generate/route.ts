@@ -867,7 +867,10 @@ export async function POST(
   // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong input caller
   // - chan inject alias "HS001..." vao field tool de echo lo ten HS/GV/PH
   // ngoai pham vi campus (roster la full-school).
-  const usedNames = collectUsedNames(input, roster.names);
+  // CR-049 r13 M: ctx cung la source - DC-06 nhung khbdText tu giao an
+  // trong DB, DC-01 nhung template; ten trong do bi minimizePrompt alias
+  // nhung neu thieu khoi used se khong duoc restore (alias leak output).
+  const usedNames = collectUsedNames({ input, ctx }, roster.names);
   const { system, prompt } = tool.buildPrompt(
     minimizeDeep(input, roster.names),
     ctx,

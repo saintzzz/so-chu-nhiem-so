@@ -553,3 +553,42 @@ test("guard r12: editor chot danh sach HS luc mount", () => {
   assert.ok(!src.includes("const studentIds = students.map"),
     "gui students live se xoa diem HS chuyen vao giua phien");
 });
+
+test("guard r13: policies self-attribution/BGH con sot bind truong", () => {
+  const src = read("supabase/migrations/20261204_cr049_r13_fixes.sql");
+  // signoff_insert: nhanh BGH phai bind class-in-school, admin tach rieng
+  const soIdx = src.indexOf("signoff_insert");
+  const soBlock = src.slice(soIdx, soIdx + 1200);
+  assert.match(soBlock, /'bgh'\] and scn_class_in_school\(class_id\)/,
+    "BGH khong duoc ghi signoff sang truong khac");
+  // inc_ins: chot drift + student thuoc class khi ca hai co
+  const incIdx = src.indexOf("create policy inc_ins");
+  const incBlock = src.slice(incIdx, incIdx + 1200);
+  assert.match(incBlock, /scn_class_in_school\(class_id\)/);
+  assert.match(incBlock, /scn_student_in_school\(student_id\)/);
+  assert.match(incBlock, /s\.class_id = incidents\.class_id/,
+    "student_id phai thuoc class_id khi ca hai duoc cung cap");
+  // classes_write_ins drift chot lai trong file
+  const cwIdx = src.indexOf("classes_write_ins on classes for insert");
+  const cwBlock = src.slice(cwIdx, cwIdx + 500);
+  assert.match(cwBlock, /school_id = \(select my_school_id\(\)\)/);
+  // nlpc_upd/del competency_evaluations: evaluated_by + BGH bind student school
+  const nIdx = src.indexOf("nlpc_upd on competency_evaluations");
+  const nBlock = src.slice(nIdx, nIdx + 2200);
+  assert.match(nBlock, /evaluated_by = auth\.uid\(\) and scn_student_in_school/);
+  assert.match(nBlock, /'bgh'\] and scn_student_in_school/);
+  // task_upd/del: nhanh created_by bind class-in-school
+  const tIdx = src.indexOf("task_upd on tasks");
+  const tBlock = src.slice(tIdx, tIdx + 2400);
+  assert.match(tBlock, /created_by = auth\.uid\(\) and scn_class_in_school/);
+});
+
+test("guard r13: studio usedNames gom ctx + report-analysis minimize", () => {
+  const gen = read("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(gen, /collectUsedNames\(\{ input, ctx \}/,
+    "ctx (khbdText/template tu DB) phai vao usedNames de deanon restore");
+  const ra = read("src/app/api/ai/report-analysis/route.ts");
+  assert.match(ra, /minimizeDeep\(stats, roster\.names\)/,
+    "stats[].name phai minimize truoc JSON.stringify");
+  assert.match(ra, /pii: \{ names: roster\.names, source: stats \}/);
+});

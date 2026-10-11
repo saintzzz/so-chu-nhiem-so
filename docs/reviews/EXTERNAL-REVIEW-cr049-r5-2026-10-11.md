@@ -276,3 +276,31 @@ Verdict: **NOT-CLEAN - 3 findings (3 HIGH)**
   khong rewrite retroactive duoc; job moi chi luu usedNames.
 - `extract-records` raw-PII path: co gate consent + durable audit (r11).
 - Resend accept->crash truoc delivery log: khong co idempotency - documented.
+
+---
+
+## Round 13 (Codex Cloud @ 639959b) - NOT-CLEAN: 7 findings (4H/3M)
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | `signoff_insert` nhanh BGH con global (r12 chi bind nhanh gvcn) - BGH truong A insert signoff cho class truong B | **Fixed** - `20261204_cr049_r13_fixes.sql`: admin global rieng, BGH + `scn_class_in_school(class_id)` | prod bound |
+| 2 | H | `inc_ins` thieu tenant check doi tuong su co - **drift**: prod da bound nhung KHONG co file migration nao chua ban bound; replay files tren DB moi mo lai lo | **Fixed** - chot ban bound vao file r13 + bo sung `student_id thuoc class_id` khi ca hai co | prod bound truoc, file chot sau |
+| 3 | H | `nlpc_upd`/`nlpc_del` tren `competency_evaluations`: `evaluated_by = auth.uid()` + BGH khong bind truong - DELETE khong WHERE xoa danh gia truong khac | **Fixed** - self/BGH + `scn_student_in_school(student_id)`, admin global | prod bound |
+| 4 | M | `task_upd`/`task_del` nhanh `created_by = auth.uid()` khong bind truong | **Fixed** - creator + `scn_class_in_school(class_id)` | prod bound |
+| 5 | H | `classes_write_ins` BGH insert cho truong khac - **drift** nhu #2: prod da bound (`admin OR school_id = my_school_id()`) nhung khong co file | **Fixed** - chot ban bound vao file r13 | prod bound truoc, file chot sau |
+| 6 | M | Studio generate `usedNames` chi tu `input` - DC-06 `ctx.extra.khbdText` / DC-01 template (tu DB) chua ten -> minimizePrompt alias nhung used khong co -> alias leak output | **Fixed** - `collectUsedNames({ input, ctx }, roster.names)` | guard test |
+| 7 | M | `report-analysis` gui `stats[].name` raw + JSON.stringify truoc redact - ten + PII newline (`"An - 090\n123\n4567"`) toi provider | **Fixed** - roster fail-closed + `minimizeDeep(stats)` truoc stringify + `pii: {names, source: stats}` | guard test |
+
+### Ghi nhan khong phai finding (Codex "remaining checks")
+
+- RPC `scn_save_grades` khong check `status = 'active'` va khong nhan class ID luc mount - gioi han validation, documented.
+- `ai_jobs`/`ai_usage` dung ownership ca nhan khong bind truong - dung thiet ke (per-user data).
+- Devin callback restore full map tren job - job CU full-roster la residual da document.
+- Sweep SECURITY DEFINER/self-attribution: sach ngoai cac finding tren (da verify them prod-side: `appt_s_upd/del` bound qua `scn_parent_in_school`).
+
+### Gates r13
+
+- `npx tsc --noEmit` PASS | eslint changed-paths 0 errors | tests 194 pass/1 skip
+- `check-consistency` PASS (rename r13 -> `20261204` cho unique version) | `npm run build` PASS
+- prod verified: 7/7 policies bound (`signoff_insert`, `inc_ins`, `classes_write_ins`, `nlpc_upd/del`, `task_upd/del`)
+- migration: `20261204_cr049_r13_fixes.sql`

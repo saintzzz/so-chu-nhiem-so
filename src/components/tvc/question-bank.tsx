@@ -1511,7 +1511,11 @@ export function QuestionBank({
                       disabled={pending}
                       onClick={() =>
                         start(async () => {
-                          await deleteQuestion(q.id);
+                          // r23 M: chi go row khi DELETE thanh cong - hien
+                          // loi de user khong tuong da xoa duoc.
+                          const r = await deleteQuestion(q.id);
+                          if (r?.error) return setError(r.error);
+                          setError("");
                           setQuestions((p) => p.filter((x) => x.id !== q.id));
                         })
                       }

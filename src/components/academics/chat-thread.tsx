@@ -100,18 +100,29 @@ export function ChatThread({
         setError("Không gửi được tin nhắn - vui lòng thử lại.");
         return;
       }
-      await supabase.from("notifications").insert({
-        profile_id: peerId,
-        type: "message",
-        title: "Tin nhắn mới",
-        body: text.slice(0, 120),
-        link: notifyLink,
-      });
+      const { error: notiErr } = await supabase
+        .from("notifications")
+        .insert({
+          profile_id: peerId,
+          type: "message",
+          title: "Tin nhắn mới",
+          body: text.slice(0, 120),
+          link: notifyLink,
+        });
+      // r23 M: tin nhan da committed - van append + xoa noi dung, nhung
+      // phai bao ro notification that bai thay vi hien nhu da day du.
+      if (notiErr) {
+        console.error("[chat-thread] notify peer:", notiErr.message);
+      }
       if (inserted) {
         setItems((prev) => mergeChatMessages(prev, [inserted as ChatMessage]));
       }
       setContent("");
-      setError(null);
+      setError(
+        notiErr
+          ? "Đã gửi tin nhắn, nhưng chưa báo được cho người nhận."
+          : null,
+      );
     });
   }
 

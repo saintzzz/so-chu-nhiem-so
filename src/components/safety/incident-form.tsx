@@ -64,13 +64,17 @@ export function IncidentForm({
       occurredAt: occurredAt ? new Date(occurredAt).toISOString() : "",
     });
     setPending(false);
-    if (res.error) {
-      setFeedback({ kind: "error", text: res.error });
-    } else {
-      setFeedback({ kind: "success", text: "Đã ghi nhận sự cố." });
+    // r23 M: business commit roi (co loi delivery) cung phai reset form -
+    // submit lai se tao incident trung cung noi dung.
+    if (res.committed || !res.error) {
       setStudentId("");
       setDescription("");
       setOccurredAt("");
+    }
+    if (res.error) {
+      setFeedback({ kind: res.committed ? "success" : "error", text: res.error });
+    } else {
+      setFeedback({ kind: "success", text: "Đã ghi nhận sự cố." });
     }
   }
 

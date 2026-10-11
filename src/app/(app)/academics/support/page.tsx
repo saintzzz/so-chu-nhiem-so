@@ -65,7 +65,7 @@ export default async function SupportPage({
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData, error: clsErr } = await classQuery.order("name");
   const classes = (classData ?? []) as ClassRow[];
 
   const classId =
@@ -73,7 +73,7 @@ export default async function SupportPage({
       ? sp.class
       : (classes[0]?.id ?? "");
 
-  const [{ data: subjectData }, { data: studentData }] = await Promise.all([
+  const [{ data: subjectData, error: subjErr }, { data: studentData, error: stuErr }] = await Promise.all([
     supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
     classId
       ? supabase
@@ -82,7 +82,7 @@ export default async function SupportPage({
           .eq("class_id", classId)
           .eq("status", "active")
           .order("full_name")
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
   ]);
   const subjects = (subjectData ?? []) as SubjectRow[];
   const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
@@ -95,7 +95,9 @@ export default async function SupportPage({
     (classes.find((c) => c.id === classId) as
       | { academic_year_id?: string | null }
       | undefined)?.academic_year_id ?? null;
-  const [{ rows: gradeData }, { data: planData }] = studentIds.length
+  // r23 M: grades phan trang - trang sau loi phai chan board, neu khong
+  // diem thieu se tinh DTB sai va tao ke hoach phu dao tren du lieu gia.
+  const [{ rows: gradeData, error: gradeErr, truncated: gradeTrunc }, { data: planData, error: planErr }] = studentIds.length
     ? await Promise.all([
         fetchAllRows<GradeRow>((f, t) =>
           supabase
@@ -112,7 +114,14 @@ export default async function SupportPage({
           .in("student_id", studentIds)
           .neq("status", "cancelled"),
       ])
-    : [{ rows: [] as GradeRow[] }, { data: [] }];
+    : [
+        { rows: [] as GradeRow[], error: null, truncated: false },
+        { data: [], error: null },
+      ];
+  const loadError =
+    (clsErr ?? subjErr ?? stuErr ?? planErr) != null || gradeErr || gradeTrunc
+      ? "Không tải đủ dữ liệu điểm - vui lòng tải lại trang trước khi tạo kế hoạch."
+      : null;
   const grades = gradeData;
   const plans = (planData ?? []) as PlanRow[];
 
@@ -177,9 +186,15 @@ export default async function SupportPage({
         />
       </div>
 
+      {loadError && (
+        <p className="rounded-xl border border-error/30 bg-error-bg px-4 py-3 text-sm text-error">
+          {loadError}
+        </p>
+      )}
       <SupportPlanBoard
         key={classId ?? "all"}
         meId={profile.id}
+        disabled={loadError != null}
         rows={weak.map(
           (w): WeakPair => {
             const plan = planKey.get(`${w.student_id}:${w.subject_id}`);

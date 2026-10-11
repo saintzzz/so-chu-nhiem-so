@@ -49,16 +49,20 @@ export function SignoffClient({
   const isBgh = role === "bgh";
 
   /** Thông báo cho toàn bộ BGH trong trường (khi GVCN nộp sổ). */
-  async function notifyBgh(title: string, body: string) {
-    const { data } = await supabase
+  async function notifyBgh(title: string, body: string): Promise<boolean> {
+    const { data, error: profErr } = await supabase
       .from("profiles")
       .select("id")
       .or("role.eq.bgh,concurrent_roles.cs.{bgh}");
+    if (profErr) {
+      console.error("[signoff] bgh lookup:", profErr.message);
+      return false;
+    }
     const rows = ((data ?? []) as { id: string }[]).filter(
       (p) => p.id !== profileId,
     );
-    if (rows.length === 0) return;
-    await supabase.from("notifications").insert(
+    if (rows.length === 0) return true;
+    const { error } = await supabase.from("notifications").insert(
       rows.map((p) => ({
         profile_id: p.id,
         type: "signoff",
@@ -67,18 +71,32 @@ export function SignoffClient({
         link: "/register/signoff",
       })),
     );
+    if (error) {
+      console.error("[signoff] notify bgh:", error.message);
+      return false;
+    }
+    return true;
   }
 
   /** Thông báo cho GVCN đã nộp sổ (khi BGH ký / từ chối). */
-  async function notifySubmitter(row: Signoff, title: string, body: string) {
-    if (!row.submitted_by || row.submitted_by === profileId) return;
-    await supabase.from("notifications").insert({
+  async function notifySubmitter(
+    row: Signoff,
+    title: string,
+    body: string,
+  ): Promise<boolean> {
+    if (!row.submitted_by || row.submitted_by === profileId) return true;
+    const { error } = await supabase.from("notifications").insert({
       profile_id: row.submitted_by,
       type: "signoff",
       title,
       body,
       link: "/register/signoff",
     });
+    if (error) {
+      console.error("[signoff] notify submitter:", error.message);
+      return false;
+    }
+    return true;
   }
 
   /** BGH mở đợt ký duyệt cho các lớp trong kỳ hiện tại. */
@@ -144,18 +162,21 @@ export function SignoffClient({
             : s,
         ),
       );
-      setMessage(
-        `Đã nộp sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} lên Ban Giám Hiệu.`,
-      );
       logAudit(supabase, {
         action: "Nộp sổ chủ nhiệm",
         entity: "register_signoffs",
         entityId: row.id,
         payload: { class_id: row.class_id, period: row.period },
       });
-      await notifyBgh(
+      // r23 M: business commit roi - notification that bai phai bao ro,
+      // khong hien nhu da day du.
+      const notified = await notifyBgh(
         `Sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} đã được nộp`,
         `${profileName} đã nộp sổ chủ nhiệm kỳ ${row.period} - chờ BGH ký duyệt.`,
+      );
+      setMessage(
+        `Đã nộp sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} lên Ban Giám Hiệu.` +
+          (notified ? "" : " (chưa báo được cho BGH)"),
       );
     }
     setBusy(false);
@@ -180,19 +201,20 @@ export function SignoffClient({
             : s,
         ),
       );
-      setMessage(
-        `Đã ký duyệt sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period}.`,
-      );
       logAudit(supabase, {
         action: "Ký duyệt sổ chủ nhiệm",
         entity: "register_signoffs",
         entityId: row.id,
         payload: { class_id: row.class_id, period: row.period },
       });
-      await notifySubmitter(
+      const notified = await notifySubmitter(
         row,
         `Sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} đã được ký duyệt`,
         `Ban Giám Hiệu đã ký duyệt sổ chủ nhiệm kỳ ${row.period}.`,
+      );
+      setMessage(
+        `Đã ký duyệt sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period}.` +
+          (notified ? "" : " (chưa báo được cho GVCN)"),
       );
     }
     setBusy(false);
@@ -221,9 +243,6 @@ export function SignoffClient({
             : s,
         ),
       );
-      setMessage(
-        `Đã từ chối sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} - GVCN cần chỉnh sửa và nộp lại.`,
-      );
       logAudit(supabase, {
         action: "Từ chối sổ chủ nhiệm",
         entity: "register_signoffs",
@@ -234,10 +253,14 @@ export function SignoffClient({
           reason,
         },
       });
-      await notifySubmitter(
+      const notified = await notifySubmitter(
         row,
         `Sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} bị từ chối`,
         `Kỳ ${row.period}: ${reason}`,
+      );
+      setMessage(
+        `Đã từ chối sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} kỳ ${row.period} - GVCN cần chỉnh sửa và nộp lại.` +
+          (notified ? "" : " (chưa báo được cho GVCN)"),
       );
     }
     setRejectingId(null);
@@ -274,15 +297,18 @@ export function SignoffClient({
             : s,
         ),
       );
-      setMessage(`Đã nộp ${targets.length} sổ chủ nhiệm lên Ban Giám Hiệu.`);
       logAudit(supabase, {
         action: "Nộp sổ chủ nhiệm hàng loạt",
         entity: "register_signoffs",
         payload: { count: targets.length },
       });
-      await notifyBgh(
+      const notified = await notifyBgh(
         `${targets.length} sổ chủ nhiệm vừa được nộp`,
         `${profileName} đã nộp ${targets.length} sổ chủ nhiệm - chờ BGH ký duyệt.`,
+      );
+      setMessage(
+        `Đã nộp ${targets.length} sổ chủ nhiệm lên Ban Giám Hiệu.` +
+          (notified ? "" : " (chưa báo được cho BGH)"),
       );
     }
     setBusy(false);
@@ -310,19 +336,24 @@ export function SignoffClient({
             : s,
         ),
       );
-      setMessage(`Đã ký duyệt ${targets.length} sổ chủ nhiệm.`);
       logAudit(supabase, {
         action: "Ký duyệt sổ chủ nhiệm hàng loạt",
         entity: "register_signoffs",
         payload: { count: targets.length },
       });
+      let failed = 0;
       for (const row of targets) {
-        await notifySubmitter(
+        const ok = await notifySubmitter(
           row,
           `Sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} đã được ký duyệt`,
           `Ban Giám Hiệu đã ký duyệt sổ chủ nhiệm kỳ ${row.period}.`,
         );
+        if (!ok) failed++;
       }
+      setMessage(
+        `Đã ký duyệt ${targets.length} sổ chủ nhiệm.` +
+          (failed ? ` (chưa báo được cho ${failed} GVCN)` : ""),
+      );
     }
     setBusy(false);
   }

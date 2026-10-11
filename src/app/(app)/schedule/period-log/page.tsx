@@ -85,6 +85,9 @@ export default async function PeriodLogPage({
   let logs: Record<string, PeriodLogState> = {};
   let filterClasses: ClassRow[] = [];
   let selectedClassId: string | null = null;
+  // r23 H: moi SELECT nguon phai check error - roster/logs rong tren du
+  // lieu loi ma luu se XOA toan bo absences cu va ghi de noi dung log.
+  let loadError: string | null = null;
 
   if (weekday !== null) {
     let entryQuery = supabase
@@ -99,7 +102,11 @@ export default async function PeriodLogPage({
     } else {
       entryQuery = entryQuery.eq("teacher_id", profile.id);
     }
-    const { data: entriesRaw } = await entryQuery;
+    const { data: entriesRaw, error: entErr } = await entryQuery;
+    if (entErr) {
+      console.error("[period-log] entries:", entErr.message);
+      loadError = "Không tải được thời khóa biểu - vui lòng tải lại trang.";
+    }
     let entryRows = (entriesRaw ?? []) as EntryRow[];
 
     // GV dạy thay: phải khớp ĐÚNG rule của RLS scn_is_sub_ttentry_date:
@@ -121,12 +128,16 @@ export default async function PeriodLogPage({
       school_id: string | null;
     }[] = [];
     if (date <= today && date >= minSubDate) {
-      const { data: subsRaw } = await supabase
+      const { data: subsRaw, error: subsErr } = await supabase
         .from("substitute_requests")
         .select("class_id,subject_id,period,school_id")
         .eq("substitute_teacher_id", profile.id)
         .eq("date", date)
         .eq("status", "approved");
+      if (subsErr) {
+        console.error("[period-log] subs:", subsErr.message);
+        loadError ??= "Không tải được đơn dạy thay - vui lòng tải lại trang.";
+      }
       subReqs.push(...((subsRaw ?? []) as typeof subReqs));
     }
     const subEntryIds = new Set<string>();
@@ -134,11 +145,15 @@ export default async function PeriodLogPage({
       const subClassIds = [...new Set(subReqs.map((r) => r.class_id))];
       // embed classes(school_id) de kiem r.school_id khop truong cua lop
       // dung nhu DB helper.
-      const { data: subEntriesRaw } = await supabase
+      const { data: subEntriesRaw, error: subEntErr } = await supabase
         .from("timetable_entries")
         .select("id,class_id,subject_id,teacher_id,period,room,classes(school_id)")
         .eq("weekday", weekday)
         .in("class_id", subClassIds);
+      if (subEntErr) {
+        console.error("[period-log] sub entries:", subEntErr.message);
+        loadError ??= "Không tải được tiết dạy thay - vui lòng tải lại trang.";
+      }
       const known = new Set(entryRows.map((e) => e.id));
       for (const e of (subEntriesRaw ?? []) as (EntryRow & {
         classes: { school_id: string }[] | { school_id: string } | null;
@@ -171,11 +186,11 @@ export default async function PeriodLogPage({
       ),
     ];
 
-    const [{ data: classesData }, { data: studentsRaw }, { data: subjectsRaw }, { data: teachersRaw }] =
+    const [{ data: classesData, error: clsErr }, { data: studentsRaw, error: stuErr }, { data: subjectsRaw, error: subjErr }, { data: teachersRaw, error: tchErr }] =
       await Promise.all([
         classIds.length > 0
           ? supabase.from("classes").select("id,name").in("id", classIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
         classIds.length > 0
           ? supabase
               .from("students")
@@ -183,14 +198,20 @@ export default async function PeriodLogPage({
               .in("class_id", classIds)
               .eq("status", "active")
               .order("full_name", { ascending: true })
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
         subjectIds.length > 0
           ? supabase.from("subjects").select("id,name").in("id", subjectIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
         teacherIds.length > 0
           ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [], error: null }),
       ]);
+    if (clsErr ?? stuErr ?? subjErr ?? tchErr) {
+      const e = clsErr ?? stuErr ?? subjErr ?? tchErr;
+      console.error("[period-log] lookup:", e?.message);
+      loadError ??=
+        "Không tải được danh sách lớp/học sinh - vui lòng tải lại trang.";
+    }
 
     filterClasses = (classesData ?? []) as ClassRow[];
     const validFilter =
@@ -253,7 +274,7 @@ export default async function PeriodLogPage({
       );
 
     const entryIds = entryRows.map((e) => e.id);
-    const { data: logsRaw } =
+    const { data: logsRaw, error: logsErr } =
       entryIds.length > 0
         ? await supabase
             .from("period_logs")
@@ -262,17 +283,26 @@ export default async function PeriodLogPage({
             )
             .eq("date", date)
             .in("timetable_entry_id", entryIds)
-        : { data: [] };
+        : { data: [], error: null };
+    if (logsErr) {
+      console.error("[period-log] logs:", logsErr.message);
+      loadError ??= "Không tải được sổ đầu bài - vui lòng tải lại trang.";
+    }
     const logRows = (logsRaw ?? []) as LogRow[];
 
     const logIds = logRows.map((l) => l.id);
-    const { data: absRaw } =
+    const { data: absRaw, error: absErr } =
       logIds.length > 0
         ? await supabase
             .from("period_absences")
             .select("period_log_id,student_id,status")
             .in("period_log_id", logIds)
-        : { data: [] };
+        : { data: [], error: null };
+    if (absErr) {
+      console.error("[period-log] absences:", absErr.message);
+      loadError ??=
+        "Không tải được danh sách vắng - vui lòng tải lại trang trước khi ghi.";
+    }
     const absRows = (absRaw ?? []) as AbsenceRow[];
     const absByLog = new Map<string, { student_id: string; status: string }[]>();
     for (const a of absRows) {
@@ -376,6 +406,7 @@ export default async function PeriodLogPage({
           entries={entries}
           rosters={rosters}
           logs={logs}
+          loadError={loadError}
         />
       )}
     </>

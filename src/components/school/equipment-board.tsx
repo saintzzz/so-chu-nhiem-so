@@ -124,7 +124,14 @@ export function EquipmentBoard({
                 disabled={pending}
                 onChange={(e) =>
                   start(async () => {
-                    await updateEquipmentCondition(i.id, e.target.value);
+                    const r = await updateEquipmentCondition(
+                      i.id,
+                      e.target.value,
+                    );
+                    // r23 L: hien loi thay vi nuot - select gia gia tri moi
+                    // du UPDATE that bai (refresh se tu dong lai).
+                    if (r?.error) setErr(r.error);
+                    else setErr(null);
                   })
                 }
                 className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none"
@@ -143,7 +150,9 @@ export function EquipmentBoard({
                   disabled={pending}
                   onClick={() =>
                     start(async () => {
-                      await deleteEquipment(i.id);
+                      const r = await deleteEquipment(i.id);
+                      if (r?.error) setErr(r.error);
+                      else setErr(null);
                     })
                   }
                   className="rounded-lg p-1.5 text-muted-foreground hover:bg-error-bg hover:text-error"

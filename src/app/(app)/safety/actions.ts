@@ -11,7 +11,7 @@ export async function createIncident(input: {
   severity: "low" | "medium" | "high" | "critical";
   description: string;
   occurredAt: string;
-}): Promise<{error?: string }> {
+}): Promise<{ error?: string; committed?: boolean; incidentId?: string }> {
   const deny = await checkActionRole(["gvcn", "gvbm", "to_truong", "bgh"]);
   if (deny) return { error: deny };
   const profile = await getProfile();
@@ -20,20 +20,27 @@ export async function createIncident(input: {
   if (!input.description.trim()) {
     return { error: "Vui lòng mô tả sự cố." };
   }
-  const { error } = await supabase.from("incidents").insert({
-    student_id: input.studentId,
-    class_id: input.classId,
-    type: input.type,
-    severity: input.severity,
-    status: "new",
-    description: input.description.trim(),
-    reported_to_bgh: false,
-    occurred_at: input.occurredAt || new Date().toISOString(),
-  });
+  const { data: inc, error } = await supabase
+    .from("incidents")
+    .insert({
+      student_id: input.studentId,
+      class_id: input.classId,
+      type: input.type,
+      severity: input.severity,
+      status: "new",
+      description: input.description.trim(),
+      reported_to_bgh: false,
+      occurred_at: input.occurredAt || new Date().toISOString(),
+    })
+    .select("id")
+    .single();
   if (error) {
     console.error("[safety] insert incidents:", error.message);
     return { error: "Không ghi được sự cố - vui lòng thử lại." };
   }
+  // r23 M: business commit roi - tra committed + incidentId de client
+  // reset form va KHONG submit lai (revalidate khong reset local state).
+  const committed = { committed: true, incidentId: inc?.id as string };
   // Chỉ báo lãnh đạo cùng trường; PHT chỉ nhận nếu sự cố thuộc cơ sở mình phụ trách.
   const { data: leaderProfiles, error: lpErr } = await supabase
     .from("profiles")
@@ -50,6 +57,7 @@ export async function createIncident(input: {
     revalidatePath("/safety/bgh");
     revalidatePath("/safety/followup");
     return {
+      ...committed,
       error:
         "Đã ghi sự cố, nhưng chưa thông báo được cho lãnh đạo - sự cố đã xuất hiện trong danh sách.",
     };
@@ -108,15 +116,22 @@ export async function createIncident(input: {
       revalidatePath("/safety/report");
       revalidatePath("/safety/bgh");
       revalidatePath("/safety/followup");
-      return { error: "Đã ghi sự cố, nhưng gửi thông báo cho lãnh đạo thất bại." };
+      return {
+        ...committed,
+        error: "Đã ghi sự cố, nhưng gửi thông báo cho lãnh đạo thất bại.",
+      };
     }
   }
   revalidatePath("/safety/report");
   revalidatePath("/safety/bgh");
   revalidatePath("/safety/followup");
   return campusUnknown
-    ? { error: "Đã ghi sự cố và thông báo BGH; không xác định được cơ sở nên chưa báo PHT." }
-    : {};
+    ? {
+        ...committed,
+        error:
+          "Đã ghi sự cố và thông báo BGH; không xác định được cơ sở nên chưa báo PHT.",
+      }
+    : committed;
 }
 
 export async function toggleReportedToBgh(

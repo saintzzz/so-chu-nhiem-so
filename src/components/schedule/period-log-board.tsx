@@ -97,12 +97,14 @@ export function PeriodLogBoard({
   entries,
   rosters,
   logs,
+  loadError,
 }: {
   date: string;
   profileId: string;
   entries: PeriodEntry[];
   rosters: Record<string, ClassRoster>;
   logs: Record<string, PeriodLogState>;
+  loadError?: string | null;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -114,7 +116,12 @@ export function PeriodLogBoard({
     return rosters[entry.class_id] ?? { students: [], size: 0 };
   }
 
+  // r23 H: khi nguon loi (server truyen loadError), khong mo editor - draft
+  // rong tren du lieu gia ma luu se xoa absences / ghi de log cu.
+  const blocked = loadError != null;
+
   function toggle(entry: PeriodEntry) {
+    if (blocked) return;
     setOpenId((cur) => (cur === entry.id ? null : entry.id));
     setDrafts((d) =>
       d[entry.id]
@@ -248,6 +255,11 @@ export function PeriodLogBoard({
 
   return (
     <div>
+      {loadError && (
+        <p className="mb-4 rounded-lg border border-error/30 bg-error-bg px-3 py-2 text-sm text-error">
+          {loadError}
+        </p>
+      )}
       {/* Date picker */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label htmlFor="log-date" className="text-sm text-muted-foreground">

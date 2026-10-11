@@ -623,9 +623,9 @@ test("R6-02: sendAnnouncement + announceActivity goi helper emailClassParents", 
     "sendAnnouncement phai tra emailFailed");
   const act = read("src/app/(app)/activities/actions.ts");
   assert.match(act, /import \{ emailClassParents \} from "@\/lib\/parent-email"/);
-  const body = act.match(/announceActivity[\s\S]*?announcements"\)\.insert/);
+  const body = act.match(/announceActivity[\s\S]*?announcements"\)[\s\S]*?\.insert/);
   assert.ok(body, "khong tim thay announcements insert trong announceActivity");
-  const afterInsert = act.slice(act.indexOf('announcements").insert'));
+  const afterInsert = act.slice(act.indexOf('from("announcements")'));
   assert.match(afterInsert, /emailClassParents\(supabase/,
     "announceActivity phai email phu huynh sau khi insert announcement");
   assert.match(act, /emailSkipped: mail\.emailSkipped/);

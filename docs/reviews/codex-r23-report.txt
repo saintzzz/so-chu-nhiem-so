@@ -1,0 +1,48 @@
+Codex Cloud r23 - commit 67e8633 - dispatched via Playwright/Chrome CDP
+
+Review độc lập vòng 23 tại 
+67e863382a6d7afaa7db98dc9613f4c4cc4f08ae. Đối chiếu source qua GitHub vì checkout local ở r16. Không sửa code, không gọi mutation DB. Có 8 findings: 1 HIGH, 6 MEDIUM, 1 LOW.
+
+HIGH — Lỗi đọc sổ đầu bài có thể xóa dữ liệu vắng và ghi đè nhật ký.
+Vị trí: src/app/(app)/schedule/period-log/page.tsx:256,269; src/components/schedule/period-log-board.tsx:77,165; supabase/migrations/20261119_r2_security_fixes.sql:129,136,150.
+Kịch bản: SELECT period_absences lỗi thành []; editor vẫn mở với marks rỗng. Giáo viên sửa nội dung tiết rồi lưu: RPC xóa toàn bộ absences cũ, chèn danh sách rỗng và đồng bộ lại chuyên cần ngày. Nếu SELECT period_logs lỗi, nội dung cũ cũng thành nháp trống rồi bị UPSERT ghi đè.
+Fix tối thiểu: kiểm tra lỗi các query nguồn, chặn editor/save khi nguồn lỗi; phân trang các danh sách dùng để thay thế toàn bộ.
+
+MEDIUM — Dedupe announcement chặn nhầm hoạt động khác cùng tên.
+Vị trí: src/app/(app)/activities/actions.ts:151,159,177.
+Kịch bản: cùng người gửi, cùng lớp có hai hoạt động khác ID/ngày nhưng cùng title. Sau khi gửi hoạt động thứ nhất, hoạt động thứ hai khớp (sender_id,class_id,title) nên bỏ qua INSERT announcement và email, dù vẫn đăng ký học sinh cho hoạt động thứ hai. Một thông báo thủ công có cùng title cũng gây chặn nhầm.
+Fix tối thiểu: lưu marker theo activity_id, có unique constraint và thao tác tạo marker nguyên tử.
+
+MEDIUM — Announcement tồn tại bị coi như email đã hoàn tất, làm mất khả năng retry.
+Vị trí: src/app/(app)/activities/actions.ts:176,177,193,220; src/lib/parent-email.ts:45,60,77; src/components/activities/announce-list.tsx:35,56.
+Kịch bản: announcement INSERT thành công nhưng lookup phụ huynh/provider lỗi. Bấm lại sau khi lỗi đã hết: priorAnn tồn tại nên không gọi email helper nữa; trả emailSkipped:true, client diễn giải thành “email chưa cấu hình”. Với lỗi INSERT đăng ký, message tại dòng 220 vẫn khẳng định “đã … gửi email” dù emailError hoặc emailSkipped; client chỉ hiển thị res.error, bỏ phần kết quả email đi kèm.
+Fix tối thiểu: tách trạng thái lưu announcement và trạng thái delivery; retry delivery chưa hoàn tất, giữ kết quả gửi thực tế và chỉ gửi lại người nhận thất bại.
+
+MEDIUM — Revalidate chưa ngăn được tạo sự cố trùng sau partial commit.
+Vị trí: src/app/(app)/safety/actions.ts:23,45,111,117; src/components/safety/incident-form.tsx:58,67.
+Kịch bản: incident đã INSERT nhưng lookup lãnh đạo hoặc INSERT notification lỗi. Action revalidate rồi trả {error}; client giữ nguyên học sinh, mô tả, thời điểm và mở lại nút gửi. Bấm lại INSERT thêm incident cùng nội dung. Revalidate không reset state của form.
+Fix tối thiểu: trả committed và incidentId; client hoàn tất/reset form sau business commit, cho retry riêng notification.
+
+MEDIUM — Trang hỗ trợ tính điểm từ kết quả phân trang thiếu rồi cho tạo kế hoạch sai.
+Vị trí: src/app/(app)/academics/support/page.tsx:98,131,180; src/lib/supabase/fetch-all.ts:38; src/app/(app)/academics/support/actions.ts:104.
+Kịch bản: trang đầu grades tải thành công, trang sau lỗi. fetchAllRows trả rows đã đọc cùng error/truncated, nhưng page chỉ lấy rows, tính ĐTB và mở board. Những điểm bị thiếu có thể biến một cặp học sinh/môn thành dưới 5 giả; action dùng trực tiếp p.avg để lưu lý do phụ đạo, không tính lại điểm nguồn.
+Fix tối thiểu: kiểm tra error và truncated, chặn board tạo kế hoạch khi không tải đủ nguồn.
+
+MEDIUM — Client xóa câu hỏi khỏi UI dù action xóa thất bại.
+Vị trí: src/components/tvc/question-bank.tsx:1514; src/lib/tvc/actions.ts:420,430.
+Kịch bản: deleteQuestion trả {error} do quyền chức năng, lỗi DELETE hoặc không xóa được row. Client bỏ kết quả và luôn setQuestions(...filter...); câu hỏi biến mất khỏi danh sách dù còn trong DB, không có thông báo lỗi hay rollback.
+Fix tối thiểu: kiểm tra r.error; chỉ loại row khi action thành công, hiển thị lỗi khi thất bại.
+
+MEDIUM — Chat và ký duyệt bỏ lỗi notification sau business commit.
+Vị trí: src/components/academics/chat-thread.tsx:103,111,113; src/components/register/signoff-client.tsx:53,61,75,147,156.
+Kịch bản: message đã lưu nhưng notification INSERT lỗi; chat vẫn append tin, xóa nội dung và xóa error. Ký duyệt cũng bỏ lỗi lookup BGH/INSERT notification, vẫn hiển thị trạng thái và thông báo thành công. Người nhận thiếu cảnh báo; caller không được biết partial failure và không có đường retry riêng thông báo.
+Fix tối thiểu: kiểm tra mọi lỗi nguồn/notification, trả rõ business commit và lỗi delivery; retry notification theo ID sự kiện để tránh lặp dữ liệu chính.
+
+LOW — Một số client vẫn nuốt {error} từ action.
+Vị trí: src/components/parents/appointments-client.tsx:23; src/components/school/equipment-board.tsx:127,146; src/components/school/feature-permissions.tsx:30,101.
+Kịch bản: action xác nhận/hủy lịch hẹn, sửa/xóa thiết bị hoặc đổi quyền trả lỗi; UI kết thúc pending mà không hiển thị lỗi. FeatureMatrix có gọi setErr nhưng bỏ giá trị state nên lỗi cũng không được render.
+Fix tối thiểu: đọc kết quả action và render feedback lỗi cho từng thao tác.
+
+Các nút lưu/import/xác nhận của daily và lưu/nộp/AI của daily-report đã được chặn bằng loadError. Inbox đã rollback khi markMessageRead trả {error}; notify-form đã xử lý lỗi email toàn bộ và một phần. Chưa tìm được finding RLS/SECURITY DEFINER/PII/alias bổ sung đủ bằng chứng từ source đã đối chiếu.
+
+VERDICT: NOT-CLEAN

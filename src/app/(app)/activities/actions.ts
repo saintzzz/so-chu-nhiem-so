@@ -153,19 +153,109 @@ export async function announceActivity(
     activity.description ??
     `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`;
 
-  // r22 M: retry sau khi INSERT dang ky loi KHONG duoc lap lai
-  // announcement + email. Title deterministic theo activity nen kiem
-  // announcement da ton tai lam idempotency marker.
-  const { data: priorAnn, error: priorErr } = await supabase
-    .from("announcements")
-    .select("id")
-    .eq("sender_id", user.id)
-    .eq("class_id", activity.class_id)
-    .eq("title", annTitle)
-    .limit(1);
-  if (priorErr) {
-    console.error("[activity-announce] prior check:", priorErr.message);
+  // r23 M: marker nguyen tu theo activity_id (PK) thay cho dedupe
+  // (sender,class,title) - title trung cua hoat dong KHAC khong chan nham,
+  // va email_done tach trang thai delivery de retry gui lai email that
+  // bai ma khong lap announcement.
+  const fetchMarker = async () => {
+    const res = await supabase
+      .from("activity_announcements")
+      .select(
+        "activity_id,announcement_id,email_done,created_at,emailed,email_failed,email_error",
+      )
+      .eq("activity_id", activityId)
+      .maybeSingle();
+    return { data: res.data, error: res.error };
+  };
+  let markerRes = await fetchMarker();
+  if (markerRes.error) {
+    console.error("[activity-announce] marker read:", markerRes.error.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  let marker = markerRes.data;
+  let claimedByUs = false;
+  if (!marker) {
+    // Atomic claim - PK conflict = phiên khác đã claim truoc.
+    const { error: claimErr } = await supabase
+      .from("activity_announcements")
+      .insert({
+        activity_id: activityId,
+        school_id: profile?.school_id ?? null,
+      });
+    if (claimErr && claimErr.code !== "23505") {
+      console.error("[activity-announce] marker claim:", claimErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
+    claimedByUs = !claimErr;
+    markerRes = await fetchMarker();
+    if (markerRes.error) {
+      console.error(
+        "[activity-announce] marker re-read:",
+        markerRes.error.message,
+      );
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
+    marker = markerRes.data;
+  }
+  if (!marker) {
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  // Chi claimer (hoac marker claim bi bo roi > 60s) moi duoc fulfill
+  // announcement - tranh 2 request cung insert khi marker chua link.
+  const markerAge = Date.now() - new Date(marker.created_at).getTime();
+  const canFulfill = claimedByUs || markerAge > 60_000;
+  if (!marker.announcement_id && !canFulfill) {
+    return {
+      error:
+        "Thông báo đang được tạo ở một phiên khác - vui lòng thử lại sau.",
+    };
+  }
+
+  if (!marker.announcement_id) {
+    // Marker vua claim hoac con sot tu lan insert announcement that bai.
+    // Lookup announcement cu cung tieu chi (sender,class,title) chi de
+    // TU PHUC HOI marker bi ket - khong dung lam dedupe chinh.
+    const { data: orphan } = await supabase
+      .from("announcements")
+      .select("id")
+      .eq("sender_id", user.id)
+      .eq("class_id", activity.class_id)
+      .eq("title", annTitle)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    let annId = orphan?.[0]?.id as string | undefined;
+    if (!annId) {
+      const { data: annRow, error: annError } = await supabase
+        .from("announcements")
+        .insert({
+          sender_id: user.id,
+          school_id: profile?.school_id ?? null,
+          class_id: activity.class_id,
+          student_id: null,
+          title: annTitle,
+          content: annContent,
+        })
+        .select("id")
+        .single();
+      if (annError) {
+        console.error("[activity-announce] insert failed:", annError.message);
+        return { error: "Không lưu được thông báo. Vui lòng thử lại." };
+      }
+      annId = annRow?.id as string | undefined;
+    }
+    const { error: linkErr } = await supabase
+      .from("activity_announcements")
+      .update({ announcement_id: annId ?? null })
+      .eq("activity_id", activityId);
+    if (linkErr) {
+      console.error("[activity-announce] marker link:", linkErr.message);
+      revalidatePath("/activities/announce");
+      return {
+        error:
+          "Đã lưu thông báo nhưng không ghi được trạng thái gửi - vui lòng báo quản trị viên, tránh bấm lại để không tạo thông báo trùng.",
+      };
+    }
+    marker.announcement_id = annId ?? null;
   }
 
   let mail: {
@@ -174,20 +264,7 @@ export async function announceActivity(
     emailSkipped?: boolean;
     emailError?: string;
   } = { emailed: 0, emailFailed: 0, emailSkipped: true };
-  if (!(priorAnn ?? []).length) {
-    const { error: annError } = await supabase.from("announcements").insert({
-      sender_id: user.id,
-      school_id: profile?.school_id ?? null,
-      class_id: activity.class_id,
-      student_id: null,
-      title: annTitle,
-      content: annContent,
-    });
-    if (annError) {
-      console.error("[activity-announce] insert failed:", annError.message);
-      return { error: "Không lưu được thông báo. Vui lòng thử lại." };
-    }
-
+  if (marker && !marker.email_done) {
     // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
     // [So Chu Nhiem So] do helper dat).
     mail = await emailClassParents(supabase, {
@@ -196,6 +273,51 @@ export async function announceActivity(
       title: annTitle,
       content: annContent,
     });
+    // email_done khi da gui duoc >=1, chua cau hinh, hoac khong co nguoi
+    // nhan. Chi retry khi CHUA gui duoc gi (lookup/provider loi) - resend
+    // batch khi da gui duoc mot phan se spam nguoi nhan thanh cong.
+    const emailDone =
+      Boolean(mail.emailSkipped) ||
+      (mail.emailed ?? 0) > 0 ||
+      (!mail.emailError && (mail.emailFailed ?? 0) === 0);
+    const { error: mailStateErr } = await supabase
+      .from("activity_announcements")
+      .update({
+        email_done: emailDone,
+        emailed: mail.emailed ?? 0,
+        email_failed: mail.emailFailed ?? 0,
+        email_error: mail.emailError ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("activity_id", activityId);
+    if (mailStateErr) {
+      console.error("[activity-announce] mail state:", mailStateErr.message);
+      revalidatePath("/activities/announce");
+      revalidatePath("/activities/attendance");
+      return {
+        error:
+          "Đã lưu thông báo và gửi email, nhưng không ghi được trạng thái gửi - vui lòng báo quản trị viên.",
+        emailed: mail.emailed,
+        emailFailed: mail.emailFailed,
+        emailSkipped: mail.emailSkipped,
+        emailError: mail.emailError,
+      };
+    }
+  } else if (marker) {
+    // Resume sau retry: doc lai ket qua email da luu de bao dung trang thai.
+    const { data: mailState } = await supabase
+      .from("activity_announcements")
+      .select("emailed,email_failed,email_error")
+      .eq("activity_id", activityId)
+      .maybeSingle();
+    if (mailState) {
+      mail = {
+        emailed: mailState.emailed ?? 0,
+        emailFailed: mailState.email_failed ?? 0,
+        emailSkipped: false,
+        emailError: mailState.email_error ?? undefined,
+      };
+    }
   }
 
   const rows = studentIds
@@ -212,12 +334,21 @@ export async function announceActivity(
     if (regError) {
       console.error("[activity-announce] register failed:", regError.message);
       // Announcement + email da committed - revalidate va bao committed;
-      // retry se thay prior announcement nen chi chay lai phan dang ky.
+      // retry se thay marker announcement nen chi chay lai phan dang ky.
       revalidatePath("/activities/announce");
       revalidatePath("/activities/attendance");
+      // r23 M: phan anh dung ket qua email - khong khang dinh "da gui" khi
+      // emailSkipped/emailError.
+      const mailNote = mail.emailSkipped
+        ? "chưa cấu hình email"
+        : (mail.emailed ?? 0) > 0
+          ? `đã gửi email đến ${mail.emailed} phụ huynh${(mail.emailFailed ?? 0) > 0 ? ` (${mail.emailFailed} lỗi)` : ""}`
+          : mail.emailError
+            ? "email chưa gửi được - bấm lại sẽ thử gửi lại"
+            : "không có email phụ huynh nào";
       return {
         error:
-          "Đã lưu thông báo và gửi email cho phụ huynh, nhưng không đăng ký được danh sách học sinh - vui lòng bấm lại để hoàn tất đăng ký.",
+          `Đã lưu thông báo (${mailNote}), nhưng không đăng ký được danh sách học sinh - vui lòng bấm lại để hoàn tất đăng ký.`,
         emailed: mail.emailed,
         emailFailed: mail.emailFailed,
         emailSkipped: mail.emailSkipped,

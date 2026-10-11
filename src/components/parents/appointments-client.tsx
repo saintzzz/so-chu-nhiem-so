@@ -17,10 +17,14 @@ export interface AppointmentRow {
 
 export function AppointmentsClient({ rows }: { rows: AppointmentRow[] }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
+  // r23 L: action tra {error} - phai hien, khong chi ket thuc pending.
   async function act(id: string, status: "confirmed" | "done" | "cancelled") {
     setPendingId(id);
-    await updateAppointmentStatus(id, status);
+    setErr(null);
+    const res = await updateAppointmentStatus(id, status);
+    if (res?.error) setErr(res.error);
     setPendingId(null);
   }
 
@@ -33,8 +37,14 @@ export function AppointmentsClient({ rows }: { rows: AppointmentRow[] }) {
   }
 
   return (
-    <DataTable
-      columns={[
+    <>
+      {err && (
+        <p className="mb-3 rounded-lg border border-error/30 bg-error-bg px-3 py-2 text-sm text-error">
+          {err}
+        </p>
+      )}
+      <DataTable
+        columns={[
         "Phụ huynh",
         "Học sinh",
         "Thời gian",
@@ -92,5 +102,6 @@ export function AppointmentsClient({ rows }: { rows: AppointmentRow[] }) {
         );
       })}
     </DataTable>
+    </>
   );
 }

@@ -40,9 +40,11 @@ export interface WeakPair {
 export function SupportPlanBoard({
   rows,
   meId,
+  disabled,
 }: {
   rows: WeakPair[];
   meId: string;
+  disabled?: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
@@ -98,7 +100,7 @@ export function SupportPlanBoard({
         <Button
           size="sm"
           onClick={() => submit(selectedPairs)}
-          disabled={pending || selectedPairs.length === 0}
+          disabled={pending || selectedPairs.length === 0 || disabled}
         >
           {pending
             ? "Đang tạo…"
@@ -121,7 +123,7 @@ export function SupportPlanBoard({
                   checked={allChecked}
                   onChange={toggleAll}
                   aria-label="Chọn tất cả học sinh chưa có kế hoạch"
-                  disabled={selectable.length === 0}
+                  disabled={selectable.length === 0 || disabled}
                 />
               </th>
               <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -153,6 +155,7 @@ export function SupportPlanBoard({
                         type="checkbox"
                         checked={selected.has(key)}
                         onChange={() => toggle(key)}
+                        disabled={disabled}
                         aria-label={`Chọn ${r.studentName} - ${r.subjectName}`}
                       />
                     )}
@@ -181,7 +184,7 @@ export function SupportPlanBoard({
                       <Button
                         size="xs"
                         variant="outline"
-                        disabled={pending}
+                        disabled={pending || disabled}
                         onClick={() =>
                           submit([
                             {

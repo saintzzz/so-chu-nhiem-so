@@ -523,3 +523,32 @@ Raw report: `docs/reviews/codex-r22-report.txt`. HIGH dau tien sau 7 round - lop
 - `npx tsc --noEmit` PASS | eslint 0 errors (136 warnings pre-existing)
 - `cr049-pii` 75 pass | `r2-regression` 140 pass | `check-consistency` PASS
 - `npm run build` PASS | Khong co migration moi (thuan code fixes)
+
+---
+
+## Round 23 (Codex Cloud @ 67e8633) - NOT-CLEAN: 8 findings (1H/6M/1L)
+
+Raw report: `docs/reviews/codex-r23-report.txt`. HIGH o schedule/period-log (cung lop nguon-loi -> luu-de nhu r22 attendance); 2 finding la regression do fix r22 (dedupe theo title chan nham; announcement ton tai = email done mat kha nang retry); 4 finding la client bo {error} / notification sau commit.
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | period-log: SELECT period_absences/period_logs loi -> marks rong -> RPC xoa toan bo absences + upsert log rong ghi de noi dung cu | **Fixed** - periodErr/absErr -> loadError prop; board disable editor + hien banner loi nguon | period-log/page.tsx + period-log-board.tsx |
+| 2 | M | dedupe announcement theo (sender,class,title) chan nham hoat dong khac ID cung ten; thong bao thu cong trung title cung bi anh huong | **Fixed** - bang marker `activity_announcements` PK activity_id, claim nguyen tu bang upsert; RLS theo school_id | migration 20261207_cr049_r23_fixes.sql + activities/actions.ts |
+| 3 | M | priorAnn ton tai -> bo qua email helper + tra emailSkipped:true ("chua cau hinh"); INSERT dang ky loi van bao "da gui email" | **Fixed** - marker luu email_done/emailed/email_failed/email_error; retry chi resume delivery chua hoan tat; message dang ky phan anh trang thai email thuc | activities/actions.ts + parent-email.ts |
+| 4 | M | createIncident: lpErr/notiErr return sau commit -> client giu form, bam lai INSERT incident trung | **Fixed** - action tra committed+incidentId tren moi nhanh post-commit; form reset khi committed du notification loi | safety/actions.ts + incident-form.tsx |
+| 5 | M | support page: fetchAllRows tra rows thieu + error/truncated nhung page chi lay rows -> DTB sai -> tao ke hoach phu dao tren diem ao | **Fixed** - check error + truncated -> disabled prop chan board tao ke hoach | support/page.tsx + support-plan-board.tsx |
+| 6 | M | question-bank: deleteQuestion tra {error} nhung client van filter khoi UI | **Fixed** - chi xoa row khi action thanh cong; render res.error khi that bai | question-bank.tsx |
+| 7 | M | chat-thread + signoff-client: notification INSERT/lookup loi sau business commit bi nuot -> bao thanh cong gia | **Fixed** - chat bao "da gui tin, chua thong bao duoc"; notifyBgh/notifySubmitter tra boolean, caller append thong bao loi | chat-thread.tsx + signoff-client.tsx |
+| 8 | L | appointments/equipment/feature-permissions: client bo {error}, pending ket thuc khong feedback (FeatureMatrix goi setErr nhung khong render) | **Fixed** - ca 3 client doc ket qua action + render trang thai loi | 3 client files |
+
+### Ghi nhan khong phai finding
+
+- loadError r22 chan het nut ghi cua daily + daily-report; inbox rollback dung; notify-form xu ly email du/partial - Codex xac nhan khong con lo.
+- Khong them finding RLS/SECURITY DEFINER/PII/alias du bang chung.
+
+### Gates r23
+
+- `npx tsc --noEmit` PASS | eslint 0 errors (135 warnings pre-existing)
+- `cr049-pii` 76 pass | `r2-regression` 140 pass | `check-consistency` PASS
+- `npm run build` PASS (126 pages)
+- Migration moi: `20261207_cr049_r23_fixes.sql` (bang activity_announcements + RLS, da apply prod)

@@ -22,17 +22,23 @@ const btn =
 /** Ma tran quyen theo role: moi o 3 trang thai Mac dinh / Cho phep / Cam. */
 export function FeatureMatrix({ grants }: { grants: Grant[] }) {
   const [pending, start] = useTransition();
-  const [, setErr] = useState("");
+  // r23 L: setErr duoc goi nhung gia tri bi bo - render de admin thay loi.
+  const [err, setErr] = useState("");
   const get = (feature: string, role: string) =>
     grants.find((g) => g.feature === feature && g.role === role)?.effect;
   const set = (feature: string, role: string, effect: "allow" | "deny" | null) =>
     start(async () => {
       const r = await setFeatureGrant({ feature, role, effect });
-      if (r.error) setErr(r.error);
+      setErr(r.error ?? "");
     });
 
   return (
     <div className="relative overflow-x-auto rounded-xl border bg-card">
+      {err && (
+        <p className="border-b border-error/30 bg-error-bg px-4 py-2 text-sm text-error">
+          {err}
+        </p>
+      )}
       <table className="w-full text-sm">
         <thead className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
           <tr>
@@ -95,13 +101,16 @@ export function UserGrantRow({
   grants: Grant[];
 }) {
   const [pending, start] = useTransition();
+  const [err, setErr] = useState("");
   const mine = grants.filter((g) => g.user_id === userId);
   const set = (feature: string, effect: "allow" | "deny" | null) =>
     start(async () => {
-      await setFeatureGrant({ feature, userId, effect });
+      const r = await setFeatureGrant({ feature, userId, effect });
+      setErr(r.error ?? "");
     });
   return (
     <details className="rounded-lg border bg-muted/30 px-3 py-2">
+      {err && <p className="py-1 text-xs text-error">{err}</p>}
       <summary className="cursor-pointer text-xs font-medium">
         Quyền riêng của {userName}
         {mine.length > 0 && (

@@ -927,7 +927,9 @@ test("guard r22: nguon loi phai chan form; committed state revalidate truoc retu
   const form = read("src/components/attendance/daily-report-form.tsx");
   assert.match(form, /\|\| !!loadError/, "save/submit phai bi chan khi loadError");
   const act = read("src/app/(app)/activities/actions.ts");
-  assert.match(act, /priorAnn/, "announce phai dedupe announcement truoc INSERT (retry khong lap email)");
+  // r23: thay dedupe (sender,class,title) bang marker activity_announcements -
+  // claim nguyen tu theo activity_id, retry khong lap announcement/email.
+  assert.match(act, /activity_announcements/, "announce phai dedupe qua marker theo activity_id (retry khong lap email)");
   const sa = read("src/app/(app)/safety/actions.ts");
   assert.match(
     sa,
@@ -949,4 +951,34 @@ test("guard r22: nguon loi phai chan form; committed state revalidate truoc retu
     /markMessageRead\(m\.id\)[\s\S]{0,300}next\.delete/,
     "mark-read optimistic phai rollback khi action loi",
   );
+});
+
+test("guard r23: marker nguyen tu + nguon loi chan board + client khong nuot error", () => {
+  const pl = read("src/app/(app)/schedule/period-log/page.tsx");
+  assert.match(pl, /error: absErr|error: logsErr/, "period_logs/absences SELECT phai check error");
+  assert.match(pl, /loadError/, "page phai truyen loadError vao board");
+  const board = read("src/components/schedule/period-log-board.tsx");
+  assert.match(board, /if \(blocked\) return/, "editor phai bi chan khi nguon loi");
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.match(act, /activity_announcements/, "announce phai dung marker theo activity_id");
+  assert.match(act, /claimedByUs|canFulfill/, "chi claimer moi fulfill announcement");
+  assert.match(act, /email_done/, "delivery state phai tach khoi announcement");
+  const safety = read("src/app/(app)/safety/actions.ts");
+  assert.match(safety, /committed: true/, "createIncident phai tra committed sau business commit");
+  const form = read("src/components/safety/incident-form.tsx");
+  assert.match(form, /res\.committed/, "form phai reset khi committed de khong tao incident trung");
+  const sup = read("src/app/(app)/academics/support/page.tsx");
+  assert.match(sup, /gradeTrunc|gradeErr/, "fetchAllRows truncated/error phai chan board");
+  const qb = read("src/components/tvc/question-bank.tsx");
+  assert.match(qb, /deleteQuestion\(q\.id\)[\s\S]{0,120}r\?\.error|deleteQuestion\(q\.id\)[\s\S]{0,120}r\.error/, "delete chi go row khi thanh cong");
+  const chat = read("src/components/academics/chat-thread.tsx");
+  assert.match(chat, /notiErr/, "chat phai check loi notification");
+  const sign = read("src/components/register/signoff-client.tsx");
+  assert.match(sign, /const notified = await/, "signoff phai check ket qua notify");
+  const appt = read("src/components/parents/appointments-client.tsx");
+  assert.match(appt, /res\?\.error|res\.error/, "appointments phai hien loi action");
+  const eq = read("src/components/school/equipment-board.tsx");
+  assert.match(eq, /r\?\.error|r\.error/, "equipment phai hien loi update/delete");
+  const fp = read("src/components/school/feature-permissions.tsx");
+  assert.match(fp, /const \[err, setErr\]/, "err phai duoc render, khong discard");
 });

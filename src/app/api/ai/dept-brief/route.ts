@@ -4,7 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
-import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { aliasNonce, minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
@@ -61,11 +61,12 @@ export async function POST(req: Request) {
   // thanh TRxx (self-contained, khong can roster cross-school); names
   // longest-first nen toan ten truong duoc alias tron ven. Dept user co
   // school_id NULL -> roster rong van duoc TR-alias + redact cau truc.
+  const aNonce = aliasNonce();
   const schoolAliases = statRows
     .filter((s) => s.school_name)
     .map((s, i) => ({
       name: s.school_name,
-      alias: `⟦TR${String(i + 1).padStart(2, "0")}⟧`,
+      alias: `⟦TR${String(i + 1).padStart(2, "0")}·${aNonce}⟧`,
     }));
   let allNames: import("@/lib/ai-privacy").PiiName[] = schoolAliases;
   if (profile.school_id) {

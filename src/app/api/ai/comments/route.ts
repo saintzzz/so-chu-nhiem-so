@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import {
+  aliasNonce,
   minimizePrompt,
   minimizeDeep,
   deanonymizeDeep,
@@ -365,9 +366,10 @@ export async function POST(req: Request) {
   }
   // CR-049 r5 F16: ma HS so (9/12 chu so) bi redactPiiText an thanh
   // [so_dinh_danh] va dap laan key - alias K### cho tung ma.
+  const kNonce = aliasNonce();
   const codeAliases = students.map((s, i) => ({
     name: s.code,
-    alias: `⟦K${String(i + 1).padStart(3, "0")}⟧`,
+    alias: `⟦K${String(i + 1).padStart(3, "0")}·${kNonce}⟧`,
   }));
   // Ket hop alias ma HS + alias ten that (roster) - alias prefix khac
   // nhau nen khong dung do khi deanon.

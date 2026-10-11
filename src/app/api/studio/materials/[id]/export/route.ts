@@ -24,11 +24,19 @@ export async function GET(
   if (!userId)
     return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
 
-  const { data } = await supabase
+  // r17 L: chi 404 khi query thanh cong ma khong co row - loi DB -> 500.
+  const { data, error: matErr } = await supabase
     .from("tvc_materials")
     .select("*")
     .eq("id", id)
     .single();
+  if (matErr && matErr.code !== "PGRST116") {
+    console.error("[studio/export] material:", matErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const material = data as Material | null;
   if (!material)
     return NextResponse.json({ error: "Không tìm thấy." }, { status: 404 });

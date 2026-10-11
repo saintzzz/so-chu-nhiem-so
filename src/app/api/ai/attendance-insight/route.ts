@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
-import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { aliasNonce, minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -65,9 +65,10 @@ export async function POST(req: Request) {
   const students = (studentData ?? []) as { id: string; full_name: string; code: string | null }[];
   // CR-049 r5: alias HSxxx thay ma HS trong facts (ma so co dinh dang
   // CCCD/CMND se bi redact lam mat key) - respondWithAi deanonymize.
+  const aNonce = aliasNonce();
   const piiNames = students.map((s, i) => ({
     name: s.full_name,
-    alias: `⟦HS${String(i + 1).padStart(3, "0")}⟧`,
+    alias: `⟦HS${String(i + 1).padStart(3, "0")}·${aNonce}⟧`,
   }));
   const aliasOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
   const ids = students.map((s) => s.id);

@@ -1,0 +1,120 @@
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day la vong REVIEW DOC LAP thu 17 - cac vong truoc da triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+src/lib/ai-privacy.ts: alias moi dang sentinel ⟦X###⟧ (⟦HS001⟧ ⟦GV01⟧ ⟦PH001⟧ ⟦K001⟧ ⟦TR01⟧ ⟦RHS001⟧). pseudonymizeNames single-pass, boundary loai ⟦⟧; deanonymizeNames single-pass alternation, bracketed chi match dang co ngoac, legacy bare alias (job cu) match boundary. Kiem: con case nao single-pass van bi rescan? ⟦⟧ co the bi model anh huong? alias ⟦X###⟧ co the xuat hien san trong source hop le? mergePiiNames co tao alias trung?
+
+Studio questions/extract route: roster fail-closed ca 2 nhanh, usedNames tu {text, stdList}, minimizePrompt(promptFull). Kiem: ten trong SCHEMA mo ta, hoac body.data base64 co leak khong? inline gate confirm_no_pii co du?
+
+Studio tools/[code]/generate: moi lookup source check error (subject/standards/template/material), backup exam + exam_questions check error + rollback. Kiem: con lookup nao bo error? rollback delete exam co the fail silently? tvc_generations insert bo error co dang ke?
+
+radar-sync dedupe error -> continue. warning-advice update -> select verify. period-log-summary entries/logs error -> 500. studio/context 6 nhanh -> srcFail. materials export author -> 500. Kiem: con route ai/studio/cron nao bo qua query error?
+
+Sweep RLS lan cuoi (fresh migration files, khong phai prod): self-attribution khong bind truong, SECURITY DEFINER thieu anchor, SELECT chi is_staff() khong anchor.
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+12:24 AM
+Worked for 5m 12s
+ChatGPT said:
+
+Đã review đúng f716d849a7462a0fca77fd45a7fcc8621bcbe214, đối chiếu 374 blob source/test/migration với GitHub. Không sửa code, không gọi provider hoặc mutation DB. Có 5 findings: 3 MEDIUM, 2 LOW.
+
+MEDIUM - Boundary sentinel cho phép bỏ qua tên thật.
+File: src/lib/ai-privacy.ts:73; src/app/api/studio/questions/extract/route.ts:179.
+Regex cấm match tên đứng sát ⟦ hoặc ⟧, dù nội dung bên trong không phải alias. Đã tái hiện:
+
+Plain text
+minimizePrompt("⟦Nguyễn Văn An⟧", roster)
+→ "⟦Nguyễn Văn An⟧"
+
+Chỉ một ngoặc ở đầu hoặc cuối cũng đủ bypass. Với DOCX hoặc free-text chứa chuỗi này, tên trong roster vẫn ra provider.
+Fix tối thiểu: chỉ bảo vệ token alias thực sự đã sinh; không coi mọi tên sát ngoặc là vùng được miễn pseudonymization.
+
+MEDIUM - Regex Unicode match được nhưng callback không tìm được alias.
+File: src/lib/ai-privacy.ts:57,73,75.
+Regex giu dùng Unicode case folding; khóa Map dùng toLowerCase(), hai cách chuẩn hóa không tương đương. Đã tái hiện với roster Nguyễn Văn Sơn:
+
+Plain text
+input: "Nguyễn Văn ſơn"
+collectUsedNames → có mapping Nguyễn Văn Sơn
+minimizePrompt   → vẫn "Nguyễn Văn ſơn"
+
+ſ match S trong regex, nhưng callback lookup thất bại rồi trả nguyên m.
+Fix tối thiểu: dùng cùng phép case folding cho lookup và regex, hoặc lấy alias trực tiếp từ nhánh regex đã match.
+
+LOW - Namespace sentinel vẫn có thể trùng source hợp lệ và bị minimize lại giữa các lời gọi.
+File: src/lib/ai-privacy.ts:59,73,96,102; src/app/(app)/school/actions.ts:593.
+Validation tên staff chỉ yêu cầu không rỗng, nên tên ⟦HS001⟧ được chấp nhận. Với map:
+
+Plain text
+Nguyễn Văn An → ⟦HS001⟧
+⟦HS001⟧      → ⟦GV002⟧
+
+Đã tái hiện minimizeDeep rồi minimizePrompt: alias của An đổi từ ⟦HS001⟧ sang ⟦GV002⟧. Boundary bảo vệ core bên trong ngoặc nhưng không bảo vệ match bao gồm toàn bộ sentinel.
+
+Ngoài ra, source Nguyễn Văn An; mã ⟦HS001⟧ qua minimize/deanon thành Nguyễn Văn An; mã Nguyễn Văn An. Sentinel nguyên bản không được phân biệt với sentinel đã sinh.
+Fix tối thiểu: chọn namespace không trùng source/roster của request và escape sentinel nguyên bản; bảo vệ các token đã sinh xuyên suốt các lượt minimize.
+
+MEDIUM - Rollback đề vẫn bỏ kết quả DELETE; pack có thể lưu một phần rồi trả lỗi.
+File: src/app/api/studio/tools/[code]/generate/route.ts:781,820,839.
+Khi insert exam_questions lỗi, DELETE đề được await nhưng không kiểm tra error hoặc số row xóa. DELETE lỗi hoặc không xóa được row thì đề không có câu hỏi vẫn tồn tại, trong khi response chỉ báo lỗi lưu câu hỏi.
+
+Với pack=full, đề chính đã lưu trước khi insert đề dự phòng. Nếu bước dự phòng lỗi, route trả 500 nhưng không hoàn tác đề chính; retry có thể tạo thêm đề chính.
+Fix tối thiểu: lưu toàn bộ pack bằng RPC transaction. Nếu giữ compensation, phải kiểm tra và xác nhận DELETE, đồng thời xử lý các row đã tạo trước lỗi.
+
+LOW - Một số lookup vẫn biến lỗi DB thành “không tồn tại/không có quyền”.
+File và đường đi chứng minh được:
+
+src/app/api/studio/tools/[code]/generate/route.ts:507,562: lookup material/matrix bỏ error, lỗi thành 404.
+src/app/api/studio/materials/[id]/export/route.ts:27: lookup material bỏ error, lỗi thành 404.
+src/app/api/ai/daily-report/route.ts:27: lookup lớp bỏ error, lỗi thành 404.
+src/app/api/ai/period-log-summary/route.ts:33: lookup lớp bỏ error, lỗi thành 403.
+src/app/api/ai/warning-advice/route.ts:23: lookup cảnh báo bỏ error, lỗi thành 404.
+
+Các đường này dừng trước AI, nhưng che lỗi nguồn thành kết luận nghiệp vụ sai.
+Fix tối thiểu: kiểm tra error; trả 500 cho lỗi DB, chỉ trả 403/404 khi lookup thành công và kết quả thực sự không hợp lệ.
+
+Các điểm còn lại:
+
+Single-pass không rescan replacement trong cùng lời gọi. Trường hợp cross-call còn lỗi đã nêu ở finding 3.
+Extract đã minimize toàn bộ promptFull, gồm SCHEMA và stdList; chưa chứng minh leak riêng từ SCHEMA. body.data vẫn gửi nguyên bytes: confirm_no_pii là xác nhận có audit, không phải kiểm tra nội dung. Không coi đây là bypass mới vì route chủ động cho phép luồng raw sau xác nhận.
+Chưa chứng minh alias trùng do mergePiiNames với các constructor đang được gọi; prefix R tách alias roster khỏi alias nghiệp vụ.
+tvc_generations.insert vẫn bỏ lỗi tại dòng 854, 883, 988, 1062. Chưa thấy consumer trong source phụ thuộc các row này, nên chưa đủ căn cứ nâng thành finding integrity nghiệp vụ.
+Radar dedupe, warning persistence, entries/logs, sáu nhánh context và export author đã kiểm tra lỗi như mô tả.
+Sweep migrations theo thứ tự đến R14 chưa chứng minh thêm bypass tenant còn hiệu lực từ self-attribution, SECURITY DEFINER thiếu anchor hoặc SELECT chỉ có is_staff(). Kết luận này áp dụng cho source migrations, không xác nhận trạng thái production.
+
+VERDICT: NOT-CLEAN
+
+12:29 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++55,107
+-4,325
+Outputs
+Create a file or site

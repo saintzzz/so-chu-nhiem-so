@@ -20,12 +20,20 @@ export async function POST(req: Request) {
   }
   const supabase = await createClient();
 
-  const { data: w } = await supabase
+  // r17 L: loi DB phai 500, khong che thanh "canh bao khong ton tai".
+  const { data: w, error: wErr } = await supabase
     .from("early_warnings")
     .select("*")
     .eq("id", body.warningId)
     .eq("school_id", profile.school_id ?? "")
     .maybeSingle();
+  if (wErr) {
+    console.error("[ai/warning-advice] warning:", wErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!w) return NextResponse.json({ error: "Cảnh báo không tồn tại." }, { status: 404 });
 
   const warn = w as {

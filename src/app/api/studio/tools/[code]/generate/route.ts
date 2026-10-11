@@ -504,11 +504,19 @@ export async function POST(
   // vao prompt thay vi bat GV nhap lai mon/khoi/YCCD. RLS tu loc quyen
   // doc material (cua minh / xuat ban / cung truong).
   if (code === "DC-06" && input.material_id) {
-    const { data: mat } = await supabase
+    const { data: mat, error: matErr } = await supabase
       .from("tvc_materials")
       .select("id, title, type, subject_code, grade, standard_ids, content")
       .eq("id", input.material_id)
       .single();
+    // r17 L: chi 404 khi query thanh cong ma khong co row - loi DB -> 500.
+    if (matErr && matErr.code !== "PGRST116") {
+      console.error("[studio] material lookup:", matErr.message);
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn." },
+        { status: 500 },
+      );
+    }
     if (!mat || mat.type !== "lesson_plan") {
       return NextResponse.json(
         { error: "Không tìm thấy giáo án nguồn (hoặc học liệu không phải KHBD)." },
@@ -559,12 +567,21 @@ export async function POST(
     if (!matrixId) {
       return NextResponse.json({ error: "Chưa chọn ma trận." }, { status: 400 });
     }
-    const { data: matrix } = await supabase
+    const { data: matrix, error: mtxErr } = await supabase
       .from("tvc_matrices")
       .select("*")
       .eq("id", matrixId)
       .eq("owner_id", user.id)
       .single();
+    // r17 L: chi 404 khi query thanh cong ma khong co row (PGRST116) -
+    // loi DB khac phai 500, khong che thanh "khong ton tai".
+    if (mtxErr && mtxErr.code !== "PGRST116") {
+      console.error("[studio] matrix lookup:", mtxErr.message);
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn." },
+        { status: 500 },
+      );
+    }
     if (!matrix) {
       return NextResponse.json({ error: "Ma trận không tồn tại." }, { status: 404 });
     }
@@ -736,54 +753,74 @@ export async function POST(
       return result;
     };
 
-    // Đề chính thức
+    // Đề chính thức + đề dự phòng (pack=full)
     const pickedCT = await buildPicked(new Set(), new Set());
-    const { data: exam, error: exErr } = await supabase
-      .from("tvc_exams")
-      .insert({
-        owner_id: user.id,
-        matrix_id: matrixId,
-        title: matrix.title,
-        subject_code: matrix.subject_code,
-        grade: matrix.grade,
-        total_points: matrix.total_points,
-        config: {
-          shuffle: input.shuffle === "yes",
-          pack,
-          tf_score: tfScore,
-          missing: pickedCT.filter((p) => p.q.id.startsWith("missing-")).length,
-          unreviewed: pickedCT.filter(
-            (p) =>
-              !p.q.id.startsWith("missing-") &&
-              (p.q.review_state ?? "unreviewed") !== "approved",
-          ).length,
-        },
-      })
-      .select()
-      .single();
-    if (exErr || !exam) {
+    const realCT = pickedCT.filter((p) => !p.q.id.startsWith("missing-"));
+    let pickedDB: Picked[] = [];
+    let realDB: Picked[] = [];
+    if (pack === "full") {
+      const ctIds = new Set(realCT.map((p) => p.q.id));
+      const ctStems = new Set(realCT.map((p) => stemKey(p.q.stem)));
+      pickedDB = await buildPicked(ctIds, ctStems);
+      realDB = pickedDB.filter((p) => !p.q.id.startsWith("missing-"));
+    }
+    // r17 M: luu TOAN BO pack trong 1 transaction qua RPC - loi bat ky
+    // insert nao thi rollback nguyen, khong de exam khong cau hoi va
+    // retry khong tao them de chinh (truoc day compensation delete bo
+    // error va de chinh song sot qua loi du phong).
+    const mkQs = (list: Picked[]) =>
+      list.map((p, i) => ({
+        question_id: p.q.id,
+        position: i + 1,
+        points: p.cell.points / Math.max(p.cell.count, 1),
+        needs_review: p.review,
+      }));
+    const { data: savedPack, error: packErr } = await supabase.rpc(
+      "scn_save_exam_pack",
+      {
+        p_matrix_id: matrixId,
+        p_exams: [
+          {
+            title: matrix.title,
+            subject_code: matrix.subject_code,
+            grade: matrix.grade,
+            total_points: matrix.total_points,
+            config: {
+              shuffle: input.shuffle === "yes",
+              pack,
+              tf_score: tfScore,
+              missing: pickedCT.filter((p) => p.q.id.startsWith("missing-"))
+                .length,
+              unreviewed: pickedCT.filter(
+                (p) =>
+                  !p.q.id.startsWith("missing-") &&
+                  (p.q.review_state ?? "unreviewed") !== "approved",
+              ).length,
+            },
+            questions: mkQs(realCT),
+          },
+          ...(pack === "full"
+            ? [
+                {
+                  title: `${matrix.title} - DỰ PHÒNG`,
+                  subject_code: matrix.subject_code,
+                  grade: matrix.grade,
+                  total_points: matrix.total_points,
+                  config: { pack: "du_phong", tf_score: tfScore },
+                  questions: mkQs(realDB),
+                },
+              ]
+            : []),
+        ],
+      },
+    );
+    if (packErr || !savedPack) {
+      console.error("[studio] save exam pack:", packErr?.message);
       return NextResponse.json({ error: "Không lưu được đề." }, { status: 500 });
     }
-    const realCT = pickedCT.filter((p) => !p.q.id.startsWith("missing-"));
-    if (realCT.length) {
-      const { error: eqErr } = await supabase.from("tvc_exam_questions").insert(
-        realCT.map((p, i) => ({
-          exam_id: exam.id,
-          question_id: p.q.id,
-          position: i + 1,
-          points: p.cell.points / Math.max(p.cell.count, 1),
-          needs_review: p.review,
-        })),
-      );
-      if (eqErr) {
-        // Roll back the orphan exam row - a saved exam with no questions
-        // is a silent integrity failure.
-        await supabase.from("tvc_exams").delete().eq("id", exam.id);
-        return NextResponse.json(
-          { error: "Không lưu được câu hỏi của đề." },
-          { status: 500 },
-        );
-      }
+    const examId = (savedPack as { exam_ids?: string[] }).exam_ids?.[0];
+    if (!examId) {
+      return NextResponse.json({ error: "Không lưu được đề." }, { status: 500 });
     }
 
     const subjectName = subject?.name ?? matrix.subject_code ?? "-";
@@ -793,56 +830,11 @@ export async function POST(
       { tfScore, subjectName },
     );
 
-    // Đề dự phòng + biên bản phản biện (pack=full)
+    // Đề dự phòng + biên bản phản biện (pack=full) - da luu cung
+    // transaction voi de chinh o tren.
     let docDB: DocContent | null = null;
     let docBBPB: DocContent | null = null;
     if (pack === "full") {
-      const ctIds = new Set(realCT.map((p) => p.q.id));
-      const ctStems = new Set(realCT.map((p) => stemKey(p.q.stem)));
-      const pickedDB = await buildPicked(ctIds, ctStems);
-      const realDB = pickedDB.filter((p) => !p.q.id.startsWith("missing-"));
-      // r16 M: insert de/cau hoi du phong cung phai check error - bao
-      // thanh cong khi ban DB khong ton tai la silent integrity failure
-      // giong de chinh.
-      const { data: examDB, error: examDbErr } = await supabase
-        .from("tvc_exams")
-        .insert({
-          owner_id: user.id,
-          matrix_id: matrixId,
-          title: `${matrix.title} - DỰ PHÒNG`,
-          subject_code: matrix.subject_code,
-          grade: matrix.grade,
-          total_points: matrix.total_points,
-          config: { pack: "du_phong", tf_score: tfScore },
-        })
-        .select()
-        .single();
-      if (examDbErr || !examDB) {
-        return NextResponse.json(
-          { error: "Không lưu được đề dự phòng." },
-          { status: 500 },
-        );
-      }
-      if (realDB.length) {
-        const { error: eqDbErr } = await supabase
-          .from("tvc_exam_questions")
-          .insert(
-            realDB.map((p, i) => ({
-              exam_id: examDB.id,
-              question_id: p.q.id,
-              position: i + 1,
-              points: p.cell.points / Math.max(p.cell.count, 1),
-              needs_review: p.review,
-            })),
-          );
-        if (eqDbErr) {
-          await supabase.from("tvc_exams").delete().eq("id", examDB.id);
-          return NextResponse.json(
-            { error: "Không lưu được câu hỏi của đề dự phòng." },
-            { status: 500 },
-          );
-        }
-      }
       docDB = buildExamDoc(
         pickedDB,
         { ...matrix, title: matrix.title },
@@ -856,7 +848,7 @@ export async function POST(
       tool_code: code,
       input,
       output: {
-        exam_id: exam.id,
+        exam_id: examId,
         missing: pickedCT.filter((p) => p.q.id.startsWith("missing-")).length,
       },
       provider: "question-bank",
@@ -867,7 +859,7 @@ export async function POST(
       doc: docCT,
       docDB,
       docBBPB,
-      examId: exam.id,
+      examId,
       missing: pickedCT.filter((p) => p.q.id.startsWith("missing-")).length,
       review: pickedCT.filter(
         (p) => p.review && !p.q.id.startsWith("missing-"),

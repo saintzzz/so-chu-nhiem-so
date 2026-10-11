@@ -30,11 +30,19 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const { data: cls } = await supabase
+  // r17 L: loi DB phai 500 - chi 403 khi lookup thanh cong.
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,school_id")
     .eq("id", classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[ai/period-log-summary] class:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return NextResponse.json(
       { error: "Lớp không thuộc trường của bạn." },

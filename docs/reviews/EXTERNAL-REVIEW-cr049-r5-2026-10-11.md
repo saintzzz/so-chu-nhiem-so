@@ -375,3 +375,29 @@ Raw report: `docs/reviews/codex-r16-report.txt`
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 202 pass/1 skip
 - `check-consistency` PASS | `npm run build` PASS
 - Khong co migration moi trong r16 (thuan code fixes)
+
+---
+
+## Round 17 (Codex Cloud @ f716d84) - NOT-CLEAN: 5 findings (0H/3M/2L)
+
+Raw report: `docs/reviews/codex-r17-report.txt`
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | M | Boundary loai `⟦⟧` cho phep SMUGGLE: input `⟦Nguyễn Văn An⟧` di qua minimize nguyen ven - ten ra provider | **Fixed** - boundary tro lai `\p{L}\p{N}` thuan; alias literal ⟦X###⟧ duoc bao ve qua EXACT-MATCH trong alternation (khong phai moi token canh ngoac) | unit test r17 |
+| 2 | M | Regex `iu` (Unicode SCF) khop "ſ"~"S" nhung callback lookup `toLowerCase()` khong tuong duong - match duoc nhung tra `m` nguyen = ten ro provider | **Fixed** - lookup qua cung phep match: per-name `^name$` iu regex test (cache spec theo WeakMap(names) vi minimizeDeep goi per-string) | unit test r17 |
+| 3 | L | Sentinel trung source: ten `⟦HS001⟧` duoc he thong nhan + literal `⟦HS001⟧` trong source bi protect/restore nham | **Fixed** - alias construction them nonce `⟦X###·<4hex>⟧` (aliasNonce, crypto.getRandomValues); source khong the chua san token; deanon chi match nonced-form; legacy/nonced map van hoat dong | unit test r17 |
+| 4 | M | Rollback delete exam bo error; pack=full luu mot phan roi 500 -> retry tao them de chinh | **Fixed** - `scn_save_exam_pack` RPC (SECURITY INVOKER, `search_path=public`, `owner_id=auth.uid()`): toan bo pack trong 1 transaction, rollback nguyen khi loi. Grant chi `authenticated`. Migration `20261206_cr049_r17_fixes.sql` | prod applied + grant verified |
+| 5 | L | 6 lookup bien loi DB thanh 404/403 nghiep vu: generate material+matrix, materials export material, daily-report class, period-log-summary class, warning-advice warn | **Fixed** - tach PGRST116 (khong co row -> 404/403) khoi loi DB khac (-> 500) | guard test |
+
+### Ghi nhan khong phai finding (Codex "cac diem con lai")
+
+- `body.data` raw bytes sau `confirm_no_pii` + audit: thiet ke co chu dich (approved raw-doc gate).
+- `tvc_generations` insert bo error o 4 cho: chua co consumer phu thuoc, chua du can cu integrity - tiep tuc theo doi.
+- mergePiiNames prefix R tich hop dung; radar/warning/entries/context/export error checks da dung.
+
+### Gates r17
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 208 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- migration: `20261206_cr049_r17_fixes.sql` (RPC `scn_save_exam_pack` - prod applied, grant authenticated-only)

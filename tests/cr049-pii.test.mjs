@@ -719,3 +719,94 @@ test("r16: bracket alias - single-pass, khong rescan/re-minimize", async () => {
     "boundary Unicode: GV10 khong an vao GV100",
   );
 });
+
+test("r17: pseudonymize - sentinel-adjacent name van bi alias (F1)", async () => {
+  const { pseudonymizeNames } = await import("../src/lib/ai-privacy.ts")
+    .catch(() => import("../src/lib/ai-privacy.js"));
+  const map = [{ name: "Nguyễn Văn An", alias: "⟦HS001·ab12⟧" }];
+  // r16 boundary loai ⟦⟧ cho phep smuggle "⟦Ten That⟧" ra provider.
+  assert.equal(
+    pseudonymizeNames("⟦Nguyễn Văn An⟧", map),
+    "⟦⟦HS001·ab12⟧⟧",
+    "ten sat ngoac sentinel van phai bi alias - khong co smuggle path",
+  );
+});
+
+test("r17: pseudonymize - exact-alias literal duoc bao ve cross-call (F3)", async () => {
+  const { pseudonymizeNames } = await import("../src/lib/ai-privacy.ts")
+    .catch(() => import("../src/lib/ai-privacy.js"));
+  const map = [
+    { name: "Nguyễn Văn An", alias: "⟦HS001·ab12⟧" },
+    { name: "HS001", alias: "⟦HS042·ab12⟧" },
+  ];
+  // alias da sinh trong luot truoc phai nguyen ven, KHONG bi minimize lai.
+  assert.equal(
+    pseudonymizeNames("⟦HS001·ab12⟧ đã nộp", map),
+    "⟦HS001·ab12⟧ đã nộp",
+    "generated alias khong duoc bi minimize lai",
+  );
+  // nguoc lai, source chua alias "nguyen ban" (khong trung map) thi ten
+  // ben trong van bi minimize binh thuong.
+  assert.equal(
+    pseudonymizeNames("⟦HS001⟧ đã nộp", map),
+    "⟦⟦HS042·ab12⟧⟧ đã nộp",
+    "source-native bracket khong duoc mien minimize",
+  );
+});
+
+test("r17: pseudonymize - SCF case fold match lookup (F2)", async () => {
+  const { pseudonymizeNames } = await import("../src/lib/ai-privacy.ts")
+    .catch(() => import("../src/lib/ai-privacy.js"));
+  const map = [{ name: "Nguyễn Văn Sơn", alias: "⟦GV007·ab12⟧" }];
+  // regex iu (SCF) khop ſ~S nhung lookup toLowerCase() cu tra m ->
+  // ten ra provider. Lookup bay gio qua cung phep match iu.
+  assert.equal(
+    pseudonymizeNames("Nguyễn Văn ſơn dạy Toán", map),
+    "⟦GV007·ab12⟧ dạy Toán",
+    "ſ phai fold thanh S va lay duoc alias",
+  );
+});
+
+test("r17: deanon - source-native sentinel khong false-restore (F3)", async () => {
+  const { deanonymizeNames } = await import("../src/lib/ai-privacy.ts")
+    .catch(() => import("../src/lib/ai-privacy.js"));
+  const map = [{ name: "Nguyễn Văn An", alias: "⟦HS001·ab12⟧" }];
+  // provider echo "ma ⟦HS001⟧" (code that, khong co nonce) -> KHONG
+  // duoc restore thanh ten.
+  assert.equal(
+    deanonymizeNames("ma ⟦HS001⟧ van la code", map),
+    "ma ⟦HS001⟧ van la code",
+    "nonced alias chi match dang chinh xac - ⟦HS001⟧ khac ⟦HS001·ab12⟧",
+  );
+  assert.equal(
+    deanonymizeNames("⟦HS001·ab12⟧ dat gioi", map),
+    "Nguyễn Văn An dat gioi",
+    "nonced alias match nguyen ven van restore",
+  );
+});
+
+test("guard r17: alias construction sites co nonce + RPC pack", () => {
+  const roster = read("src/lib/ai-pii-roster.ts");
+  assert.match(roster, /aliasNonce\(\)/, "roster alias can nonce chong source collision");
+  assert.match(roster, /·\$\{nonce\}/, "alias phai nhung nonce vao trong ngoac");
+  const gen = read("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(gen, /scn_save_exam_pack/, "pack de thi phai luu qua RPC transaction");
+  assert.doesNotMatch(gen, /\.from\("tvc_exams"\)\s*\.insert/, "khong con insert tvc_exams truc tiep");
+  const mig = read("supabase/migrations/20261206_cr049_r17_fixes.sql");
+  assert.match(mig, /security invoker/);
+  assert.match(mig, /auth\.uid\(\)/, "owner_id phai lay tu auth.uid() trong RPC");
+});
+
+test("guard r17: lookup error khong che thanh 404/403", () => {
+  const files = [
+    "src/app/api/studio/tools/[code]/generate/route.ts",
+    "src/app/api/studio/materials/[id]/export/route.ts",
+    "src/app/api/ai/daily-report/route.ts",
+    "src/app/api/ai/period-log-summary/route.ts",
+    "src/app/api/ai/warning-advice/route.ts",
+  ];
+  for (const f of files) {
+    const s = read(f);
+    assert.match(s, /PGRST116|clsErr|wErr|matErr|mtxErr/, `${f} phai tach loi DB khoi not-found`);
+  }
+});

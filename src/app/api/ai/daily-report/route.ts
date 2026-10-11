@@ -24,11 +24,19 @@ export async function POST(req: Request) {
   }
   const supabase = await createClient();
 
-  const { data: cls } = await supabase
+  // r17 L: loi DB phai 500, khong che thanh "lop khong ton tai".
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,gvcn_id")
     .eq("id", body.classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[ai/daily-report] class:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!cls) return NextResponse.json({ error: "Lớp không tồn tại." }, { status: 404 });
   if (hasRole(profile, "gvcn") && cls.gvcn_id !== profile.id) {
     return NextResponse.json({ error: "Bạn không chủ nhiệm lớp này." }, { status: 403 });

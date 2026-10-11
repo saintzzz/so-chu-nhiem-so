@@ -1,4 +1,4 @@
-import type { PiiName } from "@/lib/ai-privacy";
+import { aliasNonce, type PiiName } from "@/lib/ai-privacy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 
@@ -92,15 +92,16 @@ export async function schoolPiiNames(
   }
 
   const names: PiiName[] = [];
+  const nonce = aliasNonce();
   let i = 0;
   for (const s of studentRows) {
-    if (s.full_name) names.push({ name: s.full_name, alias: `⟦HS${String(++i).padStart(3, "0")}⟧` });
+    if (s.full_name) names.push({ name: s.full_name, alias: `⟦HS${String(++i).padStart(3, "0")}·${nonce}⟧` });
   }
   for (const t of profRes.rows) {
-    if (t.full_name) names.push({ name: t.full_name, alias: `⟦GV${String(++i).padStart(3, "0")}⟧` });
+    if (t.full_name) names.push({ name: t.full_name, alias: `⟦GV${String(++i).padStart(3, "0")}·${nonce}⟧` });
   }
   for (const p of parentRows) {
-    if (p.full_name) names.push({ name: p.full_name, alias: `⟦PH${String(++i).padStart(3, "0")}⟧` });
+    if (p.full_name) names.push({ name: p.full_name, alias: `⟦PH${String(++i).padStart(3, "0")}·${nonce}⟧` });
   }
   return { names };
 }

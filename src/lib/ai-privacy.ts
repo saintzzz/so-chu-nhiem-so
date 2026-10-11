@@ -41,39 +41,81 @@ export interface PiiName {
   alias: string;
 }
 
-/** Thay moi ten that trong text bang alias (longest-first de tranh
- *  ten long nhau). CR-049 r7: case-insensitive + boundary theo ky tu
- *  Unicode - "nguyen van an" (thuong) van bi alias, con "An" trong
- *  "Anh" khong bi an nham. */
-export function pseudonymizeNames(text: string, names: PiiName[]): string {
-  // CR-049 r8 H5: canonical-equivalence bypass - input NFD ("Nguyễn")
-  // khong match ten NFC trong roster; chuan hoa ca hai ve NFC.
+/** Nonce ngan cho alias request-scope - source khong the chua san
+ *  ⟦X###·<nonce>⟧ nen sentinel nguyen ban trong input khong bi nham
+ *  voi alias da sinh (CR-049 r17: "ma ⟦HS001⟧" literal phai giu dung
+ *  nghia code, khong duoc restore thanh ten). */
+export function aliasNonce(): string {
+  const buf = new Uint8Array(2);
+  crypto.getRandomValues(buf);
+  return [...buf].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+interface PseudoSpec {
+  re: RegExp;
+  aliasSet: Set<string>;
+  matchers: { re: RegExp; alias: string }[];
+}
+// minimizeDeep goi pseudonymizeNames cho TUNG string cung map - cache
+// spec theo identity cua mang names de khong compile lai hang tram
+// regex moi chuoi.
+const pseudoSpecCache = new WeakMap<PiiName[], PseudoSpec>();
+
+function pseudoSpec(names: PiiName[]): PseudoSpec | null {
+  const cached = pseudoSpecCache.get(names);
+  if (cached) return cached;
+  const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const flex = (s: string) => escRe(s).split(/\s+/).join("\\s+");
   const sorted = [...names]
     .filter((n) => n.name && n.alias)
     .map((n) => ({ name: n.name.normalize("NFC"), alias: n.alias }))
     .sort((a, b) => b.name.length - a.name.length);
-  if (!sorted.length) return text;
-  const byName = new Map(
-    sorted.map((n) => [n.name.replace(/\s+/g, " ").toLowerCase(), n.alias]),
-  );
-  const alt = sorted
-    .map((n) =>
-      n.name
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        // whitespace linh hoat: "Nguyen  Van  An" (2 spaces) van khop
-        .split(/\s+/)
-        .join("\\s+"),
-    )
+  if (!sorted.length) return null;
+  const parts: string[] = [];
+  // r17 F3: alias literal (dang ⟦...⟧) duoc bao ve NGUYEN VEN truoc -
+  // chinh xac bang map, khong phai moi token canh ngoac. Cross-call
+  // minimize (facts -> prompt) khong minimize lai alias da sinh, con
+  // input "⟦Nguyen Van An⟧" van bi alias ten ben trong.
+  const aliasAlt = sorted
+    .map((n) => n.alias)
+    .filter((a) => a.startsWith("⟦"))
+    .sort((a, b) => b.length - a.length)
+    .map(escRe)
     .join("|");
-  // CR-049 r16: MOT luot thay the duy nhat - alias vua sinh khong bi
-  // quet lai nhu ten that (nguoi ten "RHS001" + alias RHS001 khong con
-  // lech tang). Lookbehind loai ⟦⟧: ten "HS001" khong duoc an vao trong
-  // alias ⟦HS001⟧ da sinh (cross-call minimize facts -> minimizePrompt).
-  return text.normalize("NFC").replace(
-    new RegExp(`(?<![\\p{L}\\p{N}⟦])(?:${alt})(?![\\p{L}\\p{N}⟧])`, "giu"),
-    (m) =>
-      byName.get(m.normalize("NFC").replace(/\s+/g, " ").toLowerCase()) ?? m,
-  );
+  if (aliasAlt) parts.push(`(?:${aliasAlt})`);
+  const nameAlt = sorted.map((n) => flex(n.name)).join("|");
+  parts.push(`(?<![\\p{L}\\p{N}])(?:${nameAlt})(?![\\p{L}\\p{N}])`);
+  const spec: PseudoSpec = {
+    re: new RegExp(parts.join("|"), "giu"),
+    aliasSet: new Set(sorted.map((n) => n.alias)),
+    // r17 F2: lookup alias qua CUNG phep match iu - regex SCF khop
+    // "ſ"~"S" nhung toLowerCase() khong tuong duong, cu tra m thi
+    // ten ro provider. Thu tung name bang regex ^name$ iu thay vi
+    // key Map lowercase.
+    matchers: sorted.map((n) => ({
+      re: new RegExp(`^${flex(n.name)}$`, "iu"),
+      alias: n.alias,
+    })),
+  };
+  pseudoSpecCache.set(names, spec);
+  return spec;
+}
+
+/** Thay moi ten that trong text bang alias (longest-first de tranh
+ *  ten long nhau). CR-049 r7: case-insensitive + boundary theo ky tu
+ *  Unicode - "nguyen van an" (thuong) van bi alias, con "An" trong
+ *  "Anh" khong bi an nham. r17: single-pass alternation - alias ⟦⟧
+ *  literal dung truoc (bao ve token da sinh), ten dung sau. */
+export function pseudonymizeNames(text: string, names: PiiName[]): string {
+  // CR-049 r8 H5: canonical-equivalence bypass - input NFD ("Nguyễn")
+  // khong match ten NFC trong roster; chuan hoa ca hai ve NFC.
+  const spec = pseudoSpec(names);
+  if (!spec) return text;
+  return text.normalize("NFC").replace(spec.re, (m) => {
+    if (spec.aliasSet.has(m)) return m;
+    const hit = spec.matchers.find((mr) => mr.re.test(m));
+    return hit ? hit.alias : m;
+  });
 }
 
 /** Dao nguoc: alias -> ten that tren output LLM.

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
-import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { aliasNonce, minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -69,12 +69,13 @@ export async function POST(req: Request) {
   // CR-049 P3b: an danh hoa ten GV bang alias GVxx - provider khong
   // thay ten that; output duoc deanonymizeNames khoi phuc trong
   // respondWithAi truoc khi parse.
+  const aNonce = aliasNonce();
   const names = ((teachers ?? []) as { id: string; full_name: string }[]).map(
-    (t, i) => ({ name: t.full_name, alias: `⟦GV${String(i + 1).padStart(2, "0")}⟧` }),
+    (t, i) => ({ name: t.full_name, alias: `⟦GV${String(i + 1).padStart(2, "0")}·${aNonce}⟧` }),
   );
   const facts = {
     giao_vien: ((teachers ?? []) as { id: string; full_name: string }[]).map(
-      (t, i) => ({ ten: `⟦GV${String(i + 1).padStart(2, "0")}⟧`, mon_day: subjOf.get(t.id) ?? [] }),
+      (t, i) => ({ ten: `⟦GV${String(i + 1).padStart(2, "0")}·${aNonce}⟧`, mon_day: subjOf.get(t.id) ?? [] }),
     ),
     lop: ((classes ?? []) as { name: string }[]).map((c) => c.name),
     mon_hoc: [...subjName.values()],

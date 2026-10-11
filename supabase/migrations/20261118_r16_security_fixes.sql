@@ -460,7 +460,6 @@ begin
                  and (scn_is_my_ttentry(te.id) or scn_is_sub_ttentry_date(te.id, p_date)))
     or ((select my_roles()) && array['bgh','admin']::text[]
         and exists(select 1 from classes c where c.id = p_class_id and c.school_id = my_school_id()))
-    or 'admin' = any((select my_roles()))
   ) into v_allowed;
   if not v_allowed then
     raise exception 'period_attendance_sync_denied';

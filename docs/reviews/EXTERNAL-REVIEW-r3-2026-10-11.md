@@ -45,10 +45,11 @@
 ## 5. Gates
 
 - `tsc --noEmit`: PASS (0 errors)
-- `eslint`: PASS (0 errors)
-- `next build`: (xem commit log)
-- `node scripts/check-consistency.mjs`: (xem commit log)
-- Studio E2E sau deploy: (cap nhat)
+- `eslint`: PASS (0 errors, 136 warnings pre-existing trong scripts/skills)
+- `next build`: PASS
+- `node scripts/check-consistency.mjs`: PASS (all checks)
+- Studio E2E sau deploy `80225ae`: **17 pass / 0 fail** (bao gom flow
+  submit -> totruong_ok -> published duoi cac owner-tenant policies moi)
 
 ## 6. Trang thai loop
 

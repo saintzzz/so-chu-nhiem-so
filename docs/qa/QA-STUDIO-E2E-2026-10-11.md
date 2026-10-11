@@ -68,6 +68,19 @@ PASS cleanup post-test (3 mats + 1 mx)
 ## Còn lại / đề xuất
 
 - `check-consistency` vẫn timeout trên bảng lớn khi Supabase throttle (đã có backlog).
-- `tvc_reviews.reviewer_id` FK dựa vào lazy profile - nên có backfill/đồng bộ
-  `tvc.profiles` định kỳ thay vì chờ ensure* (đề xuất CR, không block).
-- DC-01 qua AI mất 30-77s - cân nhắc progress indicator rõ hơn cho GV.
+- ~~`tvc_reviews.reviewer_id` FK dựa vào lazy profile~~ -> **ĐÃ XỬ LÝ**: CR-048
+  (`docs/project/CR-048-tvc-profiles-sync.md`) - backfill 88 rows + trigger
+  `trg_sync_tvc_profile` đồng bộ `public.profiles -> tvc.profiles` cho staff
+  (verified: update role tạo row `kiem_duyet` tự động, 0 staff missing).
+- ~~DC-01 qua AI mất 30-77s~~ -> **ĐÃ TỐI ƯU** (`2a3ce1e`):
+  - Hedged race: `generateDoc` bắn song song 3 config đầu (`AI_DOC_RACE`),
+    lấy kết quả nhanh nhất - loại bỏ serial penalty khi key đầu hang/timeout.
+    Local: 33.7s -> 5.3s.
+  - Model order: `gemini-flash-latest` lên đầu (universal alias, chạy cả key
+    OAuth lẫn key chuẩn) - tiết kiệm 1 vòng 404 trên `gemini-2.5-flash`.
+  - Prod verify sau deploy: DC-01 38.3s / 9 sections / provider=gemini -
+    đây là floor của generation 8-12k tokens; worst-case 77s+ (hang->retry)
+    không còn.
+- External Review Loop r1: `docs/reviews/EXTERNAL-REVIEW-r1-studio-2026-10-11.md`
+  - degraded mode (subagent quota hết, self-review có cấu trúc),
+  `ACTIONABLE_CRITICAL_HIGH: 0` - cần re-run cross-model khi quota phục hồi.

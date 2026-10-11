@@ -873,7 +873,7 @@ test("guard r20: fallbackToDevin + allocator + email + review notify deu fail-cl
   assert.match(dv, /failErr/, "UPDATE status=failed phai check error - job khong treo pending");
   assert.match(dv, /linkErr/, "UPDATE session_url phai check error - job phai link duoc session");
   const tv = read("src/lib/tvc/actions.ts");
-  assert.match(tv, /stdErr/, "allocateQuestionCodes phai check loi SELECT chuan");
+  assert.match(tv, /stdRes\.error|stdErr/, "allocateQuestionCodes phai check loi SELECT chuan");
   assert.match(tv, /pgErr/, "allocateQuestionCodes phai check loi tung trang codes");
   assert.match(tv, /"error" in alloc/, "insertQuestionsWithCodes dung truoc INSERT khi allocator loi");
   assert.match(tv, /matErr/, "reviewMaterial phai check loi lookup tac gia");
@@ -961,7 +961,8 @@ test("guard r23: marker nguyen tu + nguon loi chan board + client khong nuot err
   assert.match(board, /if \(blocked\) return/, "editor phai bi chan khi nguon loi");
   const act = read("src/app/(app)/activities/actions.ts");
   assert.match(act, /activity_announcements/, "announce phai dung marker theo activity_id");
-  assert.match(act, /claimedByUs|canFulfill/, "chi claimer moi fulfill announcement");
+  assert.match(act, /scn_announce_claim/, "claim marker phai qua RPC nguyen tu");
+  assert.match(act, /scn_announce_fulfill/, "chi claimer moi fulfill - RPC kiem claim owner");
   assert.match(act, /email_done/, "delivery state phai tach khoi announcement");
   const safety = read("src/app/(app)/safety/actions.ts");
   assert.match(safety, /committed: true/, "createIncident phai tra committed sau business commit");

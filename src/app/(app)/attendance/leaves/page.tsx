@@ -11,6 +11,7 @@ import {
 } from "@/components/attendance/leaves-table";
 import { AttendanceRangeNav } from "@/components/attendance/date-controls";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -55,10 +56,10 @@ export default async function AttendanceLeavesPage({
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData } = await must(supabase
     .from("students")
     .select("id,code,full_name")
-    .eq("class_id", selected.id);
+    .eq("class_id", selected.id), "students");
   const students = (studentData ?? []) as Pick<
     Student,
     "id" | "code" | "full_name"

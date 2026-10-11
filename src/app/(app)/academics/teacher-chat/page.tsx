@@ -9,6 +9,7 @@ import { STAFF_CHAT_ROLES } from "@/lib/chat";
 import { teacherChatLinkForRole } from "@/lib/message-link";
 import type { Role } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ProfileRow {
   id: string;
@@ -35,13 +36,13 @@ export default async function TeacherChatPage({
   const supabase = await createClient();
 
   const peerRole = hasRole(profile, "gvbm") ? "gvcn" : "gvbm";
-  const { data: teacherData } = await supabase
+  const { data: teacherData } = await must(supabase
     .from("profiles")
     .select("id,full_name,role,concurrent_roles")
     .or(`role.eq.${peerRole},concurrent_roles.cs.{${peerRole}}`)
     .eq("school_id", profile.school_id ?? "")
     .neq("id", profile.id)
-    .order("full_name");
+    .order("full_name"), "profiles");
   let teachers = sortByVietnameseName(
     (teacherData ?? []) as ProfileRow[],
     (t) => t.full_name,
@@ -54,7 +55,7 @@ export default async function TeacherChatPage({
   // roi vao fallback teachers[0].
   const requestedTo = typeof sp.to === "string" ? sp.to : null;
   if (requestedTo && !teachers.some((t) => t.id === requestedTo)) {
-    const { data: extraPeer } = await supabase
+    const { data: extraPeer } = await must(supabase
       .from("profiles")
       .select("id,full_name,role,concurrent_roles")
       .eq("id", requestedTo)
@@ -63,7 +64,7 @@ export default async function TeacherChatPage({
       .or(
         `role.in.(${[...STAFF_CHAT_ROLES].join(",")}),concurrent_roles.ov.{${[...STAFF_CHAT_ROLES].join(",")}}`,
       )
-      .maybeSingle();
+      .maybeSingle(), "profiles");
     if (extraPeer) {
       teachers = sortByVietnameseName(
         [...teachers, extraPeer as ProfileRow],
@@ -82,28 +83,40 @@ export default async function TeacherChatPage({
   const detailQuery =
     peerRole === "gvbm" && teacherIds.length
       ? Promise.all([
-          supabase
-            .from("teacher_subjects")
-            .select("teacher_id,subject_id")
-            .in("teacher_id", teacherIds),
-          supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
+          must(
+            supabase
+              .from("teacher_subjects")
+              .select("teacher_id,subject_id")
+              .in("teacher_id", teacherIds),
+            "teacher_subjects",
+          ),
+          must(
+            supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
+            "subjects",
+          ),
         ])
       : peerRole === "gvcn" && teacherIds.length
-        ? supabase.from("classes").select("name,gvcn_id").in("gvcn_id", teacherIds)
+        ? must(
+            supabase.from("classes").select("name,gvcn_id").in("gvcn_id", teacherIds),
+            "classes",
+          )
         : Promise.resolve(null);
   // R10-01: PostgREST cap ~1000 rows - order asc tra ve 1000 tin CU nhat va
   // che tin moi. Lay trang moi nhat (desc + limit) roi reverse de render
   // theo thu tu thoi gian; client tai trang cu bang cursor khi can.
   const msgQuery = peerId
-    ? supabase
-        .from("messages")
-        .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
-        .or(
-          `and(sender_id.eq.${profile.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${profile.id})`,
-        )
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .limit(100)
+    ? must(
+        supabase
+          .from("messages")
+          .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
+          .or(
+            `and(sender_id.eq.${profile.id},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${profile.id})`,
+          )
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .limit(100),
+        "messages",
+      )
     : Promise.resolve({ data: [] });
 
   const [detail, { data: msgData }] = await Promise.all([detailQuery, msgQuery]);

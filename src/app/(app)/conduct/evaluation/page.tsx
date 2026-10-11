@@ -11,6 +11,7 @@ import {
   type NlpcCommentRow,
 } from "@/components/conduct/nlpc-editor";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -65,11 +66,11 @@ export default async function ConductEvaluationPage({
     await Promise.all([
       classQuery.order("name"),
       profile.school_id
-        ? supabase
+        ? must(supabase
             .from("schools")
             .select("level")
             .eq("id", profile.school_id)
-            .maybeSingle()
+            .maybeSingle(), "schools")
         : Promise.resolve({ data: null, error: null }),
     ]);
   const classes = (classData ?? []) as ClassRow[];

@@ -144,12 +144,20 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
     setBusy(true);
     setMessage(null);
 
-    const { data: existing } = await supabase
+    const { data: existing, error: existErr } = await supabase
       .from("students")
       .select("code")
       .like("code", "HS%")
       .order("code", { ascending: false })
       .limit(1);
+    // r24: lookup loi -> seq quay ve 1 -> sinh ma HS trung -> import fail
+    // tren unique constraint. Chan som thay vi de import that bai tung phan.
+    if (existErr) {
+      console.error("[student-uploader] code lookup:", existErr.message);
+      setMessage("Không tải được dữ liệu nguồn - vui lòng thử lại.");
+      setBusy(false);
+      return;
+    }
     let seq = 1;
     const top = (existing?.[0] as { code: string } | undefined)?.code;
     const m = top?.match(/^HS(\d+)$/);

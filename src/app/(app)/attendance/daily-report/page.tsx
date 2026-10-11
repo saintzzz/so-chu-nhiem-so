@@ -6,6 +6,7 @@ import { DailyReportForm } from "@/components/attendance/daily-report-form";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { ClassRoom, DailyReport, Student } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function DailyReportPage({
   searchParams,
@@ -51,12 +52,12 @@ export default async function DailyReportPage({
   if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
     today = dateParam;
   } else {
-    const { data: latest } = await supabase
+    const { data: latest } = await must(supabase
       .from("attendance_records")
       .select("date, students!inner(classes!inner(school_id))")
       .eq("students.classes.school_id", profile.school_id ?? "")
       .order("date", { ascending: false })
-      .limit(1);
+      .limit(1), "attendance_records");
     const d = (latest ?? []) as { date: string }[];
     if (d[0]?.date) today = d[0].date;
   }
@@ -66,25 +67,25 @@ export default async function DailyReportPage({
   // len lanh dao.
   const [attRes, conductRes, reportRes] = await Promise.all([
     studentIds.length
-      ? supabase
+      ? must(supabase
           .from("attendance_records")
           .select("status")
           .in("student_id", studentIds)
-          .eq("date", today)
+          .eq("date", today), "attendance_records")
       : Promise.resolve({ data: [], error: null }),
     studentIds.length
-      ? supabase
+      ? must(supabase
           .from("conduct_records")
           .select("type")
           .in("student_id", studentIds)
-          .eq("date", today)
+          .eq("date", today), "conduct_records")
       : Promise.resolve({ data: [], error: null }),
-    supabase
+    must(supabase
       .from("daily_reports")
       .select("*")
       .eq("class_id", myClass.id)
       .eq("date", today)
-      .maybeSingle(),
+      .maybeSingle(), "daily_reports"),
   ]);
   const loadError =
     (clsErr ?? stuErr ?? attRes.error ?? conductRes.error ?? reportRes.error) !=

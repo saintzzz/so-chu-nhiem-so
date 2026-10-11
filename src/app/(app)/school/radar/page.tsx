@@ -8,6 +8,7 @@ import type { EarlyWarning } from "@/types";
 import { buildRadarData, type RiskLevel } from "@/lib/school/radar";
 import { WarningList } from "@/components/school/warning-list";
 import { RadarRefreshButton } from "@/components/school/radar-refresh";
+import { must } from "@/lib/supabase/must";
 
 const LEVEL_META: Record<
   RiskLevel,
@@ -47,13 +48,13 @@ export default async function SchoolRadarPage() {
   );
   const flagged = risks.filter((r) => r.level !== "low");
 
-  const { data: warnRows } = await supabase
+  const { data: warnRows } = await must(supabase
     .from("early_warnings")
     .select("*")
     .eq("school_id", profile.school_id ?? "")
     .in("status", ["open", "acknowledged"])
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(50), "early_warnings");
   const warnings = ((warnRows ?? []) as EarlyWarning[]).filter(
     (w) => !w.class_id || classIds.includes(w.class_id),
   );
@@ -61,10 +62,10 @@ export default async function SchoolRadarPage() {
     ...new Set(warnings.map((w) => w.student_id).filter((x): x is string => !!x)),
   ];
   const { data: warnStudents } = warnStudentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name")
-        .in("id", warnStudentIds)
+        .in("id", warnStudentIds), "students")
     : { data: [] };
   const warnStudentName = new Map(
     ((warnStudents ?? []) as { id: string; full_name: string }[]).map((s) => [

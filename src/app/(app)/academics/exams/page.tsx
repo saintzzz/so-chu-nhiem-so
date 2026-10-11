@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ExamsBoard } from "@/components/exams/exams-board";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ExamRow {
   id: string;
@@ -42,23 +43,23 @@ export default async function ExamsPage({
     { data: teacherData, error: teacherErr },
     { data: schoolData, error: schoolErr },
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("exams")
       .select("id,name,term,start_date,end_date,status")
-      .order("start_date", { ascending: false }),
-    supabase
+      .order("start_date", { ascending: false }), "exams"),
+    must(supabase
       .from("classes")
       .select("id,name")
       .eq("status", "active")
-      .order("name"),
-    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
-    supabase
+      .order("name"), "classes"),
+    must(supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"), "subjects"),
+    must(supabase
       .from("profiles")
       .select("id,full_name")
       .or("role.in.(gvcn,gvbm,to_truong,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,bgh}")
       .eq("school_id", profile.school_id ?? "")
-      .order("full_name"),
-    supabase.from("schools").select("id").limit(1),
+      .order("full_name"), "profiles"),
+    must(supabase.from("schools").select("id").limit(1), "schools"),
   ]);
 
   // R15-03: moi nguon loi phai duoc ghi nhan - board + export template khong

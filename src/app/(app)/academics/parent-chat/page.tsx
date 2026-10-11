@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn, sortByVietnameseName } from "@/lib/utils";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -35,12 +36,12 @@ export default async function ParentChatPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const { data: classData } = await supabase
+  const { data: classData } = await must(supabase
     .from("classes")
     .select("id,name")
     .eq("status", "active")
     .eq("gvcn_id", profile.id)
-    .order("name");
+    .order("name"), "classes");
   const classes = (classData ?? []) as ClassRow[];
 
   const selectedClassId =
@@ -49,30 +50,30 @@ export default async function ParentChatPage({
       : (classes[0]?.id ?? null);
 
   const { data: studentData } = selectedClassId
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,class_id,full_name")
         .eq("class_id", selectedClassId)
-        .eq("status", "active")
+        .eq("status", "active"), "students")
     : { data: [] };
   const students = (studentData ?? []) as StudentRow[];
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
   const { data: psData } = studentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("parent_students")
         .select("parent_id,student_id")
-        .in("student_id", studentIds)
+        .in("student_id", studentIds), "parent_students")
     : { data: [] };
   const parentStudents = (psData ?? []) as ParentStudentRow[];
   const parentIds = [...new Set(parentStudents.map((p) => p.parent_id))];
 
   const { data: parentData } = parentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("parents")
         .select("id,profile_id,full_name,phone,email")
-        .in("id", parentIds)
+        .in("id", parentIds), "parents")
     : { data: [] };
   const parents = sortByVietnameseName(
     (parentData ?? []) as ParentRow[],
@@ -106,7 +107,7 @@ export default async function ParentChatPage({
   // R10-01: lay trang tin MOI NHAT (desc + limit) roi reverse de render theo
   // thu tu thoi gian - order asc bi PostgREST cap 1000 tin cu nhat.
   const { data: msgData } = peerId
-    ? await supabase
+    ? await must(supabase
         .from("messages")
         .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
         .or(
@@ -114,7 +115,7 @@ export default async function ParentChatPage({
         )
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .limit(100)
+        .limit(100), "messages")
     : { data: [] };
   const hasOlder = (msgData ?? []).length === 100;
   const messages = ((msgData ?? []) as ChatMessage[]).reverse();

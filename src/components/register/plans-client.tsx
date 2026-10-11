@@ -82,11 +82,19 @@ export function PlansClient({
 
   async function markDone(t: TaskRow) {
     setBusy(true);
-    const { error } = await supabase
+    // CAS: chi danh done tu trang thai dang hien thi - tab cu khong
+    // ghi de task vua duoc mo lai.
+    const { data: updated, error } = await supabase
       .from("tasks")
       .update({ status: "done" })
-      .eq("id", t.id);
-    if (!error) {
+      .eq("id", t.id)
+      .eq("status", t.status)
+      .select("id");
+    if (error) {
+      setMessage("Không cập nhật được công việc - vui lòng thử lại.");
+    } else if (!updated?.length) {
+      setMessage("Công việc đã đổi trạng thái - vui lòng tải lại trang.");
+    } else {
       setTasks((ts) =>
         ts.map((x) => (x.id === t.id ? { ...x, status: "done" } : x)),
       );

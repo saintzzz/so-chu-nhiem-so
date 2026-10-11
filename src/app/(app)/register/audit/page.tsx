@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import type { AuditLog } from "@/components/register/types";
 import type { ClassRoom, Profile, Student } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const PAGE_SIZE = 50;
 
@@ -105,10 +106,10 @@ export default async function AuditPage({
 
   const { data: studentData } =
     type === "records" && classIds.length
-      ? await supabase
+      ? await must(supabase
           .from("students")
           .select("id,code,full_name,class_id")
-          .in("class_id", classIds)
+          .in("class_id", classIds), "students")
       : { data: [] };
   const students = ((studentData ?? []) as Pick<
     Student,
@@ -151,10 +152,10 @@ export default async function AuditPage({
   ] as string[];
   const { data: logActorData } =
     logActorIds.length > 0
-      ? await supabase
+      ? await must(supabase
           .from("profiles")
           .select("id,full_name")
-          .in("id", logActorIds)
+          .in("id", logActorIds), "profiles")
       : { data: [] };
   for (const p of (logActorData ?? []) as Pick<Profile, "id" | "full_name">[]) {
     if (!staffById.has(p.id)) staffById.set(p.id, p.full_name);
@@ -220,10 +221,10 @@ export default async function AuditPage({
   ] as string[];
   const { data: changerData } =
     changerIds.length > 0
-      ? await supabase
+      ? await must(supabase
           .from("profiles")
           .select("id,full_name")
-          .in("id", changerIds)
+          .in("id", changerIds), "profiles")
       : { data: [] };
   for (const p of (changerData ?? []) as Pick<Profile, "id" | "full_name">[]) {
     if (!staffById.has(p.id)) staffById.set(p.id, p.full_name);

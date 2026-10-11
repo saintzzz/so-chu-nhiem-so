@@ -8,17 +8,18 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDateOnly, todayVN } from "@/lib/utils";
 import type { Campus, ClassRoom, DailyReport } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function SchoolDailyReportsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
 
-  const { data: classData } = await supabase
+  const { data: classData } = await must(supabase
     .from("classes")
     .select("*")
     .eq("school_id", profile.school_id ?? "")
     .eq("status", "active")
-    .order("name");
+    .order("name"), "classes");
   let classes = (classData ?? []) as ClassRoom[];
 
   // PHT chỉ xem các lớp thuộc cơ sở mình phụ trách; chưa gán campus -> fail-closed.
@@ -29,41 +30,41 @@ export default async function SchoolDailyReportsPage() {
   }
   const classIds = classes.map((c) => c.id);
 
-  const { data: campusData } = await supabase
+  const { data: campusData } = await must(supabase
     .from("campuses")
     .select("*")
-    .eq("school_id", profile.school_id ?? "");
+    .eq("school_id", profile.school_id ?? ""), "campuses");
   const campuses = (campusData ?? []) as Campus[];
   const campusName = new Map(campuses.map((c) => [c.id, c.name]));
 
   // Ngày báo cáo = ngày có attendance gần nhất của trường (đồng nhất với trang GVCN)
   let today = todayVN();
-  const { data: latestAtt } = await supabase
+  const { data: latestAtt } = await must(supabase
     .from("attendance_records")
     .select("date, students!inner(classes!inner(school_id))")
     .eq("students.classes.school_id", profile.school_id ?? "")
     .order("date", { ascending: false })
-    .limit(1);
+    .limit(1), "attendance_records");
   const d = (latestAtt ?? []) as { date: string }[];
   if (d[0]?.date) today = d[0].date;
 
   const { data: repData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("daily_reports")
         .select("*")
         .in("class_id", classIds)
-        .eq("date", today)
+        .eq("date", today), "daily_reports")
     : { data: [] };
   const reports = (repData ?? []) as DailyReport[];
   const byClass = new Map(reports.map((r) => [r.class_id, r]));
 
-  const { data: gvcnData } = await supabase
+  const { data: gvcnData } = await must(supabase
     .from("profiles")
     .select("id,full_name")
     .in(
       "id",
       classes.map((c) => c.gvcn_id).filter((x): x is string => !!x),
-    );
+    ), "profiles");
   const gvcnName = new Map(
     ((gvcnData ?? []) as { id: string; full_name: string }[]).map((p) => [
       p.id,

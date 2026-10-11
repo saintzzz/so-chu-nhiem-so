@@ -81,11 +81,19 @@ export function SuggestionsClient({
 
   async function setStatus(id: string, status: "approved" | "dismissed") {
     setBusy(true);
-    const { error } = await supabase
+    // CAS: goi y chi duyet/loai bo tu pending - tab cu khong ghi de
+    // quyet dinh moi hon.
+    const { data: updated, error } = await supabase
       .from("tasks")
       .update({ status })
-      .eq("id", id);
-    if (!error) {
+      .eq("id", id)
+      .eq("status", "pending")
+      .select("id");
+    if (error) {
+      setMessage("Không cập nhật được gợi ý - vui lòng thử lại.");
+    } else if (!updated?.length) {
+      setMessage("Gợi ý đã được xử lý - vui lòng tải lại trang.");
+    } else {
       setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
     }
     setBusy(false);
@@ -126,11 +134,17 @@ export function SuggestionsClient({
 
     if (!usedAi) {
       const today = todayVN();
-      const { data: eventsData } = await supabase
+      const { data: eventsData, error: evErr } = await supabase
         .from("school_year_events")
         .select("*")
         .gte("event_date", today)
         .order("event_date");
+      if (evErr) {
+        console.error("[suggestions] events lookup:", evErr.message);
+        setMessage("Không tải được lịch năm học - vui lòng thử lại.");
+        setBusy(false);
+        return;
+      }
       const events = (eventsData ?? []) as SchoolYearEvent[];
       const rows = events
         .map((e) => ({

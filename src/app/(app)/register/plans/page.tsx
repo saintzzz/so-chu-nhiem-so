@@ -10,6 +10,7 @@ import {
   pickClass,
 } from "@/components/register/server-utils";
 import type { TaskRow } from "@/components/register/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function PlansPage({
   searchParams,
@@ -38,12 +39,12 @@ export default async function PlansPage({
     );
   }
 
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("tasks")
     .select("*")
     .eq("class_id", cls.id)
     .neq("status", "dismissed")
-    .order("due_date");
+    .order("due_date"), "tasks");
 
   const tasks = (data ?? []) as TaskRow[];
 

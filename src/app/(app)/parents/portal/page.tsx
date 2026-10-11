@@ -21,6 +21,7 @@ import type {
   Student, Role } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
 import { gradeYearOr } from "@/lib/grades-year";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -59,12 +60,12 @@ export default async function PortalPage({
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: studentData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name,class_id,code")
         .in("class_id", classIds)
         .eq("status", "active")
-        .order("full_name")
+        .order("full_name"), "students")
     : { data: [] };
   const students = (studentData ?? []) as Pick<
     Student,
@@ -95,13 +96,13 @@ export default async function PortalPage({
   // 4 query doc lap theo selectedId - gom 1 wave thay vi 4 RTT tuan tu.
   const [{ data: attData }, { data: gradeData }, { data: annData }, { data: apptData }] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("attendance_records")
         .select("*")
         .eq("student_id", selectedId)
         .gte("date", MONTH_START)
-        .lte("date", MONTH_END),
-      supabase
+        .lte("date", MONTH_END), "attendance_records"),
+      must(supabase
         .from("grades")
         .select("subject_id,term,assessment_type,score")
         .eq("student_id", selectedId)
@@ -111,19 +112,19 @@ export default async function PortalPage({
             classes.find((c) => c.id === student.class_id)
               ?.academic_year_id,
           ),
-        ),
-      supabase
+        ), "grades"),
+      must(supabase
         .from("announcements")
         .select("*")
         .or(`class_id.eq.${student.class_id},student_id.eq.${selectedId}`)
         .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
+        .limit(5), "announcements"),
+      must(supabase
         .from("appointments")
         .select("*")
         .eq("student_id", selectedId)
         .order("scheduled_at", { ascending: false })
-        .limit(5),
+        .limit(5), "appointments"),
     ]);
   const monthRecords = (attData ?? []) as AttendanceRecord[];
   const todayRecord = monthRecords.find((r) => r.date === TODAY) ?? null;
@@ -159,10 +160,10 @@ export default async function PortalPage({
 
   const apptParentIds = [...new Set(appointments.map((a) => a.parent_id))];
   const { data: parentData } = apptParentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("parents")
         .select("id,full_name")
-        .in("id", apptParentIds)
+        .in("id", apptParentIds), "parents")
     : { data: [] };
   const parentName = new Map(
     ((parentData ?? []) as Pick<Parent, "id" | "full_name">[]).map((p) => [

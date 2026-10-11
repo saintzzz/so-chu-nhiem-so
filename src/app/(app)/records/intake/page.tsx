@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { NewClassForm } from "@/components/records/new-class-form";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const CLASS_STATUS: Record<
   ClassRoom["status"],
@@ -39,13 +40,13 @@ export default async function RecordsIntakePage() {
 
   const [studentsRes, profilesRes, yearsRes] = await Promise.all([
     classIds.length
-      ? supabase.from("students").select("class_id").in("class_id", classIds)
+      ? must(supabase.from("students").select("class_id").in("class_id", classIds), "students")
       : Promise.resolve({ data: [] }),
     gvcnIds.length
-      ? supabase.from("profiles").select("id,full_name").in("id", gvcnIds)
+      ? must(supabase.from("profiles").select("id,full_name").in("id", gvcnIds), "profiles")
       : Promise.resolve({ data: [] }),
     yearIds.length
-      ? supabase.from("academic_years").select("*").in("id", yearIds)
+      ? must(supabase.from("academic_years").select("*").in("id", yearIds), "academic_years")
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -71,24 +72,24 @@ export default async function RecordsIntakePage() {
 
   let currentYearId = yearFromClasses;
   if (!currentYearId && profile.school_id) {
-    const { data: currentYear } = await supabase
+    const { data: currentYear } = await must(supabase
       .from("academic_years")
       .select("id")
       .eq("school_id", profile.school_id)
       .eq("is_current", true)
-      .maybeSingle();
+      .maybeSingle(), "academic_years");
     currentYearId = currentYear?.id ?? null;
   }
 
   let campusId = profile.campus_id ?? null;
   if (!campusId && profile.school_id) {
-    const { data: campus } = await supabase
+    const { data: campus } = await must(supabase
       .from("campuses")
       .select("id")
       .eq("school_id", profile.school_id)
       .order("name")
       .limit(1)
-      .maybeSingle();
+      .maybeSingle(), "campuses");
     campusId = campus?.id ?? null;
   }
 

@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { must } from "@/lib/supabase/must";
 import { SchoolsBoard } from "@/components/dept/schools-board";
 import type { School } from "@/types";
 
@@ -27,10 +28,16 @@ export default async function DeptSchoolsPage() {
   const supabase = await createClient();
 
   const [{ data: schoolsRaw }, profilesRes] = await Promise.all([
-    supabase.from("schools").select("id,name,code,level").order("name"),
+    must(supabase.from("schools").select("id,name,code,level").order("name"), "schools"),
     fetchAll<{ school_id: string | null }>((f, t) =>
       supabase.from("profiles").select("id,school_id").range(f, t)),
   ]);
+  if (profilesRes.incomplete) {
+    // r24: danh sach user bi cat ngang -> so luong user/truong sai lech.
+    // Fail-closed thay vi render bang so lieu ao.
+    console.error("[dept/schools] profiles fetch incomplete");
+    throw new Error("Không tải được dữ liệu nguồn (profiles).");
+  }
   const profilesRaw = profilesRes.rows;
 
   const schools = (schoolsRaw ?? []) as Pick<

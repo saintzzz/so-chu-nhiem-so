@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fmtDateVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function SchoolJournalsPage({
   searchParams,
@@ -91,10 +92,10 @@ export default async function SchoolJournalsPage({
   const subjectIds = [...new Set(entries.map((e) => e.subject_id))];
   const [{ data: profRaw }, { data: subRaw }] = await Promise.all([
     teacherIds.length
-      ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+      ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
       : Promise.resolve({ data: [] }),
     subjectIds.length
-      ? supabase.from("subjects").select("id,name").in("id", subjectIds)
+      ? must(supabase.from("subjects").select("id,name").in("id", subjectIds), "subjects")
       : Promise.resolve({ data: [] }),
   ]);
   const teacherOf = new Map(

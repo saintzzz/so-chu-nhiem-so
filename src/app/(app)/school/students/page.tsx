@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { compareVietnameseName, fmtDateVN } from "@/lib/utils";
 import type { ClassRoom, Student } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function SchoolStudentsPage({
   searchParams,
@@ -20,19 +21,19 @@ export default async function SchoolStudentsPage({
   const sp = await searchParams;
   const classParam = sp.class ?? null;
 
-  const { data: classIdRows } = await supabase
+  const { data: classIdRows } = await must(supabase
     .from("classes")
     .select("id")
-    .eq("school_id", sid);
+    .eq("school_id", sid), "classes");
   const classIds = (classIdRows ?? []).map((c: { id: string }) => c.id);
 
   const [{ data: classRaw }, { rows: stuRaw }] = await Promise.all([
-    supabase
+    must(supabase
       .from("classes")
       .select("id,name,campus_id")
       .eq("school_id", sid)
       .eq("status", "active")
-      .order("name"),
+      .order("name"), "classes"),
     // paging de vuot PostgREST row cap - truong >1000 HS khong bi mat du lieu
     fetchAllRows<
       Pick<Student, "id" | "class_id" | "code" | "full_name" | "dob" | "gender" | "status" | "national_id">

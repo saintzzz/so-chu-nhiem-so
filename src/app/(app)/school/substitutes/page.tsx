@@ -11,6 +11,7 @@ import type {
   TimetableEntry,
 } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function SubstitutesPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -23,24 +24,24 @@ export default async function SubstitutesPage() {
     { data: reqData },
     { data: profData },
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("classes")
       .select("*")
       .eq("school_id", sid)
       .eq("status", "active")
-      .order("name"),
-    supabase.from("subjects").select("*").eq("school_id", sid).order("name"),
-    supabase
+      .order("name"), "classes"),
+    must(supabase.from("subjects").select("*").eq("school_id", sid).order("name"), "subjects"),
+    must(supabase
       .from("substitute_requests")
       .select("*")
       .eq("school_id", sid)
       .order("date", { ascending: false })
-      .limit(50),
-    supabase
+      .limit(50), "substitute_requests"),
+    must(supabase
       .from("profiles")
       .select("id,full_name,role")
       .eq("school_id", sid)
-      .or("role.in.(gvbm,gvcn,to_truong),concurrent_roles.ov.{gvbm,gvcn,to_truong}"),
+      .or("role.in.(gvbm,gvcn,to_truong),concurrent_roles.ov.{gvbm,gvcn,to_truong}"), "profiles"),
   ]);
 
   const classes = (classData ?? []) as ClassRoom[];

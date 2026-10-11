@@ -9,6 +9,7 @@ import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import type { AttendanceRecord, ClassRoom } from "@/types";
 import { currentPeriodVN, isoDateVN, todayVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -22,9 +23,9 @@ export default async function DeptDashboardPage() {
   const EMULATION_PERIOD = currentPeriodVN();
 
   // Phạm vi theo cấp: so_gd xem toàn tỉnh; ubnd chỉ xem trường thuộc đơn vị mình.
-  const { data: orgData } = await supabase
+  const { data: orgData } = await must(supabase
     .from("org_units")
-    .select("id,type,name,parent_id");
+    .select("id,type,name,parent_id"), "org_units");
   const orgs = (orgData ?? []) as {
     id: string;
     type: string;
@@ -37,9 +38,9 @@ export default async function DeptDashboardPage() {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
-  const { data: schoolRows } = await supabase
+  const { data: schoolRows } = await must(supabase
     .from("schools")
-    .select("id,name,org_unit_id");
+    .select("id,name,org_unit_id"), "schools");
   const allSchools = (schoolRows ?? []) as {
     id: string;
     name: string;
@@ -53,22 +54,22 @@ export default async function DeptDashboardPage() {
   const orgName = new Map(orgs.map((o) => [o.id, o.name]));
 
   // Anchor to the newest attendance date so demo stats are never empty.
-  const { data: latestAtt } = await supabase
+  const { data: latestAtt } = await must(supabase
     .from("attendance_records")
     .select("date")
     .order("date", { ascending: false })
-    .limit(1);
+    .limit(1), "attendance_records");
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)
       ?.date ?? todayVN();
   const windowStart = addDays(anchor, -29);
 
   // CR-034: aggregate trong Postgres - khong kéo toàn bộ students/classes về app
-  const { data: dash } = await supabase.rpc("scn_dept_dashboard", {
+  const { data: dash } = await must(supabase.rpc("scn_dept_dashboard", {
     p_school_ids: scopedSchools.map((s) => s.id),
     p_window_start: windowStart,
     p_period: EMULATION_PERIOD,
-  });
+  }), "scn_dept_dashboard");
   const D = (dash ?? {}) as {
     teachers?: number; classes?: number; students?: number;
     att_total?: number; att_present?: number; incidents?: number;

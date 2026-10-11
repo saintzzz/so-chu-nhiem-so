@@ -7,6 +7,7 @@ import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import type { AttendanceRecord } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 function addDays(isoDate: string, days: number): string {
   const d = new Date(isoDate + "T00:00:00");
@@ -18,9 +19,9 @@ export default async function DeptReportsPage() {
   const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
 
-  const { data: orgData } = await supabase
+  const { data: orgData } = await must(supabase
     .from("org_units")
-    .select("id,type,name,parent_id");
+    .select("id,type,name,parent_id"), "org_units");
   const orgs = (orgData ?? []) as {
     id: string;
     type: string;
@@ -33,9 +34,9 @@ export default async function DeptReportsPage() {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
-  const { data: schoolRows } = await supabase
+  const { data: schoolRows } = await must(supabase
     .from("schools")
-    .select("id,name,org_unit_id");
+    .select("id,name,org_unit_id"), "schools");
   const allSchools = (schoolRows ?? []) as {
     id: string;
     name: string;
@@ -47,10 +48,10 @@ export default async function DeptReportsPage() {
   const scopedSchoolIds = new Set(scopedSchools.map((s) => s.id));
   const orgName = new Map(orgs.map((o) => [o.id, o.name]));
 
-  const { data: classRows } = await supabase
+  const { data: classRows } = await must(supabase
     .from("classes")
     .select("id,school_id")
-    .eq("status", "active");
+    .eq("status", "active"), "classes");
   const classes = ((classRows ?? []) as { id: string; school_id: string }[]).filter(
     (c) => scopedSchoolIds.has(c.school_id),
   );
@@ -69,17 +70,17 @@ export default async function DeptReportsPage() {
   const students = studentRows;
   const classSchool = new Map(classes.map((c) => [c.id, c.school_id]));
 
-  const { data: teacherRows } = await supabase
+  const { data: teacherRows } = await must(supabase
     .from("profiles")
     .select("id,school_id")
     .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}")
-    .in("school_id", scopedSchoolIds.size ? [...scopedSchoolIds] : ["none"]);
+    .in("school_id", scopedSchoolIds.size ? [...scopedSchoolIds] : ["none"]), "profiles");
 
-  const { data: latestAtt } = await supabase
+  const { data: latestAtt } = await must(supabase
     .from("attendance_records")
     .select("date")
     .order("date", { ascending: false })
-    .limit(1);
+    .limit(1), "attendance_records");
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)?.date ??
     todayVN();

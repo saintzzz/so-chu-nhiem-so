@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TimetableEditor } from "@/components/schedule/timetable-editor";
 import { compareVietnameseName } from "@/lib/utils";
 import type { ClassRoom, Subject } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function TimetableManagePage({
   searchParams,
@@ -17,22 +18,22 @@ export default async function TimetableManagePage({
 
   const [{ data: clsRaw }, { data: subRaw }, { data: teacherRaw }] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("classes")
         .select("id,name,grade")
         .eq("school_id", sid)
         .eq("status", "active")
-        .order("name"),
-      supabase
+        .order("name"), "classes"),
+      must(supabase
         .from("subjects")
         .select("id,name")
         .eq("school_id", sid)
-        .order("name"),
-      supabase
+        .order("name"), "subjects"),
+      must(supabase
         .from("profiles")
         .select("id,full_name")
         .eq("school_id", sid)
-        .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"),
+        .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"), "profiles"),
     ]);
   const classes = (clsRaw ?? []) as Pick<ClassRoom, "id" | "name" | "grade">[];
   const subjects = (subRaw ?? []) as Pick<Subject, "id" | "name">[];
@@ -45,10 +46,10 @@ export default async function TimetableManagePage({
       : (classes[0]?.id ?? "");
 
   const { data: entryRaw } = classId
-    ? await supabase
+    ? await must(supabase
         .from("timetable_entries")
         .select("id,class_id,subject_id,teacher_id,weekday,period,room")
-        .eq("class_id", classId)
+        .eq("class_id", classId), "timetable_entries")
     : { data: [] };
   const entries = (entryRaw ?? []) as {
     id: string;

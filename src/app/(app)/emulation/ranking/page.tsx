@@ -7,6 +7,7 @@ import { ChartCard, BarChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { cn, currentPeriodVN } from "@/lib/utils";
+import { must } from "@/lib/supabase/must";
 
 interface CriterionRow {
   id: string;
@@ -42,15 +43,15 @@ export default async function EmulationRankingPage() {
   // Doc het qua fetchAllRows (order id on dinh); loi/truncated -> notice.
   const [{ data: critRaw, error: critErr }, { data: classesRaw, error: clsErr }, scoresRes] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("emulation_criteria")
         .select("id,name,max_score")
-        .order("name", { ascending: true }),
-      supabase
+        .order("name", { ascending: true }), "emulation_criteria"),
+      must(supabase
         .from("classes")
         .select("id,name,gvcn_id")
         .eq("status", "active")
-        .order("name", { ascending: true }),
+        .order("name", { ascending: true }), "classes"),
       fetchAllRows<ScoreRow>((f, t) =>
         supabase
           .from("emulation_scores")

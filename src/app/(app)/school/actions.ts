@@ -18,20 +18,28 @@ export async function assignClassCampus(
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: cls } = await supabase
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,school_id")
     .eq("id", classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[school] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return { error: "Lớp không thuộc trường của bạn." };
   }
   if (campusId) {
-    const { data: cp } = await supabase
+    const { data: cp, error: cpErr } = await supabase
       .from("campuses")
       .select("id,school_id")
       .eq("id", campusId)
       .maybeSingle();
+    if (cpErr) {
+      console.error("[school] campus lookup:", cpErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!cp || cp.school_id !== profile.school_id) {
       return { error: "Cơ sở không thuộc trường." };
     }
@@ -328,18 +336,26 @@ export async function updateStaffAccount(
     updates.role = patch.role;
   }
   if (patch.campusId) {
-    const { data: c } = await supabase
+    const { data: c, error: cErr } = await supabase
       .from("campuses").select("id")
       .eq("id", patch.campusId).eq("school_id", profile.school_id).maybeSingle();
+    if (cErr) {
+      console.error("[school] campus lookup:", cErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!c) return { error: "Cơ sở không thuộc trường." };
     updates.campus_id = patch.campusId;
   } else if (patch.campusId === null) {
     updates.campus_id = null;
   }
   if (patch.departmentId) {
-    const { data: d } = await supabase
+    const { data: d, error: dErr } = await supabase
       .from("departments").select("id")
       .eq("id", patch.departmentId).eq("school_id", profile.school_id).maybeSingle();
+    if (dErr) {
+      console.error("[school] department lookup:", dErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!d) return { error: "Tổ chuyên môn không thuộc trường." };
     updates.department_id = patch.departmentId;
   } else if (patch.departmentId === null) {
@@ -399,11 +415,15 @@ export async function saveTimetableEntry(input: {
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
-  const { data: cls } = await supabase
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,school_id")
     .eq("id", input.classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[school] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!cls || cls.school_id !== profile.school_id)
     return { error: "Lớp không thuộc trường." };
   if (!input.subjectId) return { error: "Vui lòng chọn môn học." };
@@ -544,11 +564,15 @@ export async function deleteTimetableEntry(
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
-  const { data: entry } = await supabase
+  const { data: entry, error: entryErr } = await supabase
     .from("timetable_entries")
     .select("id,classes(school_id)")
     .eq("id", id)
     .maybeSingle();
+  if (entryErr) {
+    console.error("[school] timetable lookup:", entryErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   const cs = (entry as { classes?: { school_id: string }[] | { school_id: string } | null } | null)?.classes;
   const entrySchool = Array.isArray(cs) ? cs[0]?.school_id : cs?.school_id;
   if (!entry || entrySchool !== profile.school_id)
@@ -620,21 +644,29 @@ export async function createStaffAccount(input: {
   // R16-06: campus/department phai thuoc truong cua nguoi tao - service-role
   // write bo qua RLS nen validate thu cong o day.
   if (input.campusId) {
-    const { data: c } = await admin
+    const { data: c, error: cErr } = await admin
       .from("campuses")
       .select("id")
       .eq("id", input.campusId)
       .eq("school_id", profile.school_id)
       .maybeSingle();
+    if (cErr) {
+      console.error("[school] campus lookup:", cErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!c) return { error: "Cơ sở không thuộc trường của bạn." };
   }
   if (input.departmentId) {
-    const { data: d } = await admin
+    const { data: d, error: dErr } = await admin
       .from("departments")
       .select("id")
       .eq("id", input.departmentId)
       .eq("school_id", profile.school_id)
       .maybeSingle();
+    if (dErr) {
+      console.error("[school] department lookup:", dErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!d) return { error: "Tổ chuyên môn không thuộc trường của bạn." };
   }
   const { data, error } = await admin.auth.admin.createUser({
@@ -768,12 +800,16 @@ export async function setItemAcl(input: {
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const { data: target } = await supabase
+  const { data: target, error: targetErr } = await supabase
     .from("profiles")
     .select("id")
     .eq("email", input.userEmail.trim().toLowerCase())
     .eq("school_id", profile.school_id)
-    .single();
+    .maybeSingle();
+  if (targetErr) {
+    console.error("[school] target profile lookup:", targetErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!target) return { error: "Không tìm thấy tài khoản trong trường." };
 
   if (!input.deny) {
@@ -856,24 +892,32 @@ export async function updateStaffProfile(
   // CR-034: campus/department phai thuoc truong hien tai
   const supabase = await createClient();
   if (input.campusId) {
-    const { data: c } = await supabase
+    const { data: c, error: cErr } = await supabase
       .from("campuses")
       .select("id")
       .eq("id", input.campusId)
       .eq("school_id", profile.school_id)
       .maybeSingle();
+    if (cErr) {
+      console.error("[school] campus lookup:", cErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!c) return { error: "Cơ sở không thuộc trường." };
     updates.campus_id = input.campusId;
   } else if (input.campusId === null) {
     updates.campus_id = null;
   }
   if (input.departmentId) {
-    const { data: d } = await supabase
+    const { data: d, error: dErr } = await supabase
       .from("departments")
       .select("id")
       .eq("id", input.departmentId)
       .eq("school_id", profile.school_id)
       .maybeSingle();
+    if (dErr) {
+      console.error("[school] department lookup:", dErr.message);
+      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+    }
     if (!d) return { error: "Tổ chuyên môn không thuộc trường." };
     updates.department_id = input.departmentId;
   } else if (input.departmentId === null) {

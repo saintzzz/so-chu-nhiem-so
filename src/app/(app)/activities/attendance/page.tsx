@@ -5,6 +5,7 @@ import { compareVietnameseName } from "@/lib/utils";
 import { AttendanceRoster } from "@/components/activities/attendance-roster";
 import type { Activity, ClassRoom, Profile, Student, Role } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -52,12 +53,12 @@ export default async function ActivitiesAttendancePage({
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: actData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("activities")
         .select("*")
         .in("class_id", classIds)
         .in("status", ["approved", "done"])
-        .order("activity_date", { ascending: false })
+        .order("activity_date", { ascending: false }), "activities")
     : { data: [] };
   const activities = (actData ?? []) as Activity[];
 
@@ -75,19 +76,19 @@ export default async function ActivitiesAttendancePage({
   }[] = [];
 
   if (selectedId) {
-    const { data: attData } = await supabase
+    const { data: attData } = await must(supabase
       .from("activity_attendance")
       .select("*")
-      .eq("activity_id", selectedId);
+      .eq("activity_id", selectedId), "activity_attendance");
     const attendance = (attData ?? []) as ActivityAttendanceRow[];
 
     const studentIds = attendance.map((r) => r.student_id);
     const { data: studentData } = studentIds.length
-      ? await supabase
+      ? await must(supabase
           .from("students")
           .select("id,full_name,code")
           .in("id", studentIds)
-          .order("full_name")
+          .order("full_name"), "students")
       : { data: [] };
     const students = (studentData ?? []) as Pick<
       Student,

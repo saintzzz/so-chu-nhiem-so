@@ -5,6 +5,7 @@ import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { approveAssessment } from "./actions";
 import type { Profile } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 type AssessmentStatus = "draft" | "submitted" | "reviewed" | "approved";
 
@@ -30,21 +31,21 @@ export default async function TeamReviewPage() {
   const profile = await requireRoles(["to_truong"]);
   const supabase = await createClient();
 
-  const { data: teacherRows } = await supabase
+  const { data: teacherRows } = await must(supabase
     .from("profiles")
     .select("id,full_name")
     .eq("department_id", profile.department_id ?? "")
-    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}");
+    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"), "profiles");
   const teachers = (teacherRows ?? []) as Pick<Profile, "id" | "full_name">[];
   const teacherIds = teachers.map((t) => t.id);
   const teacherNameOf = new Map(teachers.map((t) => [t.id, t.full_name]));
 
   const { data: rows } = teacherIds.length
-    ? await supabase
+    ? await must(supabase
         .from("teacher_assessments")
         .select("id,teacher_id,self_review,plan,status")
         .in("teacher_id", teacherIds)
-        .neq("status", "draft")
+        .neq("status", "draft"), "teacher_assessments")
     : { data: [] };
   const assessments = (rows ?? []) as TeacherAssessment[];
   const order: Record<AssessmentStatus, number> = {

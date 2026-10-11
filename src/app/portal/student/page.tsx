@@ -16,6 +16,7 @@ import type {
   Student,
   Subject,
 } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 function formatDate(iso: string): string {
   return fmtDateVN(iso);
@@ -31,12 +32,12 @@ export default async function StudentPortalPage() {
   const supabase = await createClient();
 
   // Embed classes de gop 2 roundtrip tuan tu thanh 1.
-  const { data: studentRow } = await supabase
+  const { data: studentRow } = await must(supabase
     .from("students")
     .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id,classes(id,name,school_id,academic_year_id)")
     .eq("profile_id", profile.id)
     .limit(1)
-    .single();
+    .maybeSingle(), "students");
   const student = studentRow as (Pick<
     Student,
     | "id"
@@ -53,55 +54,55 @@ export default async function StudentPortalPage() {
 
   const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes] =
     student ? await Promise.all([
-        supabase
+        must(supabase
           .from("attendance_records")
           .select("id,date,status")
           .eq("student_id", student.id)
           .order("date", { ascending: false })
-          .limit(120),
-        supabase
+          .limit(120), "attendance_records"),
+        must(supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
           .eq("student_id", student.id)
           // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
-          .or(gradeYearOr(classroom?.academic_year_id)),
-        supabase
+          .or(gradeYearOr(classroom?.academic_year_id)), "grades"),
+        must(supabase
           .from("subjects")
           .select("id,name")
-          .eq("school_id", classroom?.school_id ?? ""),
-        supabase
+          .eq("school_id", classroom?.school_id ?? ""), "subjects"),
+        must(supabase
           .from("conduct_evaluations")
           .select("*")
           .eq("student_id", student.id)
-          .limit(5),
-        supabase
+          .limit(5), "conduct_evaluations"),
+        must(supabase
           .from("announcements")
           .select("id,title,content,created_at")
           .or(
             `class_id.eq.${student.class_id},student_id.eq.${student.id},and(class_id.is.null,school_id.eq.${classroom?.school_id ?? "none"})`,
           )
           .order("created_at", { ascending: false })
-          .limit(8),
-        supabase
+          .limit(8), "announcements"),
+        must(supabase
           .from("exam_sessions")
           .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
           .eq("class_id", student.class_id)
           .gte("date", todayVN())
           .order("date")
-          .limit(10),
-        supabase
+          .limit(10), "exam_sessions"),
+        must(supabase
           .from("school_year_events")
           .select("id,title,event_date,category")
           .eq("school_id", classroom?.school_id ?? "")
           .gte("event_date", todayVN())
           .order("event_date")
-          .limit(12),
-        supabase
+          .limit(12), "school_year_events"),
+        must(supabase
           .from("timetable_entries")
           .select("id,subject_id,teacher_id,weekday,period,room")
           .eq("class_id", student.class_id)
           .order("weekday")
-          .order("period"),
+          .order("period"), "timetable_entries"),
       ])
     : [
         { data: [] },
@@ -143,10 +144,10 @@ export default async function StudentPortalPage() {
     ...new Set(ttEntries.map((e) => e.teacher_id).filter(Boolean) as string[]),
   ];
   const { data: ttTeacherRows } = ttTeacherIds.length
-    ? await supabase
+    ? await must(supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", ttTeacherIds)
+        .in("id", ttTeacherIds), "profiles")
     : { data: [] };
   const ttTeacherName = new Map(
     ((ttTeacherRows ?? []) as { id: string; full_name: string }[]).map((p) => [

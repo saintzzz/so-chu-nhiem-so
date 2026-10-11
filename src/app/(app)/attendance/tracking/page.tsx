@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { AttendanceDateNav } from "@/components/attendance/date-controls";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface AttRow {
   student_id: string;
@@ -61,12 +62,12 @@ export default async function AttendanceTrackingPage({
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData } = await must(supabase
     .from("students")
     .select("id,code,full_name")
     .eq("class_id", selected.id)
     .eq("status", "active")
-    .order("code");
+    .order("code"), "students");
   const students = (studentData ?? []) as Pick<
     Student,
     "id" | "code" | "full_name"
@@ -80,12 +81,12 @@ export default async function AttendanceTrackingPage({
       ? toParam
       : todayVN();
   if (!toParam && ids.length > 0) {
-    const { data: latest } = await supabase
+    const { data: latest } = await must(supabase
       .from("attendance_records")
       .select("date")
       .in("student_id", ids)
       .order("date", { ascending: false })
-      .limit(1);
+      .limit(1), "attendance_records");
     const latestDate = (latest ?? []) as { date: string }[];
     if (latestDate[0]?.date) anchor = latestDate[0].date;
   }

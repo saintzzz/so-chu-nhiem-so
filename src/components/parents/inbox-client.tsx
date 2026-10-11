@@ -108,14 +108,28 @@ export function InboxClient({
         rows.map((r) => r.student_id).filter((x): x is string => !!x),
       ),
     ];
-    const [{ data: senders }, { data: students }] = await Promise.all([
+    const [
+      { data: senders, error: sendersErr },
+      { data: students, error: studentsErr },
+    ] = await Promise.all([
       senderIds.length
         ? supabase.from("profiles").select("id,full_name").in("id", senderIds)
-        : Promise.resolve({ data: [] }),
+        : Promise.resolve({ data: [], error: null }),
       studentIds.length
         ? supabase.from("students").select("id,full_name").in("id", studentIds)
-        : Promise.resolve({ data: [] }),
+        : Promise.resolve({ data: [], error: null }),
     ]);
+    // r24: loi resolve ten -> hien loi thay vi render tin nhan voi ten
+    // fallback "Phu huynh" sai nguoi gui.
+    if (sendersErr || studentsErr) {
+      console.error(
+        "[inbox-client] name lookup:",
+        sendersErr?.message ?? studentsErr?.message,
+      );
+      setLoadError("Không tải được tin nhắn cũ - vui lòng thử lại.");
+      setLoadingMore(false);
+      return;
+    }
     const senderName = new Map(
       ((senders ?? []) as { id: string; full_name: string }[]).map((s) => [
         s.id,

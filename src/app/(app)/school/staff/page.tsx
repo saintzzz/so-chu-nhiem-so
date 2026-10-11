@@ -14,6 +14,7 @@ import type {
   Subject,
   SupportStaff,
 } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 /**
  * Ma trận định mức nhân sự theo tinh thần NQ37 (biên chế giáo dục):
@@ -44,29 +45,29 @@ export default async function StaffPage() {
     { data: tsData },
     { data: subjectData },
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("support_staff")
       .select("*")
       .eq("school_id", sid)
-      .order("position"),
-    supabase.from("campuses").select("*").eq("school_id", sid),
-    supabase
+      .order("position"), "support_staff"),
+    must(supabase.from("campuses").select("*").eq("school_id", sid), "campuses"),
+    must(supabase
       .from("classes")
       .select("id,name,campus_id,gvcn_id")
       .eq("school_id", sid)
-      .eq("status", "active"),
-    supabase
+      .eq("status", "active"), "classes"),
+    must(supabase
       .from("profiles")
       .select("id,role,campus_id,full_name")
       .eq("school_id", sid)
-      .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}"),
-    supabase
+      .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}"), "profiles"),
+    must(supabase
       .from("profiles")
       .select("id,full_name,email,role")
       .eq("school_id", sid)
-      .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"),
-    supabase.from("teacher_subjects").select("teacher_id,subject_id"),
-    supabase.from("subjects").select("id,name").eq("school_id", sid),
+      .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}"), "profiles"),
+    must(supabase.from("teacher_subjects").select("teacher_id,subject_id"), "teacher_subjects"),
+    must(supabase.from("subjects").select("id,name").eq("school_id", sid), "subjects"),
   ]);
 
   const campuses = (campusData ?? []) as Campus[];

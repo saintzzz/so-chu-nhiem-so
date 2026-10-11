@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { CurriculumStandard, Subject } from "@/types/tvc";
 import { StandardsManager } from "@/components/tvc/standards-manager";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,13 @@ export default async function StudioYccdPage() {
   await requireFeature("studio");
   const supabase = await createClient();
   const [{ data: stds }, { data: subs }] = await Promise.all([
-    supabase
+    must(supabase
       .from("tvc_curriculum_standards")
       .select("id, code, subject_code, grade, strand, lesson_ref, description, competencies, school_id, status")
       .order("grade")
       .order("code")
-      .limit(1000),
-    supabase.from("tvc_subjects").select("*").order("code"),
+      .limit(1000), "tvc_curriculum_standards"),
+    must(supabase.from("tvc_subjects").select("*").order("code"), "tvc_subjects"),
   ]);
 
   const canManage = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);

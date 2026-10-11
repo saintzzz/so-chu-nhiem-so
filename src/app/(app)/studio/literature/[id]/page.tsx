@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { LiteratureText } from "@/types/tvc";
 import { ArrowLeft } from "lucide-react";
 import { CopyTextButton } from "@/components/tvc/copy-text";
+import { must } from "@/lib/supabase/must";
 
 export default async function StudioLiteratureDetail({
   params,
@@ -19,11 +20,11 @@ export default async function StudioLiteratureDetail({
   const { id } = await params;
   const { use } = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("tvc_literature_texts")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle(), "tvc_literature_texts");
   const text = data as LiteratureText | null;
   if (!text) notFound();
 

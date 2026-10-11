@@ -146,11 +146,16 @@ export function RosterClient({
   async function searchParents(q: string) {
     setParentQuery(q);
     if (q.trim().length < 2) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("parents")
       .select("id,full_name,phone,email,relationship")
       .or(`full_name.ilike.%${sanitizeOrTerm(q)}%,phone.ilike.%${sanitizeOrTerm(q)}%`)
       .limit(20);
+    if (error) {
+      console.error("[roster] parent search:", error.message);
+      setMessage("Tìm kiếm phụ huynh thất bại - vui lòng thử lại.");
+      return;
+    }
     if (!data?.length) return;
     setParents((prev) => {
       const seen = new Set(prev.map((p) => p.id));

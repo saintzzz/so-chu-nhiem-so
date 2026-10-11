@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { assertFeature } from "@/lib/permissions";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
@@ -253,13 +254,23 @@ async function allocateQuestionCodes(
   // r20 M: loi SELECT khong duoc bien thanh du lieu rong - map chuan
   // rong => code null; trang codes loi => coi nhu het du lieu => trung
   // seq hoac thieu code. Tra loi, dung truoc INSERT.
-  const { data: stds, error: stdErr } = await supabase
-    .from("tvc_curriculum_standards")
-    .select("id,code");
-  if (stdErr) {
-    console.error("[tvc] alloc standards:", stdErr.message);
+  // Phan trang day du - tap YCCD vuot cap 1000 rows.
+  const stdRes = await fetchAllRows<{ id: string; code: string | null }>(
+    (f, t) =>
+      supabase
+        .from("tvc_curriculum_standards")
+        .select("id,code")
+        .order("id")
+        .range(f, t),
+  );
+  if (stdRes.error || stdRes.truncated) {
+    console.error(
+      "[tvc] alloc standards:",
+      stdRes.error ?? `truncated>${stdRes.rows.length}`,
+    );
     return { error: "Không tải được chuẩn YCCĐ để cấp mã." };
   }
+  const stds = stdRes.rows;
   const existing: { code: string | null }[] = [];
   for (let off = 0; ; off += 1000) {
     const { data: page, error: pgErr } = await supabase

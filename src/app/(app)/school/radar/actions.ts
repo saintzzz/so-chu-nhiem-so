@@ -74,26 +74,37 @@ export async function updateWarningStatus(
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: w } = await supabase
+  const { data: w, error: wErr } = await supabase
     .from("early_warnings")
     .select("id,school_id,class_id,title")
     .eq("id", warningId)
     .maybeSingle();
+  if (wErr) {
+    console.error("[radar] warning lookup:", wErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!w || w.school_id !== profile.school_id) {
     return { error: "Cảnh báo không tồn tại." };
   }
 
-  const { error } = await supabase
+  // CAS: chi chuyen tu open/acknowledged - khong ghi de resolved
+  // bang thao tac tu tab cu.
+  const { data: updated, error } = await supabase
     .from("early_warnings")
     .update({
       status,
       acknowledged_by: profile.id,
       acknowledged_at: new Date().toISOString(),
     })
-    .eq("id", warningId);
+    .eq("id", warningId)
+    .in("status", ["open", "acknowledged"])
+    .select("id");
   if (error) {
     console.error("[radar] update early_warnings:", error.message);
     return { error: "Không cập nhật được cảnh báo - vui lòng thử lại." };
+  }
+  if (!updated?.length) {
+    return { error: "Cảnh báo đã được xử lý - vui lòng tải lại trang." };
   }
 
   // Báo cho GVCN của lớp biết BGH đã tiếp nhận/xử lý - r21 M: ca

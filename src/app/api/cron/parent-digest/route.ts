@@ -673,7 +673,9 @@ async function sendPhase(
         const j = batch[k];
         const r = results[k];
         const status = r.skipped ? "skipped" : r.error ? "failed" : "sent";
-        const { error: updErr } = await supabase
+        // CAS: chi finalize row van dang 'sending' - bo qua neu mot
+        // reconcile/worker khac da ket thuc no.
+        const { data: finRows, error: updErr } = await supabase
           .from("digest_outbox")
           .update({
             status,
@@ -682,10 +684,16 @@ async function sendPhase(
             sent_at: status === "sent" ? new Date().toISOString() : null,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", j.id);
+          .eq("id", j.id)
+          .eq("status", "sending")
+          .select("id");
         if (updErr) {
           console.error("[parent-digest] outbox status update failed:", updErr);
           outboxUpdateErrors++;
+        } else if (!finRows?.length) {
+          console.warn(
+            `[parent-digest] outbox ${j.id} da duoc finalize boi worker khac - bo qua`,
+          );
         }
       }
     }

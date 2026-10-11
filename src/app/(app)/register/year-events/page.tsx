@@ -3,15 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { YearEventsClient } from "@/components/register/year-events-client";
 import type { SchoolYearEvent } from "@/components/register/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function YearEventsPage() {
   const profile = await requireRoles(["gvcn"]);
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("school_year_events")
     .select("*")
-    .order("event_date");
+    .order("event_date"), "school_year_events");
 
   const events = (data ?? []) as SchoolYearEvent[];
 

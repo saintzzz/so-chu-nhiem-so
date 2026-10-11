@@ -1,5 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { must } from "@/lib/supabase/must";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge, FLOW_STATUS } from "@/components/status-badge";
 import { SelfAssessmentForm } from "@/components/competency/self-assessment-form";
@@ -31,21 +32,27 @@ export default async function SelfAssessmentPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong"]);
   const supabase = await createClient();
 
-  const { data: yearRaw } = await supabase
-    .from("academic_years")
-    .select("id,name")
-    .eq("school_id", profile.school_id)
-    .eq("is_current", true)
-    .maybeSingle();
+  const { data: yearRaw } = await must(
+    supabase
+      .from("academic_years")
+      .select("id,name")
+      .eq("school_id", profile.school_id)
+      .eq("is_current", true)
+      .maybeSingle(),
+    "academic_years",
+  );
   const year = (yearRaw ?? null) as YearRow | null;
 
   const { data: assessRaw } = year
-    ? await supabase
-        .from("teacher_assessments")
-        .select("id,self_review,plan,status")
-        .eq("teacher_id", profile.id)
-        .eq("academic_year_id", year.id)
-        .maybeSingle()
+    ? await must(
+        supabase
+          .from("teacher_assessments")
+          .select("id,self_review,plan,status")
+          .eq("teacher_id", profile.id)
+          .eq("academic_year_id", year.id)
+          .maybeSingle(),
+        "teacher_assessments",
+      )
     : { data: null };
   const assessment = (assessRaw ?? null) as AssessmentRow | null;
   const status = ASSESSMENT_STATUS[assessment?.status ?? "draft"] ??

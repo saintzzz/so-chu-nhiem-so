@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const ORG_TYPE: Record<string, string> = {
   so: "Sở Giáo dục và Đào tạo",
@@ -15,10 +16,10 @@ export default async function DeptWardsPage() {
   const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
 
-  const { data: orgData } = await supabase
+  const { data: orgData } = await must(supabase
     .from("org_units")
     .select("id,type,name,parent_id")
-    .order("name");
+    .order("name"), "org_units");
   const orgs = (orgData ?? []) as {
     id: string;
     type: string;
@@ -35,9 +36,9 @@ export default async function DeptWardsPage() {
     visible = orgs;
   }
 
-  const { data: schoolRows } = await supabase
+  const { data: schoolRows } = await must(supabase
     .from("schools")
-    .select("id,name,org_unit_id");
+    .select("id,name,org_unit_id"), "schools");
   const schools = (schoolRows ?? []) as {
     id: string;
     name: string;

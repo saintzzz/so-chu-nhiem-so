@@ -25,7 +25,7 @@ export default async function LockRecordsPage() {
   const classIds = classes.map((c) => c.id);
   const classNames = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { data } =
+  const { data, error: signoffsErr } =
     classIds.length > 0
       ? await supabase
           .from("register_signoffs")
@@ -33,7 +33,11 @@ export default async function LockRecordsPage() {
           .eq("type", "so_hoc_ba")
           .in("class_id", classIds)
           .order("period", { ascending: false })
-      : { data: [] };
+      : { data: [], error: null };
+  if (signoffsErr) {
+    console.error("[register/lock-records] signoffs:", signoffsErr.message);
+  }
+  const loadError = Boolean(classesErr) || Boolean(signoffsErr);
 
   const signoffs = (data ?? []) as Signoff[];
 
@@ -50,7 +54,7 @@ export default async function LockRecordsPage() {
             : "Nộp sổ học bạ lớp mình lên Ban Giám Hiệu để duyệt & khóa theo kỳ."
         }
       />
-      {classesErr ? (
+      {loadError ? (
         <LoadErrorNotice />
       ) : (
         <LockRecordsClient

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { ChatThread, type ChatMessage } from "@/components/academics/chat-thread";
 import { cn, sortByVietnameseName } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -45,11 +46,11 @@ export default async function StudentChatPage({
       : (classes[0]?.id ?? null);
 
   const { data: studentData } = selectedClassId
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,class_id,code,full_name,profile_id")
         .eq("class_id", selectedClassId)
-        .eq("status", "active")
+        .eq("status", "active"), "students")
     : { data: [] };
   const students = sortByVietnameseName(
     (studentData ?? []) as StudentRow[],
@@ -65,7 +66,7 @@ export default async function StudentChatPage({
   // R10-01: lay trang tin MOI NHAT (desc + limit) roi reverse de render theo
   // thu tu thoi gian - order asc bi PostgREST cap 1000 tin cu nhat.
   const { data: msgData } = peerId
-    ? await supabase
+    ? await must(supabase
         .from("messages")
         .select("id,sender_id,recipient_id,student_id,content,read_at,created_at")
         .or(
@@ -73,7 +74,7 @@ export default async function StudentChatPage({
         )
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .limit(100)
+        .limit(100), "messages")
     : { data: [] };
   const hasOlder = (msgData ?? []).length === 100;
   const messages = ((msgData ?? []) as ChatMessage[]).reverse();

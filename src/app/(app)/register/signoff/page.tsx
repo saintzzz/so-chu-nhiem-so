@@ -26,7 +26,7 @@ export default async function SignoffPage() {
   const classIds = classes.map((c) => c.id);
   const classNames = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { data } =
+  const { data, error: signoffsErr } =
     classIds.length > 0
       ? await supabase
           .from("register_signoffs")
@@ -34,7 +34,11 @@ export default async function SignoffPage() {
           .eq("type", "so_chu_nhiem")
           .in("class_id", classIds)
           .order("period", { ascending: false })
-      : { data: [] };
+      : { data: [], error: null };
+  if (signoffsErr) {
+    console.error("[register/signoff] signoffs:", signoffsErr.message);
+  }
+  const loadError = Boolean(classesErr) || Boolean(signoffsErr);
 
   const signoffs = (data ?? []) as Signoff[];
 
@@ -46,10 +50,14 @@ export default async function SignoffPage() {
         .filter((x): x is string => Boolean(x)),
     ),
   ];
-  const { data: signerData } =
+  const { data: signerData, error: signerErr } =
     signerIds.length > 0
       ? await supabase.from("profiles").select("id,full_name").in("id", signerIds)
-      : { data: [] };
+      : { data: [], error: null };
+  if (signerErr) {
+    console.error("[register/signoff] signers:", signerErr.message);
+  }
+  const loadErrorAll = loadError || Boolean(signerErr);
   const signers = new Map(
     ((signerData ?? []) as Pick<Profile, "id" | "full_name">[]).map((p) => [
       p.id,
@@ -68,7 +76,7 @@ export default async function SignoffPage() {
             : "Nộp sổ chủ nhiệm lớp mình lên Ban Giám Hiệu để ký duyệt theo kỳ."
         }
       />
-      {classesErr ? (
+      {loadErrorAll ? (
         <LoadErrorNotice />
       ) : (
         <SignoffClient

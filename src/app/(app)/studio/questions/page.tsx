@@ -8,6 +8,7 @@ import type { Question, Subject } from "@/types/tvc";
 import { QuestionBank } from "@/components/tvc/question-bank";
 import { subjectNameToCode } from "@/lib/tvc/subject-code";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -20,17 +21,17 @@ export default async function StudioQuestionsPage() {
   // CR-032: mon cua to chuyen mon -> to truong loc "Mon cua to toi"
   let deptSubjectCodes: string[] = [];
   if (profile.department_id) {
-    const { data: dept } = await supabase
+    const { data: dept } = await must(supabase
       .from("departments")
       .select("subject_ids")
       .eq("id", profile.department_id)
-      .single();
+      .maybeSingle(), "departments");
     const sids = (dept?.subject_ids as string[] | null) ?? [];
     if (sids.length) {
-      const { data: subs2 } = await supabase
+      const { data: subs2 } = await must(supabase
         .from("subjects")
         .select("name")
-        .in("id", sids);
+        .in("id", sids), "subjects");
       deptSubjectCodes = (subs2 ?? [])
         .map((s) => subjectNameToCode(s.name))
         .filter((c): c is string => !!c);
@@ -57,7 +58,7 @@ export default async function StudioQuestionsPage() {
     firstQ = firstQ.in("subject_code", deptSubjectCodes);
   }
   const [{ data: subs }, { data: firstRows }] = await Promise.all([
-    supabase.from("tvc_subjects").select("*").order("code"),
+    must(supabase.from("tvc_subjects").select("*").order("code"), "tvc_subjects"),
     firstQ,
   ]);
   const qs = firstRows ?? [];

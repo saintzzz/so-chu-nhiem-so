@@ -7,6 +7,7 @@ import { UsersBoard } from "@/components/school/users-board";
 import { FeatureMatrix } from "@/components/school/feature-permissions";
 import { compareVietnameseName } from "@/lib/utils";
 import type { Campus, Profile } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 interface Department {
   id: string;
@@ -27,15 +28,15 @@ export default async function SchoolUsersPage() {
     { data: subjRaw, error: subjErr },
     tsRes,
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("profiles")
       .select("id,full_name,email,role,campus_id,department_id,phone,staff_code,employment_type,qualification,concurrent_roles")
       .eq("school_id", sid)
       .neq("id", profile.id)
-      .or("role.in.(gvcn,gvbm,to_truong,pht,ke_toan),concurrent_roles.ov.{gvcn,gvbm,to_truong,pht,ke_toan}"),
-    supabase.from("campuses").select("id,name").eq("school_id", sid),
-    supabase.from("departments").select("id,name,subject_ids").eq("school_id", sid),
-    supabase.from("subjects").select("id,name").eq("school_id", sid).order("name"),
+      .or("role.in.(gvcn,gvbm,to_truong,pht,ke_toan),concurrent_roles.ov.{gvcn,gvbm,to_truong,pht,ke_toan}"), "profiles"),
+    must(supabase.from("campuses").select("id,name").eq("school_id", sid), "campuses"),
+    must(supabase.from("departments").select("id,name,subject_ids").eq("school_id", sid), "departments"),
+    must(supabase.from("subjects").select("id,name").eq("school_id", sid).order("name"), "subjects"),
     fetchAllRows<{ teacher_id: string; subject_id: string }>((f, t) =>
       supabase
         .from("teacher_subjects")

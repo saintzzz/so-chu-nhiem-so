@@ -3,6 +3,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { InboxClient } from "@/components/parents/inbox-client";
 import type { Profile, Student } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 interface MessageRow {
   id: string;
@@ -22,18 +23,24 @@ export default async function InboxPage() {
   // unread dem bang head:true count query - KHONG suy ra tu cac hang da tai
   // vi tin cu hon 50 van co the chua doc.
   const [msgRes, unreadRes] = await Promise.all([
-    supabase
-      .from("messages")
-      .select("*")
-      .eq("recipient_id", profile.id)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(50),
-    supabase
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("recipient_id", profile.id)
-      .is("read_at", null),
+    must(
+      supabase
+        .from("messages")
+        .select("*")
+        .eq("recipient_id", profile.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50),
+      "messages",
+    ),
+    must(
+      supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("recipient_id", profile.id)
+        .is("read_at", null),
+      "messages",
+    ),
   ]);
   const messages = (msgRes.data ?? []) as MessageRow[];
 
@@ -45,19 +52,19 @@ export default async function InboxPage() {
   ];
 
   const { data: senderData } = senderIds.length
-    ? await supabase
+    ? await must(supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", senderIds)
+        .in("id", senderIds), "profiles")
     : { data: [] };
   const senders = (senderData ?? []) as Pick<Profile, "id" | "full_name">[];
   const senderName = new Map(senders.map((s) => [s.id, s.full_name]));
 
   const { data: studentData } = studentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name")
-        .in("id", studentIds)
+        .in("id", studentIds), "students")
     : { data: [] };
   const students = (studentData ?? []) as Pick<Student, "id" | "full_name">[];
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { redirect } from "next/navigation";
 import { NotificationsClient } from "@/components/notifications/notifications-client";
+import { must } from "@/lib/supabase/must";
 
 export default async function NotificationsPage() {
   const profile = await getProfile();
@@ -13,18 +14,24 @@ export default async function NotificationsPage() {
   // unread dem bang head:true count query vi thong bao cu hon 50 van co the
   // chua doc - khong duoc suy ra tu cac hang da tai.
   const [listRes, unreadRes] = await Promise.all([
-    supabase
-      .from("notifications")
-      .select("id,type,title,body,link,read_at,created_at")
-      .eq("profile_id", profile.id)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(50),
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("profile_id", profile.id)
-      .is("read_at", null),
+    must(
+      supabase
+        .from("notifications")
+        .select("id,type,title,body,link,read_at,created_at")
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50),
+      "notifications",
+    ),
+    must(
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("profile_id", profile.id)
+        .is("read_at", null),
+      "notifications",
+    ),
   ]);
   const data = listRes.data;
 

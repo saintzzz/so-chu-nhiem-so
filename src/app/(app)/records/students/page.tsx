@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { must } from "@/lib/supabase/must";
 import type {
   AttendanceStatus,
   ClassRoom,
@@ -77,12 +78,18 @@ export default async function RecordsStudentsPage({
   // class_roles embed qua FK students.id - query unscoped se quet toan
   // bang roi loc bang JS (sai + ton). Embed tu dong scope theo lop.
   const [studentsRes, groupsRes] = await Promise.all([
-    supabase
-      .from("students")
-      .select("*, class_roles(role)")
-      .eq("class_id", selected.id)
-      .order("code"),
-    supabase.from("student_groups").select("*").eq("class_id", selected.id),
+    must(
+      supabase
+        .from("students")
+        .select("*, class_roles(role)")
+        .eq("class_id", selected.id)
+        .order("code"),
+      "students",
+    ),
+    must(
+      supabase.from("student_groups").select("*").eq("class_id", selected.id),
+      "student_groups",
+    ),
   ]);
   const students = (studentsRes.data ?? []) as Student[];
   const groups = (groupsRes.data ?? []) as StudentGroup[];

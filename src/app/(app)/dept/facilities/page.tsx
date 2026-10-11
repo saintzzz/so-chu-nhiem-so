@@ -4,14 +4,15 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function DeptFacilitiesPage() {
   const profile = await requireRoles(["so_gd", "ubnd", "admin"]);
   const supabase = await createClient();
 
-  const { data: orgData } = await supabase
+  const { data: orgData } = await must(supabase
     .from("org_units")
-    .select("id,type,name,parent_id");
+    .select("id,type,name,parent_id"), "org_units");
   const orgs = (orgData ?? []) as {
     id: string;
     type: string;
@@ -23,9 +24,9 @@ export default async function DeptFacilitiesPage() {
     scopedOrgIds = new Set([profile.org_unit_id]);
   }
 
-  const { data: schoolRows } = await supabase
+  const { data: schoolRows } = await must(supabase
     .from("schools")
-    .select("id,name,org_unit_id");
+    .select("id,name,org_unit_id"), "schools");
   const allSchools = (schoolRows ?? []) as {
     id: string;
     name: string;
@@ -40,16 +41,16 @@ export default async function DeptFacilitiesPage() {
 
   const [{ data: campusRows }, { data: eqRows }] = await Promise.all([
     schoolIds.length
-      ? supabase
+      ? must(supabase
           .from("campuses")
           .select("id,school_id,name,kind,distance_km,address")
-          .in("school_id", schoolIds)
+          .in("school_id", schoolIds), "campuses")
       : Promise.resolve({ data: [] }),
     schoolIds.length
-      ? supabase
+      ? must(supabase
           .from("equipment")
           .select("id,school_id,campus_id,name,category,quantity,condition")
-          .in("school_id", schoolIds)
+          .in("school_id", schoolIds), "equipment")
       : Promise.resolve({ data: [] }),
   ]);
   const campuses = (campusRows ?? []) as {

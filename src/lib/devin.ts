@@ -183,7 +183,8 @@ export async function fallbackToDevin(params: {
     const { error: failErr } = await supabase
       .from("ai_jobs")
       .update({ status: "failed" })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "pending");
     if (failErr) {
       console.error("[devin-fallback] mark failed:", failErr.message);
       throw new Error(`ai_jobs fail-update failed: ${failErr.message}`);

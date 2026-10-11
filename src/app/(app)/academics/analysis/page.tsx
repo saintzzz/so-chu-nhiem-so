@@ -11,6 +11,7 @@ import { semesterAverage, averageScoreBand } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -111,21 +112,21 @@ export default async function AnalysisPage({
       ? sp.term
       : "hk1";
 
-  const { data: subjectData } = await supabase
+  const { data: subjectData } = await must(supabase
     .from("subjects")
     .select("id,name")
     .eq("school_id", profile.school_id ?? "")
-    .order("name");
+    .order("name"), "subjects");
   const subjects = (subjectData ?? []) as SubjectRow[];
   const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
 
   const { data: studentData } = classId
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,code,full_name")
         .eq("class_id", classId)
         .eq("status", "active")
-        .order("full_name")
+        .order("full_name"), "students")
     : { data: [] };
   const students = (studentData ?? []) as StudentRow[];
   const studentIds = students.map((s) => s.id);

@@ -6,6 +6,7 @@ import { requireFeature } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { KhbdTemplatesManager } from "@/components/tvc/khbd-templates-manager";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,11 @@ export default async function StudioKhbdTemplatesPage() {
   ]);
   await requireFeature("studio");
   const supabase = await createClient();
-  const { data: tpls } = await supabase
+  const { data: tpls } = await must(supabase
     .from("tvc_khbd_templates")
     .select("id, name, activities, include_review, include_signoff, is_default, school_id")
     .order("is_default", { ascending: false })
-    .order("name");
+    .order("name"), "tvc_khbd_templates");
 
   const canManage = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   return (

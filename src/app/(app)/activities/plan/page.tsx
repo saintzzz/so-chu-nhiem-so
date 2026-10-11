@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ActivityPlanner } from "@/components/activities/activity-planner";
 import type { Activity, ClassRoom, Profile, Role } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -39,11 +40,11 @@ export default async function ActivitiesPlanPage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: actData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("activities")
         .select("*")
         .in("class_id", classIds)
-        .order("activity_date", { ascending: false })
+        .order("activity_date", { ascending: false }), "activities")
     : { data: [] };
   const activities = (actData ?? []) as Activity[];
 

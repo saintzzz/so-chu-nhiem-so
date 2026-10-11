@@ -11,6 +11,7 @@ import {
 } from "@/components/register/server-utils";
 import { currentMonthVN, prevMonthVN } from "@/components/register/types";
 import type { SeatingChart, Student } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function SeatingPage({
   searchParams,
@@ -49,18 +50,18 @@ export default async function SeatingPage({
     { data: chartsData, error: chartsErr },
     { data: studentsData, error: studentsErr },
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("seating_charts")
       .select("*")
       .eq("class_id", cls.id)
       .in("month", [currentMonth, prevMonth])
-      .order("version", { ascending: false }),
-    supabase
+      .order("version", { ascending: false }), "seating_charts"),
+    must(supabase
       .from("students")
       .select("*")
       .eq("class_id", cls.id)
       .eq("status", "active")
-      .order("full_name"),
+      .order("full_name"), "students"),
   ]);
 
   const charts = (chartsData ?? []) as SeatingChart[];

@@ -20,11 +20,15 @@ export async function createSubstituteRequest(input: {
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.absentTeacherId) return { error: "Thiếu GV vắng." };
 
-  const { data: cls } = await supabase
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,school_id")
     .eq("id", input.classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[substitutes] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return { error: "Lớp không thuộc trường của bạn." };
   }
@@ -125,12 +129,16 @@ async function validateSubTeacher(
   teacher: { id: string; role: string; concurrent_roles: string[] | null } | null;
   error: string | null;
 }> {
-  const { data: teacher } = await supabase
+  const { data: teacher, error: tErr } = await supabase
     .from("profiles")
     .select("id,role,concurrent_roles")
     .eq("id", teacherId)
     .eq("school_id", schoolId)
     .maybeSingle();
+  if (tErr) {
+    console.error("[substitutes] teacher lookup:", tErr.message);
+    return { teacher: null, error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!teacher) {
     return { teacher: null, error: "Giáo viên không thuộc trường của bạn." };
   }
@@ -164,11 +172,15 @@ export async function decideSubstituteRequest(
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: req } = await supabase
+  const { data: req, error: reqErr } = await supabase
     .from("substitute_requests")
     .select("id,school_id,requested_by,absent_teacher_id,substitute_teacher_id,date,period,class_id")
     .eq("id", requestId)
     .maybeSingle();
+  if (reqErr) {
+    console.error("[substitutes] request lookup:", reqErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!req || req.school_id !== profile.school_id) {
     return { error: "Yêu cầu không tồn tại." };
   }

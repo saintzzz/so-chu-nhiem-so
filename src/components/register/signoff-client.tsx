@@ -53,7 +53,8 @@ export function SignoffClient({
     const { data, error: profErr } = await supabase
       .from("profiles")
       .select("id")
-      .or("role.eq.bgh,concurrent_roles.cs.{bgh}");
+      .or("role.eq.bgh,concurrent_roles.cs.{bgh}")
+      .limit(500);
     if (profErr) {
       console.error("[signoff] bgh lookup:", profErr.message);
       return false;
@@ -143,12 +144,20 @@ export function SignoffClient({
     setBusy(true);
     setMessage(null);
     const at = new Date().toISOString();
-    const { error } = await supabase
+    // r24: CAS theo trang thai nguon - tab khac da nop/khoa thi UPDATE
+    // tra 0 rows (policy loc) va KHONG duoc cap nhat UI/audit/notification.
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "submitted", submitted_at: at, submitted_by: profileId })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .in("status", ["pending", "rejected"])
+      .select("id");
     if (error) {
       setMessage("Không thể nộp sổ.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) =>
@@ -187,12 +196,18 @@ export function SignoffClient({
     setBusy(true);
     setMessage(null);
     const signedAt = new Date().toISOString();
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "signed", signed_at: signedAt, signed_by: profileId })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "submitted")
+      .select("id");
     if (error) {
       setMessage("Không thể ký duyệt.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) =>
@@ -229,12 +244,18 @@ export function SignoffClient({
     }
     setBusy(true);
     setMessage(null);
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "rejected", reject_reason: reason })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "submitted")
+      .select("id");
     if (error) {
       setMessage("Không thể từ chối.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) =>
@@ -278,16 +299,29 @@ export function SignoffClient({
     setMessage(null);
     const at = new Date().toISOString();
     const ids = targets.map((s) => s.id);
-    const { error } = await supabase
+    // r24: chi tinh rows UPDATE thuc su tra ve - row da bi nop/khoa o tab
+    // khac bi loc boi dieu kien status, khong duoc dem vao ket qua.
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "submitted", submitted_at: at, submitted_by: profileId })
-      .in("id", ids);
+      .in("id", ids)
+      .in("status", ["pending", "rejected"])
+      .select("id");
     if (error) {
       setMessage("Không thể nộp sổ hàng loạt.");
     } else {
+      const doneIds = new Set((updated ?? []).map((r: { id: string }) => r.id));
+      const skipped = ids.length - doneIds.size;
+      if (doneIds.size === 0) {
+        setMessage(
+          "Các sổ đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+        );
+        setBusy(false);
+        return;
+      }
       setSignoffs((ss) =>
         ss.map((s) =>
-          ids.includes(s.id)
+          doneIds.has(s.id)
             ? {
                 ...s,
                 status: "submitted",
@@ -300,14 +334,15 @@ export function SignoffClient({
       logAudit(supabase, {
         action: "Nộp sổ chủ nhiệm hàng loạt",
         entity: "register_signoffs",
-        payload: { count: targets.length },
+        payload: { count: doneIds.size },
       });
       const notified = await notifyBgh(
-        `${targets.length} sổ chủ nhiệm vừa được nộp`,
-        `${profileName} đã nộp ${targets.length} sổ chủ nhiệm - chờ BGH ký duyệt.`,
+        `${doneIds.size} sổ chủ nhiệm vừa được nộp`,
+        `${profileName} đã nộp ${doneIds.size} sổ chủ nhiệm - chờ BGH ký duyệt.`,
       );
       setMessage(
-        `Đã nộp ${targets.length} sổ chủ nhiệm lên Ban Giám Hiệu.` +
+        `Đã nộp ${doneIds.size} sổ chủ nhiệm lên Ban Giám Hiệu.` +
+          (skipped > 0 ? ` (${skipped} sổ đã được xử lý ở phiên khác)` : "") +
           (notified ? "" : " (chưa báo được cho BGH)"),
       );
     }
@@ -322,16 +357,27 @@ export function SignoffClient({
     setMessage(null);
     const signedAt = new Date().toISOString();
     const ids = targets.map((s) => s.id);
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "signed", signed_at: signedAt, signed_by: profileId })
-      .in("id", ids);
+      .in("id", ids)
+      .eq("status", "submitted")
+      .select("id");
     if (error) {
       setMessage("Không thể ký duyệt hàng loạt.");
     } else {
+      const doneIds = new Set((updated ?? []).map((r: { id: string }) => r.id));
+      const skipped = ids.length - doneIds.size;
+      if (doneIds.size === 0) {
+        setMessage(
+          "Các sổ đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+        );
+        setBusy(false);
+        return;
+      }
       setSignoffs((ss) =>
         ss.map((s) =>
-          ids.includes(s.id)
+          doneIds.has(s.id)
             ? { ...s, status: "signed", signed_at: signedAt, signed_by: profileId }
             : s,
         ),
@@ -339,10 +385,10 @@ export function SignoffClient({
       logAudit(supabase, {
         action: "Ký duyệt sổ chủ nhiệm hàng loạt",
         entity: "register_signoffs",
-        payload: { count: targets.length },
+        payload: { count: doneIds.size },
       });
       let failed = 0;
-      for (const row of targets) {
+      for (const row of targets.filter((r) => doneIds.has(r.id))) {
         const ok = await notifySubmitter(
           row,
           `Sổ chủ nhiệm lớp ${classNames[row.class_id] ?? ""} đã được ký duyệt`,
@@ -351,7 +397,8 @@ export function SignoffClient({
         if (!ok) failed++;
       }
       setMessage(
-        `Đã ký duyệt ${targets.length} sổ chủ nhiệm.` +
+        `Đã ký duyệt ${doneIds.size} sổ chủ nhiệm.` +
+          (skipped > 0 ? ` (${skipped} sổ đã được xử lý ở phiên khác)` : "") +
           (failed ? ` (chưa báo được cho ${failed} GVCN)` : ""),
       );
     }

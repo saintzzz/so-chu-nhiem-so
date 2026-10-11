@@ -24,12 +24,16 @@ export async function saveDailyReport(input: {
   }
 
   // Chỉ GVCN của đúng lớp mới được báo cáo
-  const { data: cls } = await supabase
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,gvcn_id")
     .eq("id", input.classId)
     .eq("gvcn_id", profile.id)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[daily-report] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!cls) return { error: "Bạn không chủ nhiệm lớp này." };
 
   const { error } = await supabase.from("daily_reports").upsert(

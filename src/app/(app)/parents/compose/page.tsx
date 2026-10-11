@@ -7,6 +7,7 @@ import { ComposeForm } from "@/components/parents/compose-form";
 import type { Announcement, ClassRoom, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -40,33 +41,33 @@ export default async function ComposePage() {
   const classIds = classes.map((c) => c.id);
 
   const { data: studentData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name,class_id,code")
         .in("class_id", classIds)
         .eq("status", "active")
-        .order("full_name")
+        .order("full_name"), "students")
     : { data: [] };
   const students = (studentData ?? []) as Pick<
     Student,
     "id" | "full_name" | "class_id" | "code"
   >[];
 
-  const { data: annData } = await supabase
+  const { data: annData } = await must(supabase
     .from("announcements")
     .select("*")
     .eq("sender_id", profile.id)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(10), "announcements");
   const announcements = (annData ?? []) as Announcement[];
 
   // Coverage: lớp/HS -> số phụ huynh có email (kênh nhận thông báo duy nhất).
   const studentIds = students.map((s) => s.id);
   const { data: linkData } = studentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("parent_students")
         .select("student_id,parent_id")
-        .in("student_id", studentIds)
+        .in("student_id", studentIds), "parent_students")
     : { data: [] };
   const links = (linkData ?? []) as {
     student_id: string;
@@ -74,10 +75,10 @@ export default async function ComposePage() {
   }[];
   const parentIds = [...new Set(links.map((l) => l.parent_id))];
   const { data: parentData } = parentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("parents")
         .select("id,email")
-        .in("id", parentIds)
+        .in("id", parentIds), "parents")
     : { data: [] };
   const emailByParent = new Map(
     ((parentData ?? []) as { id: string; email: string | null }[]).map((p) => [

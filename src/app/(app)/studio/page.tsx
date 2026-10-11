@@ -12,6 +12,7 @@ import {
   BookMarked, ListChecks, MessagesSquare, ArrowRight,
   Library, BookA,
 } from "lucide-react";
+import { must } from "@/lib/supabase/must";
 
 const ICONS: Record<string, typeof FileText> = {
   "DC-01": FileText,
@@ -34,10 +35,10 @@ export default async function StudioPage() {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh", "admin"]);
   await requireFeature("studio");
   const supabase = await createClient();
-  const { count } = await supabase
+  const { count } = await must(supabase
     .from("tvc_materials")
     .select("id", { count: "exact", head: true })
-    .eq("author_id", profile.id);
+    .eq("author_id", profile.id), "tvc_materials");
 
   return (
     <div className="mx-auto max-w-6xl">

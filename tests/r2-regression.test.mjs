@@ -623,11 +623,11 @@ test("R6-02: sendAnnouncement + announceActivity goi helper emailClassParents", 
     "sendAnnouncement phai tra emailFailed");
   const act = read("src/app/(app)/activities/actions.ts");
   assert.match(act, /import \{ emailClassParents \} from "@\/lib\/parent-email"/);
-  const body = act.match(/announceActivity[\s\S]*?announcements"\)[\s\S]*?\.insert/);
-  assert.ok(body, "khong tim thay announcements insert trong announceActivity");
-  const afterInsert = act.slice(act.indexOf('from("announcements")'));
-  assert.match(afterInsert, /emailClassParents\(supabase/,
-    "announceActivity phai email phu huynh sau khi insert announcement");
+  const body = act.match(/announceActivity[\s\S]*?scn_announce_fulfill/);
+  assert.ok(body, "announceActivity phai fulfill announcement qua RPC nguyen tu");
+  const afterFulfill = act.slice(act.indexOf("scn_announce_fulfill"));
+  assert.match(afterFulfill, /emailClassParents\(supabase/,
+    "announceActivity phai email phu huynh sau khi fulfill announcement");
   assert.match(act, /emailSkipped: mail\.emailSkipped/);
   // emailError phai truyen xuyen qua ca 2 action de UI phan biet duoc
   // "khong co nguoi nhan" voi "lookup failed".
@@ -1760,7 +1760,7 @@ test("R10 behavioral: teacherChatLinkForRole chi deep-link role xem duoc", () =>
 
 test("R10: teacher-chat resolve ?to= staff cung truong ngoai peer list", () => {
   const src = read("src/app/(app)/academics/teacher-chat/page.tsx");
-  const block = src.match(/requestedTo[\s\S]*?maybeSingle\(\);/);
+  const block = src.match(/requestedTo[\s\S]*?maybeSingle\(\)/);
   assert.ok(block, "thieu nhanh resolve ?to= ngoai danh sach peer mac dinh");
   assert.match(block[0], /\.eq\("school_id", profile\.school_id/,
     "extra peer phai CUNG TRUONG - khong mo rong cross-tenant");

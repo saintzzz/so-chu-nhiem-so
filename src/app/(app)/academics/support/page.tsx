@@ -12,6 +12,7 @@ import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -74,14 +75,14 @@ export default async function SupportPage({
       : (classes[0]?.id ?? "");
 
   const [{ data: subjectData, error: subjErr }, { data: studentData, error: stuErr }] = await Promise.all([
-    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
+    must(supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"), "subjects"),
     classId
-      ? supabase
+      ? must(supabase
           .from("students")
           .select("id,code,full_name")
           .eq("class_id", classId)
           .eq("status", "active")
-          .order("full_name")
+          .order("full_name"), "students")
       : Promise.resolve({ data: [], error: null }),
   ]);
   const subjects = (subjectData ?? []) as SubjectRow[];
@@ -108,11 +109,11 @@ export default async function SupportPage({
             .order("id")
             .range(f, t),
         ),
-        supabase
+        must(supabase
           .from("support_plans")
           .select("id,student_id,subject_id,status")
           .in("student_id", studentIds)
-          .neq("status", "cancelled"),
+          .neq("status", "cancelled"), "support_plans"),
       ])
     : [
         { rows: [] as GradeRow[], error: null, truncated: false },

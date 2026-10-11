@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { TimetableToolbar } from "@/components/schedule/timetable-toolbar";
 import { cn, PERIODS } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const WEEKDAYS = [2, 3, 4, 5, 6, 7] as const;
 
@@ -48,15 +49,15 @@ export default async function TimetablePage({
   const [{ data: classesRaw }, { data: ownClsRaw }, { data: taughtRaw }] =
     await Promise.all([
       allClassesQuery,
-      supabase
+      must(supabase
         .from("classes")
         .select("id,name")
         .eq("gvcn_id", profile.id)
-        .order("name"),
-      supabase
+        .order("name"), "classes"),
+      must(supabase
         .from("timetable_entries")
         .select("class_id")
-        .eq("teacher_id", profile.id),
+        .eq("teacher_id", profile.id), "timetable_entries"),
     ]);
   const classes = (classesRaw ?? []) as ClassRow[];
   const ownClasses = (ownClsRaw ?? []) as ClassRow[];
@@ -87,15 +88,15 @@ export default async function TimetablePage({
 
   const { data: entriesRaw } =
     view === "class" && selectedId
-      ? await supabase
+      ? await must(supabase
           .from("timetable_entries")
           .select("id,class_id,subject_id,teacher_id,weekday,period,room")
-          .eq("class_id", selectedId)
+          .eq("class_id", selectedId), "timetable_entries")
       : view === "me"
-        ? await supabase
+        ? await must(supabase
             .from("timetable_entries")
             .select("id,class_id,subject_id,teacher_id,weekday,period,room")
-            .eq("teacher_id", profile.id)
+            .eq("teacher_id", profile.id), "timetable_entries")
         : { data: [] };
   const entries = (entriesRaw ?? []) as EntryRow[];
 
@@ -107,10 +108,10 @@ export default async function TimetablePage({
   ];
   const [{ data: subjectsRaw }, { data: teachersRaw }] = await Promise.all([
     subjectIds.length > 0
-      ? supabase.from("subjects").select("id,name").in("id", subjectIds)
+      ? must(supabase.from("subjects").select("id,name").in("id", subjectIds), "subjects")
       : Promise.resolve({ data: [] }),
     teacherIds.length > 0
-      ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+      ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
       : Promise.resolve({ data: [] }),
   ]);
   const className = new Map(classes.map((c) => [c.id, c.name]));
@@ -150,18 +151,18 @@ export default async function TimetablePage({
   if (isBgh) {
     const [{ data: allSubjects }, { data: allTeachers }, { data: everyEntry }] =
       await Promise.all([
-        supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"),
-        supabase
+        must(supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? "").order("name"), "subjects"),
+        must(supabase
           .from("profiles")
           .select("id,full_name")
           .or("role.in.(gvcn,gvbm,to_truong,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,bgh}")
           .eq("school_id", profile.school_id ?? "")
-          .order("full_name"),
-        supabase
+          .order("full_name"), "profiles"),
+        must(supabase
           .from("timetable_entries")
           .select("class_id,subject_id,teacher_id,weekday,period,room")
           .order("weekday")
-          .order("period"),
+          .order("period"), "timetable_entries"),
       ]);
     subjects = (allSubjects ?? []) as { id: string; name: string }[];
     teachers = ((allTeachers ?? []) as { id: string; full_name: string }[]).map(

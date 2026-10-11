@@ -5,6 +5,7 @@ import { FollowupList } from "@/components/safety/followup-list";
 import type { ClassRoom, Incident, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -36,12 +37,12 @@ export default async function SafetyFollowupPage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: incData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("incidents")
         .select("*")
         .in("class_id", classIds)
         .in("status", ["new", "following"])
-        .order("occurred_at", { ascending: false })
+        .order("occurred_at", { ascending: false }), "incidents")
     : { data: [] };
   const incidents = (incData ?? []) as Incident[];
 
@@ -51,10 +52,10 @@ export default async function SafetyFollowupPage() {
     ),
   ];
   const { data: studentData } = studentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name")
-        .in("id", studentIds)
+        .in("id", studentIds), "students")
     : { data: [] };
   const studentName = new Map(
     ((studentData ?? []) as Pick<Student, "id" | "full_name">[]).map((s) => [

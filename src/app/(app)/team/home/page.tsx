@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { Users, CalendarDays, ClipboardCheck } from "lucide-react";
 import type { Profile } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 interface Department {
   id: string;
@@ -29,18 +30,18 @@ export default async function TeamHomePage() {
   const profile = await requireRoles(["to_truong"]);
   const supabase = await createClient();
 
-  const { data: deptRow } = await supabase
+  const { data: deptRow } = await must(supabase
     .from("departments")
     .select("id,name,school_id,head_id")
     .eq("id", profile.department_id ?? "")
-    .single();
+    .maybeSingle(), "departments");
   const dept = deptRow as Department | null;
 
-  const { data: memberRows } = await supabase
+  const { data: memberRows } = await must(supabase
     .from("profiles")
     .select("id,full_name,role")
     .eq("department_id", profile.department_id ?? "")
-    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}");
+    .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"), "profiles");
   const members = (memberRows ?? []) as Pick<
     Profile,
     "id" | "full_name" | "role"
@@ -50,29 +51,35 @@ export default async function TeamHomePage() {
     ? (members.find((m) => m.id === dept.head_id)?.full_name ??
       (
         ((
-          await supabase
+          await must(supabase
             .from("profiles")
             .select("full_name")
             .eq("id", dept.head_id)
-            .single()
+            .maybeSingle(), "profiles")
         ).data ?? null) as Pick<Profile, "full_name"> | null
       )?.full_name ??
       "-")
     : "-";
 
   const [meetingsRes, pendingRes] = await Promise.all([
-    supabase
-      .from("dept_meetings")
-      .select("id,department_id,title,meeting_date,content")
-      .eq("department_id", profile.department_id ?? "")
-      .order("meeting_date", { ascending: false })
-      .limit(5),
+    must(
+      supabase
+        .from("dept_meetings")
+        .select("id,department_id,title,meeting_date,content")
+        .eq("department_id", profile.department_id ?? "")
+        .order("meeting_date", { ascending: false })
+        .limit(5),
+      "dept_meetings",
+    ),
     memberIds.length
-      ? supabase
-          .from("teacher_assessments")
-          .select("id", { count: "exact", head: true })
-          .in("teacher_id", memberIds)
-          .eq("status", "submitted")
+      ? must(
+          supabase
+            .from("teacher_assessments")
+            .select("id", { count: "exact", head: true })
+            .in("teacher_id", memberIds)
+            .eq("status", "submitted"),
+          "teacher_assessments",
+        )
       : Promise.resolve({ count: 0 }),
   ]);
 

@@ -39,11 +39,20 @@ export function useAiJob() {
     let stopped = false;
 
     const timer = setInterval(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ai_jobs")
         .select("status,result")
         .eq("id", job.jobId)
         .single();
+      // r24: PGRST116 = job khong con ton tai -> dung poll, bao failed thay
+      // vi quay vong vo han. Loi transient khac thi tick sau tu retry.
+      if (error?.code === "PGRST116") {
+        setFailed(true);
+        stopped = true;
+        clearInterval(timer);
+        return;
+      }
+      if (error) console.error("[use-ai-job] poll:", error.message);
       const row = data as { status?: string; result?: unknown } | null;
       if (!row || stopped) return;
       if (row.status === "done") {

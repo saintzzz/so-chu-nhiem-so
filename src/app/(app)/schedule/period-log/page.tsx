@@ -1,6 +1,7 @@
 import { requireRoles } from "@/lib/auth";
 import { formatDateOnly, isoDateVN, todayVN } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ import type {
   PeriodEntry,
   PeriodLogState,
 } from "@/components/schedule/period-log-board";
+import { must } from "@/lib/supabase/must";
 
 
 
@@ -72,11 +74,11 @@ export default async function PeriodLogPage({
   const weekday = jsDay === 0 ? null : jsDay + 1;
 
   // GVCN xem toàn bộ tiết của lớp chủ nhiệm; GVBM xem các tiết mình dạy.
-  const { data: clsRaw } = await supabase
+  const { data: clsRaw } = await must(supabase
     .from("classes")
     .select("id,name")
     .eq("gvcn_id", profile.id)
-    .order("name");
+    .order("name"), "classes");
   const myClasses = (clsRaw ?? []) as ClassRow[];
   const myClassIds = myClasses.map((c) => c.id);
 
@@ -186,32 +188,44 @@ export default async function PeriodLogPage({
       ),
     ];
 
-    const [{ data: classesData, error: clsErr }, { data: studentsRaw, error: stuErr }, { data: subjectsRaw, error: subjErr }, { data: teachersRaw, error: tchErr }] =
+    // r24 H: roster + absences phai phan trang - PostgREST cat ngam ~1000
+    // rows khong error, danh sach thieu ma luu se xoa mat absences.
+    const stuEmpty = { rows: [], error: null, truncated: false };
+    const [{ data: classesData, error: clsErr }, stuInit, { data: subjectsRaw, error: subjErr }, { data: teachersRaw, error: tchErr }] =
       await Promise.all([
         classIds.length > 0
-          ? supabase.from("classes").select("id,name").in("id", classIds)
+          ? must(supabase.from("classes").select("id,name").in("id", classIds), "classes")
           : Promise.resolve({ data: [], error: null }),
         classIds.length > 0
-          ? supabase
-              .from("students")
-              .select("id,class_id,full_name,code")
-              .in("class_id", classIds)
-              .eq("status", "active")
-              .order("full_name", { ascending: true })
-          : Promise.resolve({ data: [], error: null }),
+          ? fetchAllRows<{
+              id: string;
+              class_id: string;
+              full_name: string;
+              code: string;
+            }>((f, t) =>
+              supabase
+                .from("students")
+                .select("id,class_id,full_name,code")
+                .in("class_id", classIds)
+                .eq("status", "active")
+                .order("id")
+                .range(f, t),
+            )
+          : Promise.resolve(stuEmpty),
         subjectIds.length > 0
-          ? supabase.from("subjects").select("id,name").in("id", subjectIds)
+          ? must(supabase.from("subjects").select("id,name").in("id", subjectIds), "subjects")
           : Promise.resolve({ data: [], error: null }),
         teacherIds.length > 0
-          ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+          ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
           : Promise.resolve({ data: [], error: null }),
       ]);
-    if (clsErr ?? stuErr ?? subjErr ?? tchErr) {
-      const e = clsErr ?? stuErr ?? subjErr ?? tchErr;
-      console.error("[period-log] lookup:", e?.message);
+    if (clsErr ?? subjErr ?? tchErr ?? stuInit.error ?? stuInit.truncated) {
+      const e = clsErr ?? subjErr ?? tchErr;
+      console.error("[period-log] lookup:", e?.message ?? "students truncated/error");
       loadError ??=
         "Không tải được danh sách lớp/học sinh - vui lòng tải lại trang.";
     }
+    const studentsRaw = stuInit.rows;
 
     filterClasses = (classesData ?? []) as ClassRow[];
     const validFilter =
@@ -291,19 +305,24 @@ export default async function PeriodLogPage({
     const logRows = (logsRaw ?? []) as LogRow[];
 
     const logIds = logRows.map((l) => l.id);
-    const { data: absRaw, error: absErr } =
+    const absRes =
       logIds.length > 0
-        ? await supabase
-            .from("period_absences")
-            .select("period_log_id,student_id,status")
-            .in("period_log_id", logIds)
-        : { data: [], error: null };
-    if (absErr) {
-      console.error("[period-log] absences:", absErr.message);
+        ? await fetchAllRows<AbsenceRow>((f, t) =>
+            supabase
+              .from("period_absences")
+              .select("period_log_id,student_id,status")
+              .in("period_log_id", logIds)
+              .order("period_log_id")
+              .order("student_id")
+              .range(f, t),
+          )
+        : { rows: [] as AbsenceRow[], error: null, truncated: false };
+    if (absRes.error || absRes.truncated) {
+      console.error("[period-log] absences:", absRes.error ?? "truncated");
       loadError ??=
         "Không tải được danh sách vắng - vui lòng tải lại trang trước khi ghi.";
     }
-    const absRows = (absRaw ?? []) as AbsenceRow[];
+    const absRows = absRes.rows;
     const absByLog = new Map<string, { student_id: string; status: string }[]>();
     for (const a of absRows) {
       const arr = absByLog.get(a.period_log_id) ?? [];

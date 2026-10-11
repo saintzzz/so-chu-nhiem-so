@@ -8,6 +8,7 @@ import { MaterialActions } from "@/components/tvc/material-actions";
 import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { ArrowLeft } from "lucide-react";
 import { effectiveRoles, hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,11 @@ export default async function StudioMaterialPage({
   await requireFeature("studio");
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("tvc_materials")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle(), "tvc_materials");
   const material = data as Material | null;
   if (!material) notFound();
   // RLS da loc: chi doc duoc cua minh / hoc lieu xuat ban / cung truong (staff)
@@ -32,18 +33,18 @@ export default async function StudioMaterialPage({
   const isReviewer = hasAnyRole(profile, ["to_truong", "bgh", "admin"]);
   const { data: revs } =
     material.author_id === profile.id || isReviewer
-      ? await supabase
+      ? await must(supabase
           .from("tvc_reviews")
           .select("layer, status, notes, created_at")
           .eq("material_id", id)
-          .order("created_at")
+          .order("created_at"), "tvc_reviews")
       : { data: [] };
 
   const { data: stds } = material.standard_ids?.length
-    ? await supabase
+    ? await must(supabase
         .from("tvc_curriculum_standards")
         .select("id, code, description")
-        .in("id", material.standard_ids)
+        .in("id", material.standard_ids), "tvc_curriculum_standards")
     : { data: [] };
 
   return (

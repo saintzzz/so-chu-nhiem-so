@@ -2,6 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { MeetingForm } from "@/components/team/meeting-form";
+import { must } from "@/lib/supabase/must";
 
 interface DeptMeeting {
   id: string;
@@ -19,11 +20,11 @@ export default async function TeamMeetingsPage() {
   const profile = await requireRoles(["to_truong"]);
   const supabase = await createClient();
 
-  const { data: rows } = await supabase
+  const { data: rows } = await must(supabase
     .from("dept_meetings")
     .select("id,department_id,title,meeting_date,content")
     .eq("department_id", profile.department_id ?? "")
-    .order("meeting_date", { ascending: false });
+    .order("meeting_date", { ascending: false }), "dept_meetings");
   const meetings = (rows ?? []) as DeptMeeting[];
 
   return (

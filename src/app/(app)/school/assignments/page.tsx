@@ -4,6 +4,7 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { AssignmentsBoard } from "@/components/school/assignments-board";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -39,21 +40,21 @@ export default async function AssignmentsPage() {
   // the vuot PostgREST cap -> fetchAllRows. Truncate teacher_subjects =
   // editor thieu lien ket -> Luu se xoa cac mon khong duoc tai.
   const [classRes, teacherRes, tsRes, subjectRes, ttRes] = await Promise.all([
-    supabase
+    must(supabase
       .from("classes")
       .select("id,name,grade,gvcn_id")
       .eq("school_id", profile.school_id ?? "")
       .eq("status", "active")
       .order("grade")
-      .order("name"),
-    supabase
+      .order("name"), "classes"),
+    must(supabase
       .from("profiles")
       .select("id,full_name,role,concurrent_roles")
       .eq("school_id", profile.school_id ?? "")
       .or(
         "role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}",
       )
-      .order("full_name"),
+      .order("full_name"), "profiles"),
     fetchAllRows<TeacherSubjectRow>((f, t) =>
       supabase
         .from("teacher_subjects")
@@ -62,11 +63,11 @@ export default async function AssignmentsPage() {
         .order("subject_id")
         .range(f, t),
     ),
-    supabase
+    must(supabase
       .from("subjects")
       .select("id,name")
       .eq("school_id", profile.school_id ?? "")
-      .order("name"),
+      .order("name"), "subjects"),
     fetchAllRows<TimetableRow>((f, t) =>
       supabase
         .from("timetable_entries")

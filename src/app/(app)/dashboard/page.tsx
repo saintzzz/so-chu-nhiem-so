@@ -26,6 +26,7 @@ import {
 } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { gradeYearOr } from "@/lib/grades-year";
+import { must, mustRows } from "@/lib/supabase/must";
 
 
 
@@ -105,24 +106,24 @@ export default async function DashboardPage({
 
   const [{ data: clsRaw }, { data: schoolRaw }, { data: taughtRaw }] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("classes")
         .select("id,name,academic_year_id")
         .eq("gvcn_id", profile.id)
-        .order("name"),
+        .order("name"), "classes"),
       profile.school_id
-        ? supabase
+        ? must(supabase
             .from("schools")
             .select("name")
             .eq("id", profile.school_id)
-            .maybeSingle()
+            .maybeSingle(), "schools")
         : Promise.resolve({ data: null }),
       // CR-042: embed ten lop qua FK timetable_entries.class_id -> classes
       // de bo wave truy van classes.in(taughtIds) rieng.
-      supabase
+      must(supabase
         .from("timetable_entries")
         .select("class_id, classes(id,name,academic_year_id)")
-        .eq("teacher_id", profile.id),
+        .eq("teacher_id", profile.id), "timetable_entries"),
     ]);
   const homeroomClasses = (clsRaw ?? []) as ClassRow[];
   const homeroomIds = new Set(homeroomClasses.map((c) => c.id));
@@ -161,10 +162,10 @@ export default async function DashboardPage({
   const isHomeroomClass = classId !== null && homeroomIds.has(classId);
 
   const { data: studentsRaw } = classId
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,dob,address,gender")
-        .eq("class_id", classId)
+        .eq("class_id", classId), "students")
     : { data: [] };
   const students = (studentsRaw ?? []) as StudentRow[];
   const studentIds = students.map((s) => s.id);
@@ -211,20 +212,20 @@ export default async function DashboardPage({
               .order("id")
               .range(f, t);
           },
-        ).then((r) => ({ data: r.rows }))
+        ).then((r) => ({ data: mustRows(r, "attendance_records").rows }))
       : Promise.resolve({ data: [] }),
     hasStudents && !rangeMode
-      ? supabase
+      ? must(supabase
           .from("attendance_records")
           .select("id", { count: "exact", head: true })
-          .in("student_id", studentIds)
+          .in("student_id", studentIds), "attendance_records")
       : Promise.resolve({ count: 0 }),
     hasStudents && !rangeMode
-      ? supabase
+      ? must(supabase
           .from("attendance_records")
           .select("id", { count: "exact", head: true })
           .in("status", ["present", "late"])
-          .in("student_id", studentIds)
+          .in("student_id", studentIds), "attendance_records")
       : Promise.resolve({ count: 0 }),
     hasStudents
       ? fetchAllRows<{
@@ -242,7 +243,7 @@ export default async function DashboardPage({
             .or(gradeYearOr(classId ? yearOfClass.get(classId) : null))
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows }))
+        ).then((r) => ({ data: mustRows(r, "grades").rows }))
       : Promise.resolve({ data: [] }),
     hasStudents
       ? fetchAllRows<{ student_id: string }>((f, t) =>
@@ -254,53 +255,53 @@ export default async function DashboardPage({
             .in("student_id", studentIds)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows }))
+        ).then((r) => ({ data: mustRows(r, "conduct_records").rows }))
       : Promise.resolve({ data: [] }),
     hasStudents
-      ? supabase
+      ? must(supabase
           .from("counseling_cases")
           .select("id")
           .in("student_id", studentIds)
-          .neq("status", "resolved")
+          .neq("status", "resolved"), "counseling_cases")
       : Promise.resolve({ data: [] }),
-    supabase
+    must(supabase
       .from("notifications")
       .select("id", { count: "exact", head: true })
       .eq("profile_id", profile.id)
-      .is("read_at", null),
-    supabase
+      .is("read_at", null), "notifications"),
+    must(supabase
       .from("tasks")
       .select("id,title,due_date,status,class_id")
       .in("status", ["pending", "approved"])
       .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(20),
+      .limit(20), "tasks"),
     classId
-      ? supabase
+      ? must(supabase
           .from("incidents")
           .select("id,type,severity,status,occurred_at")
           .eq("class_id", classId)
-          .in("status", ["new", "following"])
+          .in("status", ["new", "following"]), "incidents")
       : Promise.resolve({ data: [] }),
-    supabase
+    must(supabase
       .from("emulation_scores")
       .select("class_id,score")
-      .eq("period", EMULATION_PERIOD),
-    supabase
+      .eq("period", EMULATION_PERIOD), "emulation_scores"),
+    must(supabase
       .from("notifications")
       .select("id,type,title,body,created_at")
       .eq("profile_id", profile.id)
       .order("created_at", { ascending: false })
-      .limit(6),
+      .limit(6), "notifications"),
     classId
-      ? supabase
+      ? must(supabase
           .from("announcements")
           .select("id,title,content,created_at")
           .eq("class_id", classId)
           .order("created_at", { ascending: false })
-          .limit(4)
+          .limit(4), "announcements")
       : Promise.resolve({ data: [] }),
     classId
-      ? (rangeMode || dateParam
+      ? must((rangeMode || dateParam
           ? supabase
               .from("daily_reports")
               .select("id,status,date")
@@ -310,14 +311,14 @@ export default async function DashboardPage({
               .from("daily_reports")
               .select("id,status,date")
               .eq("class_id", classId)
-              .gte("date", since30))
+              .gte("date", since30)), "daily_reports")
       : Promise.resolve({ data: [] }),
     hasStudents
-      ? supabase
+      ? must(supabase
           .from("conduct_evaluations")
           .select("student_id,comment,rating")
           .in("student_id", studentIds)
-          .eq("term", "hk1")
+          .eq("term", "hk1"), "conduct_evaluations")
       : Promise.resolve({ data: [] }),
   ]);
   // attDate = ngay gan nhat co diem danh (rows da order date desc)

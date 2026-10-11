@@ -6,6 +6,7 @@ import { ScoringGrid } from "@/components/emulation/scoring-grid";
 import type { ScoreCell } from "@/components/emulation/scoring-grid";
 import { currentPeriodVN } from "@/lib/utils";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface CriterionRow {
   id: string;
@@ -36,15 +37,15 @@ export default async function EmulationScoringPage() {
   // qua fetchAllRows (order id on dinh); loi/truncated -> notice.
   const [{ data: critRaw, error: critErr }, { data: classesRaw, error: clsErr }, scoresRes, { data: ownRaw }] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("emulation_criteria")
         .select("id,name,max_score,category")
-        .order("name", { ascending: true }),
-      supabase
+        .order("name", { ascending: true }), "emulation_criteria"),
+      must(supabase
         .from("classes")
         .select("id,name")
         .eq("status", "active")
-        .order("name", { ascending: true }),
+        .order("name", { ascending: true }), "classes"),
       fetchAllRows<ScoreRow>((f, t) =>
         supabase
           .from("emulation_scores")
@@ -55,7 +56,7 @@ export default async function EmulationScoringPage() {
       ),
       // GVCN chỉ chấm lớp chủ nhiệm của mình; BGH chấm tất cả.
       hasRole(profile, "gvcn")
-        ? supabase.from("classes").select("id").eq("gvcn_id", profile.id)
+        ? must(supabase.from("classes").select("id").eq("gvcn_id", profile.id), "classes")
         : Promise.resolve({ data: [] }),
     ]);
 

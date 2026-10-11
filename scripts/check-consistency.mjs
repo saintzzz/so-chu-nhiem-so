@@ -380,6 +380,20 @@ try {
   check("code:nav-access", 1, out || "check-nav-access.mjs loi");
 }
 
+// CR-049: reliability gate - cac class loi external review tim lai nhieu
+// round (silent read -> data rong gia, truncation, action-result loss,
+// transition overwrite) duoc scan AST toan repo. Static, khong can DB.
+try {
+  execFileSync("node", [resolve(root, "scripts/check-reliability.mjs")], {
+    stdio: "pipe",
+  });
+  check("code:reliability", 0);
+} catch (e) {
+  const out = String(e.stdout ?? "").split("\n")
+    .filter((l) => l.includes("FAIL")).slice(0, 8).join(" | ");
+  check("code:reliability", 1, out || "check-reliability.mjs loi");
+}
+
 console.log("\n" + (failures.length
   ? `${failures.length} check(s) FAILED`
   : "All consistency checks passed"));

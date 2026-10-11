@@ -552,3 +552,41 @@ Raw report: `docs/reviews/codex-r23-report.txt`. HIGH o schedule/period-log (cun
 - `cr049-pii` 76 pass | `r2-regression` 140 pass | `check-consistency` PASS
 - `npm run build` PASS (126 pages)
 - Migration moi: `20261207_cr049_r23_fixes.sql` (bang activity_announcements + RLS, da apply prod)
+
+---
+
+## Round 24 (Codex Cloud @ f8ba665) - NOT-CLEAN: 11 findings (3H/7M/1L)
+
+HIGH tro lai qua thiet ke marker r23: claim/fulfill/email lam bang read-decide-write phia client tren RLS write rong -> race giua nhieu session + RLS qua rong. Fix khong theo tung diem ma chuyen toan bo coordination vao Postgres RPC (transaction + conditional update + row lock).
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1-3 | H | marker `activity_announcements`: RLS cho phep staff write rong; claim/fulfill bang read->quyet dinh->write trong TS => 2 session cung claim, email trung, marker ghi de lan nhau | **Fixed** - RLS chi con SELECT; moi ghi qua SECURITY DEFINER RPC `scn_announce_claim`/`scn_announce_fulfill`/`scn_announce_email_claim`/`scn_announce_email_complete` (search_path co dinh, grant chi authenticated, authz qua `scn_can_announce_activity`, UPDATE ... WHERE claim_owner + lease, FOR UPDATE) | migration 20261208_cr049_r24_fixes.sql + activities/actions.ts |
+| 4 | M | activity chua approved van co the announce | **Fixed** - early check `status = 'approved'` truoc moi claim | activities/actions.ts |
+| 5 | M | email-claim retry: owner bi chan boi lease cua chinh minh sau khi fulfill loi | **Fixed** - dieu kien takeover cho phep cung owner reclaim ngay; owner khac phai cho lease het | migration RPC |
+| 6 | H | period-log: fetchAllRows bi cat ngam (truncated) van mo editor -> luu de mat absences | **Fixed** - students + absences qua fetchAllRows; error/truncated -> loadError chan editor | period-log/page.tsx |
+| 7 | M | support board: PlanActions van active khi source read loi; transition khong CAS | **Fixed** - `disabled` prop xuyen page->board->PlanActions; moi update CAS `.eq("status")` + verify returned rows | plan-actions.tsx + support-plan-board.tsx |
+| 8-9 | M | signoff/lock-records: 8 transition `.update().eq("id")` khong dieu kien -> tab cu ghi de trang thai moi | **Fixed** - CAS `.eq("status", expected)` + `.select()` verify row; bulk chi tac dong row thuc su update duoc | signoff-client.tsx + lock-records-client.tsx |
+| 10 | M | competency/counseling/signoff/lock-records/dept-schools: source error -> form/table rong gia | **Fixed** - must() + LoadErrorNotice xuyen cac page do | 5 page files |
+| 11 | L | announce message khong phan biet email skipped/sent/partial/pending | **Fixed** - marker re-read sau complete + phan biet trang thai delivery | activities/actions.ts |
+
+### Root-cause remediation (khong fix theo site - dong ca class)
+
+Sau r24, danh gia lai 12 round: findings khong phai bug moi ma lap lai 4 class loi nam rai tren ~150 file; review breadth-first nen moi round gap site moi. Thay vi cho Codex tim tiep, viet scanner AST repo-wide cho tung class, fix toan bo instance, va giu scanner lam gate vinh vien trong `check-consistency.mjs`.
+
+| Class | Pattern | Ket qua sweep |
+|-------|---------|---------------|
+| unchecked-read | `.from()/.rpc()` awaited result bo kenh error -> DB loi render data rong gia | 143 site -> 0. `must()`/`mustRows()` helpers (throw -> route-group error.tsx) swept qua ~90 server files bang codemod; ~25 action/lookup sites tra error message dung; poll hooks dung khi loi dai dien |
+| unbounded-read | SELECT tren bang >1000 rows khong phan trang -> PostgREST cat ngam | dept/users profiles + 2 YCCD standards query -> `fetchAllRows`; scanner whitelist cac idiom bounded (.in id-list, .eq *_id, .limit/.range/single, var bounded sau) |
+| action-result-loss | `await action()` bo `{error}` | 3 nut review-state trong question-bank hien loi; scanner check `"error" in r`, ternary-arm, `return r` |
+| cas-transition | `.update({status}).eq("id")` khong predicate -> stale tab ghi de | 9 site CAS: appointments/early_warnings/teacher_assessments/digest_outbox/activity_attendance/exams/tasks/suggestions/ai_jobs - `.eq/.in("status", expected)` + `.select()` verify |
+
+Gate moi: `scripts/check-reliability.mjs` - 4 check (unchecked-read, unbounded-read, action-result-loss, cas-transition), goi tu `check-consistency.mjs` (`code:reliability`), exit non-zero khi vi pham. Bat ky site moi tao ra cung class se FAIL gate ngay - external review khong con co hoi tim lai.
+
+### Gates
+
+- `npx tsc --noEmit` PASS | eslint 0 errors (136 warnings pre-existing)
+- `cr049-pii` 76 pass | `r2-regression` 140 pass | `r2-db` pass (1 skip)
+- `check-reliability` 4/4 PASS | `check-consistency` PASS (bao gom code:reliability)
+- `npm run build` PASS (126 pages)
+- Migration: `20261208_cr049_r24_fixes.sql` - cot claim tren activity_announcements + RLS SELECT-only + 4 SECURITY DEFINER RPC (da apply prod, verify grants)

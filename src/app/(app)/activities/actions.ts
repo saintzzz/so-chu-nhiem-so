@@ -102,7 +102,7 @@ export async function announceActivity(
 }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
-  const { supabase, user, profile } = await getContext();
+  const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
   const { data: actData, error: actErr } = await supabase
@@ -118,6 +118,11 @@ export async function announceActivity(
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
   if (!activity) return { error: "Không tìm thấy hoạt động." };
+  // r24 M: goi truc tiep action tren draft/pending van tao announcement +
+  // email - chan som o day, RPC claim kiem lai lan nua server-side.
+  if (activity.status !== "approved") {
+    return { error: "Chỉ thông báo hoạt động đã được duyệt." };
+  }
 
   // r22 M: doc DU nguon truoc moi side effect - announcement/email la
   // one-shot, retry sau partial commit se insert + gui email lan nua.
@@ -153,109 +158,55 @@ export async function announceActivity(
     activity.description ??
     `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`;
 
-  // r23 M: marker nguyen tu theo activity_id (PK) thay cho dedupe
-  // (sender,class,title) - title trung cua hoat dong KHAC khong chan nham,
-  // va email_done tach trang thai delivery de retry gui lai email that
-  // bai ma khong lap announcement.
-  const fetchMarker = async () => {
-    const res = await supabase
-      .from("activity_announcements")
-      .select(
-        "activity_id,announcement_id,email_done,created_at,emailed,email_failed,email_error",
-      )
-      .eq("activity_id", activityId)
-      .maybeSingle();
-    return { data: res.data, error: res.error };
-  };
-  let markerRes = await fetchMarker();
-  if (markerRes.error) {
-    console.error("[activity-announce] marker read:", markerRes.error.message);
+  // r24: moi coordination marker di qua RPC security definer - claim/link/
+  // email-claim deu atomic trong DB. RLS marker chi con SELECT nen khong ai
+  // ghi truc tiep; quyen announce duoc kiem lai server-side (gvcn lop hoac
+  // bgh truong, activity phai approved).
+  const { data: claimRows, error: claimErr } = await supabase.rpc(
+    "scn_announce_claim",
+    { p_activity_id: activityId },
+  );
+  if (claimErr) {
+    console.error("[activity-announce] claim:", claimErr.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
-  let marker = markerRes.data;
-  let claimedByUs = false;
-  if (!marker) {
-    // Atomic claim - PK conflict = phiên khác đã claim truoc.
-    const { error: claimErr } = await supabase
-      .from("activity_announcements")
-      .insert({
-        activity_id: activityId,
-        school_id: profile?.school_id ?? null,
-      });
-    if (claimErr && claimErr.code !== "23505") {
-      console.error("[activity-announce] marker claim:", claimErr.message);
-      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
-    }
-    claimedByUs = !claimErr;
-    markerRes = await fetchMarker();
-    if (markerRes.error) {
-      console.error(
-        "[activity-announce] marker re-read:",
-        markerRes.error.message,
-      );
-      return { error: "Lỗi hệ thống. Vui lòng thử lại." };
-    }
-    marker = markerRes.data;
-  }
-  if (!marker) {
-    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
-  }
-  // Chi claimer (hoac marker claim bi bo roi > 60s) moi duoc fulfill
-  // announcement - tranh 2 request cung insert khi marker chua link.
-  const markerAge = Date.now() - new Date(marker.created_at).getTime();
-  const canFulfill = claimedByUs || markerAge > 60_000;
-  if (!marker.announcement_id && !canFulfill) {
+  const claim = (claimRows ?? [])[0] as
+    | {
+        state: string;
+        announcement_id: string | null;
+        email_done: boolean;
+        emailed: number;
+        email_failed: number;
+        email_error: string | null;
+        email_skipped: boolean;
+      }
+    | undefined;
+  if (!claim) return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  if (claim.state === "not-found")
+    return { error: "Không tìm thấy hoạt động." };
+  if (claim.state === "forbidden")
+    return { error: "Bạn không có quyền thông báo hoạt động này." };
+  if (claim.state === "not-approved")
+    return { error: "Chỉ thông báo hoạt động đã được duyệt." };
+  if (claim.state === "pending")
     return {
       error:
         "Thông báo đang được tạo ở một phiên khác - vui lòng thử lại sau.",
     };
-  }
 
-  if (!marker.announcement_id) {
-    // Marker vua claim hoac con sot tu lan insert announcement that bai.
-    // Lookup announcement cu cung tieu chi (sender,class,title) chi de
-    // TU PHUC HOI marker bi ket - khong dung lam dedupe chinh.
-    const { data: orphan } = await supabase
-      .from("announcements")
-      .select("id")
-      .eq("sender_id", user.id)
-      .eq("class_id", activity.class_id)
-      .eq("title", annTitle)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    let annId = orphan?.[0]?.id as string | undefined;
-    if (!annId) {
-      const { data: annRow, error: annError } = await supabase
-        .from("announcements")
-        .insert({
-          sender_id: user.id,
-          school_id: profile?.school_id ?? null,
-          class_id: activity.class_id,
-          student_id: null,
-          title: annTitle,
-          content: annContent,
-        })
-        .select("id")
-        .single();
-      if (annError) {
-        console.error("[activity-announce] insert failed:", annError.message);
-        return { error: "Không lưu được thông báo. Vui lòng thử lại." };
-      }
-      annId = annRow?.id as string | undefined;
-    }
-    const { error: linkErr } = await supabase
-      .from("activity_announcements")
-      .update({ announcement_id: annId ?? null })
-      .eq("activity_id", activityId);
-    if (linkErr) {
-      console.error("[activity-announce] marker link:", linkErr.message);
+  if (!claim.announcement_id) {
+    // claim state = 'claimed': tao announcement + link trong 1 transaction
+    // (RPC) - that bai thi rollback ca hai, khong sinh announcement mo coi.
+    const { error: fulErr } = await supabase.rpc("scn_announce_fulfill", {
+      p_activity_id: activityId,
+      p_title: annTitle,
+      p_content: annContent,
+    });
+    if (fulErr) {
+      console.error("[activity-announce] fulfill:", fulErr.message);
       revalidatePath("/activities/announce");
-      return {
-        error:
-          "Đã lưu thông báo nhưng không ghi được trạng thái gửi - vui lòng báo quản trị viên, tránh bấm lại để không tạo thông báo trùng.",
-      };
+      return { error: "Không lưu được thông báo. Vui lòng thử lại." };
     }
-    marker.announcement_id = annId ?? null;
   }
 
   let mail: {
@@ -263,59 +214,90 @@ export async function announceActivity(
     emailFailed: number;
     emailSkipped?: boolean;
     emailError?: string;
-  } = { emailed: 0, emailFailed: 0, emailSkipped: true };
-  if (marker && !marker.email_done) {
-    // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
-    // [So Chu Nhiem So] do helper dat).
-    mail = await emailClassParents(supabase, {
-      classId: activity.class_id,
-      studentId: null,
-      title: annTitle,
-      content: annContent,
-    });
-    // email_done khi da gui duoc >=1, chua cau hinh, hoac khong co nguoi
-    // nhan. Chi retry khi CHUA gui duoc gi (lookup/provider loi) - resend
-    // batch khi da gui duoc mot phan se spam nguoi nhan thanh cong.
-    const emailDone =
-      Boolean(mail.emailSkipped) ||
-      (mail.emailed ?? 0) > 0 ||
-      (!mail.emailError && (mail.emailFailed ?? 0) === 0);
-    const { error: mailStateErr } = await supabase
-      .from("activity_announcements")
-      .update({
-        email_done: emailDone,
-        emailed: mail.emailed ?? 0,
-        email_failed: mail.emailFailed ?? 0,
-        email_error: mail.emailError ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("activity_id", activityId);
-    if (mailStateErr) {
-      console.error("[activity-announce] mail state:", mailStateErr.message);
+  } = {
+    emailed: claim.emailed ?? 0,
+    emailFailed: claim.email_failed ?? 0,
+    emailSkipped: claim.email_skipped ?? false,
+    emailError: claim.email_error ?? undefined,
+  };
+  if (!claim.email_done) {
+    // Chi claim owner gui email - concurrent khong the gui trung batch.
+    const { data: emailClaimed, error: eClaimErr } = await supabase.rpc(
+      "scn_announce_email_claim",
+      { p_activity_id: activityId },
+    );
+    if (eClaimErr) {
+      console.error("[activity-announce] email claim:", eClaimErr.message);
       revalidatePath("/activities/announce");
       revalidatePath("/activities/attendance");
       return {
         error:
-          "Đã lưu thông báo và gửi email, nhưng không ghi được trạng thái gửi - vui lòng báo quản trị viên.",
-        emailed: mail.emailed,
-        emailFailed: mail.emailFailed,
-        emailSkipped: mail.emailSkipped,
-        emailError: mail.emailError,
+          "Đã lưu thông báo nhưng không xác định được trạng thái gửi email - bấm lại sẽ thử gửi nếu cần.",
+        emailError: "state-unknown",
       };
     }
-  } else if (marker) {
-    // Resume sau retry: doc lai ket qua email da luu de bao dung trang thai.
-    const { data: mailState } = await supabase
-      .from("activity_announcements")
-      .select("emailed,email_failed,email_error")
-      .eq("activity_id", activityId)
-      .maybeSingle();
-    if (mailState) {
+    if (emailClaimed === true) {
+      // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
+      // [So Chu Nhiem So] do helper dat).
+      mail = await emailClassParents(supabase, {
+        classId: activity.class_id,
+        studentId: null,
+        title: annTitle,
+        content: annContent,
+      });
+      // email_done khi da gui duoc >=1, chua cau hinh, hoac khong co nguoi
+      // nhan. Chi retry khi CHUA gui duoc gi (lookup/provider loi) - resend
+      // batch khi da gui duoc mot phan se spam nguoi nhan thanh cong.
+      const emailDone =
+        Boolean(mail.emailSkipped) ||
+        (mail.emailed ?? 0) > 0 ||
+        (!mail.emailError && (mail.emailFailed ?? 0) === 0);
+      const { data: done, error: doneErr } = await supabase.rpc(
+        "scn_announce_email_complete",
+        {
+          p_activity_id: activityId,
+          p_done: emailDone,
+          p_emailed: mail.emailed ?? 0,
+          p_failed: mail.emailFailed ?? 0,
+          p_error: mail.emailError ?? null,
+          p_skipped: mail.emailSkipped ?? false,
+        },
+      );
+      if (doneErr || done !== true) {
+        if (doneErr)
+          console.error("[activity-announce] mail state:", doneErr.message);
+        revalidatePath("/activities/announce");
+        revalidatePath("/activities/attendance");
+        return {
+          error:
+            "Đã lưu thông báo và gửi email, nhưng không ghi được trạng thái gửi - vui lòng báo quản trị viên.",
+          emailed: mail.emailed,
+          emailFailed: mail.emailFailed,
+          emailSkipped: mail.emailSkipped,
+          emailError: mail.emailError,
+        };
+      }
+    } else {
+      // Thua claim: phien khac dang gui hoac vua ghi xong trang thai -
+      // doc lai marker de bao ket qua that thay vi mac dinh (r24 L).
+      const { data: m2, error: m2Err } = await supabase
+        .from("activity_announcements")
+        .select("email_done,emailed,email_failed,email_error,email_skipped")
+        .eq("activity_id", activityId)
+        .maybeSingle();
+      if (m2Err) {
+        console.error("[activity-announce] marker reread:", m2Err.message);
+        return {
+          error:
+            "Đã lưu thông báo - không đọc được trạng thái email, bấm lại sẽ thử gửi nếu cần.",
+          emailError: "state-unknown",
+        };
+      }
       mail = {
-        emailed: mailState.emailed ?? 0,
-        emailFailed: mailState.email_failed ?? 0,
-        emailSkipped: false,
-        emailError: mailState.email_error ?? undefined,
+        emailed: m2?.emailed ?? 0,
+        emailFailed: m2?.email_failed ?? 0,
+        emailSkipped: m2?.email_skipped ?? false,
+        emailError: m2?.email_error ?? undefined,
       };
     }
   }

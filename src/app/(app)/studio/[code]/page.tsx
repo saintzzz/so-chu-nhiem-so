@@ -8,6 +8,7 @@ import { TOOL_MAP } from "@/lib/tvc/registry";
 import { toClientTool } from "@/lib/tvc/types";
 import { ToolRunner } from "@/components/tvc/tool-runner";
 import { ArrowLeft } from "lucide-react";
+import { must } from "@/lib/supabase/must";
 
 export default async function ToolPage({
   params,
@@ -26,16 +27,16 @@ export default async function ToolPage({
 
   // CR-032: mon phu trach cua GV -> preselect subject trong tool
   const supabase = await createClient();
-  const { data: ts } = await supabase
+  const { data: ts } = await must(supabase
     .from("teacher_subjects")
     .select("subject_id")
-    .eq("teacher_id", profile.id);
+    .eq("teacher_id", profile.id), "teacher_subjects");
   let defaultSubject: string | undefined;
   if (ts?.length) {
-    const { data: subs } = await supabase
+    const { data: subs } = await must(supabase
       .from("subjects")
       .select("name")
-      .in("id", ts.map((t) => t.subject_id));
+      .in("id", ts.map((t) => t.subject_id)), "subjects");
     for (const s of subs ?? []) {
       const c = subjectNameToCode(s.name);
       if (c) {
@@ -57,11 +58,11 @@ export default async function ToolPage({
       }
     | null = null;
   if (code === "DC-06" && sp.from) {
-    const { data: m } = await supabase
+    const { data: m } = await must(supabase
       .from("tvc_materials")
       .select("id, title, type, subject_code, grade, standard_ids")
       .eq("id", sp.from)
-      .single();
+      .maybeSingle(), "tvc_materials");
     if (m && m.type === "lesson_plan") {
       fromMaterial = {
         id: m.id,
@@ -78,19 +79,19 @@ export default async function ToolPage({
   //   V-01  -> V-02 : ?lit=<tvc_literature_texts.id> dien san van ban
   const initialValues: Record<string, string> = {};
   if (code === "DC-03" && sp.matrix) {
-    const { data: mx } = await supabase
+    const { data: mx } = await must(supabase
       .from("tvc_matrices")
       .select("id")
       .eq("id", sp.matrix)
-      .single();
+      .maybeSingle(), "tvc_matrices");
     if (mx) initialValues.matrix_id = mx.id;
   }
   if (code === "V-02" && sp.lit) {
-    const { data: lit } = await supabase
+    const { data: lit } = await must(supabase
       .from("tvc_literature_texts")
       .select("content")
       .eq("id", sp.lit)
-      .single();
+      .maybeSingle(), "tvc_literature_texts");
     if (lit?.content) initialValues.text = lit.content;
   }
 

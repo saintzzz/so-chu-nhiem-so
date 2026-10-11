@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { must } from "@/lib/supabase/must";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { formatDateTime } from "@/lib/utils";
@@ -44,7 +45,7 @@ export default async function DeptUsagePage() {
           .select("id,full_name,email,role,school_id,last_sign_in_at")
           .range(f, t),
     ),
-    supabase.from("schools").select("id,name"),
+    must(supabase.from("schools").select("id,name"), "schools"),
   ]);
   const profiles = profilesRes.rows;
   const schools = (schoolsRes.data ?? []) as Pick<School, "id" | "name">[];

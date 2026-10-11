@@ -7,6 +7,7 @@ import { ROLE_LABELS } from "@/lib/nav";
 import { effectiveRoles } from "@/lib/roles";
 import { ProfileForm } from "@/components/profile/profile-form";
 import type { Campus, ClassRoom, School } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function ProfilePage() {
   const profile = await requireRoles(STAFF_ROLES);
@@ -15,19 +16,19 @@ export default async function ProfilePage() {
   const [{ data: schoolRaw }, { data: campusRaw }, { data: deptRaw }, { data: classesRaw }, { data: tsRaw }] =
     await Promise.all([
       profile.school_id
-        ? supabase.from("schools").select("id,name").eq("id", profile.school_id).maybeSingle()
+        ? must(supabase.from("schools").select("id,name").eq("id", profile.school_id).maybeSingle(), "schools")
         : Promise.resolve({ data: null }),
       profile.campus_id
-        ? supabase.from("campuses").select("id,name").eq("id", profile.campus_id).maybeSingle()
+        ? must(supabase.from("campuses").select("id,name").eq("id", profile.campus_id).maybeSingle(), "campuses")
         : Promise.resolve({ data: null }),
       profile.department_id
-        ? supabase.from("departments").select("id,name").eq("id", profile.department_id).maybeSingle()
+        ? must(supabase.from("departments").select("id,name").eq("id", profile.department_id).maybeSingle(), "departments")
         : Promise.resolve({ data: null }),
-      supabase.from("classes").select("id,name").eq("gvcn_id", profile.id).order("name"),
-      supabase
+      must(supabase.from("classes").select("id,name").eq("gvcn_id", profile.id).order("name"), "classes"),
+      must(supabase
         .from("teacher_subjects")
         .select("subject_id,subjects(name)")
-        .eq("teacher_id", profile.id),
+        .eq("teacher_id", profile.id), "teacher_subjects"),
     ]);
 
   const school = (schoolRaw ?? null) as Pick<School, "id" | "name"> | null;

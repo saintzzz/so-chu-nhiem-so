@@ -55,11 +55,15 @@ export async function submitLessonPlan(input: {
   if (!contentText && !filePath)
     return { error: "Giáo án cần có nội dung hoặc file đính kèm." };
 
-  const { data: cls } = await supabase
+  const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,school_id")
     .eq("id", input.classId)
     .maybeSingle();
+  if (clsErr) {
+    console.error("[lesson-plans] class lookup:", clsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!cls || cls.school_id !== profile.school_id) {
     return { error: "Lớp không thuộc trường của bạn." };
   }
@@ -135,12 +139,16 @@ export async function lessonPlanFileUrl(
   }
   // Codex R6: existence check bang limit(1) - single-row query tra loi khi
   // 2 plan tro cung file_path, khoa file cua ca hai.
-  const { data: plans } = await supabase
+  const { data: plans, error: plansErr } = await supabase
     .from("lesson_plans")
     .select("id")
     .eq("school_id", profile.school_id ?? "")
     .eq("file_path", filePath)
     .limit(1);
+  if (plansErr) {
+    console.error("[lesson-plans] file lookup:", plansErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!plans?.length) return { error: "File không tồn tại." };
   const { data, error } = await supabase.storage
     .from("lesson-plans")

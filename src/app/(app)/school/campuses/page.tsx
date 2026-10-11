@@ -9,6 +9,7 @@ import { Tt15Form } from "@/components/school/tt15-form";
 import { formatDateTime } from "@/lib/utils";
 import type { Campus, ClassRoom, Tt15Evaluation } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 const KIND_LABEL: Record<Campus["kind"], string> = {
   main: "Cơ sở chính",
@@ -41,18 +42,18 @@ export default async function CampusesPage() {
 
   const [{ data: campusData }, { data: classData }, { data: evalData }] =
     await Promise.all([
-      supabase.from("campuses").select("*").eq("school_id", sid).order("kind"),
-      supabase
+      must(supabase.from("campuses").select("*").eq("school_id", sid).order("kind"), "campuses"),
+      must(supabase
         .from("classes")
         .select("*")
         .eq("school_id", sid)
         .eq("status", "active")
-        .order("name"),
-      supabase
+        .order("name"), "classes"),
+      must(supabase
         .from("tt15_evaluations")
         .select("*")
         .eq("school_id", sid)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false }), "tt15_evaluations"),
     ]);
   const campuses = (campusData ?? []) as Campus[];
   const classes = (classData ?? []) as ClassRoom[];

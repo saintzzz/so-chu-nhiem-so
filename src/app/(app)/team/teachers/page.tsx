@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import type { ClassRoom, Profile, Subject } from "@/types";
 import { compareVietnameseName } from "@/lib/utils";
+import { must } from "@/lib/supabase/must";
 
 interface TeacherSubject {
   teacher_id: string;
@@ -16,12 +17,12 @@ export default async function TeamTeachersPage() {
   const profile = await requireRoles(["to_truong"]);
   const supabase = await createClient();
 
-  const { data: teacherRows } = await supabase
+  const { data: teacherRows } = await must(supabase
     .from("profiles")
     .select("id,full_name,email,role")
     .eq("department_id", profile.department_id ?? "")
     .or("role.in.(gvcn,gvbm),concurrent_roles.ov.{gvcn,gvbm}")
-    .order("full_name");
+    .order("full_name"), "profiles");
   const teachers = (teacherRows ?? []) as Pick<
     Profile,
     "id" | "full_name" | "email" | "role"
@@ -31,14 +32,23 @@ export default async function TeamTeachersPage() {
 
   const [tsRes, subjectsRes, classesRes] = await Promise.all([
     teacherIds.length
-      ? supabase
-          .from("teacher_subjects")
-          .select("teacher_id,subject_id")
-          .in("teacher_id", teacherIds)
+      ? must(
+          supabase
+            .from("teacher_subjects")
+            .select("teacher_id,subject_id")
+            .in("teacher_id", teacherIds),
+          "teacher_subjects",
+        )
       : Promise.resolve({ data: [] }),
-    supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
+    must(
+      supabase.from("subjects").select("id,name").eq("school_id", profile.school_id ?? ""),
+      "subjects",
+    ),
     teacherIds.length
-      ? supabase.from("classes").select("id,name,gvcn_id").in("gvcn_id", teacherIds)
+      ? must(
+          supabase.from("classes").select("id,name,gvcn_id").in("gvcn_id", teacherIds),
+          "classes",
+        )
       : Promise.resolve({ data: [] }),
   ]);
 

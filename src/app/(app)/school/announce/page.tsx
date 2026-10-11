@@ -4,18 +4,19 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AnnounceForm } from "@/components/school/announce-form";
 import { fmtDateTimeVN } from "@/lib/utils";
+import { must } from "@/lib/supabase/must";
 
 export default async function SchoolAnnouncePage() {
   const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("announcements")
     .select("id,title,content,created_at,sender_id")
     .eq("school_id", profile.school_id ?? "")
     .is("class_id", null)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(30), "announcements");
   const items = (data ?? []) as {
     id: string;
     title: string;
@@ -25,10 +26,10 @@ export default async function SchoolAnnouncePage() {
   }[];
   const senderIds = [...new Set(items.map((a) => a.sender_id))];
   const { data: senders } = senderIds.length
-    ? await supabase
+    ? await must(supabase
         .from("profiles")
         .select("id,full_name")
-        .in("id", senderIds)
+        .in("id", senderIds), "profiles")
     : { data: [] };
   const senderName = new Map(
     ((senders ?? []) as { id: string; full_name: string }[]).map((p) => [

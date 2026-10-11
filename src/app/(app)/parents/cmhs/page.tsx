@@ -3,6 +3,7 @@ import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { CmhsBoard } from "@/components/parents/cmhs-board";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -48,10 +49,10 @@ export default async function CmhsPage({
 
   // parents of students in the selected class
   const { data: parentData } = classId
-    ? await supabase
+    ? await must(supabase
         .from("parent_students")
         .select("parent_id, students!inner(class_id), parents!inner(id,full_name,phone)")
-        .eq("students.class_id", classId)
+        .eq("students.class_id", classId), "parent_students")
     : { data: [] };
   const parents = ((parentData ?? []) as unknown as {
     parent_id: string;
@@ -64,10 +65,10 @@ export default async function CmhsPage({
   })) as ParentRow[];
 
   const { data: memberData } = classId
-    ? await supabase
+    ? await must(supabase
         .from("cmhs_members")
         .select("id,class_id,parent_id,role,note")
-        .eq("class_id", classId)
+        .eq("class_id", classId), "cmhs_members")
     : { data: [] };
   const members = (memberData ?? []) as MemberRow[];
 

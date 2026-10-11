@@ -205,6 +205,7 @@ export function SupportPlanBoard({
                           planId={r.planId}
                           status={r.planStatus as PlanStatus}
                           meId={meId}
+                          disabled={disabled}
                         />
                       )
                     )}

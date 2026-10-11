@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { ConductRecordForm } from "@/components/conduct/record-form";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -67,24 +68,24 @@ export default async function ConductRecordsPage({
       : (classes[0]?.id ?? "");
 
   const { data: studentData } = classId
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,code,full_name")
         .eq("class_id", classId)
         .eq("status", "active")
-        .order("full_name")
+        .order("full_name"), "students")
     : { data: [] };
   const students = (studentData ?? []) as StudentRow[];
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
   const { data: recordData } = studentIds.length
-    ? await supabase
+    ? await must(supabase
         .from("conduct_records")
         .select("id,student_id,type,content,points,date")
         .in("student_id", studentIds)
         .order("date", { ascending: false })
-        .limit(100)
+        .limit(100), "conduct_records")
     : { data: [] };
   const records = (recordData ?? []) as RecordRow[];
 

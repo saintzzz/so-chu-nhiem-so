@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { must, mustRows } from "@/lib/supabase/must";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { ROLE_LABELS } from "@/lib/nav";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
@@ -35,23 +37,25 @@ export default async function DeptUsersPage({
 
   const supabase = await createClient();
 
-  const [profilesRes, schoolsRes] = await Promise.all([
-    (() => {
-      let q = supabase
-        .from("profiles")
-        .select("id,full_name,email,role,school_id")
-        .order("full_name");
-      if (activeRole)
-        q = q.or(`role.eq.${activeRole},concurrent_roles.cs.{${activeRole}}`);
-      return q;
-    })(),
-    supabase.from("schools").select("id,name"),
+  // Dept doc profiles tren nhieu truong - vuot 1000 rows phai phan trang,
+  // neu khong cap PostgREST se cat ngam danh sach nhan su.
+  const [profilesRows, schoolsRes] = await Promise.all([
+    fetchAllRows<Pick<Profile, "id" | "full_name" | "email" | "role" | "school_id">>(
+      (f, t) => {
+        let q = supabase
+          .from("profiles")
+          .select("id,full_name,email,role,school_id")
+          .order("full_name")
+          .order("id");
+        if (activeRole)
+          q = q.or(`role.eq.${activeRole},concurrent_roles.cs.{${activeRole}}`);
+        return q.range(f, t);
+      },
+    ).then((r) => mustRows(r, "profiles")),
+    must(supabase.from("schools").select("id,name"), "schools"),
   ]);
 
-  const profiles = (profilesRes.data ?? []) as Pick<
-    Profile,
-    "id" | "full_name" | "email" | "role" | "school_id"
-  >[];
+  const profiles = profilesRows.rows;
   profiles.sort((a, b) => compareVietnameseName(a.full_name, b.full_name));
   const schools = (schoolsRes.data ?? []) as Pick<School, "id" | "name">[];
   const schoolNameOf = new Map(schools.map((s) => [s.id, s.name]));

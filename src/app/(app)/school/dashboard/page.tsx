@@ -14,6 +14,7 @@ import type {
 import { currentPeriodVN, currentSemesterVN, isoDateVN, todayVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasRole } from "@/lib/roles";
+import { must, mustRows } from "@/lib/supabase/must";
 
 const KPI_SUBMITTED = new Set(["submitted", "approved", "locked", "done"]);
 
@@ -40,11 +41,11 @@ export default async function SchoolDashboardPage() {
   const EMULATION_PERIOD = currentPeriodVN();
   const KPI_PERIOD = currentSemesterVN();
 
-  const { data: classRows } = await supabase
+  const { data: classRows } = await must(supabase
     .from("classes")
     .select("id,name,campus_id")
     .eq("school_id", profile.school_id ?? "")
-    .order("name");
+    .order("name"), "classes");
   let classes = (classRows ?? []) as Pick<
     ClassRoom,
     "id" | "name" | "campus_id"
@@ -62,12 +63,12 @@ export default async function SchoolDashboardPage() {
   // Anchor "today" to the newest data so the demo dashboard is never empty.
   // Lọc theo lớp qua embedded join - tránh tải toàn bộ student_id vào .in().
   const { data: latestAtt } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("attendance_records")
         .select("date,students!inner(class_id)")
         .in("students.class_id", classIds)
         .order("date", { ascending: false })
-        .limit(1)
+        .limit(1), "attendance_records")
     : { data: [] };
   const anchor =
     ((latestAtt ?? [])[0] as Pick<AttendanceRecord, "date"> | undefined)
@@ -77,33 +78,45 @@ export default async function SchoolDashboardPage() {
 
   const [incidentWeekRes, incidentsRes, emulationRes, kpiRes, attRes] = await Promise.all([
     classIds.length
-      ? supabase
-          .from("incidents")
-          .select("id", { count: "exact", head: true })
-          .in("class_id", classIds)
-          .gte("occurred_at", weekStart)
+      ? must(
+          supabase
+            .from("incidents")
+            .select("id", { count: "exact", head: true })
+            .in("class_id", classIds)
+            .gte("occurred_at", weekStart),
+          "incidents",
+        )
       : Promise.resolve({ count: 0 }),
     classIds.length
-      ? supabase
-          .from("incidents")
-          .select("id,class_id,type,severity,status,description,occurred_at")
-          .in("class_id", classIds)
-          .order("occurred_at", { ascending: false })
-          .limit(6)
+      ? must(
+          supabase
+            .from("incidents")
+            .select("id,class_id,type,severity,status,description,occurred_at")
+            .in("class_id", classIds)
+            .order("occurred_at", { ascending: false })
+            .limit(6),
+          "incidents",
+        )
       : Promise.resolve({ data: [] }),
     classIds.length
-      ? supabase
-          .from("emulation_scores")
-          .select("class_id,score")
-          .eq("period", EMULATION_PERIOD)
-          .in("class_id", classIds)
+      ? must(
+          supabase
+            .from("emulation_scores")
+            .select("class_id,score")
+            .eq("period", EMULATION_PERIOD)
+            .in("class_id", classIds),
+          "emulation_scores",
+        )
       : Promise.resolve({ data: [] }),
     classIds.length
-      ? supabase
-          .from("kpis")
-          .select("id,class_id,period,status")
-          .eq("period", KPI_PERIOD)
-          .in("class_id", classIds)
+      ? must(
+          supabase
+            .from("kpis")
+            .select("id,class_id,period,status")
+            .eq("period", KPI_PERIOD)
+            .in("class_id", classIds),
+          "kpis",
+        )
       : Promise.resolve({ data: [] }),
     classIds.length
       ? fetchAllRows<{ status: string }>((f, t) =>
@@ -114,7 +127,7 @@ export default async function SchoolDashboardPage() {
             .gte("date", monthStart)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows }))
+        ).then((r) => ({ data: mustRows(r, "attendance_records").rows }))
       : Promise.resolve({ data: [] }),
   ]);
 
@@ -156,11 +169,11 @@ export default async function SchoolDashboardPage() {
   const recentIncidents = incidents;
 
   const { data: schoolRow } = profile.school_id
-    ? await supabase
+    ? await must(supabase
         .from("schools")
         .select("name")
         .eq("id", profile.school_id)
-        .single()
+        .maybeSingle(), "schools")
     : { data: null };
   const schoolName =
     (schoolRow as Pick<School, "name"> | null)?.name ?? "Trường";

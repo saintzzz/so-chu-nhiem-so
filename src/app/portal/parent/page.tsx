@@ -26,6 +26,7 @@ import type {
 } from "@/types";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
 import { gradeYearOr } from "@/lib/grades-year";
+import { must } from "@/lib/supabase/must";
 
 interface ParentStudentLink {
   parent_id: string;
@@ -101,71 +102,71 @@ export default async function ParentPortalPage({
 
   const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes, evRes] = student
     ? await Promise.all([
-        supabase
+        must(supabase
           .from("attendance_records")
           .select("id,date,status,note")
           .eq("student_id", student.id)
           .order("date", { ascending: false })
-          .limit(40),
-        supabase
+          .limit(40), "attendance_records"),
+        must(supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
           .eq("student_id", student.id)
           // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
-          .or(gradeYearOr(classroom?.academic_year_id)),
-        supabase
+          .or(gradeYearOr(classroom?.academic_year_id)), "grades"),
+        must(supabase
           .from("announcements")
           .select("id,title,content,created_at")
           .or(
             `class_id.eq.${student.class_id},student_id.eq.${student.id},and(class_id.is.null,school_id.eq.${classroom?.school_id ?? "none"})`,
           )
           .order("created_at", { ascending: false })
-          .limit(8),
+          .limit(8), "announcements"),
         parent
-          ? supabase
+          ? must(supabase
               .from("appointments")
               .select("id,teacher_id,scheduled_at,purpose,status")
               .eq("parent_id", parent.id)
               .order("scheduled_at", { ascending: false })
-              .limit(8)
+              .limit(8), "appointments")
           : Promise.resolve({ data: [], error: null }),
-        supabase
+        must(supabase
           .from("exam_sessions")
           .select("id,date,start_time,room,subject_id,exams!inner(name,status)")
           .eq("class_id", student.class_id)
           .gte("date", todayVN())
           .order("date")
-          .limit(10),
-        supabase
+          .limit(10), "exam_sessions"),
+        must(supabase
           .from("cmhs_members")
           .select("id,role,parents(id,full_name,phone)")
           .eq("class_id", student.class_id)
-          .order("role"),
-        supabase
+          .order("role"), "cmhs_members"),
+        must(supabase
           .from("subjects")
           .select("id,name")
-          .eq("school_id", classroom?.school_id ?? ""),
-        supabase
+          .eq("school_id", classroom?.school_id ?? ""), "subjects"),
+        must(supabase
           .from("messages")
           .select("id,sender_id,recipient_id,content,created_at")
           .or(`sender_id.eq.${profile.id},recipient_id.eq.${profile.id}`)
           .eq("student_id", student.id)
           .order("created_at", { ascending: false })
-          .limit(10),
-        supabase
+          .limit(10), "messages"),
+        must(supabase
           .from("activities")
           .select("id,title,activity_date,status")
           .eq("class_id", student.class_id)
           .in("status", ["approved", "announced"])
           .order("activity_date", { ascending: false })
-          .limit(10),
-        supabase
+          .limit(10), "activities"),
+        must(supabase
           .from("school_year_events")
           .select("id,title,event_date,category")
           .eq("school_id", classroom?.school_id ?? "")
           .gte("event_date", todayVN())
           .order("event_date")
-          .limit(12),
+          .limit(12), "school_year_events"),
       ])
     : [
         { data: [], error: null },
@@ -307,17 +308,17 @@ export default async function ParentPortalPage({
   const [{ data: teacherRows, error: teacherErr }, { data: senderRows, error: senderErr }, { data: actAttRows, error: actAttErr }] =
     await Promise.all([
       teacherIds.length
-        ? supabase.from("profiles").select("id,full_name").in("id", teacherIds)
+        ? must(supabase.from("profiles").select("id,full_name").in("id", teacherIds), "profiles")
         : Promise.resolve({ data: [], error: null }),
       senderIds.length
-        ? supabase.from("profiles").select("id,full_name").in("id", senderIds)
+        ? must(supabase.from("profiles").select("id,full_name").in("id", senderIds), "profiles")
         : Promise.resolve({ data: [], error: null }),
       rawActivities.length > 0 && student
-        ? supabase
+        ? must(supabase
             .from("activity_attendance")
             .select("activity_id,status")
             .eq("student_id", student.id)
-            .in("activity_id", rawActivities.map((a) => a.id))
+            .in("activity_id", rawActivities.map((a) => a.id)), "activity_attendance")
         : Promise.resolve({ data: [], error: null }),
     ]);
   const teacherNameOf = new Map(

@@ -93,11 +93,15 @@ export async function replyMessage(input: {
   if (!input.studentId) {
     return { error: "Thiếu học sinh liên quan đến tin nhắn." };
   }
-  const { data: st } = await supabase
+  const { data: st, error: stErr } = await supabase
     .from("students")
     .select("id,profile_id,classes!inner(school_id,gvcn_id)")
     .eq("id", input.studentId)
     .maybeSingle();
+  if (stErr) {
+    console.error("[parents] student lookup:", stErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   const stuCls =
     st &&
     (Array.isArray(st.classes) ? st.classes[0] : (st.classes as {
@@ -111,10 +115,14 @@ export async function replyMessage(input: {
     return { error: "Chỉ trả lời tin nhắn về học sinh lớp bạn chủ nhiệm." };
   }
   // Người nhận phải là phụ huynh của học sinh này hoặc chính học sinh.
-  const { data: parentLinks } = await supabase
+  const { data: parentLinks, error: linksErr } = await supabase
     .from("parent_students")
     .select("parents!inner(profile_id)")
     .eq("student_id", input.studentId);
+  if (linksErr) {
+    console.error("[parents] parent links:", linksErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   const allowed = new Set<string>(
     ((parentLinks ?? []) as { parents: { profile_id: string | null } | { profile_id: string | null }[] }[])
       .map((l) =>
@@ -173,13 +181,20 @@ export async function updateAppointmentStatus(
   if (deny) return { error: deny };
   if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const { error } = await supabase
+  // CAS: chi cho phep chuyen tu trang thai con mo - khong ghi de
+  // done/cancelled (stale tab khong duoc mo lai lich hen da ket thuc).
+  const { data: updated, error } = await supabase
     .from("appointments")
     .update({ status })
-    .eq("id", appointmentId);
+    .eq("id", appointmentId)
+    .in("status", ["proposed", "confirmed"])
+    .select("id");
   if (error) {
     console.error("[appointments] update failed:", error.message);
     return { error: "Không cập nhật được lịch hẹn. Vui lòng thử lại." };
+  }
+  if (!updated?.length) {
+    return { error: "Lịch hẹn đã đổi trạng thái - vui lòng tải lại trang." };
   }
   revalidatePath("/parents/appointments");
   revalidatePath("/parents/portal");

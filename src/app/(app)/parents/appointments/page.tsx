@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppointmentsClient } from "@/components/parents/appointments-client";
 import type { Appointment, Parent, Student } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
+import { must } from "@/lib/supabase/must";
 
 function fmtDateTime(iso: string): string {
   return fmtDateTimeVN(iso);
@@ -14,11 +15,11 @@ export default async function AppointmentsPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
   const supabase = await createClient();
 
-  const { data: apptData } = await supabase
+  const { data: apptData } = await must(supabase
     .from("appointments")
     .select("*")
     .eq("teacher_id", profile.id)
-    .order("scheduled_at", { ascending: false });
+    .order("scheduled_at", { ascending: false }), "appointments");
   const appointments = (apptData ?? []) as Appointment[];
 
   const parentIds = [...new Set(appointments.map((a) => a.parent_id))];
@@ -30,10 +31,10 @@ export default async function AppointmentsPage() {
 
   const [{ data: parentData }, { data: studentData }] = await Promise.all([
     parentIds.length
-      ? supabase.from("parents").select("id,full_name").in("id", parentIds)
+      ? must(supabase.from("parents").select("id,full_name").in("id", parentIds), "parents")
       : Promise.resolve({ data: [] }),
     studentIds.length
-      ? supabase.from("students").select("id,full_name").in("id", studentIds)
+      ? must(supabase.from("students").select("id,full_name").in("id", studentIds), "students")
       : Promise.resolve({ data: [] }),
   ]);
   const parents = (parentData ?? []) as Pick<Parent, "id" | "full_name">[];

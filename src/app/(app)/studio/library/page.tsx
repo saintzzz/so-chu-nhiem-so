@@ -9,6 +9,7 @@ import { MaterialStatusBadge } from "@/components/tvc/status-badge";
 import { ArrowLeft, FolderOpen } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -47,32 +48,35 @@ export default async function StudioLibraryPage({
   // chuoi department -> subjects cua to truong).
   const [{ data }, { data: pendingData }, deptSubjectCodes] =
     await Promise.all([
-      q.limit(100),
+      must(q.limit(100), "tvc_materials"),
       isReviewer
-        ? supabase
-            .from("tvc_materials")
-            .select(
-              "id, title, type, tool_code, subject_code, grade, status, updated_at",
-            )
-            .neq("author_id", profile.id)
-            .in("status", ["in_review", "totruong_ok"])
-            .order("updated_at", { ascending: false })
-            .limit(50)
+        ? must(
+            supabase
+              .from("tvc_materials")
+              .select(
+                "id, title, type, tool_code, subject_code, grade, status, updated_at",
+              )
+              .neq("author_id", profile.id)
+              .in("status", ["in_review", "totruong_ok"])
+              .order("updated_at", { ascending: false })
+              .limit(50),
+            "tvc_materials",
+          )
         : Promise.resolve({ data: [] as Partial<Material>[] }),
       // CR-033: to truong uu tien mon cua to minh truoc, mon khac xep sau
       (async (): Promise<string[]> => {
         if (!hasRole(profile, "to_truong") || !profile.department_id) return [];
-        const { data: dept } = await supabase
+        const { data: dept } = await must(supabase
           .from("departments")
           .select("subject_ids")
           .eq("id", profile.department_id)
-          .single();
+          .maybeSingle(), "departments");
         const sids = (dept?.subject_ids as string[] | null) ?? [];
         if (!sids.length) return [];
-        const { data: ds } = await supabase
+        const { data: ds } = await must(supabase
           .from("subjects")
           .select("name")
-          .in("id", sids);
+          .in("id", sids), "subjects");
         return (ds ?? [])
           .map((s) => subjectNameToCode(s.name))
           .filter((c): c is string => !!c);

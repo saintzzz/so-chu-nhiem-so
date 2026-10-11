@@ -7,6 +7,7 @@ import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
 import { ClassReportExport } from "@/components/academics/class-report-export";
 import { hasRole, hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 interface ClassRow {
   id: string;
@@ -82,17 +83,17 @@ export default async function GradesPage({
     teachRes,
   ] = await Promise.all([
     classQuery.order("name"),
-    supabase
+    must(supabase
       .from("subjects")
       .select("id,name,assessment_method")
       .eq("school_id", profile.school_id ?? "")
-      .order("name"),
+      .order("name"), "subjects"),
     profile.school_id
-      ? supabase
+      ? must(supabase
           .from("schools")
           .select("level")
           .eq("id", profile.school_id)
-          .maybeSingle()
+          .maybeSingle(), "schools")
       : Promise.resolve({ data: null, error: null }),
     teachQuery ?? Promise.resolve({ data: null, error: null }),
   ]);

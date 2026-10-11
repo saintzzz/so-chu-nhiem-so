@@ -52,11 +52,21 @@ export function useTvcAiJob() {
     };
 
     const poll = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ai_jobs")
         .select("status,result")
         .eq("id", job.jobId)
         .single();
+      // r24: PGRST116 = job khong con ton tai -> onFail thay vi poll vo han.
+      if (error?.code === "PGRST116") {
+        finish(() => handlers.current.onFail?.());
+        return;
+      }
+      if (error) {
+        console.error("[use-tvc-ai-job] poll:", error.message);
+        if (!stopped) timer = setTimeout(poll, delay);
+        return;
+      }
       if (!data || stopped) return;
       if (data.status === "done") {
         finish(() => handlers.current.onDone?.(data.result ?? null));

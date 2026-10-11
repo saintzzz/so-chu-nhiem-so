@@ -122,15 +122,27 @@ export function ExamsBoard({
   }
 
   function setExamStatus(status: string) {
+    const expected = exam?.status;
+    if (!expected) {
+      setError("Không tìm thấy kỳ thi - vui lòng tải lại trang.");
+      return;
+    }
     run(async () => {
       const supabase = createClient();
-      const { error: err } = await supabase
+      // CAS: chi chuyen tu trang thai dang hien thi - tab cu khong
+      // ghi de quyet dinh moi hon.
+      const { data: updated, error: err } = await supabase
         .from("exams")
         .update({ status })
-        .eq("id", examId);
+        .eq("id", examId)
+        .eq("status", expected)
+        .select("id");
       if (err) {
         console.error("[exams-board] set exam status:", err.message);
         return "Không cập nhật được trạng thái kỳ thi - vui lòng thử lại.";
+      }
+      if (!updated?.length) {
+        return "Kỳ thi đã đổi trạng thái - vui lòng tải lại trang.";
       }
       return null;
     });

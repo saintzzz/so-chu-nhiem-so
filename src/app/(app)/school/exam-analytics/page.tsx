@@ -7,6 +7,7 @@ import { fmtDateVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { gradeInYear } from "@/lib/grades-year";
 import type { ClassRoom } from "@/types";
+import { must, mustRows } from "@/lib/supabase/must";
 
 export default async function ExamAnalyticsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
@@ -14,17 +15,17 @@ export default async function ExamAnalyticsPage() {
   const sid = profile.school_id ?? "";
 
   const [{ data: examRaw }, { data: clsRaw }] = await Promise.all([
-    supabase
+    must(supabase
       .from("exams")
       .select("id,name,term,start_date,end_date,status")
       .eq("school_id", sid)
-      .order("start_date", { ascending: false }),
-    supabase
+      .order("start_date", { ascending: false }), "exams"),
+    must(supabase
       .from("classes")
       .select("id,name,academic_year_id")
       .eq("school_id", sid)
       .eq("status", "active")
-      .order("name"),
+      .order("name"), "classes"),
   ]);
   const exams = (examRaw ?? []) as {
     id: string;
@@ -39,10 +40,10 @@ export default async function ExamAnalyticsPage() {
 
   const [{ data: sessRaw }, { data: gradeRaw }] = await Promise.all([
     exams.length
-      ? supabase
+      ? must(supabase
           .from("exam_sessions")
           .select("id,exam_id,class_id,subject_id,date")
-          .in("exam_id", exams.map((e) => e.id))
+          .in("exam_id", exams.map((e) => e.id)), "exam_sessions")
       : Promise.resolve({ data: [] }),
     classIds.length
       ? fetchAllRows<{
@@ -60,7 +61,7 @@ export default async function ExamAnalyticsPage() {
             .not("score", "is", null)
             .order("id")
             .range(f, t),
-        ).then((r) => ({ data: r.rows }))
+        ).then((r) => ({ data: mustRows(r, "grades").rows }))
       : Promise.resolve({ data: [] }),
   ]);
 

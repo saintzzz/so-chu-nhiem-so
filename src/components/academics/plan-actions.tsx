@@ -25,28 +25,40 @@ export function PlanActions({
   planId,
   status,
   meId,
+  disabled,
 }: {
   planId: string;
   status: PlanStatus;
   meId: string;
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   function update(to: PlanStatus) {
+    if (disabled) return;
     startTransition(async () => {
       const supabase = createClient();
-      const { error: err } = await supabase
+      // r24: CAS theo status hien thi - tab cu tren ke hoach da chuyen
+      // trang thai khong duoc ghi de (chi 0 rows -> bao tai lai).
+      const { data: updated, error: err } = await supabase
         .from("support_plans")
         .update({
           status: to,
           ...(to === "approved" ? { approved_by: meId } : {}),
         })
-        .eq("id", planId);
+        .eq("id", planId)
+        .eq("status", status)
+        .select("id");
       if (err) {
         console.error("[plan-actions] update support_plans:", err.message);
         setError("Không cập nhật được kế hoạch - vui lòng thử lại.");
+        return;
+      }
+      if (!updated?.length) {
+        setError("Kế hoạch đã được xử lý ở phiên khác - vui lòng tải lại trang.");
+        router.refresh();
         return;
       }
       router.refresh();
@@ -66,7 +78,7 @@ export function PlanActions({
             size="xs"
             variant="outline"
             onClick={() => update(next.to)}
-            disabled={pending}
+            disabled={pending || disabled}
           >
             {next.label}
           </Button>
@@ -76,7 +88,7 @@ export function PlanActions({
             size="xs"
             variant="ghost"
             onClick={() => update("cancelled")}
-            disabled={pending}
+            disabled={pending || disabled}
           >
             Hủy
           </Button>

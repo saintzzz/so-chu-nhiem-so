@@ -7,6 +7,7 @@ import { ClassChips } from "@/components/class-chips";
 import { DataTable } from "@/components/data-table";
 import { NotifyForm } from "@/components/attendance/notify-form";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function AttendanceNotifyPage({
   searchParams,
@@ -45,24 +46,24 @@ export default async function AttendanceNotifyPage({
     );
   }
 
-  const { data: studentData } = await supabase
+  const { data: studentData } = await must(supabase
     .from("students")
     .select("id,code,full_name")
     .eq("class_id", selected.id)
     .eq("status", "active")
-    .order("code");
+    .order("code"), "students");
   const students = (studentData ?? []) as Pick<
     Student,
     "id" | "code" | "full_name"
   >[];
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));
 
-  const { data: annData } = await supabase
+  const { data: annData } = await must(supabase
     .from("announcements")
     .select("*")
     .eq("class_id", selected.id)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(10), "announcements");
   const announcements = (annData ?? []) as Announcement[];
 
   return (

@@ -3,18 +3,19 @@ import { StatCard } from "@/components/stat-card";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { StrategyBoard } from "@/components/school/strategy-board";
+import { must } from "@/lib/supabase/must";
 
 export default async function SchoolStrategyPage() {
   const profile = await requireRoles(["bgh", "pht"]);
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("school_kpis")
     .select("*")
     .eq("school_id", sid)
     .order("period")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }), "school_kpis");
   const kpis = (data ?? []) as {
     id: string;
     period: string;

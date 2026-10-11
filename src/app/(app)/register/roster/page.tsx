@@ -11,6 +11,7 @@ import {
 } from "@/components/register/server-utils";
 import type { ClassRoleRow } from "@/components/register/types";
 import type { Student, StudentGroup } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function RosterPage({
   searchParams,
@@ -43,17 +44,17 @@ export default async function RosterPage({
     { data: studentsData, error: studentsErr },
     { data: groupsData, error: groupsErr },
   ] = await Promise.all([
-    supabase
+    must(supabase
       .from("students")
       .select("*")
       .eq("class_id", cls.id)
       .eq("status", "active")
-      .order("full_name"),
-    supabase
+      .order("full_name"), "students"),
+    must(supabase
       .from("student_groups")
       .select("*")
       .eq("class_id", cls.id)
-      .order("name"),
+      .order("name"), "student_groups"),
   ]);
 
   const students = (studentsData ?? []) as Student[];

@@ -56,12 +56,21 @@ export function ClassReportExport({
     setMsg(null);
     const supabase = createClient();
 
-    const { data: classRow } = await supabase
+    const { data: classRow, error: classErr } = await supabase
       .from("classes")
       .select("school_id,academic_year_id")
       .eq("id", classId)
       .single();
-    const [{ data: studentData }, { data: subjectData }] = await Promise.all([
+    if (classErr) {
+      console.error("[class-report] class lookup:", classErr.message);
+      setMsg("Không tải được dữ liệu lớp - vui lòng thử lại.");
+      setBusy(false);
+      return;
+    }
+    const [
+      { data: studentData, error: stuErr },
+      { data: subjectData, error: subjErr },
+    ] = await Promise.all([
       supabase
         .from("students")
         .select("id,code,national_id,full_name,dob")
@@ -73,6 +82,15 @@ export function ClassReportExport({
         .eq("school_id", classRow?.school_id ?? "")
         .order("name"),
     ]);
+    if (stuErr || subjErr) {
+      console.error(
+        "[class-report] source lookup:",
+        stuErr?.message ?? subjErr?.message,
+      );
+      setMsg("Không tải được dữ liệu nguồn - vui lòng thử lại.");
+      setBusy(false);
+      return;
+    }
     const students = (studentData ?? []) as {
       id: string;
       code: string;
@@ -88,7 +106,7 @@ export function ClassReportExport({
     }[];
     const studentIds = students.map((s) => s.id);
 
-    const [{ rows: gradeData }, { data: conductData }] = studentIds.length
+    const [gradesRes, { data: conductData, error: condErr }] = studentIds.length
       ? await Promise.all([
           fetchAllRows<GradeRow>((f, t) =>
             supabase
@@ -107,8 +125,22 @@ export function ClassReportExport({
             .in("student_id", studentIds)
             .eq("term", term),
         ])
-      : [{ rows: [] as GradeRow[] }, { data: [] }];
-    const grades = gradeData;
+      : [
+          { rows: [] as GradeRow[], error: null, truncated: false },
+          { data: [], error: null },
+        ];
+    // r24: bao cao xuat ra phai day du - nguon diem/hanh kiem loi hoac bi
+    // cat ngang tuyet doi khong duoc xuat file thieu du lieu.
+    if (gradesRes.error || gradesRes.truncated || condErr) {
+      console.error(
+        "[class-report] grades/conduct:",
+        gradesRes.error ?? (gradesRes.truncated ? "truncated" : condErr?.message),
+      );
+      setMsg("Không tải được dữ liệu nguồn - vui lòng thử lại.");
+      setBusy(false);
+      return;
+    }
+    const grades = gradesRes.rows;
     const conductByStudent = new Map(
       ((conductData ?? []) as { student_id: string; rating: string }[]).map(
         (c) => [c.student_id, c.rating],

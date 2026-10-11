@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Campus } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 const REQUIRED_POSITIONS: { key: string; label: string }[] = [
   { key: "y_te", label: "Nhân viên y tế" },
@@ -23,27 +24,27 @@ export default async function Nq37Page() {
 
   const [{ data: cpRaw }, { data: clsRaw }, { data: staffRaw }, { data: profRaw }] =
     await Promise.all([
-      supabase
+      must(supabase
         .from("campuses")
         .select("id,name,kind")
         .eq("school_id", sid)
-        .order("name"),
-      supabase
+        .order("name"), "campuses"),
+      must(supabase
         .from("classes")
         .select("id,campus_id")
         .eq("school_id", sid)
-        .eq("status", "active"),
-      supabase
+        .eq("status", "active"), "classes"),
+      must(supabase
         .from("support_staff")
         .select("id,campus_id,position,standardized")
-        .eq("school_id", sid),
-      supabase
+        .eq("school_id", sid), "support_staff"),
+      must(supabase
         .from("profiles")
         .select("id,role,campus_id,concurrent_roles")
         .eq("school_id", sid)
         .or(
           "role.in.(gvcn,gvbm,to_truong,pht,bgh),concurrent_roles.ov.{gvcn,gvbm,to_truong,pht,bgh}",
-        ),
+        ), "profiles"),
     ]);
   const campuses = (cpRaw ?? []) as Pick<Campus, "id" | "name" | "kind">[];
   const classes = (clsRaw ?? []) as { id: string; campus_id: string | null }[];

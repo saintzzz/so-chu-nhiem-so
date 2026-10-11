@@ -5,6 +5,7 @@ import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Database, Download, ShieldCheck } from "lucide-react";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { must, mustRows } from "@/lib/supabase/must";
 import type { ClassRoom } from "@/types";
 
 const ENTITIES: { table: string; label: string }[] = [
@@ -44,24 +45,30 @@ export default async function DeptDataPage() {
   );
 
   const [noGroupRes, noGvcnRes, studentsRes, linksRes] = await Promise.all([
-    supabase
-      .from("students")
-      .select("id", { count: "exact", head: true })
-      .is("group_id", null),
-    supabase
-      .from("classes")
-      .select("id,name")
-      .is("gvcn_id", null),
+    must(
+      supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .is("group_id", null),
+      "students",
+    ),
+    must(
+      supabase
+        .from("classes")
+        .select("id,name")
+        .is("gvcn_id", null),
+      "classes",
+    ),
     fetchAllRows<{ id: string }>((f, t) =>
       supabase.from("students").select("id").order("id").range(f, t),
-    ),
+    ).then((r) => mustRows(r, "students")),
     fetchAllRows<{ student_id: string }>((f, t) =>
       supabase
         .from("parent_students")
         .select("student_id")
         .order("student_id")
         .range(f, t),
-    ),
+    ).then((r) => mustRows(r, "parent_students")),
   ]);
 
   const classesNoGvcn = (noGvcnRes.data ?? []) as Pick<

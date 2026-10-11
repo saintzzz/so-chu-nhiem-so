@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { must } from "@/lib/supabase/must";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -38,17 +39,20 @@ export default async function CounselingReferralPage() {
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
-  const { data: classData } = await classQuery.order("name");
+  const { data: classData } = await must(classQuery.order("name"), "classes");
   const classes = (classData ?? []) as ClassRow[];
   const className = new Map(classes.map((c) => [c.id, c.name]));
   const classIds = classes.map((c) => c.id);
 
   const { data: studentData } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("id,class_id,code,full_name")
-        .in("class_id", classIds)
-        .eq("status", "active")
+    ? await must(
+        supabase
+          .from("students")
+          .select("id,class_id,code,full_name")
+          .in("class_id", classIds)
+          .eq("status", "active"),
+        "students",
+      )
     : { data: [] };
   const students = (studentData ?? []) as StudentRow[];
   const studentMap = new Map(students.map((s) => [s.id, s]));
@@ -56,13 +60,16 @@ export default async function CounselingReferralPage() {
 
   // Ca nghiêm trọng / mức độ cao hoặc đã chuyển tuyến - chưa kết thúc
   const { data: caseData } = studentIds.length
-    ? await supabase
-        .from("counseling_cases")
-        .select("id,student_id,issue,severity,status,referral,notes,created_at")
-        .in("student_id", studentIds)
-        .neq("status", "resolved")
-        .or("severity.eq.critical,severity.eq.high,status.eq.referred")
-        .order("created_at", { ascending: false })
+    ? await must(
+        supabase
+          .from("counseling_cases")
+          .select("id,student_id,issue,severity,status,referral,notes,created_at")
+          .in("student_id", studentIds)
+          .neq("status", "resolved")
+          .or("severity.eq.critical,severity.eq.high,status.eq.referred")
+          .order("created_at", { ascending: false }),
+        "counseling_cases",
+      )
     : { data: [] };
   const cases = (caseData ?? []) as CaseRow[];
 

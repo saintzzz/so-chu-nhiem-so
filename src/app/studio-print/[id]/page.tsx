@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DocRender } from "@/components/tvc/doc-render";
 import { PrintButton } from "@/components/tvc/print-button";
 import type { Material } from "@/types/tvc";
+import { must } from "@/lib/supabase/must";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,11 @@ export default async function StudioPrintPage({
   await requireFeature("studio.export");
   const { id } = await params;
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("tvc_materials")
     .select("*")
     .eq("id", id)
-    .single();
+    .maybeSingle(), "tvc_materials");
   const material = data as Material | null;
   if (!material || material.author_id !== profile.id) notFound();
 

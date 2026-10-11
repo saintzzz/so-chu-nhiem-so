@@ -10,6 +10,7 @@ import {
   pickClass,
 } from "@/components/register/server-utils";
 import type { Kpi } from "@/components/register/types";
+import { must } from "@/lib/supabase/must";
 
 export default async function KpiPage({
   searchParams,
@@ -38,11 +39,11 @@ export default async function KpiPage({
     );
   }
 
-  const { data } = await supabase
+  const { data } = await must(supabase
     .from("kpis")
     .select("*")
     .eq("class_id", cls.id)
-    .order("period");
+    .order("period"), "kpis");
 
   const kpis = (data ?? []) as Kpi[];
 

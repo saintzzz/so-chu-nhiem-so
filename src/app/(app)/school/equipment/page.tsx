@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { EquipmentBoard } from "@/components/school/equipment-board";
 import type { Campus } from "@/types";
 import { hasRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 export default async function EquipmentPage() {
   const profile = await requireRoles(["bgh", "pht", "ke_toan"]);
@@ -12,13 +13,13 @@ export default async function EquipmentPage() {
   const sid = profile.school_id ?? "";
 
   const [{ data: eqRaw }, { data: cpRaw }] = await Promise.all([
-    supabase
+    must(supabase
       .from("equipment")
       .select("*")
       .eq("school_id", sid)
       .order("category")
-      .order("name"),
-    supabase.from("campuses").select("id,name").eq("school_id", sid),
+      .order("name"), "equipment"),
+    must(supabase.from("campuses").select("id,name").eq("school_id", sid), "campuses"),
   ]);
   const items = (eqRaw ?? []) as {
     id: string;

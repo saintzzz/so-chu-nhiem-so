@@ -6,6 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { semesterAssessment, yearAverage, requiredTxCount } from "@/lib/tt22";
 import { fmtDateVN } from "@/lib/utils";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
+import { must } from "@/lib/supabase/must";
 
 const SUBTYPE_LABELS: Record<string, string> = {
   mieng: "Miệng",
@@ -54,7 +55,7 @@ export default async function StudentTranscriptPage() {
 
   const [gradeRes, subjectRes, conductRes, attRes] = student
     ? await Promise.all([
-        supabase
+        must(supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,subtype,seq,score,result")
           .eq("student_id", student.id)
@@ -67,19 +68,19 @@ export default async function StudentTranscriptPage() {
               ? `academic_year_id.is.null,academic_year_id.eq.${classroom.academic_year_id}`
               : "academic_year_id.is.null",
           )
-          .order("created_at"),
-        supabase
+          .order("created_at"), "grades"),
+        must(supabase
           .from("subjects")
           .select("id,name,assessment_method,weekly_periods")
-          .eq("school_id", classroom?.school_id ?? ""),
-        supabase
+          .eq("school_id", classroom?.school_id ?? ""), "subjects"),
+        must(supabase
           .from("conduct_evaluations")
           .select("id,term,rating,comment")
-          .eq("student_id", student.id),
-        supabase
+          .eq("student_id", student.id), "conduct_evaluations"),
+        must(supabase
           .from("attendance_records")
           .select("id,status")
-          .eq("student_id", student.id),
+          .eq("student_id", student.id), "attendance_records"),
       ])
     : [
         { data: [], error: null },

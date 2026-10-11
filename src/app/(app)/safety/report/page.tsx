@@ -7,6 +7,7 @@ import { IncidentForm } from "@/components/safety/incident-form";
 import type { ClassRoom, Incident, Profile, Student, Role } from "@/types";
 import { fmtDateTimeVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
+import { must } from "@/lib/supabase/must";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -38,12 +39,12 @@ export default async function SafetyReportPage() {
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
   const { data: studentData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("students")
         .select("id,full_name,class_id,code")
         .in("class_id", classIds)
         .eq("status", "active")
-        .order("full_name")
+        .order("full_name"), "students")
     : { data: [] };
   const students = (studentData ?? []) as Pick<
     Student,
@@ -52,12 +53,12 @@ export default async function SafetyReportPage() {
   const studentName = new Map(students.map((s) => [s.id, s.full_name]));
 
   const { data: incData } = classIds.length
-    ? await supabase
+    ? await must(supabase
         .from("incidents")
         .select("*")
         .in("class_id", classIds)
         .order("occurred_at", { ascending: false })
-        .limit(10)
+        .limit(10), "incidents")
     : { data: [] };
   const incidents = (incData ?? []) as Incident[];
 

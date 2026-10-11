@@ -45,12 +45,20 @@ export function LockRecordsClient({
     setBusy(true);
     setMessage(null);
     const at = new Date().toISOString();
-    const { error } = await supabase
+    // r24: CAS theo trang thai nguon - tab khac da xu ly thi UPDATE tra
+    // 0 rows (policy loc) va UI/audit khong duoc chay nhu da nop.
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "submitted", submitted_at: at, submitted_by: profileId })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .in("status", ["pending", "rejected"])
+      .select("id");
     if (error) {
       setMessage("Không thể nộp sổ học bạ.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) =>
@@ -77,12 +85,18 @@ export function LockRecordsClient({
     setBusy(true);
     setMessage(null);
     const at = new Date().toISOString();
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "locked", signed_at: at, signed_by: profileId })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "submitted")
+      .select("id");
     if (error) {
       setMessage("Không thể khóa sổ học bạ.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) =>
@@ -108,12 +122,18 @@ export function LockRecordsClient({
   async function reject(row: Signoff) {
     setBusy(true);
     setMessage(null);
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("register_signoffs")
       .update({ status: "rejected" })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "submitted")
+      .select("id");
     if (error) {
       setMessage("Không thể từ chối.");
+    } else if (!updated?.length) {
+      setMessage(
+        "Sổ này đã được xử lý ở phiên khác - vui lòng tải lại trang.",
+      );
     } else {
       setSignoffs((ss) =>
         ss.map((s) => (s.id === row.id ? { ...s, status: "rejected" } : s)),

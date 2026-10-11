@@ -25,31 +25,47 @@ export async function grantParentAccess(input: {
     return { error: "Mật khẩu tối thiểu 8 ký tự." };
 
   const supabase = await createClient();
-  const { data: parent } = await supabase
+  const { data: parent, error: parentErr } = await supabase
     .from("parents")
     .select("id,full_name,profile_id,email")
     .eq("id", input.parentId)
     .maybeSingle();
+  if (parentErr) {
+    console.error("[register] parent lookup:", parentErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!parent) return { error: "Không tìm thấy phụ huynh." };
   if (parent.profile_id)
     return { error: "Phụ huynh này đã có tài khoản đăng nhập." };
 
   // ownership: PH phai link vao HS thuoc pham vi nguoi goi
-  const { data: links } = await supabase
+  const { data: links, error: linksErr } = await supabase
     .from("parent_students")
     .select("student_id")
     .eq("parent_id", parent.id);
+  if (linksErr) {
+    console.error("[register] parent links:", linksErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   const studentIds = (links ?? []).map((l) => l.student_id);
   if (!studentIds.length)
     return { error: "Liên kết phụ huynh với học sinh trước khi cấp tài khoản." };
-  const { data: studs } = await supabase
+  const { data: studs, error: studsErr } = await supabase
     .from("students")
     .select("id,class_id")
     .in("id", studentIds);
-  const { data: classes } = await supabase
+  if (studsErr) {
+    console.error("[register] students:", studsErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  const { data: classes, error: classesErr } = await supabase
     .from("classes")
     .select("id,school_id,gvcn_id")
     .in("id", (studs ?? []).map((s) => s.class_id));
+  if (classesErr) {
+    console.error("[register] classes:", classesErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   const allowed =
     hasRole(profile, "gvcn")
       ? (classes ?? []).some((c) => c.gvcn_id === profile.id)

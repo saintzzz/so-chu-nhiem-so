@@ -13,6 +13,7 @@ import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { writeAudit } from "@/lib/audit";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fallbackToDevin } from "@/lib/devin";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -153,17 +154,32 @@ export async function POST(req: Request) {
     piiNames = roster.names;
   }
   // r16 M: loi doc danh sach YCCD khong duoc bien thanh danh sach rong.
-  const { data: stds, error: stdErr } = await supabase
-    .from("tvc_curriculum_standards")
-    .select("code, subject_code, grade, description")
-    .eq("status", "active");
-  if (stdErr) {
-    console.error("[studio/extract] standards:", stdErr.message);
+  // Phan trang day du - tap YCCD toan bo mon/khoi vuot cap 1000 rows,
+  // doc mot lan se cat ngam => prompt thieu chuan.
+  const stdRes = await fetchAllRows<{
+    code: string;
+    subject_code: string;
+    grade: number;
+    description: string | null;
+  }>((f, t) =>
+    supabase
+      .from("tvc_curriculum_standards")
+      .select("code, subject_code, grade, description")
+      .eq("status", "active")
+      .order("code")
+      .range(f, t),
+  );
+  if (stdRes.error || stdRes.truncated) {
+    console.error(
+      "[studio/extract] standards:",
+      stdRes.error ?? `truncated>${stdRes.rows.length}`,
+    );
     return NextResponse.json(
       { error: "Khong tai duoc du lieu nguon." },
       { status: 500 },
     );
   }
+  const stds = stdRes.rows;
   const stdList = (stds ?? [])
     .map((s) => `${s.code} [${s.subject_code} lop ${s.grade}]: ${s.description}`)
     .join("\n");

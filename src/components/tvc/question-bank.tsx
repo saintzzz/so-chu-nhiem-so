@@ -1545,7 +1545,8 @@ export function QuestionBank({
                           onClick={() =>
                             start(async () => {
                               const r = await setQuestionReviewState(q.id, "approved");
-                              if (!("error" in r)) setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "approved" } : x));
+                              if ("error" in r) setError(r.error ?? "Không cập nhật được trạng thái duyệt.");
+                              else setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "approved" } : x));
                             })
                           }
                         >
@@ -1559,7 +1560,8 @@ export function QuestionBank({
                           onClick={() =>
                             start(async () => {
                               const r = await setQuestionReviewState(q.id, "flagged");
-                              if (!("error" in r)) setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "flagged" } : x));
+                              if ("error" in r) setError(r.error ?? "Không cập nhật được trạng thái duyệt.");
+                              else setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "flagged" } : x));
                             })
                           }
                         >
@@ -1573,7 +1575,8 @@ export function QuestionBank({
                           onClick={() =>
                             start(async () => {
                               const r = await setQuestionReviewState(q.id, "unreviewed");
-                              if (!("error" in r)) setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "unreviewed" } : x));
+                              if ("error" in r) setError(r.error ?? "Không cập nhật được trạng thái duyệt.");
+                              else setQuestions((p) => p.map((x) => x.id === q.id ? { ...x, review_state: "unreviewed" } : x));
                             })
                           }
                         >

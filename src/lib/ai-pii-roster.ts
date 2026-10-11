@@ -94,13 +94,13 @@ export async function schoolPiiNames(
   const names: PiiName[] = [];
   let i = 0;
   for (const s of studentRows) {
-    if (s.full_name) names.push({ name: s.full_name, alias: `HS${String(++i).padStart(3, "0")}` });
+    if (s.full_name) names.push({ name: s.full_name, alias: `⟦HS${String(++i).padStart(3, "0")}⟧` });
   }
   for (const t of profRes.rows) {
-    if (t.full_name) names.push({ name: t.full_name, alias: `GV${String(++i).padStart(3, "0")}` });
+    if (t.full_name) names.push({ name: t.full_name, alias: `⟦GV${String(++i).padStart(3, "0")}⟧` });
   }
   for (const p of parentRows) {
-    if (p.full_name) names.push({ name: p.full_name, alias: `PH${String(++i).padStart(3, "0")}` });
+    if (p.full_name) names.push({ name: p.full_name, alias: `⟦PH${String(++i).padStart(3, "0")}⟧` });
   }
   return { names };
 }

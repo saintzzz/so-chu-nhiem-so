@@ -367,7 +367,7 @@ export async function POST(req: Request) {
   // [so_dinh_danh] va dap laan key - alias K### cho tung ma.
   const codeAliases = students.map((s, i) => ({
     name: s.code,
-    alias: `K${String(i + 1).padStart(3, "0")}`,
+    alias: `⟦K${String(i + 1).padStart(3, "0")}⟧`,
   }));
   // Ket hop alias ma HS + alias ten that (roster) - alias prefix khac
   // nhau nen khong dung do khi deanon.

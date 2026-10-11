@@ -138,10 +138,11 @@ export async function POST(req: Request) {
       );
     }
   }
-  // CR-049 r9: van ban docx co the chua ten HS (de thi thu, bai kiem tra
-  // lop) - pseudonymize theo roster truoc khi goi provider, fail-closed.
+  // CR-049 r9 + r16 M: roster can cho CA HAI nhanh - inline (anh/PDF)
+  // cung ghep mo ta YCCD (free-text DB, co the chua ten nguoi) vao
+  // prompt; van ban docx co the chua ten HS. Fail-closed.
   let piiNames: PiiName[] = [];
-  if (!inline && profile.school_id) {
+  if (profile.school_id) {
     const roster = await schoolPiiNames(profile.school_id);
     if (roster.error) {
       return NextResponse.json(
@@ -151,21 +152,31 @@ export async function POST(req: Request) {
     }
     piiNames = roster.names;
   }
-  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong van ban docx
-  // caller gui - chan inject alias "HS001..." de echo lo ten ngoai
-  // pham vi campus.
-  const usedNames = collectUsedNames(body.text ?? "", piiNames);
-  const { data: stds } = await supabase
+  // r16 M: loi doc danh sach YCCD khong duoc bien thanh danh sach rong.
+  const { data: stds, error: stdErr } = await supabase
     .from("tvc_curriculum_standards")
     .select("code, subject_code, grade, description")
     .eq("status", "active");
+  if (stdErr) {
+    console.error("[studio/extract] standards:", stdErr.message);
+    return NextResponse.json(
+      { error: "Khong tai duoc du lieu nguon." },
+      { status: 500 },
+    );
+  }
   const stdList = (stds ?? [])
     .map((s) => `${s.code} [${s.subject_code} lop ${s.grade}]: ${s.description}`)
     .join("\n");
+  // CR-049 r12 H3 + r16 M: deanon/pii_map pham vi ten trong van ban
+  // caller gui + context DB (mo ta YCCD) thuc su dua vao prompt.
+  const usedNames = collectUsedNames(
+    { text: body.text ?? "", stdList },
+    piiNames,
+  );
   const promptFull = `${prompt}\n\nDANH SACH MA YEU CAU CAN DAT (chon ma gan nhat cho moi cau, de rong neu khong chac):\n${stdList}`;
-  const safePrompt = inline
-    ? promptFull // binary path: prompt khong chua du lieu nguoi dung
-    : minimizePrompt(promptFull, piiNames);
+  // r16 M: ca 2 nhanh deu minimize - inline khong chua input user nhung
+  // stdList van la du lieu DB tuy y.
+  const safePrompt = minimizePrompt(promptFull, piiNames);
 
   const quotaOk = await takeAiQuota("tvc-question-extract", profile.id);
   const r = quotaOk

@@ -70,11 +70,11 @@ export async function POST(req: Request) {
   // thay ten that; output duoc deanonymizeNames khoi phuc trong
   // respondWithAi truoc khi parse.
   const names = ((teachers ?? []) as { id: string; full_name: string }[]).map(
-    (t, i) => ({ name: t.full_name, alias: `GV${String(i + 1).padStart(2, "0")}` }),
+    (t, i) => ({ name: t.full_name, alias: `⟦GV${String(i + 1).padStart(2, "0")}⟧` }),
   );
   const facts = {
     giao_vien: ((teachers ?? []) as { id: string; full_name: string }[]).map(
-      (t, i) => ({ ten: `GV${String(i + 1).padStart(2, "0")}`, mon_day: subjOf.get(t.id) ?? [] }),
+      (t, i) => ({ ten: `⟦GV${String(i + 1).padStart(2, "0")}⟧`, mon_day: subjOf.get(t.id) ?? [] }),
     ),
     lop: ((classes ?? []) as { name: string }[]).map((c) => c.name),
     mon_hoc: [...subjName.values()],

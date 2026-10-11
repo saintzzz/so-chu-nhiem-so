@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   // CCCD/CMND se bi redact lam mat key) - respondWithAi deanonymize.
   const piiNames = students.map((s, i) => ({
     name: s.full_name,
-    alias: `HS${String(i + 1).padStart(3, "0")}`,
+    alias: `⟦HS${String(i + 1).padStart(3, "0")}⟧`,
   }));
   const aliasOf = new Map(students.map((s, i) => [s.id, piiNames[i].alias]));
   const ids = students.map((s) => s.id);

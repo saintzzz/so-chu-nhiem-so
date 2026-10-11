@@ -343,3 +343,35 @@ Verdict: **NOT-CLEAN - 3 findings (3 HIGH)**
 - `npx tsc --noEmit` PASS | eslint changed-paths clean | tests 201 pass/1 skip
 - `check-consistency` PASS | `npm run build` PASS
 - Khong co migration moi trong r15 (thuan code fixes)
+
+---
+
+## Round 16 (Codex Cloud @ 17a73c1) - NOT-CLEAN: 9 findings (0H/5M/4L)
+
+Raw report: `docs/reviews/codex-r16-report.txt`
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | M | Studio extract: mo ta YCCD free-text (DB, `saveStandard` khong gioi han noi dung) ghep vao prompt - nhanh inline khong load roster; nhanh docx minimize nhung `stdList` khong nam trong `usedNames` nen alias tu nguon DB khong restore | **Fixed** - roster fail-closed cho CA HAI nhanh; `minimizePrompt(promptFull)` bao phu stdList; `usedNames = collectUsedNames({text, stdList})` | guard tests |
+| 2 | M | Studio: lookup subject/standards/template/material loi -> null/[]/default roi AI van sinh tren yeu cau thieu | **Fixed** - moi lookup duoc yeu cau check `error` -> 500 truoc provider/fallback (subject, standards x2, khbd_template, material refill) | guard tests |
+| 3 | M | `deanonymizeNames` nhieu luot: ten vua restore chua alias nguoi khac ("THCS TR02" -> TR01 -> "THCS THCS Nguyen Du") | **Fixed** - single-pass: 1 regex tong hop `parts.join("\|")` + callback map, khong rescan replacement | unit test r16 |
+| 4 | L | Prefix `R` khong bao ve alias: nhan vien ten "RHS001" hop le -> alias moi sinh bi minimize lai thanh alias khac | **Fixed** - sentinel-bracket namespace `⟦X###⟧` (HS/GV/PH/K/TR/R-prefixed); `pseudonymizeNames` lookbehind/lookahead loai `⟦⟧` nen alias da sinh khong bi quet lai; ten that "RHS001" van duoc alias binh thuong | unit test r16 |
+| 5 | L | Token alias trung code that trong text bi restore nham ("ma HS001" -> ten HS) | **Fixed** - deanon chi match dang CO NGOAC `⟦X###⟧` cho alias moi; alias legacy khong ngoac (pii_map job cu) van restore voi boundary Unicode; model bo ngoac -> alias sot (benign, documented) | unit test r16 |
+| 6 | M | `radar-sync`: `existing ?? []` sau loi dedupe lookup -> moi candidate coi nhu moi -> insert trung | **Fixed** - check `dedupeErr`: log + `errors.push` + `continue` truoc mutation | code review |
+| 7 | M | `pack=full`: insert de du phong / exam_questions bo loi -> tra doc "thanh cong" khi ban DB khong ton tai | **Fixed** - check ca 2 mutation; exam_questions loi -> rollback de + 500; exam loi -> 500 | code review |
+| 8 | L | `period-log-summary` (timetable/logs), `studio/context` (6 nhanh), `materials/[id]/export` (author) bien loi query thanh response nghiep vu thanh cong | **Fixed** - `srcFail(label, err)` -> 500 cho context route; period-log check `entErr`/`logErr`; export check `authorErr` | code review |
+| 9 | L | `warning-advice`: ca nhanh rule-based lan AI bo `.update()` result -> tra suggestion khi chua luu | **Fixed** - `.update().select("id")` + verify row -> 500 khi khong luu duoc | code review |
+
+### Alias scheme redesign (findings 3/4/5 gop lai)
+
+- Alias moi: `⟦HS###⟧`/`⟦GV##⟧`/`⟦PH###⟧`/`⟦K###⟧`/`⟦TR##⟧`/`⟦RX###⟧` (mergePiiNames nhung R vao trong ngoac: `⟦RHS001⟧`).
+- `pseudonymizeNames`: single-pass, lookbehind `(?<![\p{L}\p{N}⟦])` + lookahead `(?![\p{L}\p{N}⟧])` - alias vua sinh khong bi minimize lai (finding 4), ten that van alias binh thuong.
+- `deanonymizeNames`: single-pass alternation; bracketed chi match `⟦X###⟧` nguyen ven (finding 5 - bare code that khong bi restore); legacy bare alias (pii_map job cu) van match voi boundary (backward compat); restored name khong bi rescan (finding 3).
+- Alias construction sites updated: `ai-pii-roster`, `comments` (K###), `class-analysis`, `assignment-suggest`, `attendance-insight`, `dept-brief` (TR##).
+- Residual documented: model bo ngoac `⟦⟧` khi echo -> alias `HS001` sot trong output (khong leak ten, chi formatting wart).
+
+### Gates r16
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 202 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- Khong co migration moi trong r16 (thuan code fixes)

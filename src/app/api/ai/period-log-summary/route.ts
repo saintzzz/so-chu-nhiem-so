@@ -42,11 +42,19 @@ export async function POST(req: Request) {
     );
   }
 
-  // period_logs liên kết lớp qua timetable_entries
-  const { data: entryData } = await supabase
+  // r16 L: loi query khong duoc bien thanh "chua co tkb/tiet nao" -
+  // chi ket luan rong khi query thanh cong.
+  const { data: entryData, error: entErr } = await supabase
     .from("timetable_entries")
     .select("id,period,subject_id")
     .eq("class_id", classId);
+  if (entErr) {
+    console.error("[ai/period-log-summary] entries:", entErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const entries = (entryData ?? []) as {
     id: string;
     period: number;
@@ -59,7 +67,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const { data: logData } = await supabase
+  const { data: logData, error: logErr } = await supabase
     .from("period_logs")
     .select(
       "id,date,timetable_entry_id,present_count,note,lesson_title,lesson_content,teacher_comment",
@@ -67,6 +75,13 @@ export async function POST(req: Request) {
     .in("timetable_entry_id", entries.map((e) => e.id))
     .order("date", { ascending: false })
     .limit(60);
+  if (logErr) {
+    console.error("[ai/period-log-summary] logs:", logErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const logs = (logData ?? []) as {
     id: string;
     date: string;

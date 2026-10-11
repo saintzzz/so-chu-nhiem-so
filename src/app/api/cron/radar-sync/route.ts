@@ -51,7 +51,9 @@ async function run(req: NextRequest) {
       const { candidates } = data;
       if (!candidates.length) continue;
 
-      const { data: existing } = await supabase
+      // r16 M: loi dedupe lookup khong duoc coi la "chua co canh bao" -
+      // insert tren gia dinh sai se tao ban ghi trung.
+      const { data: existing, error: dedupeErr } = await supabase
         .from("early_warnings")
         .select("dedupe_key")
         .eq("school_id", schoolId)
@@ -59,6 +61,14 @@ async function run(req: NextRequest) {
           "dedupe_key",
           candidates.map((c) => c.dedupe_key),
         );
+      if (dedupeErr) {
+        console.error(
+          `[radar-sync] dedupe lookup failed ${schoolId}:`,
+          dedupeErr.message,
+        );
+        errors.push(`${schoolId}: early_warnings dedupe`);
+        continue;
+      }
       const have = new Set(
         ((existing ?? []) as { dedupe_key: string }[]).map((e) => e.dedupe_key),
       );

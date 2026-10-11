@@ -122,10 +122,20 @@ Chi tiết: ${warn.detail ?? "-"}
     const suggestion =
       advice[warn.category] ??
       "GVCN xác minh nguyên nhân, trao đổi với học sinh và phụ huynh; lập kế hoạch theo dõi 1-2 tuần; báo cáo BGH kết quả.";
-    await supabase
+    // r16 L: update phai xac nhan duoc row - tra suggestion khi chua
+    // luu la bao thanh cong sai.
+    const { data: saved, error: saveErr } = await supabase
       .from("early_warnings")
       .update({ suggestion })
-      .eq("id", warn.id);
+      .eq("id", warn.id)
+      .select("id");
+    if (saveErr || !saved?.length) {
+      console.error("[ai/warning-advice] save:", saveErr?.message ?? "0 rows");
+      return NextResponse.json(
+        { error: "Không lưu được đề xuất, thử lại sau." },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ suggestion });
   }
 
@@ -167,9 +177,17 @@ Chi tiết: ${warn.detail ?? "-"}
     return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
   }
   suggestion = deanonymizeNames(suggestion, usedNames);
-  await supabase
+  const { data: saved, error: saveErr } = await supabase
     .from("early_warnings")
     .update({ suggestion })
-    .eq("id", warn.id);
+    .eq("id", warn.id)
+    .select("id");
+  if (saveErr || !saved?.length) {
+    console.error("[ai/warning-advice] save:", saveErr?.message ?? "0 rows");
+    return NextResponse.json(
+      { error: "Không lưu được đề xuất, thử lại sau." },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ suggestion });
 }

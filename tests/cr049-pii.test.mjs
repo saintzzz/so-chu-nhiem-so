@@ -638,8 +638,8 @@ test("guard r14: routes minimize truoc stringify + fail-closed nguon", () => {
 test("guard r15: mergePiiNames + preserveKeys", () => {
   const src = read("src/lib/ai-privacy.ts");
   assert.match(src, /export function mergePiiNames/);
-  assert.match(src, /alias: `R\$\{r\.alias\}`/,
-    "alias roster phai doi prefix de khong dung alias nghiep vu");
+  assert.match(src, /alias: `⟦R\$\{r\.alias/,
+    "alias roster phai doi prefix trong ngoac de khong dung alias nghiep vu");
   assert.match(src, /preserveKeys\?\.has\(k\)/,
     "key schema tool phai giu nguyen cho builder");
 });
@@ -653,7 +653,7 @@ test("guard r15: 3 route widen roster + dept-brief TR-alias", () => {
   const asg = read("src/app/api/ai/assignment-suggest/route.ts");
   assert.match(asg, /mergePiiNames\(names, roster\.names\)/);
   const db = read("src/app/api/ai/dept-brief/route.ts");
-  assert.match(db, /alias: `TR\$\{String\(i \+ 1\)/,
+  assert.match(db, /alias: `⟦TR\$\{String\(i \+ 1\)/,
     "ten truong phai alias TRxx - ten truong la free-text co the chua ten nguoi");
 });
 
@@ -671,4 +671,51 @@ test("guard r15: studio generate preserveKeys cho builder", () => {
   const gen = read("src/app/api/studio/tools/[code]/generate/route.ts");
   assert.match(gen, /schemaKeys/);
   assert.match(gen, /minimizeDeep\(input, roster\.names, schemaKeys\)/);
+});
+
+test("r16: bracket alias - single-pass, khong rescan/re-minimize", async () => {
+  const { pseudonymizeNames, deanonymizeNames } = await import(
+    "../src/lib/ai-privacy.ts"
+  ).catch(() => import("../src/lib/ai-privacy.js"));
+  // finding 4: nguoi ten "RHS001" + alias ⟦HS001⟧ - single pass khong
+  // de alias moi sinh bi quet lai nhu ten that.
+  const map = [
+    { name: "Nguyễn Văn An", alias: "⟦HS001⟧" },
+    { name: "HS001", alias: "⟦HS002⟧" },
+  ];
+  assert.equal(
+    pseudonymizeNames("Nguyễn Văn An", map),
+    "⟦HS001⟧",
+    "alias sinh ra khong duoc bi minimize lan nua trong cung luot",
+  );
+  // finding 3: ten restore chua alias cua nguoi khac - 1 luot thay the.
+  const m2 = [
+    { name: "THCS ⟦TR02⟧", alias: "⟦TR01⟧" },
+    { name: "THCS Nguyễn Du", alias: "⟦TR02⟧" },
+  ];
+  assert.equal(
+    deanonymizeNames("⟦TR01⟧ và ⟦TR02⟧", m2),
+    "THCS ⟦TR02⟧ và THCS Nguyễn Du",
+    "ten vua restore khong duoc quet lai",
+  );
+  // finding 5: bare core KHONG restore - "ma HS001" trong source la code
+  // that, restore thanh ten se corrupt output. Model bo ngoac -> alias
+  // sot lai (benign), tot hon restore sai.
+  const m3 = [{ name: "Nguyễn Văn An", alias: "⟦HS001⟧" }];
+  assert.equal(
+    deanonymizeNames("ma HS001 van giu nguyen", m3),
+    "ma HS001 van giu nguyen",
+    "bare core khong duoc restore - tranh false-restore code that",
+  );
+  // alias legacy khong ngoac (pii_map job cu) van restore duoc.
+  assert.equal(
+    deanonymizeNames("HS07 can co gang", [{ name: "Trần Thị Bé", alias: "HS07" }]),
+    "Trần Thị Bé can co gang",
+    "legacy bare alias trong job cu van restore",
+  );
+  assert.equal(
+    deanonymizeNames("GV10 va GV100 deu day", [{ name: "Trần Văn Mười", alias: "GV10" }]),
+    "Trần Văn Mười va GV100 deu day",
+    "boundary Unicode: GV10 khong an vao GV100",
+  );
 });

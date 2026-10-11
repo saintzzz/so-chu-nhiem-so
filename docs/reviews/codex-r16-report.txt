@@ -1,0 +1,122 @@
+ChatGPT said:
+Response complete: được đưa vào phạm vi restore. Không chứng minh thêm trường hợp alias roster thực tế bị regex số định danh redact; lỗi đã chứng minh là bị pseudonymize lại ở finding 4. Sweep migrations đến R14 chưa chứng minh thêm bypass tenant qua SELECT chỉ có is_staff() hoặc helper cấp quyền thiếu bind trường còn hiệu lực. Các helper homeroom, teaching, timetable/substitute và dept-head đã có anchor trường hiện tại. Đây là kết luận từ source migrations, không phải xác nhận policy đang chạy trên production. VERDICT: NOT-CLEAN
+
+Đã review đúng commit 17a73c197466fd00d368661f993005e40e961b1f. Không sửa code, không gọi provider hoặc mutation DB. Có 9 findings: 5 MEDIUM, 4 LOW. Các ví dụ alias dưới đây đã được tái hiện bằng helper thực tế.
+
+MEDIUM — Nhánh extract ảnh/PDF vẫn gửi tên cá nhân trong YCCĐ ra provider.
+
+File: src/app/api/studio/questions/extract/route.ts:144, :158, :166; src/lib/tvc/actions.ts:657.
+
+saveStandard cho phép mô tả free-text, chỉ kiểm tra độ dài tối thiểu. Route ghép các mô tả vào promptFull, nhưng nhánh inline không tải roster và gửi nguyên prompt. Redaction tập trung chỉ xử lý PII dạng số/email, không xử lý tên.
+
+Kịch bản: YCCĐ active có mô tả chứa “Nguyễn Văn An”. Người dùng upload PDF không chứa PII và xác nhận hợp lệ; tên trong dữ liệu DB được ghép thêm vẫn ra provider. Xác nhận về file upload không bảo vệ nguồn này. Với DOCX, nguồn YCCĐ được minimize nhưng không nằm trong usedNames, nên alias từ nguồn đó cũng không được restore.
+
+Fix tối thiểu: tải roster và minimize phần context DB ở cả hai nhánh; tính usedNames từ văn bản cùng context thực sự đưa vào prompt.
+
+MEDIUM — Studio vẫn gọi AI khi lookup nguồn lỗi.
+
+File: src/app/api/studio/tools/[code]/generate/route.ts:452, :464, :475, :500, :510; src/app/api/studio/questions/extract/route.ts:158.
+
+Các lookup môn học, YCCĐ và template chỉ lấy data. Lỗi trở thành subject = null, standards = [] hoặc template mặc định; route tiếp tục dựng prompt và gọi AI. Extract cũng biến lỗi đọc danh sách YCCĐ thành danh sách rỗng.
+
+Kịch bản: người dùng đã chọn YCCĐ/template, query nguồn lỗi nhưng roster thành công. AI vẫn sinh tài liệu với yêu cầu bị thiếu hoặc khung mặc định.
+
+Fix tối thiểu: kiểm tra error của từng lookup được yêu cầu; trả 500 trước AI/fallback khi nguồn lỗi.
+
+MEDIUM — Deanon có thể sửa lại tên vừa khôi phục.
+
+File: src/lib/ai-privacy.ts:74, :77; src/app/api/ai/dept-brief/route.ts:64.
+
+Deanon chạy nhiều lần trên chuỗi đang thay đổi, nên tên khôi phục ở lượt trước có thể chứa alias của lượt sau.
+
+Proof: map hợp lệ của dept-brief:
+
+Plain text
+THCS TR02       → TR01
+THCS Nguyễn Du  → TR02
+
+deanonymizeDeep(minimizeDeep(source)) trả trường đầu thành “THCS THCS Nguyễn Du”, thay vì “THCS TR02”. Cả hai tên đều có trong source, nên giới hạn usedNames không ngăn lỗi.
+
+Fix tối thiểu: thay alias bằng một regex chung và callback map trong một lượt; không quét lại phần replacement.
+
+LOW — Prefix R không bảo vệ alias khỏi bị pseudonymize lại như tên thật.
+
+File: src/lib/ai-privacy.ts:56, :172; src/app/api/ai/class-analysis/route.ts:183; src/app/(app)/school/actions.ts:593.
+
+Validation tên staff chỉ yêu cầu không rỗng, nên tên "RHS001" được chấp nhận.
+
+Proof: roster có:
+
+Plain text
+Nguyễn Văn An → RHS001
+RHS001        → RHS002
+
+Input "Nguyễn Văn An" sau minimization thành RHS002. usedNames của input chỉ chứa mapping của An sang RHS001, nên token mới không được restore. Luồng minimize facts rồi minimize prompt tiếp tục có vấn đề này.
+
+Fix tối thiểu: dùng token alias riêng được bảo vệ xuyên suốt các lượt minimization; tránh quét alias đã sinh như dữ liệu tên.
+
+LOW — Token alias vốn là mã thường trong text cũng bị restore.
+
+File: src/lib/ai-privacy.ts:80; src/lib/ai-route.ts:107.
+
+Boundary Unicode ngăn match substring nhưng không phân biệt alias được sinh với token nguyên bản.
+
+Proof: với An trong usedNames, input:
+
+Plain text
+Nguyễn Văn An; mã RHS001
+
+sau minimize và deanon thành:
+
+Plain text
+Nguyễn Văn An; mã Nguyễn Văn An
+
+Nếu provider giữ nguyên mã thường trong câu trả lời, restore làm sai nội dung. TRxx có cùng tính chất.
+
+Fix tối thiểu: escape token nguyên bản trùng alias hoặc chọn namespace alias không xuất hiện trong source trước khi minimize.
+
+MEDIUM — Radar-sync vẫn mutation sau lỗi lookup chống trùng.
+
+File: src/app/api/cron/radar-sync/route.ts:54, :62, :69.
+
+Query early_warnings bỏ error; khi lỗi, existing ?? [] khiến mọi candidate được coi là mới và route tiếp tục insert.
+
+Kịch bản: buildRadarData thành công nhưng lookup dedupe lỗi. Cron vẫn thực hiện mutation trên giả định chưa có cảnh báo. Nếu insert thành công, response không ghi nhận lỗi đọc nguồn.
+
+Fix tối thiểu: kiểm tra lỗi lookup, ghi lỗi của trường đó và continue trước insert. Không cần giả định có hay không unique constraint để chứng minh đường mutation này.
+
+MEDIUM — Sinh đề dự phòng báo thành công dù lưu DB thất bại.
+
+File: src/app/api/studio/tools/[code]/generate/route.ts:771, :796, :800, :821.
+
+Insert đề dự phòng bỏ error. Nếu insert câu hỏi thất bại, code xóa đề nhưng vẫn dựng docDB và trả response thành công.
+
+Kịch bản: pack=full, đề chính lưu được, đề dự phòng hoặc câu hỏi dự phòng không lưu được. Client vẫn nhận tài liệu dự phòng mà không biết bản DB không tồn tại.
+
+Fix tối thiểu: kiểm tra cả hai mutation và phản ánh trạng thái lưu thất bại; tốt hơn là lưu toàn bộ pack trong transaction.
+
+LOW — Một số route vẫn biến lỗi đọc nguồn thành response nghiệp vụ thành công.
+
+File và proof:
+
+src/app/api/ai/period-log-summary/route.ts:46, :62: lỗi đọc timetable/logs trở thành HTTP 200 với “Lớp chưa có thời khóa biểu” hoặc “Chưa có tiết nào được ghi”.
+src/app/api/studio/context/route.ts:28, :37, :64, :69, :82, :93: cả sáu nhánh dữ liệu bỏ lỗi query, trả HTTP 200 với danh sách rỗng.
+src/app/api/studio/materials/[id]/export/route.ts:56: lỗi lookup tác giả bị thay bằng “giáo viên”, rồi xuất file thành công với attribution thiếu.
+
+Fix tối thiểu: kiểm tra error; chỉ dùng empty/default khi query thành công và thực sự không có dữ liệu.
+
+LOW — Warning-advice trả thành công dù suggestion không được lưu.
+
+File: src/app/api/ai/warning-advice/route.ts:125, :170.
+
+Cả nhánh rule-based và AI đều bỏ kết quả .update({ suggestion }), rồi trả suggestion như thành công.
+
+Kịch bản: update lỗi DB hoặc RLS không cho cập nhật; client nhận suggestion nhưng reload không thấy nội dung đã lưu.
+
+Fix tối thiểu: kiểm tra error và xác nhận row được cập nhật bằng .select("id"); trả lỗi khi không lưu được.
+
+Các điểm trọng tâm còn lại: preserveKeys chỉ áp dụng allowlist ở depth 0; key raw không tự bị deanon nếu không chứa alias. Source raw của ba route phân tích và perSchool của dept-brief đã được đưa vào phạm vi restore. Không chứng minh thêm trường hợp alias roster thực tế bị regex số định danh redact; lỗi đã chứng minh là bị pseudonymize lại ở finding 4.
+
+Sweep migrations đến R14 chưa chứng minh thêm bypass tenant qua SELECT chỉ có is_staff() hoặc helper cấp quyền thiếu bind trường còn hiệu lực. Các helper homeroom, teaching, timetable/substitute và dept-head đã có anchor trường hiện tại. Đây là kết luận từ source migrations, không phải xác nhận policy đang chạy trên production.
+
+VERDICT: NOT-CLEAN

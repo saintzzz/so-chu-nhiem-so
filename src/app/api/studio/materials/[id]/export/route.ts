@@ -53,11 +53,20 @@ export async function GET(
   if (!(await hasFeature("studio.export")))
     return NextResponse.json({ error: "Tính năng xuất file đã bị quản trị tắt." }, { status: 403 });
 
-  const { data: author } = await supabase
+  // r16 L: loi lookup tac gia khong duoc bien thanh attribution "giao
+  // vien" - export file voi ten sai la integrity failure.
+  const { data: author, error: authorErr } = await supabase
     .from("profiles")
     .select("full_name")
     .eq("id", material.author_id)
     .single();
+  if (authorErr) {
+    console.error("[studio/export] author:", authorErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
 
   const isPptx = fmt === "pptx";
   const buf = isPptx

@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     .filter((s) => s.school_name)
     .map((s, i) => ({
       name: s.school_name,
-      alias: `TR${String(i + 1).padStart(2, "0")}`,
+      alias: `⟦TR${String(i + 1).padStart(2, "0")}⟧`,
     }));
   let allNames: import("@/lib/ai-privacy").PiiName[] = schoolAliases;
   if (profile.school_id) {

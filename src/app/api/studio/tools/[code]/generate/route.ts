@@ -448,23 +448,37 @@ export async function POST(
   let standards: CurriculumStandard[] = [];
   const grade = input.grade ? Number(input.grade) : null;
 
+  // r16 M: lookup duoc yeu cau ma loi KHONG duoc bien thanh
+  // null/rong - AI se sinh tai lieu tren yeu cau thieu.
   if (input.subject) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("tvc_subjects")
       .select("*")
       .eq("code", input.subject)
       .single();
-    subject = (data as Subject | null) ?? null;
+    if (error || !data) {
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn." },
+        { status: 500 },
+      );
+    }
+    subject = data as Subject;
   }
   const stdIds = (input.standard_ids ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   if (stdIds.length) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("tvc_curriculum_standards")
       .select("*")
       .in("id", stdIds);
+    if (error) {
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn." },
+        { status: 500 },
+      );
+    }
     standards = (data as CurriculumStandard[]) ?? [];
   }
 
@@ -472,11 +486,17 @@ export async function POST(
 
   // DC-01 (CR-026): nap bieu mau KHBD theo truong vao ctx.extra
   if (code === "DC-01" && input.khbd_template) {
-    const { data: tpl } = await supabase
+    const { data: tpl, error: tplErr } = await supabase
       .from("tvc_khbd_templates")
       .select("name, activities, include_review, include_signoff")
       .eq("id", input.khbd_template)
       .single();
+    if (tplErr) {
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn." },
+        { status: 500 },
+      );
+    }
     if (tpl) ctx.extra = { khbdTemplate: tpl };
   }
 
@@ -496,21 +516,34 @@ export async function POST(
       );
     }
     // Bu trong tu material khi input thieu - API caller khong can truyen lai.
+    // r16 M: loi lookup bu trong cung fail-closed (giong nhanh input).
     if (!ctx.subject && mat.subject_code) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("tvc_subjects")
         .select("*")
         .eq("code", mat.subject_code)
         .single();
+      if (error) {
+        return NextResponse.json(
+          { error: "Không tải được dữ liệu nguồn." },
+          { status: 500 },
+        );
+      }
       subject = (data as Subject | null) ?? null;
       ctx.subject = subject;
     }
     if (!ctx.grade && mat.grade) ctx.grade = mat.grade;
     if (!ctx.standards.length && mat.standard_ids?.length) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("tvc_curriculum_standards")
         .select("*")
         .in("id", mat.standard_ids);
+      if (error) {
+        return NextResponse.json(
+          { error: "Không tải được dữ liệu nguồn." },
+          { status: 500 },
+        );
+      }
       standards = (data as CurriculumStandard[]) ?? [];
       ctx.standards = standards;
     }
@@ -768,7 +801,10 @@ export async function POST(
       const ctStems = new Set(realCT.map((p) => stemKey(p.q.stem)));
       const pickedDB = await buildPicked(ctIds, ctStems);
       const realDB = pickedDB.filter((p) => !p.q.id.startsWith("missing-"));
-      const { data: examDB } = await supabase
+      // r16 M: insert de/cau hoi du phong cung phai check error - bao
+      // thanh cong khi ban DB khong ton tai la silent integrity failure
+      // giong de chinh.
+      const { data: examDB, error: examDbErr } = await supabase
         .from("tvc_exams")
         .insert({
           owner_id: user.id,
@@ -781,7 +817,13 @@ export async function POST(
         })
         .select()
         .single();
-      if (examDB && realDB.length) {
+      if (examDbErr || !examDB) {
+        return NextResponse.json(
+          { error: "Không lưu được đề dự phòng." },
+          { status: 500 },
+        );
+      }
+      if (realDB.length) {
         const { error: eqDbErr } = await supabase
           .from("tvc_exam_questions")
           .insert(
@@ -795,6 +837,10 @@ export async function POST(
           );
         if (eqDbErr) {
           await supabase.from("tvc_exams").delete().eq("id", examDB.id);
+          return NextResponse.json(
+            { error: "Không lưu được câu hỏi của đề dự phòng." },
+            { status: 500 },
+          );
         }
       }
       docDB = buildExamDoc(

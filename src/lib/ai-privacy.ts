@@ -52,37 +52,57 @@ export function pseudonymizeNames(text: string, names: PiiName[]): string {
     .filter((n) => n.name && n.alias)
     .map((n) => ({ name: n.name.normalize("NFC"), alias: n.alias }))
     .sort((a, b) => b.name.length - a.name.length);
-  let out = text.normalize("NFC");
-  for (const n of sorted) {
-    const esc = n.name
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      // whitespace linh hoat: "Nguyen  Van  An" (2 spaces) van khop
-      .split(/\s+/)
-      .join("\\s+");
-    out = out.replace(
-      new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "giu"),
-      n.alias,
-    );
-  }
-  return out;
+  if (!sorted.length) return text;
+  const byName = new Map(
+    sorted.map((n) => [n.name.replace(/\s+/g, " ").toLowerCase(), n.alias]),
+  );
+  const alt = sorted
+    .map((n) =>
+      n.name
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        // whitespace linh hoat: "Nguyen  Van  An" (2 spaces) van khop
+        .split(/\s+/)
+        .join("\\s+"),
+    )
+    .join("|");
+  // CR-049 r16: MOT luot thay the duy nhat - alias vua sinh khong bi
+  // quet lai nhu ten that (nguoi ten "RHS001" + alias RHS001 khong con
+  // lech tang). Lookbehind loai ⟦⟧: ten "HS001" khong duoc an vao trong
+  // alias ⟦HS001⟧ da sinh (cross-call minimize facts -> minimizePrompt).
+  return text.normalize("NFC").replace(
+    new RegExp(`(?<![\\p{L}\\p{N}⟦])(?:${alt})(?![\\p{L}\\p{N}⟧])`, "giu"),
+    (m) =>
+      byName.get(m.normalize("NFC").replace(/\s+/g, " ").toLowerCase()) ?? m,
+  );
 }
 
-/** Dao nguoc: alias -> ten that tren output LLM. Alias dai truoc
- *  (GV100 truoc GV10) + boundary regex Unicode (dong nhat voi
- *  pseudonymizeNames): "GV10" khong duoc an vao token "GV100" hay
- *  "XGV100" hay "éHS001é" (chu Unicode van la mot token). */
+/** Dao nguoc: alias -> ten that tren output LLM.
+ *  CR-049 r16: MOT luot (finding 3: ten vua restore khong bi quet lai
+ *  boi alias cua nguoi khac - "THCS TR02" -> TR01 -> "THCS THCS Nguyen
+ *  Du"). Alias ⟦X###⟧ chi match DANG CO NGOAC - bare core khong match
+ *  (finding 5: "ma HS001" trong source la code that, khong duoc bi
+ *  restore thanh ten). Model bo ngoac khi echo thi alias con sot trong
+ *  output - residual benign, tot hon restore sai. Alias legacy khong
+ *  ngoac (pii_map job cu) van match bare voi boundary Unicode nhu cu. */
 export function deanonymizeNames(text: string, names: PiiName[]): string {
-  const sorted = [...names].sort((a, b) => b.alias.length - a.alias.length);
-  let out = text;
+  const sorted = [...names]
+    .filter((n) => n.name && n.alias)
+    .sort((a, b) => b.alias.length - a.alias.length);
+  if (!sorted.length) return text;
+  const byAlias = new Map(sorted.map((n) => [n.alias, n.name]));
+  const parts: string[] = [];
   for (const n of sorted) {
-    if (!n.name || !n.alias) continue;
-    const esc = n.alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    out = out.replace(
-      new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "gu"),
-      () => n.name,
-    );
+    const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (n.alias.startsWith("⟦") && n.alias.endsWith("⟧")) {
+      parts.push(escRe(n.alias));
+    } else {
+      parts.push(`(?<![\\p{L}\\p{N}])${escRe(n.alias)}(?![\\p{L}\\p{N}])`);
+    }
   }
-  return out;
+  return text.replace(
+    new RegExp(`(?:${parts.join("|")})`, "gu"),
+    (m) => byAlias.get(m) ?? m,
+  );
 }
 
 /** Goi gon: pseudonymizeNames + redactPiiText cho moi external call. */
@@ -173,7 +193,12 @@ export function mergePiiNames(biz: PiiName[], roster: PiiName[]): PiiName[] {
   const seen = new Set(biz.map((n) => n.name.normalize("NFC")));
   const extra = roster
     .filter((r) => r.name && !seen.has(r.name.normalize("NFC")))
-    .map((r) => ({ name: r.name, alias: `R${r.alias}` }));
+    .map((r) => ({
+      name: r.name,
+      // r16: alias hien tai dang ⟦X###⟧ - nhung vao ⟦RX###⟧, KHONG noi
+      // chuoi tho (R⟦HS001⟧ khong match deanon va bi leak).
+      alias: `⟦R${r.alias.startsWith("⟦") ? r.alias.slice(1, -1) : r.alias}⟧`,
+    }));
   return [...biz, ...extra];
 }
 

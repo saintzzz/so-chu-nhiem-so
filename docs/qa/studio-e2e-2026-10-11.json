@@ -1,13 +1,13 @@
 {
-  "run": "OH20",
+  "run": "ZSTD",
   "created": {
     "materials": [
-      "bcde0a6d-502b-4b48-9e2f-bbc1d6ab0cbe",
-      "708446b2-cb46-4441-97ad-b7df06c9f812",
-      "0f0980f6-d01b-4815-b50d-c4301c27c9bf"
+      "a2e938eb-b447-4a13-a03a-d6a2610e9ea0",
+      "2e60ca08-7e09-4f5f-b4c9-f7f119265b19",
+      "d792d447-5eff-4127-92c8-1720e821a5e3"
     ],
     "matrices": [
-      "8e788f86-1d21-4c88-9415-eba8c03e7396"
+      "c0960592-b0ee-4316-8dc0-4308e189a544"
     ]
   },
   "results": [
@@ -15,119 +15,119 @@
       "stage": "setup",
       "name": "cleanup QA-% materials/matrices (pre-clean)",
       "ok": true,
-      "ms": 2324,
+      "ms": 3172,
       "detail": "mats=0 mx=0"
     },
     {
       "stage": "T1-gv",
       "name": "login GV",
       "ok": true,
-      "ms": 5380,
+      "ms": 5381,
       "detail": "https://sochunhiem.vieschool.com/"
     },
     {
       "stage": "T1-gv",
       "name": "hub /studio hien du 13 tools",
       "ok": true,
-      "ms": 3169,
+      "ms": 4473,
       "detail": "all"
     },
     {
       "stage": "T1-gv",
       "name": "DC-01 sinh KHBD + luu material",
       "ok": true,
-      "ms": 34152,
-      "detail": "id=bcde0a6d-502b-4b48-9e2f-bbc1d6ab0cbe sections=7 status=personal"
+      "ms": 114472,
+      "detail": "id=a2e938eb-b447-4a13-a03a-d6a2610e9ea0 sections=7 status=personal"
     },
     {
       "stage": "T1-gv",
       "name": "gui duyet -> status in_review",
       "ok": true,
-      "ms": 4655,
+      "ms": 4511,
       "detail": "status=in_review"
     },
     {
       "stage": "T1-gv",
       "name": "export DOCX (file that, PK zip)",
       "ok": true,
-      "ms": 1231,
-      "detail": "status=200 size=12620 pk=true"
+      "ms": 1094,
+      "detail": "status=200 size=9714 pk=true"
     },
     {
       "stage": "T1-gv",
       "name": "DC-02 sinh ma tran + luu",
       "ok": true,
-      "ms": 8444,
-      "detail": "id=8e788f86-1d21-4c88-9415-eba8c03e7396 cells=4"
+      "ms": 8689,
+      "detail": "id=c0960592-b0ee-4316-8dc0-4308e189a544 cells=4"
     },
     {
       "stage": "T1-gv",
       "name": "DC-03 sinh de tu ngan hang 22k cau",
       "ok": true,
-      "ms": 5884,
-      "detail": "exam=0f0980f6-d01b-4815-b50d-c4301c27c9bf preview_has_questions=true"
+      "ms": 12358,
+      "detail": "exam=d792d447-5eff-4127-92c8-1720e821a5e3 preview_has_questions=true"
     },
     {
       "stage": "T1-gv",
       "name": "A-01 sinh bai doc A2 (AI that)",
       "ok": true,
-      "ms": 14399,
+      "ms": 31507,
       "detail": "status=200 sections=3 provider=gemini"
     },
     {
       "stage": "T1-gv",
       "name": "ngan hang /studio/questions render",
       "ok": true,
-      "ms": 5315,
+      "ms": 2925,
       "detail": ""
     },
     {
       "stage": "T1-gv",
       "name": "thu vien hien material QA",
       "ok": true,
-      "ms": 3425,
+      "ms": 3204,
       "detail": ""
     },
     {
       "stage": "T2-totruong",
       "name": "login to_truong",
       "ok": true,
-      "ms": 4568,
+      "ms": 4505,
       "detail": ""
     },
     {
       "stage": "T2-totruong",
       "name": "to truong duyet -> totruong_ok",
       "ok": true,
-      "ms": 5909,
+      "ms": 6533,
       "detail": "status=totruong_ok"
     },
     {
       "stage": "T3-bgh",
       "name": "login BGH",
       "ok": true,
-      "ms": 2278,
+      "ms": 2728,
       "detail": ""
     },
     {
       "stage": "T3-bgh",
       "name": "BGH duyet -> published",
       "ok": true,
-      "ms": 5941,
+      "ms": 6113,
       "detail": "status=published"
     },
     {
       "stage": "T4-deny",
       "name": "PH bi chan khoi /studio",
       "ok": true,
-      "ms": 7076,
+      "ms": 13399,
       "detail": "https://sochunhiem.vieschool.com/portal/parent"
     },
     {
       "stage": "setup",
       "name": "cleanup QA-% materials/matrices (post-test)",
       "ok": true,
-      "ms": 1259,
+      "ms": 972,
       "detail": "mats=3 mx=1"
     }
   ]

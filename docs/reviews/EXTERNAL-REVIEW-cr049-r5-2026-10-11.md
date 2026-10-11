@@ -65,3 +65,30 @@ doc lap verify + fix ngay (commit `74a5e86`):
 ## Next
 
 - Round review tiep theo tren `74a5e86` sau khi Codex reset quota.
+
+## Codex r6 (commit bedef17) - VERDICT: NOT-CLEAN, 10 findings (5H/5M)
+
+Raw report: `docs/reviews/codex-cloud-report-cr049-r6-raw.txt`.
+Codex xac nhan 14/19 fix r5 dung + ca 2 interim fixes (overloads, TT22 tiers).
+Tat ca 10 findings deu source-confirmed -> fix het, khong finding nao
+deferred hay not-confirmed.
+
+| # | Sev | Finding | Fix | Verify |
+|---|-----|---------|-----|--------|
+| 1 | H | A-03 TTS tra phi van chay khi `quotaOk=false` | Gate TTS theo `quotaOk` trong studio generate route - budget block -> doc rule-based khong audio | source |
+| 2 | H | Xoa het diem lam mat revision CAS (`v_max=NULL`) | Bang `grade_book_state` (scope_key -> last_saved_at) upsert trong cung advisory lock, ke ca luu rong; CAS check `greatest(max(updated_at), state)`; `clock_timestamp()` cho cung-tx ordering | `RESULT stale_blocked=t restored_rows=0` (rollback) |
+| 3 | H | Unique key `grades` thieu `academic_year_id` -> luu diem nam moi vi pham | Drop constraint cu, unique INDEX co `coalesce(academic_year_id, zero-uuid)` - rows legacy NULL giu uniqueness | `same_year_dup_blocked=t cross_year_ok=t` |
+| 4 | H | Editor doc lan diem cac nam hoc | `classes` select them `academic_year_id`; query grades loc `(NULL or = class year)` - cung scope voi RPC | source + typecheck |
+| 5 | H | counseling-summary/incident-report gui ten HS trong free-text ra AI | Fetch ten HS active cua truong, truyen `pii.names` (alias HSxxx) vao `respondWithAi` - pseudonymize truoc provider + Devin | source + tests |
+| 6 | M | alreadySent lookup bo qua error -> co the gui trung | `sentLookErr` -> 500, giu row 'sending' cho run sau | source |
+| 7 | M | requeue RPC loi nhung route tra 200 `done:true` | `requeueErr` -> 500 de scheduler retry | source |
+| 8 | M | Deadline khong bound sub-batch va email transport | `sendEmail` nhan `timeoutMs` (AbortSignal.timeout); break sub-batch khi `left < 3s`, truyen `leftMs-1s` cho transport | source |
+| 9 | M | Enqueue starvation qua 20k PH (cursor reset moi run) | RPC `scn_digest_pending_parents(week, after, limit)` loc san outbox + deliveries 'sent', keyset `p_after` -> resume duoc qua nguong | RPC applied + grant service_role |
+| 10 | M | daily-report coi loi nguon la du lieu rong | Check `stuErr`/`attRes`/`conductRes`/`incRes` -> 500 truoc AI call | source |
+
+### Gates r6
+
+- `npx tsc --noEmit` PASS; `npm run lint` 0 errors (136 warnings pre-existing)
+- `npm run build` PASS; `node scripts/check-consistency.mjs` PASS
+- Tests: 157 pass / 0 fail (PII suite 17/17)
+- Migration `20261127_cr049_r6_fixes.sql` applied + verified prod

@@ -44,11 +44,34 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r6 H5: ghi chu tu do co the chua ten HS -> pseudonymize theo
+  // danh sach HS truong truoc khi gui provider.
+  const { data: clsRows } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("school_id", profile.school_id)
+    .eq("status", "active");
+  const classIds = (clsRows ?? []).map((c) => c.id as string);
+  const { data: stuRows } = classIds.length
+    ? await supabase
+        .from("students")
+        .select("full_name")
+        .in("class_id", classIds)
+        .eq("status", "active")
+    : { data: [] };
+  const piiNames = (stuRows ?? [])
+    .map((s) => s.full_name as string)
+    .filter(Boolean)
+    .map((name, i) => ({
+      name,
+      alias: `HS${String(i + 1).padStart(3, "0")}`,
+    }));
   return respondWithAi<IncidentDraft>({
     req,
     supabase,
     profile,
     kind: "incident-report",
+    pii: { names: piiNames },
     system:
       "Bạn là cán bộ quản lý học sinh trường phổ thông Việt Nam. Viết hồ sơ sự cố khách quan, đúng quy trình. Chỉ trả về JSON hợp lệ.",
     prompt: `Viết hồ sơ sự cố học sinh từ thông tin thô:

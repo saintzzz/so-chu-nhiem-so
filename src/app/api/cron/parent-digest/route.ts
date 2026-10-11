@@ -170,14 +170,17 @@ async function run(req: NextRequest) {
   // F14: chung 30s cuoi danh cho sendPhase - enqueue khong an het budget.
   for (let chunk = 0; chunk < MAX_CHUNKS; chunk++) {
     if (phase !== "enqueue" && Date.now() > deadlineAt - 30_000) break;
-    const { data: parents, error: parentsErr } = await supabase
-      .from("parents")
-      .select("id, full_name, email")
-      .not("email", "is", null)
-      .not("email", "ilike", "%.scn")
-      .gt("id", lastParentId || "00000000-0000-0000-0000-000000000000")
-      .order("id")
-      .limit(CHUNK);
+    // CR-049 r6 M9: RPC loc san PH da co outbox/delivery 'sent' tuan
+    // nay -> run sau chi quet phan chua xu ly, resume duoc qua nguong
+    // 20k PH (cursor keyset reset moi invocation khong con starvation).
+    const { data: parents, error: parentsErr } = await supabase.rpc(
+      "scn_digest_pending_parents",
+      {
+        p_week: weekStart,
+        p_after: lastParentId || "00000000-0000-0000-0000-000000000000",
+        p_limit: CHUNK,
+      },
+    );
     if (parentsErr) {
       fatalError = "parents query failed";
       console.error("[parent-digest] parents query failed:", parentsErr);
@@ -427,9 +430,19 @@ async function sendPhase(
 
   // Requeue: 'sending' cu (worker chet giua chung) + 'failed'/'skipped'
   // con han + reconcile rows da co delivery 'sent' (F6) - tat ca tuan.
-  const { data: requeued } = await supabase.rpc("scn_digest_outbox_requeue", {
-    p_max_attempts: MAX_ATTEMPTS,
-  });
+  const { data: requeued, error: requeueErr } = await supabase.rpc(
+    "scn_digest_outbox_requeue",
+    { p_max_attempts: MAX_ATTEMPTS },
+  );
+  // CR-049 r6 M7: requeue loi -> 5xx de scheduler retry; tra 200
+  // done:true se bo sot hang failed/stale-sending khong duoc phuc hoi.
+  if (requeueErr) {
+    console.error("[parent-digest] outbox requeue failed:", requeueErr);
+    return NextResponse.json(
+      { error: "outbox requeue failed", sent, failed, skipped },
+      { status: 500 },
+    );
+  }
 
   while (Date.now() < deadline) {
     const { data: claimed, error: claimErr } = await supabase.rpc(
@@ -471,11 +484,20 @@ async function sendPhase(
 
       // F6 defense-in-depth: row 'queued' tre (<10ph, reconcile chua bat)
       // nhung deliveries da co 'sent' -> mark sent, KHONG gui lai.
-      const { data: alreadySent } = await supabase
+      const { data: alreadySent, error: sentLookErr } = await supabase
         .from("digest_deliveries")
         .select("parent_id, week_start")
         .in("parent_id", batch.map((j) => j.parent_id))
         .eq("status", "sent");
+      // CR-049 r6 M6: lookup loi != chua gui - fail closed, giu row
+      // 'sending' cho run sau thay vi co the gui trung.
+      if (sentLookErr) {
+        console.error("[parent-digest] already-sent lookup failed:", sentLookErr);
+        return NextResponse.json(
+          { error: "delivery lookup failed", sent, failed, skipped },
+          { status: 500 },
+        );
+      }
       const sentKeys = new Set(
         (alreadySent ?? []).map((d) => `${d.parent_id}|${d.week_start}`),
       );
@@ -493,8 +515,19 @@ async function sendPhase(
       }
       if (!batch.length) continue;
 
+      // CR-049 r6 M8: deadline bound tung sub-batch + transport -
+      // provider treo khong duoc giu worker qua invocation budget.
+      const leftMs = deadline - Date.now();
+      if (leftMs < 3_000) break;
       const results = await Promise.all(
-        batch.map((j) => sendEmail({ to: [j.email], subject: j.subject, text: j.body })),
+        batch.map((j) =>
+          sendEmail({
+            to: [j.email],
+            subject: j.subject,
+            text: j.body,
+            timeoutMs: leftMs - 1_000,
+          }),
+        ),
       );
       const deliveries: Record<string, unknown>[] = [];
       for (let k = 0; k < batch.length; k++) {

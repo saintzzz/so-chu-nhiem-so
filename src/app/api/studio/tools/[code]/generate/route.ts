@@ -917,7 +917,9 @@ export async function POST(
   // upload bucket tvc-media, chen block audio vao dau section hoi thoai.
   // Khong co OPENAI_API_KEY / TTS loi -> doc giu nguyen, khong chan generate.
   let audioPath: string | null = null;
-  if (code === "A-03" && doc?.sections?.length) {
+  // CR-049 r6 H1: quota bi chan -> khong goi TTS tra phi (doc van tra
+  // rule-based, chi thieu audio); chi khi con budget moi synthesize.
+  if (code === "A-03" && doc?.sections?.length && quotaOk) {
     try {
       const { extractDialogueTurns, synthesizeDialogue, uploadTtsAudio } =
         await import("@/lib/tvc/tts");

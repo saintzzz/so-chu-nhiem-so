@@ -94,6 +94,9 @@ export async function sendEmail(input: {
   to: string[];
   subject: string;
   text: string;
+  // CR-049 r6 M8: transport phai bi bound theo deadline caller -
+  // provider treo mot request khong duoc giu worker qua invocation budget.
+  timeoutMs?: number;
 }): Promise<EmailResult> {
   const { provider, key, from: fromRaw } = await getEmailConfig();
   const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
@@ -109,6 +112,7 @@ export async function sendEmail(input: {
     try {
       const res = await fetch(provider === "brevo" ? BREVO_URL : RESEND_URL, {
         method: "POST",
+        signal: AbortSignal.timeout(Math.max(1_000, input.timeoutMs ?? 15_000)),
         headers:
           provider === "brevo"
             ? { "api-key": key, "Content-Type": "application/json" }

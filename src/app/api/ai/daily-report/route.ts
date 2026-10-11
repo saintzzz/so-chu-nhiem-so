@@ -33,11 +33,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Bạn không chủ nhiệm lớp này." }, { status: 403 });
   }
 
-  const { data: stu } = await supabase
+  const { data: stu, error: stuErr } = await supabase
     .from("students")
     .select("id,full_name,code")
     .eq("class_id", cls.id)
     .eq("status", "active");
+  // CR-049 r6 M10: loi nguon != du lieu rong - fail truoc khi goi AI,
+  // neu khong route co the bao cao "lop on dinh" tren nguon chua tai.
+  if (stuErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   const students = (stu ?? []) as Pick<Student, "id" | "full_name" | "code">[];
   const ids = students.map((s) => s.id);
 
@@ -62,6 +70,17 @@ export async function POST(req: Request) {
       .eq("class_id", cls.id)
       .in("status", ["new", "following"]),
   ]);
+  // CR-049 r6 M10: fail-closed khi nguon su co/chuyen can/hanh kiem loi.
+  const srcErr =
+    (attRes as { error?: { message?: string } }).error ??
+    (conductRes as { error?: { message?: string } }).error ??
+    incRes.error;
+  if (srcErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
 
   // gui alias HSxxx thay ma/ten HS ra AI provider (CR-049 P3b+r5: ma so
   // 9-12 chu so bi redact nham la PII, con ten that la PII) - deanon

@@ -34,11 +34,35 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r6 H5: free-text co the chua ten HS gan voi thong tin tu van
+  // nhay cam -> cung cap ten HS trong pham vi truong de pseudonymize
+  // truoc khi gui provider (alias HSxxx, deanon khi tra ket qua).
+  const { data: clsRows } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("school_id", profile.school_id)
+    .eq("status", "active");
+  const classIds = (clsRows ?? []).map((c) => c.id as string);
+  const { data: stuRows } = classIds.length
+    ? await supabase
+        .from("students")
+        .select("full_name")
+        .in("class_id", classIds)
+        .eq("status", "active")
+    : { data: [] };
+  const piiNames = (stuRows ?? [])
+    .map((s) => s.full_name as string)
+    .filter(Boolean)
+    .map((name, i) => ({
+      name,
+      alias: `HS${String(i + 1).padStart(3, "0")}`,
+    }));
   return respondWithAi<CounselingDraft>({
     req,
     supabase,
     profile,
     kind: "counseling-summary",
+    pii: { names: piiNames },
     system:
       "Bạn là cán bộ tư vấn tâm lý học đường. Phân tích thận trọng, không chẩn đoán y khoa, luôn khuyên tham khảo chuyên gia khi cần. Chỉ trả về JSON hợp lệ.",
     prompt: `Phân tích dấu hiệu học sinh cần tư vấn/hỗ trợ (trường phổ thông Việt Nam):

@@ -11,6 +11,7 @@ import { hasRole, hasAnyRole } from "@/lib/roles";
 interface ClassRow {
   id: string;
   name: string;
+  academic_year_id: string | null;
 }
 interface StudentRow {
   id: string;
@@ -62,7 +63,7 @@ export default async function GradesPage({
 
   let classQuery = supabase
     .from("classes")
-    .select("id,name")
+    .select("id,name,academic_year_id")
     .eq("status", "active");
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
@@ -111,7 +112,7 @@ export default async function GradesPage({
       const { data: missingData, error: mErr } = taughtClassIds.size
         ? await supabase
             .from("classes")
-            .select("id,name")
+            .select("id,name,academic_year_id")
             .in("id", [...taughtClassIds])
             .eq("status", "active")
         : { data: [], error: null };
@@ -177,13 +178,15 @@ export default async function GradesPage({
   );
 
   const studentIds = students.map((s) => s.id);
-  // R14-01: grades co the vuot PostgREST cap (so HS x so cot diem) ->
-  // fetchAllRows; error||truncated = du lieu thieu, phai chan editor vi
-  // scn_save_grades la replace-all (luu tren nguon thieu = xoa diem cu).
+  // CR-049 r6 H4: editor doc cung year scope voi scn_save_grades
+  // (NULL legacy + nam hoc cua lop) - khong loc se nap diem nam khac
+  // vao o diem nam hien tai, luu lai ghi de sai nam.
+  const classYearId =
+    classes.find((c) => c.id === classId)?.academic_year_id ?? null;
   const gradesRes =
     studentIds.length && subjectId
-      ? await fetchAllRows<GradeRow>((f, t) =>
-          supabase
+      ? await fetchAllRows<GradeRow>((f, t) => {
+          let q = supabase
             .from("grades")
             .select(
               "id,student_id,assessment_type,score,result,comment,level,seq,subtype,updated_at",
@@ -192,8 +195,14 @@ export default async function GradesPage({
             .eq("subject_id", subjectId)
             .eq("term", term)
             .order("id")
-            .range(f, t),
-        )
+            .range(f, t);
+          q = classYearId
+            ? q.or(
+                `academic_year_id.is.null,academic_year_id.eq.${classYearId}`,
+              )
+            : q.is("academic_year_id", null);
+          return q;
+        })
       : { rows: [] as GradeRow[], error: null, truncated: false };
   const grades = gradesRes.rows;
 

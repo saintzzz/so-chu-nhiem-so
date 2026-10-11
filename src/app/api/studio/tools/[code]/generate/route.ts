@@ -394,6 +394,10 @@ export async function POST(
   if (!tool) {
     return NextResponse.json({ error: "Công cụ không tồn tại." }, { status: 404 });
   }
+  // R3: deadline chung cua route - TTS + upload chi la "nice-to-have", khong
+  // duoc pha vao timeout 120s (r3 finding 7).
+  const routeStartedAt = Date.now();
+  const ROUTE_BUDGET_MS = 115_000;
 
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
@@ -548,18 +552,36 @@ export async function POST(
     // R2: fetch theo tung standard co cap rieng thay vi 1 query cap chung -
     // standard "hot" truoc day an het 5000 slots lam cell khac doi cau.
     // Moi standard lay toi da 300 ung vien (du cho moi cell dung no).
-    const PER_STD_LIMIT = 300;
+    // R3: cap theo standard van co the loc sot qtype/level can - limit ap
+    // TRUOC filter phia client, nen 300 cau trac nghiem an het slot cua
+    // 1 cau tu luan. Fetch theo cap (standard x qtype) co cap rieng cho
+    // nhu cau cua cell, cong pool nho moi standard cho tier thay the.
+    const PAIR_LIMIT = 200;
+    const POOL_LIMIT = 80;
     const CHUNK = 8;
+    const pairs = [
+      ...new Map(
+        cells.map((c) => [
+          `${c.standard_id}|${c.qtype}`,
+          { sid: c.standard_id, qt: c.qtype },
+        ]),
+      ).values(),
+    ];
+    const jobs = [
+      ...pairs.map((p) => ({ sid: p.sid, qt: p.qt as string | null, limit: PAIR_LIMIT })),
+      ...allStdIds.map((sid) => ({ sid, qt: null as string | null, limit: POOL_LIMIT })),
+    ];
     const rawBank: Question[] = [];
     let bankFailed = false;
-    for (let i = 0; i < allStdIds.length; i += CHUNK) {
+    for (let i = 0; i < jobs.length; i += CHUNK) {
       const batch = await Promise.all(
-        allStdIds.slice(i, i + CHUNK).map((sid) => {
+        jobs.slice(i, i + CHUNK).map((j) => {
           let q = supabase
             .from("tvc_questions")
             .select("*")
-            .overlaps("standard_ids", [sid])
-            .limit(PER_STD_LIMIT);
+            .overlaps("standard_ids", [j.sid])
+            .limit(j.limit);
+          if (j.qt) q = q.eq("qtype", j.qt);
           if (approvedOnly) q = q.eq("review_state", "approved");
           else q = q.neq("review_state", "flagged");
           return q;
@@ -867,8 +889,9 @@ export async function POST(
       const { extractDialogueTurns, synthesizeDialogue, uploadTtsAudio } =
         await import("@/lib/tvc/tts");
       const turns = extractDialogueTurns(doc);
-      if (turns.length >= 2) {
-        const audio = await synthesizeDialogue(turns);
+      const routeLeft = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
+      if (turns.length >= 2 && routeLeft >= 25_000) {
+        const audio = await synthesizeDialogue(turns, routeLeft - 15_000);
         if (audio) {
           audioPath = await uploadTtsAudio(
             (profile as { school_id?: string | null }).school_id ?? null,

@@ -35,6 +35,25 @@ export function aiProviderAllowed(name: string): boolean {
 }
 
 /**
+ * R3: check host destination co nam trong AI_ALLOWED_ENDPOINTS khong.
+ * Danh sach rong = khong rang buoc (default-open nhu truoc khi co bien).
+ * Dung cho cac processor goi endpoint co dinh ngoai duong openaiBaseUrl()
+ * (vd TTS) - khong check thi van gui key + du lieu ra host bi cam.
+ */
+export function aiEndpointAllowed(url: string): boolean {
+  const allow = (process.env.AI_ALLOWED_ENDPOINTS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!allow.length) return true;
+  try {
+    return allow.includes(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Base URL cho slot openai (OpenAI-compatible endpoints vd OpenRouter).
  * Fail-closed: endpoint bi tu choi thi NEM LOI (khong lang le quay ve
  * api.openai.com roi leak bearer key + prompt ra host ngoai allowlist).
@@ -415,8 +434,17 @@ export async function generateTextDetailed(
     lastProvider = cfg.provider;
   };
 
-  const acceptable = (text: string | null): text is string =>
-    !!text && (opts.validate?.(text) ?? true);
+  const acceptable = (text: string | null): text is string => {
+    if (!text) return false;
+    // R3: validator nem loi cung tinh la "reject" - neu de throw trong
+    // race callback thi promise rejection khong ai bat va pending khong
+    // giam -> race treo toi deadline.
+    try {
+      return opts.validate?.(text) ?? true;
+    } catch {
+      return false;
+    }
+  };
 
   let idx = 0;
   const raceN = Math.min(Math.max(opts.race ?? 1, 1), configs.length);

@@ -52,13 +52,29 @@ export interface GenResult {
 /** Validate tối thiểu cấu trúc DocContent trả từ model. */
 export function isDocContent(v: unknown): v is DocContent {
   const d = v as DocContent;
+  // R3: {"title":"","sections":[]} tung qua duoc predicate va thang race,
+  // huy ca candidate hop le; blocks:[null] thi no cleanDoc. Doc hop le phai
+  // co it nhat 1 section, moi section >=1 block, moi block la object co
+  // kind dang string. Appendix (neu co) cung phai cung hinh dang.
+  const validSection = (s: unknown): boolean => {
+    const sec = s as DocContent["sections"][0];
+    return (
+      !!sec &&
+      typeof sec.title === "string" &&
+      Array.isArray(sec.blocks) &&
+      sec.blocks.length > 0 &&
+      sec.blocks.every(
+        (b) => !!b && typeof b === "object" && typeof b.kind === "string",
+      )
+    );
+  };
   return (
     !!d &&
     typeof d.title === "string" &&
     Array.isArray(d.sections) &&
-    d.sections.every(
-      (s) => typeof s?.title === "string" && Array.isArray(s?.blocks),
-    )
+    d.sections.length > 0 &&
+    d.sections.every(validSection) &&
+    (!Array.isArray(d.appendix) || d.appendix.every(validSection))
   );
 }
 
@@ -154,11 +170,20 @@ export async function generateDoc(
         maxTotalMs: left,
       },
     );
-    if (!r.text) return { doc: null, provider: r.provider, error: r.error };
+    if (!r.text) {
+      // R3: quota/no_key la that bai van chuyen - return luon. Con "error"
+      // co the la validation-exhaustion (candidate co text nhung reject)
+      // -> van cho attempt 2 voi retryNote corrective trong budget con lai.
+      if (r.error === "quota" || r.error === "no_key") {
+        return { doc: null, provider: r.provider, error: r.error };
+      }
+      continue;
+    }
     const parsed = extractJson<DocContent>(r.text);
     if (parsed && isDocContent(parsed) && (opts?.validate?.(parsed) ?? true)) {
       return { doc: cleanDoc(parsed), provider: r.provider, error: null };
     }
+    // Parse/shape/tool-validation fail -> attempt 2 co retryNote corrective.
   }
   return { doc: null, provider: null, error: "bad_json" };
 }

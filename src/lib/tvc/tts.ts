@@ -7,9 +7,12 @@
 // qua audio (khong chan generate).
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { expandKeys, aiProviderAllowed } from "@/lib/ai";
+import { expandKeys, aiProviderAllowed, aiEndpointAllowed } from "@/lib/ai";
 
-const TTS_URL = "https://api.openai.com/v1/audio/speech";
+// TTS_BASE_URL/TTS_API_KEY: endpoint+credential rieng khi TTS khac text
+// provider. Mac dinh OpenAI; destination phai nam trong AI_ALLOWED_ENDPOINTS.
+const TTS_BASE_URL = (process.env.TTS_BASE_URL ?? "https://api.openai.com/v1")
+  .replace(/\/$/, "");
 const MAX_TURNS = 12;
 
 interface Turn { speaker: string; line: string }
@@ -65,15 +68,17 @@ async function ttsSegment(
   text: string,
   voice: string,
   keys: string[],
+  url: string,
+  timeoutMs: number,
 ): Promise<Buffer | null> {
   const model = process.env.TTS_MODEL ?? "gpt-4o-mini-tts";
   for (const key of keys) {
     try {
-      const res = await fetch(TTS_URL, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, voice, input: text.slice(0, 4000) }),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(Math.min(30_000, Math.max(1_000, timeoutMs))),
       });
       if (res.ok) return Buffer.from(await res.arrayBuffer());
     } catch {
@@ -84,12 +89,28 @@ async function ttsSegment(
 }
 
 // Mp3 la stream frame - noi binary hop le playback trong moi player hien dai.
-export async function synthesizeDialogue(turns: Turn[]): Promise<Buffer | null> {
+// deadlineMs: nguyen budget route con lai - moi batch check, het gio thi bo
+// audio thay vi pha vao timeout route (r3 finding 7).
+export async function synthesizeDialogue(
+  turns: Turn[],
+  deadlineMs = 90_000,
+): Promise<Buffer | null> {
   // R16: TTS cung la external AI processor - phai tuan theo
   // AI_ALLOWED_PROVIDERS giong text providers.
   if (!aiProviderAllowed("openai")) return null;
-  const keys = expandKeys("openai");
-  if (!turns.length || !keys.length) return null;
+  // R3: destination thuc te cung phai nam trong AI_ALLOWED_ENDPOINTS - text
+  // providers qua openaiBaseUrl() da fail-closed, TTS khong duoc la lo thoat.
+  const url = `${TTS_BASE_URL}/audio/speech`;
+  if (!aiEndpointAllowed(url)) return null;
+  // TTS_API_KEY cho phep tach credential khi endpoint TTS khac text endpoint -
+  // khong gui bearer key cua compatible-provider len host khac.
+  const keys = (process.env.TTS_API_KEY ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const effectiveKeys = keys.length ? keys : expandKeys("openai");
+  if (!turns.length || !effectiveKeys.length) return null;
+  const started = Date.now();
   const voiceA = process.env.TTS_VOICE_A ?? "alloy";
   const voiceB = process.env.TTS_VOICE_B ?? "nova";
   const speakers = new Map<string, string>();
@@ -101,9 +122,17 @@ export async function synthesizeDialogue(turns: Turn[]): Promise<Buffer | null> 
   const parts: Buffer[] = [];
   // Gioi han 4 song song de khong doi qua lau.
   for (let i = 0; i < turns.length; i += 4) {
+    const left = deadlineMs - (Date.now() - started);
+    if (left < 8_000) return null; // het budget route - bo audio, giu doc.
     const segs = await Promise.all(
       turns.slice(i, i + 4).map((t) =>
-        ttsSegment(t.line, speakers.get(t.speaker) ?? voiceA, keys),
+        ttsSegment(
+          t.line,
+          speakers.get(t.speaker) ?? voiceA,
+          effectiveKeys,
+          url,
+          left,
+        ),
       ),
     );
     if (segs.some((s) => !s)) return null;

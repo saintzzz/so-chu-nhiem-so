@@ -257,6 +257,26 @@ export async function announceActivity(
       };
     }
     if (typeof emailToken === "string" && emailToken) {
+      // r27 M: moi duong thoat sau khi giu token phai giai phong claim
+      // qua email_complete(done=false) - neu khong, claim nam chet 5
+      // phut va retry tiep theo bi bao nham "dang gui o phien khac".
+      const releaseClaim = async (errText: string) => {
+        const { error: relErr } = await admin.rpc(
+          "scn_announce_email_complete",
+          {
+            p_activity_id: activityId,
+            p_actor: user.id,
+            p_token: emailToken,
+            p_done: false,
+            p_emailed: 0,
+            p_failed: 0,
+            p_error: errText,
+            p_skipped: false,
+          },
+        );
+        if (relErr)
+          console.error("[activity-announce] release claim:", relErr.message);
+      };
       // r26 M: email phai di tu snapshot announcement da luu, khong phai
       // activity hien tai - neu activity bi sua sau fulfill thi email
       // retry van gui dung noi dung + lop cua announcement.
@@ -267,6 +287,8 @@ export async function announceActivity(
         .maybeSingle();
       if (annErr || !ann) {
         console.error("[activity-announce] announcement lookup:", annErr?.message);
+        // discarded-ok: releaseClaim tu log loi rpc ben trong
+        await releaseClaim("announcement-lookup-failed");
         revalidatePath("/activities/announce");
         return {
           error:
@@ -275,13 +297,29 @@ export async function announceActivity(
         };
       }
       // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
-      // [So Chu Nhiem So] do helper dat).
-      mail = await emailClassParents(supabase, {
-        classId: ann.class_id,
-        studentId: null,
-        title: ann.title,
-        content: ann.content,
-      });
+      // [So Chu Nhiem So] do helper dat). Throw o day cung phai release
+      // claim (r27 M) - de mac dinh thi claim nam chet 5 phut.
+      try {
+        mail = await emailClassParents(supabase, {
+          classId: ann.class_id,
+          studentId: null,
+          title: ann.title,
+          content: ann.content,
+        });
+      } catch (e) {
+        console.error(
+          "[activity-announce] email send:",
+          e instanceof Error ? e.message : e,
+        );
+        // discarded-ok: releaseClaim tu log loi rpc ben trong
+        await releaseClaim("worker-error");
+        revalidatePath("/activities/announce");
+        return {
+          error:
+            "Đã lưu thông báo nhưng gửi email gặp lỗi - bấm lại sẽ thử gửi nếu cần.",
+          emailError: "worker-error",
+        };
+      }
       // email_done khi da gui duoc >=1, chua cau hinh, hoac khong co nguoi
       // nhan. Chi retry khi CHUA gui duoc gi (lookup/provider loi) - resend
       // batch khi da gui duoc mot phan se spam nguoi nhan thanh cong.

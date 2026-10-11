@@ -3023,3 +3023,65 @@ test("r25: dept pages fail-closed - dynamic count + fetchAllRows + profiles", ()
   const usage = readSrc("src/app/(app)/dept/usage/page.tsx");
   assert.match(usage, /\.order\("id"\)\s*\n?\s*\.range/);
 });
+
+// --- r27: INSERT guard + class lock + RPC-only daily_reports + tenant bind +
+//     notif internal link + incident CAS required + claim release + draft race -
+test("r27: activity guard chan INSERT approved cho non-approver + khoa class_id", () => {
+  const mig = read("supabase/migrations/20261211_cr049_r27_fixes.sql");
+  assert.match(mig, /tg_op = 'INSERT'/);
+  assert.match(mig, /before insert or update on public\.activities/);
+  assert.match(mig, /new\.class_id is distinct from old\.class_id/);
+  assert.match(mig, /activity_announcements/);
+  assert.match(mig, /activity_attendance/);
+});
+
+test("r27: daily_reports chi viet qua RPC - drop moi write policy", () => {
+  const mig = read("supabase/migrations/20261211_cr049_r27_fixes.sql");
+  assert.match(mig, /drop policy if exists dr_ins/);
+  assert.match(mig, /drop policy if exists dr_upd/);
+  assert.match(mig, /drop policy if exists dr_del/);
+  assert.doesNotMatch(mig, /create policy dr_(ins|upd|del)/);
+  // authz RPC phai bind truong + role gvcn, khong con c.gvcn_id = actor tran
+  const rpc = mig.slice(mig.indexOf("scn_save_daily_report"));
+  assert.match(rpc, /c\.school_id = \(select p\.school_id/);
+  assert.match(rpc, /p\.role = 'gvcn'[\s\S]*concurrent_roles/);
+});
+
+test("r27: pl_owner + acl + notif tenant/link binding", () => {
+  const mig = read("supabase/migrations/20261211_cr049_r27_fixes.sql");
+  assert.match(mig, /my_role\(\)\) = 'bgh'[\s\S]{0,120}scn_ttentry_in_school/);
+  assert.match(mig, /scn_profile_in_school\(user_id\)/);
+  assert.match(mig, /a\.school_id = \(select my_school_id\(\)\)/);
+  assert.match(mig, /link ~ '\^\/' and link !~ '\^\/\/'/);
+  assert.match(mig, /type in \('appointment','message'\)/);
+});
+
+test("r27: incident transition bat CAS - p_expected bat buoc khi doi status", () => {
+  const mig = read("supabase/migrations/20261211_cr049_r27_fixes.sql");
+  const rpc = mig.slice(mig.indexOf("scn_incident_followup"));
+  assert.match(rpc, /for update/);
+  assert.match(rpc, /p_status is distinct from v_cur[\s\S]{0,160}p_expected is null/);
+});
+
+test("r27: claim email phai duoc release tren moi duong thoat that bai", () => {
+  const act = readSrc("src/app/(app)/activities/actions.ts");
+  assert.match(act, /releaseClaim/);
+  assert.match(act, /announcement-lookup-failed/);
+  assert.match(act, /worker-error/);
+  // announcement lookup fail phai release truoc khi return
+  const blk = act.slice(act.indexOf("annErr || !ann"));
+  assert.ok(blk.indexOf("releaseClaim") < blk.indexOf("return {"));
+});
+
+test("r27: reply draft chi reset khi chua doi sau luc gui (draft race)", () => {
+  const inbox = readSrc("src/components/parents/inbox-client.tsx");
+  assert.match(inbox, /prev === sentDraft \? "" : prev/);
+  const portal = readSrc("src/components/portal/parent-actions.tsx");
+  assert.match(portal, /composerRef/);
+  assert.match(portal, /cur\.reply === sentDraft && cur\.replyTo === sentReplyTo/);
+});
+
+test("r27: notification link chi dieu huong route noi bo", () => {
+  const nc = readSrc("src/components/notifications/notifications-client.tsx");
+  assert.match(nc, /startsWith\("\/"\) && !n\.link\.startsWith\("\/\/"\)/);
+});

@@ -50,5 +50,16 @@ export async function good(supabase: any, e: { table: string }) {
     .select("id")
     .in("id", [...targets]);
   if (profsErr) return profsErr;
+  // Helper tu xu ly loi ben trong (log) - call site khong can bind.
+  const releaseClaim = async (tok: string) => {
+    const { error: relErr } = await supabase
+      .from("activity_announcements")
+      .update({ email_claim_token: null })
+      .eq("id", "x");
+    if (relErr) console.error(relErr.message);
+    return tok;
+  };
+  // discarded-ok: releaseClaim tu log loi rpc ben trong
+  await releaseClaim("t");
   return { count, rows, staff, attRows, profs };
 }

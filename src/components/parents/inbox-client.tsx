@@ -199,16 +199,20 @@ export function InboxClient({
     if (!selected) return;
     setPending(true);
     setFeedback(null);
+    // r27 M: chot draft tai luc bam gui - response ve cham chi duoc xoa
+    // draft neu nguoi dung chua go them / chua chuyen tin khac (draft da
+    // thay so voi ban da gui thi giu nguyen).
+    const sentDraft = reply;
     const res = await replyMessage({
       recipientId: selected.senderId,
       studentId: selected.studentId,
-      content: reply,
+      content: sentDraft,
     });
     setPending(false);
     // r26 M: tin nhan da commit (committed=true) -> xoa draft ngay, ke ca
     // khi kem loi notification - neu giu draft thi retry tao tin trung.
     if (res.committed) {
-      setReply("");
+      setReply((prev) => (prev === sentDraft ? "" : prev));
       setFeedback(res.error ?? "Đã gửi phản hồi.");
     } else {
       setFeedback(res.error ?? "Không gửi được phản hồi.");

@@ -87,7 +87,11 @@ export function NotificationsClient({
         setUnread((c) => Math.max(0, c - 1));
       }
     }
-    if (n.link) router.push(n.link);
+    // r27 M: chi dieu huong route noi bo - link ngoai (ca protocol-
+    // relative //host) khong duoc mo de chan phishing qua notif gia.
+    if (n.link && n.link.startsWith("/") && !n.link.startsWith("//")) {
+      router.push(n.link);
+    }
   }
 
   // R10-02: thong bao cu hon trang dau van phai xem duoc - cursor

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, MessageSquare, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
@@ -48,6 +48,12 @@ export function ParentActions({
   const [reply, setReply] = useState("");
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  // r27 M: ref giu trang thai composer moi nhat de response cu ve cham
+  // biet duoc nguoi dung da soan noi dung khac sau luc bam gui.
+  const composerRef = useRef({ reply, replyTo, composing });
+  useEffect(() => {
+    composerRef.current = { reply, replyTo, composing };
+  });
 
   async function submitAppointment() {
     if (!teacherId || !apptAt || !apptPurpose.trim()) return;
@@ -70,18 +76,25 @@ export function ParentActions({
   async function submitReply(recipientId: string) {
     if (!reply.trim()) return;
     setBusy(true);
+    // r27 M: chot ngu canh composer tai luc bam gui - response cu ve
+    // cham chi reset neu draft/ngu canh van con nguyen.
+    const sentDraft = reply;
+    const sentReplyTo = replyTo;
     const res = await replyToTeacher({
       recipientId,
       studentId,
-      content: reply,
+      content: sentDraft,
     });
     setMessage(res.error ?? "Đã gửi tin nhắn cho giáo viên.");
     // r26 M: tin da commit -> xoa draft ke ca khi kem loi notification;
     // giu draft chi khi message chua luu (retry an toan).
     if (res.committed) {
-      setReply("");
-      setReplyTo(null);
-      setComposing(false);
+      const cur = composerRef.current;
+      if (cur.reply === sentDraft && cur.replyTo === sentReplyTo) {
+        setReply("");
+        setReplyTo(null);
+        setComposing(false);
+      }
     }
     setBusy(false);
   }

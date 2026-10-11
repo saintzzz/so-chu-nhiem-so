@@ -365,7 +365,19 @@ for (const f of files) {
       else core = resolveCore(n.expression.expression, core);
       const isQ = QRE.test(core);
       QRE.lastIndex = 0;
-      if (isQ && !SAFE_WRAP.test(core) && !allQueriesWrapped(core)) {
+      // Exemption co chu dich: `// discarded-ok: <ly do>` ngay tren -
+      // dung khi callee tu xu ly loi ben trong (vd release-claim helper
+      // log loi rpc) thay vi tra result de caller kiem.
+      const preD = src.slice(
+        Math.max(0, n.getStart() - 200),
+        n.getStart(),
+      );
+      if (
+        isQ &&
+        !SAFE_WRAP.test(core) &&
+        !allQueriesWrapped(core) &&
+        !/discarded-ok/.test(preD + core)
+      ) {
         const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
         hits.unchecked.push(
           `${relative(SRC, f)}:${line} DISCARDED-QUERY`,

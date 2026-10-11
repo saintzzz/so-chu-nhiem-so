@@ -64,3 +64,8 @@
 - [ ] build + commit + deploy + Studio E2E 17 checks
 - [ ] pg_cron schedule cho `?phase=send` lap lai (neu can drain queue >240s) - hien route tu dung khi het deadline, cron weekly mac dinh `all` van dung
 - [ ] smoke test digest outbox end-to-end (cron route that)
+
+## r27 deferred (2026-10-12)
+
+- **Chunk pagination snapshot (r27 F2, MEDIUM - deferred with design)**: `fetchAllRowsIn` doc tung chunk qua PostgREST nen khong co snapshot nguyen tu - row doi nhom (class_id A -> B) giua 2 chunk co the bi bo sot/doc trung. Site bi flag: `activities/announce/page.tsx` (BGH dept >200 lop). Khong the fix bang ordering/keyset vi van de la read-time isolation, khong phai cursor. Design options: (a) RPC doc toan bo ket qua trong 1 transaction/snapshot cho cac listing correctness-critical; (b) bracket bang revision (updated_at/seq) + retry khi revision doi; (c) chap nhan cho listing low-stakes. De quyet dinh theo muc do critical cua tung site - hien danh sach hoat dong thieu 1 row chi la UX, khong anh huong ghi du lieu.
+- **Notification provenance day du (r27 F5 phan con lai)**: da chan link ngoai + type whitelist cho PH/HS. Staff van gia duoc notification type he thong cho staff khac cung truong (khong phishing duoc vi link bi gioi han noi bo). Fix day du: cot source_entity/provenance + tao notification type he thong chi qua RPC security definer.

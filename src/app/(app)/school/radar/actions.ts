@@ -34,7 +34,8 @@ export async function refreshRadarWarnings(): Promise<{
     return { inserted: 0 };
   }
 
-  const { data: existing } = await supabase
+  // r21 M: lookup dedupe loi -> have rong -> INSERT trung canh bao.
+  const { data: existing, error: dedupeErr } = await supabase
     .from("early_warnings")
     .select("dedupe_key")
     .eq("school_id", profile.school_id ?? "")
@@ -42,6 +43,10 @@ export async function refreshRadarWarnings(): Promise<{
       "dedupe_key",
       candidates.map((c) => c.dedupe_key),
     );
+  if (dedupeErr) {
+    console.error("[radar] dedupe lookup:", dedupeErr.message);
+    return { error: "Không tải được cảnh báo hiện có để chống trùng - vui lòng thử lại." };
+  }
   const have = new Set(
     ((existing ?? []) as { dedupe_key: string }[]).map((e) => e.dedupe_key),
   );
@@ -91,21 +96,33 @@ export async function updateWarningStatus(
     return { error: "Không cập nhật được cảnh báo - vui lòng thử lại." };
   }
 
-  // Báo cho GVCN của lớp biết BGH đã tiếp nhận/xử lý
+  // Báo cho GVCN của lớp biết BGH đã tiếp nhận/xử lý - r21 M: ca
+  // lookup lop lan INSERT notification deu khong duoc bo error roi
+  // tra ok gia (GVCN khong biet canh bao da duoc xu ly).
   if (w.class_id) {
-    const { data: cls } = await supabase
+    const { data: cls, error: clsErr } = await supabase
       .from("classes")
       .select("gvcn_id,name")
       .eq("id", w.class_id)
       .maybeSingle();
+    if (clsErr) {
+      console.error("[radar] class lookup:", clsErr.message);
+      revalidatePath("/school/radar");
+      return { error: "Đã cập nhật cảnh báo, nhưng chưa thông báo được cho GVCN." };
+    }
     if (cls?.gvcn_id) {
-      await supabase.from("notifications").insert({
+      const { error: notiErr } = await supabase.from("notifications").insert({
         profile_id: cls.gvcn_id,
         type: "warning",
         title: status === "acknowledged" ? "BGH đã tiếp nhận cảnh báo" : "Cảnh báo đã đóng",
         body: `Lớp ${cls.name}: ${w.title}`,
         link: "/dashboard",
       });
+      if (notiErr) {
+        console.error("[radar] notify gvcn:", notiErr.message);
+        revalidatePath("/school/radar");
+        return { error: "Đã cập nhật cảnh báo, nhưng gửi thông báo cho GVCN thất bại." };
+      }
     }
   }
   revalidatePath("/school/radar");

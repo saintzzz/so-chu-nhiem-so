@@ -495,6 +495,9 @@ async function sendPhase(
   // enqueue, khong phai chi send loop.
   const deadline = deadlineAt;
   let sent = 0, failed = 0, skipped = 0, batches = 0;
+  // r21 M: dem loi UPDATE outbox - khong tra done:true/200 trong khi
+  // row van ket 'sending' vi cap nhat trang thai that bai.
+  let outboxUpdateErrors = 0;
 
   // Requeue: 'sending' cu (worker chet giua chung) + 'failed'/'skipped'
   // con han + reconcile rows da co delivery 'sent' (F6) - tat ca tuan.
@@ -525,16 +528,22 @@ async function sendPhase(
       );
     }
     if (!claimed?.length) {
-      return NextResponse.json({
-        run_id: runId,
-        done: true,
-        sent,
-        failed,
-        skipped,
-        batches,
-        requeued: requeued ?? 0,
-        delivery_errors: failed || undefined,
-      });
+      return NextResponse.json(
+        {
+          run_id: runId,
+          done: true,
+          sent,
+          failed,
+          skipped,
+          batches,
+          requeued: requeued ?? 0,
+          delivery_errors: failed || undefined,
+          outbox_update_errors: outboxUpdateErrors || undefined,
+        },
+        // r21: loi UPDATE outbox tich luy -> 5xx de scheduler biet con
+        // row 'sending' can retry, khong phai run sach.
+        { status: outboxUpdateErrors ? 500 : 200 },
+      );
     }
     batches++;
 
@@ -588,10 +597,19 @@ async function sendPhase(
         sentKeys.has(`${j.parent_id}|${j.week_start}`),
       );
       if (reconcile.length) {
-        await supabase
+        // r21 M: reconcile UPDATE loi -> row ket 'sending' nhung da
+        // gui that - phai fail closed de run sau retry, khong bo qua.
+        const { error: recErr } = await supabase
           .from("digest_outbox")
           .update({ status: "sent", updated_at: new Date().toISOString() })
           .in("id", reconcile.map((j) => j.id));
+        if (recErr) {
+          console.error("[parent-digest] reconcile update failed:", recErr);
+          return NextResponse.json(
+            { error: "outbox reconcile failed", sent, failed, skipped },
+            { status: 500 },
+          );
+        }
         batch = batch.filter(
           (j) => !sentKeys.has(`${j.parent_id}|${j.week_start}`),
         );
@@ -667,22 +685,27 @@ async function sendPhase(
           .eq("id", j.id);
         if (updErr) {
           console.error("[parent-digest] outbox status update failed:", updErr);
+          outboxUpdateErrors++;
         }
       }
     }
   }
 
   // Het deadline - queue con lai, run sau tiep tuc (durable).
-  return NextResponse.json({
-    run_id: runId,
-    done: false,
-    sent,
-    failed,
-    skipped,
-    batches,
-    requeued: requeued ?? 0,
-    delivery_errors: failed || undefined,
-  });
+  return NextResponse.json(
+    {
+      run_id: runId,
+      done: false,
+      sent,
+      failed,
+      skipped,
+      batches,
+      requeued: requeued ?? 0,
+      delivery_errors: failed || undefined,
+      outbox_update_errors: outboxUpdateErrors || undefined,
+    },
+    { status: outboxUpdateErrors ? 500 : 200 },
+  );
 }
 
 export const GET = run;

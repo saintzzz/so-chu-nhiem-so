@@ -52,25 +52,40 @@ export async function saveDailyReport(input: {
     return { error: "Không lưu được báo cáo ngày - vui lòng thử lại." };
   }
 
+  let notifyWarning: string | undefined;
   if (input.submit) {
-    const { data: leaders } = await supabase
+    // r21 M: lookup lanh dao + INSERT loi deu khong duoc tra ok gia.
+    const { data: leaders, error: ldErr } = await supabase
       .from("profiles")
       .select("id")
       .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}")
       .eq("school_id", profile.school_id ?? "");
-    const rows = ((leaders ?? []) as { id: string }[])
-      .filter((p) => p.id !== profile.id)
-      .map((p) => ({
-        profile_id: p.id,
-        type: "daily_report",
-        title: `Báo cáo ngày lớp ${cls.name}`,
-        body: `Vắng ${input.absentCount}, muộn ${input.lateCount}, vi phạm ${input.violationCount}, khen thưởng ${input.commendationCount}`,
-        link: "/school/daily-reports",
-      }));
-    if (rows.length) await supabase.from("notifications").insert(rows);
+    if (ldErr) {
+      console.error("[daily-report] leaders:", ldErr.message);
+      notifyWarning = "Đã lưu báo cáo, nhưng chưa thông báo được cho lãnh đạo.";
+    } else {
+      const rows = ((leaders ?? []) as { id: string }[])
+        .filter((p) => p.id !== profile.id)
+        .map((p) => ({
+          profile_id: p.id,
+          type: "daily_report",
+          title: `Báo cáo ngày lớp ${cls.name}`,
+          body: `Vắng ${input.absentCount}, muộn ${input.lateCount}, vi phạm ${input.violationCount}, khen thưởng ${input.commendationCount}`,
+          link: "/school/daily-reports",
+        }));
+      if (rows.length) {
+        const { error: notiErr } = await supabase
+          .from("notifications")
+          .insert(rows);
+        if (notiErr) {
+          console.error("[daily-report] notify leaders:", notiErr.message);
+          notifyWarning = "Đã lưu báo cáo, nhưng gửi thông báo cho lãnh đạo thất bại.";
+        }
+      }
+    }
   }
 
   revalidatePath("/attendance/daily-report");
   revalidatePath("/school/daily-reports");
-  return {};
+  return notifyWarning ? { error: notifyWarning } : {};
 }

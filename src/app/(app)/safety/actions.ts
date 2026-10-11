@@ -35,21 +35,35 @@ export async function createIncident(input: {
     return { error: "Không ghi được sự cố - vui lòng thử lại." };
   }
   // Chỉ báo lãnh đạo cùng trường; PHT chỉ nhận nếu sự cố thuộc cơ sở mình phụ trách.
-  const { data: leaderProfiles } = await supabase
+  const { data: leaderProfiles, error: lpErr } = await supabase
     .from("profiles")
     .select("id,role,campus_id,concurrent_roles")
     .eq("school_id", profile.school_id ?? "")
     .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}");
+  // r21 M: lookup lanh dao loi -> khong ai nhan thong bao - phai bao
+  // ro "da ghi, chua thong bao duoc" thay vi tra ok gia.
+  if (lpErr) {
+    console.error("[safety] leader lookup:", lpErr.message);
+    return { error: "Đã ghi sự cố, nhưng chưa thông báo được cho lãnh đạo." };
+  }
   let incidentCampusId: string | null = null;
+  let campusUnknown = false;
   if (input.classId) {
-    const { data: cls } = await supabase
+    const { data: cls, error: clsErr } = await supabase
       .from("classes")
       .select("campus_id")
       .eq("id", input.classId)
       .single();
-    incidentCampusId =
-      (cls as Pick<{ campus_id: string | null }, "campus_id"> | null)
-        ?.campus_id ?? null;
+    // r21 M: loi lookup campus -> KHONG duoc suy ra "khong co campus"
+    // vi se gui mo ta su co cho moi PHT trong truong (leak campus).
+    if (clsErr && clsErr.code !== "PGRST116") {
+      console.error("[safety] class campus lookup:", clsErr.message);
+      campusUnknown = true;
+    } else {
+      incidentCampusId =
+        (cls as Pick<{ campus_id: string | null }, "campus_id"> | null)
+          ?.campus_id ?? null;
+    }
   }
   const notifRows = (
     (leaderProfiles ?? []) as {
@@ -63,10 +77,12 @@ export async function createIncident(input: {
       (p) =>
         p.id !== profile.id &&
         // BGH (primary hoac concurrent) nhan toan truong; PHT chi campus phu trach.
+        // r21: campus khong xac dinh duoc (lookup loi) -> chi gui BGH,
+        // khong gui PHT tranh leak mo ta su co ra ngoai campus.
         (p.role === "bgh" ||
           (p.concurrent_roles ?? []).includes("bgh") ||
-          !incidentCampusId ||
-          p.campus_id === incidentCampusId),
+          (!campusUnknown &&
+            (!incidentCampusId || p.campus_id === incidentCampusId))),
     )
     .map((p) => ({
       profile_id: p.id,
@@ -76,12 +92,23 @@ export async function createIncident(input: {
       link: "/safety/bgh",
     }));
   if (notifRows.length) {
-    await supabase.from("notifications").insert(notifRows);
+    const { error: notiErr } = await supabase
+      .from("notifications")
+      .insert(notifRows);
+    if (notiErr) {
+      console.error("[safety] notify leaders:", notiErr.message);
+      revalidatePath("/safety/report");
+      revalidatePath("/safety/bgh");
+      revalidatePath("/safety/followup");
+      return { error: "Đã ghi sự cố, nhưng gửi thông báo cho lãnh đạo thất bại." };
+    }
   }
   revalidatePath("/safety/report");
   revalidatePath("/safety/bgh");
   revalidatePath("/safety/followup");
-  return {};
+  return campusUnknown
+    ? { error: "Đã ghi sự cố và thông báo BGH; không xác định được cơ sở nên chưa báo PHT." }
+    : {};
 }
 
 export async function toggleReportedToBgh(

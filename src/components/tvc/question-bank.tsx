@@ -215,7 +215,9 @@ export function QuestionBank({
     });
     if (isAdmin && aclList[q.id] === undefined) {
       listItemAcl({ table: "questions", itemId: q.id }).then((r) => {
+        // r21: loi tai ACL phai hien - khong de admin tuong khong co deny.
         if ("emails" in r) setAclList((p) => ({ ...p, [q.id]: r.emails }));
+        else setError(r.error);
       });
     }
   };
@@ -1602,7 +1604,10 @@ export function QuestionBank({
                                 disabled={pending}
                                 onClick={() =>
                                   start(async () => {
-                                    await setItemAcl({ table: "questions", itemId: q.id, userEmail: em, deny: false });
+                                    // r21: chi go chip khi action thanh cong -
+                                    // DELETE loi ma an chip thi deny van con.
+                                    const r = await setItemAcl({ table: "questions", itemId: q.id, userEmail: em, deny: false });
+                                    if (r.error) { setError(r.error); return; }
                                     setAclList((p) => ({ ...p, [q.id]: (p[q.id] ?? []).filter((x) => x !== em) }));
                                   })
                                 }

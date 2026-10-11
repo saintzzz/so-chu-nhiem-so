@@ -139,19 +139,35 @@ export async function announceActivity(
     content: annContent,
   });
 
-  const { data: studentData } = await supabase
+  // r21 M: 2 SELECT nay loi -> studentIds/existing rong -> bao
+  // registered:0 gia hoac INSERT tren gia dinh chua co dang ky.
+  const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("id")
     .eq("class_id", activity.class_id)
     .eq("status", "active");
+  if (stuErr) {
+    console.error("[activity-announce] students:", stuErr.message);
+    return {
+      error:
+        "Đã lưu thông báo và gửi email, nhưng không tải được danh sách học sinh để đăng ký tham dự.",
+    };
+  }
   const studentIds = ((studentData ?? []) as { id: string }[]).map(
     (s) => s.id,
   );
 
-  const { data: existingData } = await supabase
+  const { data: existingData, error: exErr } = await supabase
     .from("activity_attendance")
     .select("student_id")
     .eq("activity_id", activityId);
+  if (exErr) {
+    console.error("[activity-announce] existing:", exErr.message);
+    return {
+      error:
+        "Đã lưu thông báo và gửi email, nhưng không tải được danh sách đăng ký hiện có.",
+    };
+  }
   const existing = new Set(
     ((existingData ?? []) as { student_id: string }[]).map((r) => r.student_id),
   );

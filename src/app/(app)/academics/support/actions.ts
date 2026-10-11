@@ -53,22 +53,32 @@ export async function createSupportPlans(
     return { created: 0, error: "Có học sinh không thuộc lớp bạn phụ trách." };
   }
 
-  // Verify subjects belong to the school.
-  const { data: subData } = await supabase
+  // Verify subjects belong to the school - r21 M: SELECT loi khong
+  // duoc suy ra "khong mon nao hop le" (loc het) hoac "chua co ke
+  // hoach nao" (INSERT trung).
+  const { data: subData, error: subErr } = await supabase
     .from("subjects")
     .select("id")
     .in("id", subjectIds)
     .eq("school_id", profile.school_id);
+  if (subErr) {
+    console.error("[support] subjects lookup:", subErr.message);
+    return { created: 0, error: "Lỗi tra cứu môn học - vui lòng thử lại." };
+  }
   const allowedSubjects = new Set(
     ((subData ?? []) as { id: string }[]).map((s) => s.id),
   );
 
   // Skip pairs that already have an active plan.
-  const { data: existing } = await supabase
+  const { data: existing, error: exErr } = await supabase
     .from("support_plans")
     .select("student_id,subject_id")
     .in("student_id", studentIds)
     .neq("status", "cancelled");
+  if (exErr) {
+    console.error("[support] existing plans:", exErr.message);
+    return { created: 0, error: "Không tải được kế hoạch hiện có để chống trùng - vui lòng thử lại." };
+  }
   const existingKeys = new Set(
     ((existing ?? []) as { student_id: string; subject_id: string }[]).map(
       (e) => `${e.student_id}:${e.subject_id}`,

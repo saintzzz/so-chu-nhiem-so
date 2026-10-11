@@ -64,8 +64,10 @@ export function MaterialActions({
   const act = (fn: () => Promise<{ error?: string; ok?: boolean }>) =>
     start(async () => {
       const r = await fn();
+      // r21: mot so loi la "da commit mot phan" (duyet xong nhung
+      // thong bao hong) - luon refresh de nut duyet theo status moi.
       if (r.error) setError(r.error);
-      else router.refresh();
+      router.refresh();
     });
 
   return (

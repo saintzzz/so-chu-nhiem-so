@@ -413,37 +413,54 @@ export async function saveTimetableEntry(input: {
     return { error: "Tiết không hợp lệ (1-10)." };
   // R16-05: subject/teacher phai thuoc truong - khong chi dung vao unique
   // constraint de ngan giao vien truong khac bi gan vao TKB.
-  const { data: subj } = await supabase
+  const { data: subj, error: subjErr } = await supabase
     .from("subjects")
     .select("id")
     .eq("id", input.subjectId)
     .eq("school_id", profile.school_id)
     .maybeSingle();
+  if (subjErr) {
+    console.error("[school] subject lookup:", subjErr.message);
+    return { error: "Lỗi tra cứu môn học - vui lòng thử lại." };
+  }
   if (!subj) return { error: "Môn học không thuộc trường." };
   if (input.teacherId) {
-    const { data: tch } = await supabase
+    const { data: tch, error: tchErr } = await supabase
       .from("profiles")
       .select("id")
       .eq("id", input.teacherId)
       .eq("school_id", profile.school_id)
       .maybeSingle();
+    if (tchErr) {
+      console.error("[school] teacher lookup:", tchErr.message);
+      return { error: "Lỗi tra cứu giáo viên - vui lòng thử lại." };
+    }
     if (!tch) return { error: "Giáo viên không thuộc trường." };
   }
 
-  // Conflict check cùng ngày-tiết trong trường
-  const { data: schoolClasses } = await supabase
+  // Conflict check cùng ngày-tiết trong trường - r21 M: ca hai SELECT
+  // loi deu khong duoc suy ra "khong co xung dot" roi UPDATE/INSERT.
+  const { data: schoolClasses, error: scErr } = await supabase
     .from("classes")
     .select("id")
     .eq("school_id", profile.school_id);
+  if (scErr) {
+    console.error("[school] timetable class list:", scErr.message);
+    return { error: "Không tải được danh sách lớp để kiểm tra xung đột - vui lòng thử lại." };
+  }
   const schoolClassIds = (schoolClasses ?? []).map(
     (c: { id: string }) => c.id,
   );
-  const { data: conflicts } = await supabase
+  const { data: conflicts, error: cfErr } = await supabase
     .from("timetable_entries")
     .select("id,class_id,teacher_id,room,classes(name)")
     .eq("weekday", input.weekday)
     .eq("period", input.period)
     .in("class_id", schoolClassIds.length ? schoolClassIds : ["none"]);
+  if (cfErr) {
+    console.error("[school] timetable conflicts:", cfErr.message);
+    return { error: "Không tải được tiết học để kiểm tra xung đột - vui lòng thử lại." };
+  }
   const others = ((conflicts ?? []) as unknown as {
     id: string;
     class_id: string;
@@ -481,11 +498,15 @@ export async function saveTimetableEntry(input: {
   }
 
   if (input.id) {
-    const { data: entry } = await supabase
+    const { data: entry, error: entErr } = await supabase
       .from("timetable_entries")
       .select("id,classes(school_id)")
       .eq("id", input.id)
       .maybeSingle();
+    if (entErr) {
+      console.error("[school] timetable entry lookup:", entErr.message);
+      return { error: "Lỗi tra cứu tiết học - vui lòng thử lại." };
+    }
     const cs = (entry as { classes?: { school_id: string }[] | { school_id: string } | null } | null)?.classes;
     const entrySchool = Array.isArray(cs) ? cs[0]?.school_id : cs?.school_id;
     if (!entry || entrySchool !== profile.school_id)
@@ -756,13 +777,19 @@ export async function setItemAcl(input: {
   if (!target) return { error: "Không tìm thấy tài khoản trong trường." };
 
   if (!input.deny) {
-    await supabase
+    // r21 M: DELETE loi ma van audit + tra {} -> admin thay da go
+    // nhung deny van con trong DB.
+    const { error: delErr } = await supabase
       .from("item_acl")
       .delete()
       .eq("school_id", profile.school_id)
       .eq("table_name", input.table)
       .eq("item_id", input.itemId)
       .eq("user_id", target.id);
+    if (delErr) {
+      console.error("[school] delete item_acl:", delErr.message);
+      return { error: "Không gỡ được giới hạn dữ liệu - vui lòng thử lại." };
+    }
     logAudit(supabase, {
       action: "school.item_acl_remove",
       entity: "item_acl",
@@ -962,17 +989,27 @@ export async function listItemAcl(input: {
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
-  const { data: rows } = await supabase
+  // r21 L: loi SELECT khong duoc bien thanh "khong co ai bi han che" -
+  // admin se khong thay cac deny dang ton tai.
+  const { data: rows, error: aclErr } = await supabase
     .from("item_acl")
     .select("user_id")
     .eq("school_id", profile.school_id)
     .eq("table_name", input.table)
     .eq("item_id", input.itemId)
     .eq("effect", "deny");
+  if (aclErr) {
+    console.error("[school] list item_acl:", aclErr.message);
+    return { error: "Không tải được danh sách giới hạn - vui lòng thử lại." };
+  }
   if (!rows?.length) return { emails: [] };
-  const { data: profs } = await supabase
+  const { data: profs, error: profErr } = await supabase
     .from("profiles")
     .select("id, email")
     .in("id", rows.map((r) => r.user_id));
+  if (profErr) {
+    console.error("[school] acl profiles:", profErr.message);
+    return { error: "Không tải được danh sách giới hạn - vui lòng thử lại." };
+  }
   return { emails: (profs ?? []).map((p) => p.email).filter(Boolean) as string[] };
 }

@@ -473,3 +473,31 @@ Raw report: `docs/reviews/codex-r20-report.txt`
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 73/73 dedicated
 - `check-consistency` PASS | `npm run build` PASS (126 pages)
 - Khong co migration moi trong r20 (thuan code fixes)
+
+---
+
+## Round 21 (Codex Cloud @ 3f3d1c7) - NOT-CLEAN: 9 findings (0H/8M/1L)
+
+Raw report: `docs/reviews/codex-r21-report.txt`. Cung lop loi "bo qua error DB" nhung lan nay sweep toi server actions + cron.
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | M | safety: SELECT classes.campus_id loi -> incidentCampusId null -> gui mo ta su co cho moi PHT truong (leak campus) | **Fixed** - lpErr/clsErr check; campus khong xac dinh -> chi gui BGH; notiErr -> "da ghi, gui thong bao that bai" | safety/actions.ts |
+| 2 | M | reviewMaterial: notification loi return truoc revalidatePath -> client stale, bam lai duyet buoc ke tiep | **Fixed** - revalidate truoc return loi; client act() luon router.refresh() | tvc/actions.ts + material-actions.tsx |
+| 3 | M | item_acl DELETE loi van audit + tra {}; client go chip bat ke ket qua | **Fixed** - delErr -> error truoc audit; client chi go chip khi thanh cong | school/actions.ts + question-bank.tsx |
+| 4 | M | activities: SELECT students/attendance loi -> studentIds=[] -> tra registered:0 gia | **Fixed** - stuErr/exErr -> error "da luu thong bao, chua dang ky duoc" | activities/actions.ts |
+| 5 | M | dedupe/conflict lookups bo loi: radar dedupe_key, support plans, TKB conflicts + class list | **Fixed** - dedupeErr/exErr/scErr/cfErr (+ subjErr/tchErr/entErr/reqErr cung lop) | 3 action files |
+| 6 | M | 8 site notification sau commit bo loi -> tra ok gia | **Fixed** - tat ca notification INSERT + recipient/leader lookups check error, tra "da X, gui thong bao that bai" | parents, portal/parent, substitutes x3, safety, daily-report, lesson-plans x4 |
+| 7 | M | cron parent-digest: reconcile UPDATE bo loi; outbox status UPDATE chi log -> 200 done:true trong khi row ket 'sending' | **Fixed** - recErr -> 500; outboxUpdateErrors tich luy -> 5xx kem counters | cron route |
+| 8 | L | listItemAcl: SELECT loi -> {emails:[]} -> admin khong thay deny | **Fixed** - aclErr/profErr -> {error}; client hien thi loi tai | school/actions.ts + question-bank.tsx |
+
+### Ghi nhan khong phai finding
+
+- takeAiQuota chan AI khi RPC loi; writeAudit callers check loi truoc PII tho - da dung.
+- Khong them finding alias/SECURITY DEFINER du bang chung.
+
+### Gates r21
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 74+140 pass
+- `check-consistency` PASS | `npm run build` PASS (126 pages)
+- Khong co migration moi trong r21 (thuan code fixes)

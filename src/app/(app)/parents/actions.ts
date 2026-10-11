@@ -127,11 +127,15 @@ export async function replyMessage(input: {
     return { error: "Người nhận không liên quan đến học sinh này." };
   }
   // Role nguoi nhan quyet dinh link thong bao (portal vs inbox nhan vien).
-  const { data: recipient } = await supabase
+  const { data: recipient, error: recErr } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", input.recipientId)
     .maybeSingle();
+  if (recErr) {
+    console.error("[messages] recipient lookup:", recErr.message);
+    return { error: "Lỗi tra cứu người nhận - vui lòng thử lại." };
+  }
   const { error } = await supabase.from("messages").insert({
     sender_id: profile.id,
     recipient_id: input.recipientId,
@@ -142,7 +146,7 @@ export async function replyMessage(input: {
     console.error("[messages] reply insert failed:", error.message);
     return { error: "Không gửi được tin nhắn. Vui lòng thử lại." };
   }
-  await supabase.from("notifications").insert({
+  const { error: notiErr } = await supabase.from("notifications").insert({
     profile_id: input.recipientId,
     type: "message",
     title: "Tin nhắn mới",
@@ -152,6 +156,12 @@ export async function replyMessage(input: {
     ),
   });
   revalidatePath("/parents/inbox");
+  // r21 M: tin nhan da luu nhung notification loi -> nguoi nhan khong
+  // biet - phai bao ro, khong tra ok gia.
+  if (notiErr) {
+    console.error("[messages] reply notify:", notiErr.message);
+    return { error: "Đã gửi tin nhắn, nhưng gửi thông báo cho người nhận thất bại." };
+  }
   return {};
 }
 

@@ -1,0 +1,138 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+Doc review so-chu-nhiem-so @ commit 3f3d1c7 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day l…
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 17a73c1 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+REVIEW ROUND 11 - security/privacy verification pass on com…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Review repo saintzzz/so-chu-nhiem-so tai commit bedef17 (ma…
+Review repo saintzzz/so-chu-nhiem-so tai commit b877b8e (br…
+WHOLE-REPOSITORY REVIEW - ROUND 4 (verification round). Rep…
+You are reviewing the repository at commit 4e39cb3 (master)…
+Confirmation review (round 3). The attached workspace is th…
+Linh Le Duy
+Plus
+Doc review so-chu-nhiem-so @ commit 3f3d1c7 (master). Vong…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit 3f3d1c7 (master). Vong REVIEW DOC LAP thu 21. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase, quan ly truong hoc VN. r20 vua fix: devin.ts (insErr/failErr/linkErr throw), tvc/actions.ts allocator (stdErr/pgErr) + reviewMaterial (matErr/notiErr), email.ts (khong cache loi Vault), extract topic deanon.
+
+Kiem adversarial:
+
+Cac site vua sua: fallbackToDevin throw - caller nao catch nuot? insertQuestionsWithCodes return {error} - caller nao bo qua? reviewMaterial tra {error} sau khi da commit - client hien thi dung?
+Sweep server actions con lai trong src/lib/tvc/actions.ts + src/app/**/actions.ts: INSERT/UPDATE/SELECT/RPC nao bo error roi tra ok?
+src/lib/ai-route.ts, ai-quota.ts, audit.ts, cron routes: error nao bi nuot truoc mutation/AI/response?
+PII/RLS/SECURITY DEFINER/alias: con lo nao chung minh duoc?
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+1:52 AM
+Worked for 4m 11s
+ChatGPT said:
+
+Review độc lập vòng 21 tại 3f3d1c70e48aeeb6a471b2fbfc92f9024c768227. Đã đối chiếu source qua GitHub vì checkout local còn ở r16. Không sửa code, không gọi mutation/AI/DB production. Có 8 finding:
+
+MEDIUM - Thông báo sự cố có thể vượt phạm vi campus khi SELECT lỗi.
+Vị trí: src/app/(app)/safety/actions.ts:45,68,75.
+Kịch bản: INSERT incident thành công; SELECT classes.campus_id lỗi bị bỏ qua, khiến incidentCampusId = null. Điều kiện !incidentCampusId cho phép gửi notification tới mọi PHT cùng trường, kèm 120 ký tự mô tả sự cố, có thể chứa tên và thông tin nhạy cảm học sinh. /notifications đọc và hiển thị body theo người nhận (src/app/(app)/notifications/page.tsx:18). Đây là đường sao chép nội dung ra ngoài bộ lọc campus của trang sự cố.
+Fix tối thiểu: kiểm tra lỗi lookup; khi chưa xác định được campus, không gửi cho PHT và báo rõ sự cố đã lưu nhưng thông báo chưa hoàn tất.
+
+MEDIUM - Lỗi notification sau duyệt giữ UI ở trạng thái cũ; bấm lại có thể thực hiện bước duyệt tiếp theo.
+Vị trí: src/lib/tvc/actions.ts:207,220,224; src/components/tvc/material-actions.tsx:64.
+Kịch bản: BGH duyệt học liệu in_review; RPC commit thành totruong_ok, rồi notification lỗi. Action return trước revalidatePath; client chỉ setError, không refresh. Nút duyệt vẫn dựa trên material.status = in_review. Bấm lại gọi cùng action; RPC thấy totruong_ok và chuyển sang published (supabase/migrations/20261119_r2_security_fixes.sql:506). Thông báo lỗi có hiển thị, nhưng trạng thái và thao tác tiếp theo không phản ánh lần commit trước.
+Fix tối thiểu: trả riêng { committed: true, warning }, revalidate sau commit và refresh client cả khi notification thất bại.
+
+MEDIUM - Gỡ ACL báo thành công dù DELETE thất bại; client còn bỏ qua lỗi trả về.
+Vị trí: src/app/(app)/school/actions.ts:759; src/components/tvc/question-bank.tsx:1605.
+Kịch bản: DELETE item_acl trả lỗi nhưng action vẫn ghi audit school.item_acl_remove và return {}. Client xóa chip “ẩn” khỏi UI. Ngay cả khi action trả lỗi, client này cũng không kiểm tra kết quả. Quyền deny vẫn tồn tại trong DB nhưng người quản trị thấy đã gỡ.
+Fix tối thiểu: kiểm tra DELETE error trước audit/return; client chỉ xóa chip khi action thành công.
+
+MEDIUM - Thông báo hoạt động có thể thành công với danh sách đăng ký rỗng do SELECT lỗi.
+Vị trí: src/app/(app)/activities/actions.ts:142,151,178.
+Kịch bản: announcement đã lưu và email đã xử lý; SELECT học sinh lỗi bị biến thành studentIds = []. Action bỏ qua INSERT attendance rồi trả kết quả bình thường với registered: 0, dù lớp có học sinh. SELECT attendance hiện có cũng bỏ lỗi và có thể dẫn tới INSERT dựa trên giả định chưa có đăng ký.
+Fix tối thiểu: kiểm tra cả hai SELECT; đọc đủ nguồn trước announcement/email và mutation đăng ký. Nếu đã commit một phần, trả rõ phần đã hoàn tất.
+
+MEDIUM - Các lookup chống trùng/xung đột lỗi vẫn cho phép mutation chạy.
+Vị trí:
+
+src/app/(app)/school/radar/actions.ts:37: lookup dedupe_key lỗi thành tập rỗng, mọi candidate được đưa vào INSERT.
+src/app/(app)/academics/support/actions.ts:67: lookup kế hoạch hiện có lỗi thành tập rỗng, action vẫn INSERT các cặp học sinh/môn.
+src/app/(app)/school/actions.ts:441: lookup tiết xung đột lỗi thành others = [], bỏ qua kiểm tra lớp/GV/phòng rồi UPDATE/INSERT tại dòng 502.
+
+Kịch bản: SELECT thất bại tạm thời, mutation sau đó thành công; action vẫn trả thành công dù không thực hiện được kiểm tra tiền điều kiện. Source chứng minh đường mutation này; việc DB cuối cùng chặn trùng hay không còn phụ thuộc constraint.
+Fix tối thiểu: kiểm tra error và dừng trước mutation. Lookup danh sách lớp tại school/actions.ts:434 cũng phải được kiểm tra.
+
+MEDIUM - Nhiều action vẫn bỏ lỗi notification sau business commit rồi trả thành công.
+Vị trí:
+src/app/(app)/parents/actions.ts:145;
+src/app/portal/parent/actions.ts:66,143;
+src/app/(app)/school/substitutes/actions.ts:80,223,305;
+src/app/(app)/safety/actions.ts:79;
+src/app/(app)/attendance/daily-report/actions.ts:70;
+src/app/(app)/school/radar/actions.ts:102;
+src/app/(app)/academics/lesson-plans/actions.ts:100,202,206,263.
+
+Kịch bản: tin nhắn/lịch hẹn/phân công/báo cáo/quyết định đã lưu, INSERT notification thất bại. Các action vẫn return {}; lesson-plan chỉ log lỗi. Một số lookup người nhận cũng bỏ error nên không INSERT notification nào nhưng vẫn báo thành công. Người nhận không được báo về sự kiện đã xảy ra.
+Fix tối thiểu: kiểm tra lookup và INSERT; trả trạng thái “đã lưu, thông báo thất bại” để client refresh đúng. Với sự kiện cần bảo đảm giao nhận, enqueue notification trong cùng transaction.
+
+MEDIUM - Cron parent-digest bỏ lỗi cập nhật trạng thái outbox trước response thành công.
+Vị trí: src/app/api/cron/parent-digest/route.ts:591,658,668.
+Kịch bản: UPDATE reconcile tại dòng 591 bỏ hoàn toàn error. UPDATE trạng thái sau gửi tại dòng 658 chỉ log error rồi tiếp tục. Khi lần claim sau không có row queued, route vẫn có thể trả HTTP 200 với done: true tại dòng 527, trong khi outbox còn row sending. Scheduler không nhận được lỗi DB và trạng thái chỉ được sửa ở invocation requeue/reconcile sau.
+Fix tối thiểu: kiểm tra reconcile error; tích lũy lỗi UPDATE trạng thái và trả 5xx, giữ counters để thể hiện phần đã gửi.
+
+LOW - Danh sách ACL biến lỗi DB thành “không có ai bị hạn chế”.
+Vị trí: src/app/(app)/school/actions.ts:965,973.
+Kịch bản: SELECT item_acl lỗi → { emails: [] }; SELECT profiles lỗi cũng → danh sách rỗng. Client lưu kết quả này vào aclList (src/components/tvc/question-bank.tsx:217), làm người quản trị không thấy các deny đang tồn tại.
+Fix tối thiểu: kiểm tra error của cả hai SELECT, trả { error } và hiển thị lỗi tải ACL.
+
+Các sửa r20 đã kiểm tra: không thấy caller nuốt throw mới của fallbackToDevin; cả saveQuestion và importQuestions kiểm tra lỗi allocator; lỗi Vault không được cache; topic đã deanonymize. takeAiQuota chặn AI khi RPC lỗi, hai caller writeAudit kiểm tra lỗi trước gửi PII thô. Không bổ sung finding alias/SECURITY DEFINER khác đủ bằng chứng từ source.
+
+VERDICT: NOT-CLEAN
+
+1:57 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++56,399
+-4,377
+Outputs
+Create a file or site

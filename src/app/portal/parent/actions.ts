@@ -63,7 +63,7 @@ export async function bookAppointment(input: {
     console.error("[portal/parent] insert appointments:", error.message);
     return { error: "Không đặt được lịch hẹn - vui lòng thử lại." };
   }
-  await supabase.from("notifications").insert({
+  const { error: notiErr } = await supabase.from("notifications").insert({
     profile_id: input.teacherId,
     type: "appointment",
     title: "Lịch hẹn mới từ phụ huynh",
@@ -78,6 +78,10 @@ export async function bookAppointment(input: {
   });
   revalidatePath("/portal/parent");
   revalidatePath("/parents/appointments");
+  if (notiErr) {
+    console.error("[portal/parent] appt notify:", notiErr.message);
+    return { error: "Đã đặt lịch hẹn, nhưng gửi thông báo cho giáo viên thất bại." };
+  }
   return {};
 }
 
@@ -100,21 +104,30 @@ export async function replyToTeacher(input: {
     return { error: "Học sinh không thuộc tài khoản phụ huynh này." };
   }
   // R2-02: nguoi nhan phai la nhan vien truong cua hoc sinh.
-  const { data: stu } = await supabase
+  // r21: loi lookup khong duoc bien thanh "nguoi nhan khong hop le".
+  const { data: stu, error: stuErr } = await supabase
     .from("students")
     .select("classes!inner(school_id)")
     .eq("id", input.studentId)
     .single();
+  if (stuErr && stuErr.code !== "PGRST116") {
+    console.error("[portal/parent] student lookup:", stuErr.message);
+    return { error: "Lỗi tra cứu dữ liệu - vui lòng thử lại." };
+  }
   const stuSchool =
     stu &&
     (Array.isArray(stu.classes)
       ? stu.classes[0]?.school_id
       : (stu.classes as { school_id: string } | null)?.school_id);
-  const { data: rec } = await supabase
+  const { data: rec, error: recErr } = await supabase
     .from("profiles")
     .select("id,role,school_id")
     .eq("id", input.recipientId)
     .maybeSingle();
+  if (recErr) {
+    console.error("[portal/parent] recipient lookup:", recErr.message);
+    return { error: "Lỗi tra cứu người nhận - vui lòng thử lại." };
+  }
   const STAFF_ROLES = new Set([
     "gvcn",
     "gvbm",
@@ -140,7 +153,7 @@ export async function replyToTeacher(input: {
     console.error("[portal/parent] insert messages:", error.message);
     return { error: "Không gửi được tin nhắn - vui lòng thử lại." };
   }
-  await supabase.from("notifications").insert({
+  const { error: notiErr } = await supabase.from("notifications").insert({
     profile_id: input.recipientId,
     type: "message",
     title: "Tin nhắn mới từ phụ huynh",
@@ -149,6 +162,10 @@ export async function replyToTeacher(input: {
   });
   revalidatePath("/portal/parent");
   revalidatePath("/parents/inbox");
+  if (notiErr) {
+    console.error("[portal/parent] reply notify:", notiErr.message);
+    return { error: "Đã gửi tin nhắn, nhưng gửi thông báo cho giáo viên thất bại." };
+  }
   return {};
 }
 

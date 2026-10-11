@@ -64,10 +64,16 @@ export async function createSubstituteRequest(input: {
   if (targets.size) {
     // Round-3: /school/substitutes chi mo duoc cho bgh/pht - GV bi redirect.
     // Link GV toi trang so dau bai dung ngay duoc phan cong thay the.
-    const { data: targetProfiles } = await supabase
+    // r21 M: lookup role loi + INSERT loi deu khong duoc tra ok gia.
+    const { data: targetProfiles, error: tpErr } = await supabase
       .from("profiles")
       .select("id,role,concurrent_roles")
       .in("id", [...targets]);
+    if (tpErr) {
+      console.error("[substitutes] target profiles:", tpErr.message);
+      revalidatePath("/school/substitutes");
+      return { error: "Đã tạo yêu cầu, nhưng chưa thông báo được cho giáo viên." };
+    }
     const roleOf = new Map(
       (
         (targetProfiles ?? []) as {
@@ -77,7 +83,7 @@ export async function createSubstituteRequest(input: {
         }[]
       ).map((p) => [p.id, [p.role, ...(p.concurrent_roles ?? [])]]),
     );
-    await supabase.from("notifications").insert(
+    const { error: notiErr } = await supabase.from("notifications").insert(
       [...targets].map((id) => ({
         profile_id: id,
         type: "substitute",
@@ -86,6 +92,11 @@ export async function createSubstituteRequest(input: {
         link: subNotificationLink(roleOf.get(id), input.date),
       })),
     );
+    if (notiErr) {
+      console.error("[substitutes] notify create:", notiErr.message);
+      revalidatePath("/school/substitutes");
+      return { error: "Đã tạo yêu cầu, nhưng gửi thông báo cho giáo viên thất bại." };
+    }
   }
   revalidatePath("/school/substitutes");
   return {};
@@ -207,10 +218,15 @@ export async function decideSubstituteRequest(
   if (effectiveSub) targets.add(effectiveSub);
   targets.delete(profile.id);
   if (targets.size) {
-    const { data: targetProfiles } = await supabase
+    const { data: targetProfiles, error: tpErr } = await supabase
       .from("profiles")
       .select("id,role,concurrent_roles")
       .in("id", [...targets]);
+    if (tpErr) {
+      console.error("[substitutes] target profiles:", tpErr.message);
+      revalidatePath("/school/substitutes");
+      return { error: "Đã xử lý yêu cầu, nhưng chưa thông báo được cho các bên." };
+    }
     const roleOf = new Map(
       (
         (targetProfiles ?? []) as {
@@ -220,7 +236,7 @@ export async function decideSubstituteRequest(
         }[]
       ).map((p) => [p.id, [p.role, ...(p.concurrent_roles ?? [])]]),
     );
-    await supabase.from("notifications").insert(
+    const { error: notiErr } = await supabase.from("notifications").insert(
       [...targets].map((id) => ({
         profile_id: id,
         type: "substitute",
@@ -231,6 +247,11 @@ export async function decideSubstituteRequest(
         link: subNotificationLink(roleOf.get(id), r.date),
       })),
     );
+    if (notiErr) {
+      console.error("[substitutes] notify decide:", notiErr.message);
+      revalidatePath("/school/substitutes");
+      return { error: "Đã xử lý yêu cầu, nhưng gửi thông báo cho các bên thất bại." };
+    }
   }
   revalidatePath("/school/substitutes");
   return {};
@@ -256,11 +277,15 @@ export async function assignSubstitute(
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!teacherId) return { error: "Chọn giáo viên dạy thay." };
 
-  const { data: req } = await supabase
+  const { data: req, error: reqErr } = await supabase
     .from("substitute_requests")
     .select("id,school_id,date,period")
     .eq("id", requestId)
     .maybeSingle();
+  if (reqErr) {
+    console.error("[substitutes] request lookup:", reqErr.message);
+    return { error: "Lỗi tra cứu yêu cầu - vui lòng thử lại." };
+  }
   if (!req || req.school_id !== profile.school_id) {
     return { error: "Yêu cầu không tồn tại." };
   }
@@ -302,7 +327,7 @@ export async function assignSubstitute(
   }
 
   // Thong bao cho GV vua duoc phan cong - link toi so dau bai dung ngay.
-  await supabase.from("notifications").insert({
+  const { error: notiErr } = await supabase.from("notifications").insert({
     profile_id: teacherId,
     type: "substitute",
     title: "Bạn được phân công dạy thay",
@@ -313,5 +338,9 @@ export async function assignSubstitute(
     ),
   });
   revalidatePath("/school/substitutes");
+  if (notiErr) {
+    console.error("[substitutes] notify assign:", notiErr.message);
+    return { error: "Đã phân công, nhưng gửi thông báo cho giáo viên thất bại." };
+  }
   return {};
 }

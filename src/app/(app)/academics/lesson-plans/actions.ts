@@ -83,26 +83,37 @@ export async function submitLessonPlan(input: {
     return { error: "Không nộp được giáo án - vui lòng thử lại." };
   }
 
-  // Thông báo tổ trưởng cùng trường
-  const { data: heads } = await supabase
+  // Thông báo tổ trưởng cùng trường - r21 M: lookup + INSERT loi
+  // khong duoc chi console.error roi tra ok (to truong khong biet
+  // co giao an cho duyet).
+  const { data: heads, error: hdErr } = await supabase
     .from("profiles")
     .select("id")
     .or("role.eq.to_truong,concurrent_roles.cs.{to_truong}")
     .eq("school_id", profile.school_id ?? "");
-  const rows = ((heads ?? []) as { id: string }[]).map((p) => ({
-    profile_id: p.id,
-    type: "lesson_plan",
-    title: `Giáo án mới chờ duyệt: ${input.title.trim()}`,
-    body: `${profile.full_name} nộp giáo án tuần ${input.week ?? "-"}`,
-    link: "/team/lesson-plans",
-  }));
-  if (rows.length) {
-    const { error: nErr } = await supabase.from("notifications").insert(rows);
-    if (nErr) console.error("[lesson-plans] notify heads:", nErr.message);
+  let notifyWarning: string | undefined;
+  if (hdErr) {
+    console.error("[lesson-plans] heads lookup:", hdErr.message);
+    notifyWarning = "Đã nộp giáo án, nhưng chưa thông báo được cho tổ trưởng.";
+  } else {
+    const rows = ((heads ?? []) as { id: string }[]).map((p) => ({
+      profile_id: p.id,
+      type: "lesson_plan",
+      title: `Giáo án mới chờ duyệt: ${input.title.trim()}`,
+      body: `${profile.full_name} nộp giáo án tuần ${input.week ?? "-"}`,
+      link: "/team/lesson-plans",
+    }));
+    if (rows.length) {
+      const { error: nErr } = await supabase.from("notifications").insert(rows);
+      if (nErr) {
+        console.error("[lesson-plans] notify heads:", nErr.message);
+        notifyWarning = "Đã nộp giáo án, nhưng gửi thông báo cho tổ trưởng thất bại.";
+      }
+    }
   }
 
   revalidatePath("/academics/lesson-plans");
-  return {};
+  return notifyWarning ? { error: notifyWarning } : {};
 }
 
 /** URL ký (1 giờ) để người duyệt/GV mở file giáo án đính kèm. */
@@ -153,12 +164,16 @@ export async function teamReviewLessonPlan(
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: plan } = await supabase
+  const { data: plan, error: planErr } = await supabase
     .from("lesson_plans")
     .select("id,school_id,teacher_id,title")
     .eq("id", planId)
     .eq("status", "submitted")
     .maybeSingle();
+  if (planErr) {
+    console.error("[lesson-plans] plan lookup:", planErr.message);
+    return { error: "Lỗi tra cứu giáo án - vui lòng thử lại." };
+  }
   if (!plan || plan.school_id !== profile.school_id) {
     return { error: "Giáo án không tồn tại hoặc đã được xử lý." };
   }
@@ -184,23 +199,32 @@ export async function teamReviewLessonPlan(
     return { error: "Giáo án đã được người khác xử lý." };
   }
 
+  let notifyWarning: string | undefined;
   if (approve) {
     // Chuyển BGH duyệt cuối + báo GV
-    const { data: leaders } = await supabase
+    const { data: leaders, error: ldErr } = await supabase
       .from("profiles")
       .select("id")
       .or("role.in.(bgh,pht),concurrent_roles.ov.{bgh,pht}")
       .eq("school_id", profile.school_id ?? "");
-    const rows = ((leaders ?? []) as { id: string }[]).map((p) => ({
-      profile_id: p.id,
-      type: "lesson_plan",
-      title: `Giáo án đã qua tổ duyệt: ${plan.title}`,
-      body: "Chờ Ban Giám Hiệu phê duyệt cuối",
-      link: "/school/approvals",
-    }));
-    if (rows.length) {
-      const { error: nErr } = await supabase.from("notifications").insert(rows);
-      if (nErr) console.error("[lesson-plans] notify leaders:", nErr.message);
+    if (ldErr) {
+      console.error("[lesson-plans] leaders lookup:", ldErr.message);
+      notifyWarning = "Đã duyệt giáo án, nhưng chưa thông báo được cho BGH.";
+    } else {
+      const rows = ((leaders ?? []) as { id: string }[]).map((p) => ({
+        profile_id: p.id,
+        type: "lesson_plan",
+        title: `Giáo án đã qua tổ duyệt: ${plan.title}`,
+        body: "Chờ Ban Giám Hiệu phê duyệt cuối",
+        link: "/school/approvals",
+      }));
+      if (rows.length) {
+        const { error: nErr } = await supabase.from("notifications").insert(rows);
+        if (nErr) {
+          console.error("[lesson-plans] notify leaders:", nErr.message);
+          notifyWarning = "Đã duyệt giáo án, nhưng gửi thông báo cho BGH thất bại.";
+        }
+      }
     }
   }
   const { error: tnErr } = await supabase.from("notifications").insert({
@@ -212,11 +236,14 @@ export async function teamReviewLessonPlan(
     body: note?.trim() || (approve ? "Chờ BGH phê duyệt cuối" : null),
     link: "/academics/lesson-plans",
   });
-  if (tnErr) console.error("[lesson-plans] notify teacher:", tnErr.message);
+  if (tnErr) {
+    console.error("[lesson-plans] notify teacher:", tnErr.message);
+    notifyWarning = "Đã xử lý giáo án, nhưng gửi thông báo cho giáo viên thất bại.";
+  }
   revalidatePath("/team/lesson-plans");
   revalidatePath("/academics/lesson-plans");
   revalidatePath("/school/approvals");
-  return {};
+  return notifyWarning ? { error: notifyWarning } : {};
 }
 
 /** BGH duyệt cuối -> approved, hoặc trả về -> rejected */
@@ -231,12 +258,16 @@ export async function bghDecideLessonPlan(
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: plan } = await supabase
+  const { data: plan, error: planErr } = await supabase
     .from("lesson_plans")
     .select("id,school_id,teacher_id,title")
     .eq("id", planId)
     .eq("status", "team_approved")
     .maybeSingle();
+  if (planErr) {
+    console.error("[lesson-plans] plan lookup:", planErr.message);
+    return { error: "Lỗi tra cứu giáo án - vui lòng thử lại." };
+  }
   if (!plan || plan.school_id !== profile.school_id) {
     return { error: "Giáo án không tồn tại hoặc chưa qua duyệt tổ." };
   }
@@ -269,8 +300,11 @@ export async function bghDecideLessonPlan(
     body: note?.trim() || null,
     link: "/academics/lesson-plans",
   });
-  if (nErr) console.error("[lesson-plans] notify teacher:", nErr.message);
   revalidatePath("/school/approvals");
   revalidatePath("/academics/lesson-plans");
+  if (nErr) {
+    console.error("[lesson-plans] notify teacher:", nErr.message);
+    return { error: "Đã xử lý giáo án, nhưng gửi thông báo cho giáo viên thất bại." };
+  }
   return {};
 }

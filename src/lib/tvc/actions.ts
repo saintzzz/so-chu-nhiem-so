@@ -197,6 +197,9 @@ export async function reviewMaterial(
   if (data?.error) return { error: data.error as string };
   // Thong bao ket qua duyet cho tac gia - r20 M: ca lookup tac gia lan
   // INSERT notification deu khong duoc bo error roi tra ok gia.
+  // r21 M: loi o day la "da commit mot phan" - phai revalidate truoc
+  // khi return de client refresh status moi, khong de nut duyet goi
+  // lai buoc ke tiep tren du lieu cu.
   const { data: mat, error: matErr } = await supabase
     .from("tvc_materials")
     .select("author_id, title")
@@ -204,6 +207,8 @@ export async function reviewMaterial(
     .single();
   if (matErr && matErr.code !== "PGRST116") {
     console.error("[tvc] review material lookup:", matErr.message);
+    revalidatePath(`/studio/library/${id}`);
+    revalidatePath("/studio/library");
     return { error: "Đã duyệt, nhưng không tra được tác giả để gửi thông báo." };
   }
   if (mat?.author_id) {
@@ -217,6 +222,8 @@ export async function reviewMaterial(
     });
     if (notiErr) {
       console.error("[tvc] review notification:", notiErr.message);
+      revalidatePath(`/studio/library/${id}`);
+      revalidatePath("/studio/library");
       return { error: "Đã duyệt, nhưng gửi thông báo cho tác giả thất bại." };
     }
   }

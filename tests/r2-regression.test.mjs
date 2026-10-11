@@ -308,7 +308,7 @@ test("R2-07: loi nguon tra 500, insert delivery log khong nuot", () => {
     "insert/upsert digest_deliveries van khong check error");
   // sendPhase: delErr -> tra 500 ngay (scheduler retry) kem counters
   // partial-send; rows van 'sending' -> requeue/reconcile run sau.
-  const delBlock = route.match(/if \(delErr\) \{[\s\S]*?status: 500[\s\S]*?\}\);/);
+  const delBlock = route.match(/if \(delErr\) \{[\s\S]*?status: 500/);
   assert.ok(delBlock, "delErr phai lam dung run");
   assert.match(delBlock[0], /sent, failed, skipped/,
     "response 5xx van phai tra counters");

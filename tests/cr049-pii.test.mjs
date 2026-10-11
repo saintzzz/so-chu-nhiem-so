@@ -885,3 +885,31 @@ test("guard r20: fallbackToDevin + allocator + email + review notify deu fail-cl
   const ex = read("src/app/api/studio/questions/extract/route.ts");
   assert.match(ex, /topic: deanonymizeNames/, "topic phai deanon nhu cac truong khac");
 });
+
+test("guard r21: server actions + cron khong bo loi DB truoc mutation/notification", () => {
+  const safety = read("src/app/(app)/safety/actions.ts");
+  assert.match(safety, /campusUnknown/, "loi campus lookup khong duoc suy ra 'khong co campus' (leak cho PHT)");
+  assert.match(safety, /lpErr/, "lookup lanh dao phai check error");
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.match(act, /stuErr/, "students lookup phai check error truoc dang ky");
+  assert.match(act, /exErr/, "attendance lookup phai check error truoc INSERT");
+  const sch = read("src/app/(app)/school/actions.ts");
+  assert.match(sch, /scErr|cfErr/, "conflict lookups phai check error truoc mutation");
+  assert.match(sch, /delErr/, "item_acl DELETE phai check error truoc audit");
+  assert.match(sch, /aclErr|profErr/, "listItemAcl phai check ca 2 SELECT");
+  const radar = read("src/app/(app)/school/radar/actions.ts");
+  assert.match(radar, /dedupeErr/, "dedupe lookup phai check error truoc INSERT");
+  assert.match(radar, /notiErr/, "warning notify phai check error");
+  const sub = read("src/app/(app)/school/substitutes/actions.ts");
+  assert.match(sub, /tpErr/, "target profiles lookup phai check error");
+  const lp = read("src/app/(app)/academics/lesson-plans/actions.ts");
+  assert.match(lp, /hdErr|ldErr/, "heads/leaders lookup phai check error");
+  assert.match(lp, /planErr/, "plan lookup phai tach loi DB khoi 'khong ton tai'");
+  const pd = read("src/app/api/cron/parent-digest/route.ts");
+  assert.match(pd, /outboxUpdateErrors/, "outbox status UPDATE loi phai tich luy thanh 5xx");
+  assert.match(pd, /recErr/, "reconcile UPDATE phai check error");
+  const sup = read("src/app/(app)/academics/support/actions.ts");
+  assert.match(sup, /subErr|exErr/, "subjects+existing lookups phai check error");
+  const qb = read("src/components/tvc/question-bank.tsx");
+  assert.match(qb, /if \(r\.error\)/, "chip ACL chi go khi DELETE thanh cong");
+});

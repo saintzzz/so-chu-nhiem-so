@@ -810,3 +810,41 @@ test("guard r17: lookup error khong che thanh 404/403", () => {
     assert.match(s, /PGRST116|clsErr|wErr|matErr|mtxErr/, `${f} phai tach loi DB khoi not-found`);
   }
 });
+
+test("r18: ten bat dau truoc alias khong an vao token da sinh", async () => {
+  const { pseudonymizeNames } = await import("../src/lib/ai-privacy.ts")
+    .catch(() => import("../src/lib/ai-privacy.js"));
+  const map = [
+    { name: "Nguyễn Văn An", alias: "⟦HS001·ab12⟧" },
+    { name: "Mã ⟦HS001", alias: "⟦GV002·ab12⟧" },
+  ];
+  // cross-call: "Mã Nguyễn Văn An" -> luot 1 "Mã ⟦HS001·ab12⟧"; luot 2
+  // ten "Mã ⟦HS001" (bat dau som hon alias) KHONG duoc nuot token.
+  const once = pseudonymizeNames("Mã Nguyễn Văn An", map);
+  assert.equal(once, "Mã ⟦HS001·ab12⟧");
+  assert.equal(
+    pseudonymizeNames(once, map),
+    "Mã ⟦HS001·ab12⟧",
+    "ten bat dau som hon vi tri alias khong duoc an vao token da sinh",
+  );
+  // nguoc lai, ten do dung rieng van duoc alias binh thuong.
+  assert.equal(
+    pseudonymizeNames("Mã ⟦HS001 đã nộp", map),
+    "⟦GV002·ab12⟧ đã nộp",
+    "ten doc lap (khong phai alias da sinh) van bi minimize",
+  );
+});
+
+test("guard r18: authz/callback lookup tach loi DB khoi 401/403", () => {
+  const files = [
+    "src/app/api/studio/context/route.ts",
+    "src/app/api/studio/tools/[code]/generate/route.ts",
+    "src/app/api/studio/materials/[id]/export/route.ts",
+    "src/app/api/ai/devin-callback/route.ts",
+  ];
+  for (const f of files) {
+    const s = read(f);
+    assert.match(s, /profErr|jobErr/, `${f} phai check error cua lookup phan quyen/job`);
+    assert.match(s, /PGRST116/, `${f} phai chi deny khi row that su vang`);
+  }
+});

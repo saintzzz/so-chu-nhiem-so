@@ -415,11 +415,20 @@ export async function POST(
     return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
   const user = { id: userId };
 
-  const { data: profile } = await supabase
+  // r18 L: loi DB phai 500 - chi 403 khi query thanh cong ma khong
+  // co profile (PGRST116) hoac sai role.
+  const { data: profile, error: profErr } = await supabase
     .from("profiles")
     .select("id, role, school_id, full_name, concurrent_roles")
     .eq("id", user.id)
     .single();
+  if (profErr && profErr.code !== "PGRST116") {
+    console.error("[studio/generate] profile:", profErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!profile || !hasAnyRole(profile, TOOL_ROLES)) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }

@@ -36,11 +36,20 @@ export async function POST(req: NextRequest) {
   const presentedHash = createHash("sha256")
     .update(body.token)
     .digest("hex");
-  const { data: job } = await admin
+  // r18 L: loi DB phai 500 - token hop le khong duoc an truot vi
+  // query job loi; chi coi thieu row la unauthorized.
+  const { data: job, error: jobErr } = await admin
     .from("ai_jobs")
     .select("id,callback_token,status,kind,pii_map")
     .eq("id", body.job_id)
     .single();
+  if (jobErr && jobErr.code !== "PGRST116") {
+    console.error("[devin-callback] job lookup:", jobErr.message);
+    return NextResponse.json(
+      { error: "Lỗi tra cứu job, thử lại sau." },
+      { status: 500 },
+    );
+  }
   const row = job as {
     id: string;
     callback_token: string;

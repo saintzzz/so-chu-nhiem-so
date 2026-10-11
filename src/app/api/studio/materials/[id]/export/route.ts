@@ -41,11 +41,19 @@ export async function GET(
   if (!material)
     return NextResponse.json({ error: "Không tìm thấy." }, { status: 404 });
 
-  const { data: profile } = await supabase
+  // r18 L: loi DB phai 500 - khong che thanh "khong co quyen".
+  const { data: profile, error: profErr } = await supabase
     .from("profiles")
     .select("role, school_id")
     .eq("id", userId)
     .single();
+  if (profErr && profErr.code !== "PGRST116") {
+    console.error("[studio/export] profile:", profErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   // staff = cac role duoc vao /studio (qa-matrix); pht khong thuoc studio
   // nen chi xuat duoc material published qua canView ben duoi.
   const staff = ["gvcn", "gvbm", "to_truong", "bgh", "admin"].includes(

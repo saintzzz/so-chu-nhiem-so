@@ -401,3 +401,26 @@ Raw report: `docs/reviews/codex-r17-report.txt`
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 208 pass/1 skip
 - `check-consistency` PASS | `npm run build` PASS
 - migration: `20261206_cr049_r17_fixes.sql` (RPC `scn_save_exam_pack` - prod applied, grant authenticated-only)
+
+---
+
+## Round 18 (Codex Cloud @ ba4a714) - NOT-CLEAN: 2 findings (0H/0M/2L)
+
+Raw report: `docs/reviews/codex-r18-report.txt`
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | L | Ten BAT DAU truoc alias van an vao token da sinh: name "Mã ⟦HS001" (hop le theo validation) khop tai vi tri 0 truoc alias ⟦HS001·ab12⟧ o vi tri 3 -> "⟦GV002·ab12⟧·ab12⟧" corrupt | **Fixed** - tach text thanh doan quanh alias literal (split capture group); name regex chi chay trong doan ngoai - khong match nao duoc giao voi token | unit test r18 |
+| 2 | L | 4 lookup phan quyen/callback bien loi DB thanh 401/403: studio/context + generate profile, export profile, devin-callback job lookup | **Fixed** - tach PGRST116 (khong co row -> deny) khoi loi DB khac (-> 500) | guard test |
+
+### Ghi nhan khong phai finding
+
+- WeakMap cache: khong co call site mutate map sau khi spec compile.
+- RPC `scn_save_exam_pack`: khong SQL dong, owner_id tu auth.uid(), rollback nguyen khi loi; route khong con insert truc tiep.
+- SECURITY INVOKER khong bypass RLS (note: dinh nghia RLS goc cua tvc_exams khong nam trong repo migrations - da xac nhan qua prod).
+
+### Gates r18
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 210 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- Khong co migration moi trong r18 (thuan code fixes)

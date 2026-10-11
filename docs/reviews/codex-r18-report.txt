@@ -1,0 +1,95 @@
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day la vong REVIEW DOC LAP thu 18 - cac vong truoc da triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+src/lib/ai-privacy.ts: pseudonymizeNames gio single-pass voi spec cache WeakMap - exact-alias literal (⟦⟧-bracketed) dung truoc trong alternation (bao ve token da sinh), ten dung sau voi boundary \p{L}\p{N}. Lookup qua per-name ^name$ iu regex thay vi lowercase Map. Kiem: con path nao smuggle ten ra provider? alternation order co de name match truoc alias khong? cache WeakMap co sai? aliasNonce (4 hex) nhung vao ⟦X###·nonce⟧ o 6 site - con site nao thieu?
+
+migration 20261206_cr049_r17_fixes.sql: scn_save_exam_pack RPC SECURITY INVOKER, owner_id = auth.uid(), grant chi authenticated. Route DC-03 goi rpc thay insert tung buoc. Kiem: RPC co bypass RLS khong? jsonb payload co inject duoc owner/title? atomicity dung khong? Route con duong insert tvc_exams/questions nao khac?
+
+6 lookup sites tach PGRST116 khoi loi DB (generate material+matrix, export material, daily-report class, period-log-summary class, warning-advice warn). Kiem: con lookup nao bo error? maybeSingle vs single handling?
+
+Tiep tuc sweep: moi route ai/studio/cron bo qua query error; RLS self-attribution/SELECT is_staff khong anchor; SECURITY DEFINER thieu bind truong.
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+12:54 AM
+Worked for 4m 1s
+ChatGPT said:
+
+Đã review ba4a714d112787dc5e6f787ca3ea044fb5e6e8a4, đối chiếu 371 blob src/ và supabase/ với GitHub. Không sửa repo, không gọi provider hoặc mutation DB. Có 2 findings LOW.
+
+LOW — Tên bắt đầu trước alias vẫn có thể nuốt một phần token đã sinh.
+
+File: src/lib/ai-privacy.ts:85–87,114–117; đường gọi: src/app/api/studio/tools/[code]/generate/route.ts:927–931.
+
+Alternation ưu tiên alias chỉ khi hai nhánh match tại cùng vị trí. Một tên bắt đầu sớm hơn vẫn thắng và có thể kéo dài vào alias.
+
+Đã tái hiện với mapping:
+
+Plain text
+Nguyễn Văn An → ⟦HS001·ab12⟧
+Mã ⟦HS001    → ⟦GV002·ab12⟧
+
+source:        Mã Nguyễn Văn An
+minimizeDeep:  Mã ⟦HS001·ab12⟧
+minimizePrompt:⟦GV002·ab12⟧·ab12⟧
+
+Tên thứ hai được validation hiện tại chấp nhận: src/app/(app)/school/actions.ts:593 chỉ kiểm tra không rỗng. Studio thực sự chạy hai lượt minimize như trên. Trong luồng này, usedNames chỉ chứa An, nên token GV002 bị hỏng không được restore. Đây là lỗi nội dung/alias; chưa chứng minh rò tên thật từ case này.
+
+Fix tối thiểu: tách các token alias đã có thành những đoạn bất biến; chỉ chạy regex tên trên các đoạn nằm ngoài token. Không cho match tên giao với bất kỳ phần nào của alias.
+
+LOW — Lookup phục vụ phân quyền/callback vẫn biến lỗi DB thành 403/401.
+
+File:
+
+src/app/api/studio/context/route.ts:15–21
+src/app/api/studio/tools/[code]/generate/route.ts:418–424
+src/app/api/studio/materials/[id]/export/route.ts:44–59
+src/app/api/ai/devin-callback/route.ts:39–60
+
+Các query này chỉ lấy data, bỏ error. Khi query profile lỗi, context/generate trả “Không có quyền”; export có thể coi staff hợp lệ là không có quyền. Khi query job lỗi, callback có token hợp lệ vẫn trả 401 unauthorized, không cập nhật kết quả.
+
+Fix tối thiểu: lấy và kiểm tra error; trả 500 cho lỗi DB. Với .single(), chỉ coi trường hợp không có row là thiếu profile/job; có thể dùng .maybeSingle() để phân biệt rõ hơn.
+
+Các kiểm tra còn lại:
+
+Case tên sát ⟦⟧ và Unicode ſ/S đã được xử lý đúng trong tái hiện. Chưa tìm thấy call site sửa mảng mapping sau khi cache WeakMap được tạo.
+Cả sáu nơi tạo alias đều có nonce; mergePiiNames giữ nonce khi thêm prefix R.
+RPC không dùng SQL động; payload không ghi đè được owner_id, title được truyền như giá trị. Lỗi insert không bị bắt nên rollback toàn pack. Không còn insert trực tiếp tvc_exams/tvc_exam_questions trong route.
+SECURITY INVOKER không tự bypass RLS. Tuy nhiên, source không chứa định nghĩa nền của hai relation/view exam này, nên chưa thể xác nhận toàn bộ chuỗi RLS của chúng chỉ từ repo.
+Sáu lookup được sửa ở r17 đã kiểm tra lỗi. Chưa chứng minh thêm bypass tenant còn hiệu lực trong sweep migrations về self-attribution, is_staff() hoặc SECURITY DEFINER.
+
+VERDICT: NOT-CLEAN
+
+12:58 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++56,399
+-4,377
+Outputs
+Create a file or site

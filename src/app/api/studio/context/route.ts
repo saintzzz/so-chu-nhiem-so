@@ -12,11 +12,20 @@ export async function GET(req: NextRequest) {
   const userId = claimsData?.claims?.sub;
   if (!userId)
     return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
-  const { data: profile } = await supabase
+  // r18 L: loi DB phai 500 - chi 403 khi query thanh cong ma profile
+  // khong ton tai (PGRST116) hoac sai role.
+  const { data: profile, error: profErr } = await supabase
     .from("profiles")
     .select("role,concurrent_roles")
     .eq("id", userId)
     .single();
+  if (profErr && profErr.code !== "PGRST116") {
+    console.error("[studio/context] profile:", profErr.message);
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   if (!profile || !hasAnyRole(profile, TOOL_ROLES))
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
 

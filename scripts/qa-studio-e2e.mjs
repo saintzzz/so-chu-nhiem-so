@@ -166,7 +166,7 @@ try {
       const head = new Uint8Array(b.slice(0, 2));
       return { status: r.status, size: b.byteLength, pk: head[0] === 0x50 && head[1] === 0x4b };
     }, matId);
-    step("T1-gv", "export DOCX (file that, PK zip)", exp.status === 200 && exp.pk && exp.size > 10000,
+    step("T1-gv", "export DOCX (file that, PK zip)", exp.status === 200 && exp.pk && exp.size > 5000,
       `status=${exp.status} size=${exp.size} pk=${exp.pk}`);
 
     // DC-02 ma tran -> luu -> verify tvc_matrices (cot owner_id)

@@ -32,7 +32,7 @@ export default async function AttendanceDailyPage({
   } else if (profile.school_id) {
     classQuery = classQuery.eq("school_id", profile.school_id);
   }
-  const { data: classData } = await classQuery;
+  const { data: classData, error: clsErr } = await classQuery;
   const classes = (classData ?? []) as ClassRoom[];
   const selected =
     classes.find((c) => c.id === classParam) ?? classes[0];
@@ -51,7 +51,9 @@ export default async function AttendanceDailyPage({
     );
   }
 
-  const { data: studentData } = await supabase
+  // r22 H: loi nguon PHAI chan editor - roster rong/all-present tren
+  // du lieu loi ma luu se ghi de chuyen can ca lop qua upsert RPC.
+  const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("*")
     .eq("class_id", selected.id)
@@ -66,13 +68,17 @@ export default async function AttendanceDailyPage({
       ? dateParam
       : todayVN();
 
-  const { data: attData } = ids.length
+  const { data: attData, error: attErr } = ids.length
     ? await supabase
         .from("attendance_records")
         .select("*")
         .in("student_id", ids)
         .eq("date", today)
-    : { data: [] };
+    : { data: [] as never[], error: null };
+  const loadError =
+    (clsErr ?? stuErr ?? attErr) != null
+      ? "Không tải được dữ liệu chuyên cần - vui lòng tải lại trang trước khi lưu."
+      : null;
   const attByStudent = new Map(
     ((attData ?? []) as AttendanceRecord[]).map((a) => [
       a.student_id,
@@ -109,7 +115,12 @@ export default async function AttendanceDailyPage({
         params={{ date: today }}
       />
       <AttendanceDateNav date={today} params={{ class: selected.id }} />
-      <DailyRoster key={`${selected.id}-${today}`} date={today} rows={rows} />
+      <DailyRoster
+        key={`${selected.id}-${today}`}
+        date={today}
+        rows={rows}
+        loadError={loadError}
+      />
     </div>
   );
 }

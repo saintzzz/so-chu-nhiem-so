@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
-import type { Activity, Profile } from "@/types";
+import type { Activity } from "@/types";
 import { hasAnyRole } from "@/lib/roles";
 
 // getClaims qua getProfile (local JWT, cached) - getUser() goi Auth server
@@ -105,42 +105,22 @@ export async function announceActivity(
   const { supabase, user, profile } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 
-  const { data: actData } = await supabase
+  const { data: actData, error: actErr } = await supabase
     .from("activities")
     .select("*")
     .eq("id", activityId)
     .single();
   const activity = (actData ?? null) as Activity | null;
+  if (actErr) {
+    if (actErr.code === "PGRST116")
+      return { error: "Không tìm thấy hoạt động." };
+    console.error("[activity-announce] activity:", actErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
   if (!activity) return { error: "Không tìm thấy hoạt động." };
 
-  const annTitle = `Thông báo hoạt động: ${activity.title}`;
-  const annContent =
-    activity.description ??
-    `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`;
-  const { error: annError } = await supabase.from("announcements").insert({
-    sender_id: user.id,
-    school_id: profile?.school_id ?? null,
-    class_id: activity.class_id,
-    student_id: null,
-    title: annTitle,
-    content: annContent,
-  });
-  if (annError) {
-    console.error("[activity-announce] insert failed:", annError.message);
-    return { error: "Không lưu được thông báo. Vui lòng thử lại." };
-  }
-
-  // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
-  // [So Chu Nhiem So] do helper dat).
-  const mail = await emailClassParents(supabase, {
-    classId: activity.class_id,
-    studentId: null,
-    title: annTitle,
-    content: annContent,
-  });
-
-  // r21 M: 2 SELECT nay loi -> studentIds/existing rong -> bao
-  // registered:0 gia hoac INSERT tren gia dinh chua co dang ky.
+  // r22 M: doc DU nguon truoc moi side effect - announcement/email la
+  // one-shot, retry sau partial commit se insert + gui email lan nua.
   const { data: studentData, error: stuErr } = await supabase
     .from("students")
     .select("id")
@@ -148,10 +128,7 @@ export async function announceActivity(
     .eq("status", "active");
   if (stuErr) {
     console.error("[activity-announce] students:", stuErr.message);
-    return {
-      error:
-        "Đã lưu thông báo và gửi email, nhưng không tải được danh sách học sinh để đăng ký tham dự.",
-    };
+    return { error: "Không tải được danh sách học sinh. Vui lòng thử lại." };
   }
   const studentIds = ((studentData ?? []) as { id: string }[]).map(
     (s) => s.id,
@@ -164,13 +141,62 @@ export async function announceActivity(
   if (exErr) {
     console.error("[activity-announce] existing:", exErr.message);
     return {
-      error:
-        "Đã lưu thông báo và gửi email, nhưng không tải được danh sách đăng ký hiện có.",
+      error: "Không tải được danh sách đăng ký hiện có. Vui lòng thử lại.",
     };
   }
   const existing = new Set(
     ((existingData ?? []) as { student_id: string }[]).map((r) => r.student_id),
   );
+
+  const annTitle = `Thông báo hoạt động: ${activity.title}`;
+  const annContent =
+    activity.description ??
+    `Nhà trường thông báo kế hoạch hoạt động "${activity.title}". Phụ huynh vui lòng theo dõi và nhắc nhở học sinh tham gia đầy đủ.`;
+
+  // r22 M: retry sau khi INSERT dang ky loi KHONG duoc lap lai
+  // announcement + email. Title deterministic theo activity nen kiem
+  // announcement da ton tai lam idempotency marker.
+  const { data: priorAnn, error: priorErr } = await supabase
+    .from("announcements")
+    .select("id")
+    .eq("sender_id", user.id)
+    .eq("class_id", activity.class_id)
+    .eq("title", annTitle)
+    .limit(1);
+  if (priorErr) {
+    console.error("[activity-announce] prior check:", priorErr.message);
+    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+
+  let mail: {
+    emailed: number;
+    emailFailed: number;
+    emailSkipped?: boolean;
+    emailError?: string;
+  } = { emailed: 0, emailFailed: 0, emailSkipped: true };
+  if (!(priorAnn ?? []).length) {
+    const { error: annError } = await supabase.from("announcements").insert({
+      sender_id: user.id,
+      school_id: profile?.school_id ?? null,
+      class_id: activity.class_id,
+      student_id: null,
+      title: annTitle,
+      content: annContent,
+    });
+    if (annError) {
+      console.error("[activity-announce] insert failed:", annError.message);
+      return { error: "Không lưu được thông báo. Vui lòng thử lại." };
+    }
+
+    // R6-02: email phu huynh cung noi dung thong bao in-app (subject prefix
+    // [So Chu Nhiem So] do helper dat).
+    mail = await emailClassParents(supabase, {
+      classId: activity.class_id,
+      studentId: null,
+      title: annTitle,
+      content: annContent,
+    });
+  }
 
   const rows = studentIds
     .filter((id) => !existing.has(id))
@@ -185,7 +211,18 @@ export async function announceActivity(
       .insert(rows);
     if (regError) {
       console.error("[activity-announce] register failed:", regError.message);
-      return { error: "Không đăng ký được danh sách học sinh. Vui lòng thử lại." };
+      // Announcement + email da committed - revalidate va bao committed;
+      // retry se thay prior announcement nen chi chay lai phan dang ky.
+      revalidatePath("/activities/announce");
+      revalidatePath("/activities/attendance");
+      return {
+        error:
+          "Đã lưu thông báo và gửi email cho phụ huynh, nhưng không đăng ký được danh sách học sinh - vui lòng bấm lại để hoàn tất đăng ký.",
+        emailed: mail.emailed,
+        emailFailed: mail.emailFailed,
+        emailSkipped: mail.emailSkipped,
+        emailError: mail.emailError,
+      };
     }
   }
 

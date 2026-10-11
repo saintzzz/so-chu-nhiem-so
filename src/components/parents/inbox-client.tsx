@@ -64,8 +64,18 @@ export function InboxClient({
     setReply("");
     setFeedback(null);
     if (!readIds.has(m.id)) {
+      // r22 L: chi danh dau da doc khi action thanh cong - rollback trang
+      // thai optimistic va bao loi de cham chua doc khong bien mat gia.
       setReadIds((prev) => new Set(prev).add(m.id));
-      await markMessageRead(m.id);
+      const res = await markMessageRead(m.id);
+      if (res?.error) {
+        setReadIds((prev) => {
+          const next = new Set(prev);
+          next.delete(m.id);
+          return next;
+        });
+        setFeedback("Không đánh dấu được đã đọc - vui lòng thử lại.");
+      }
     }
   }
 

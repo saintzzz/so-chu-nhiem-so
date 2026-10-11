@@ -49,6 +49,23 @@ export function NotifyForm({
       setFeedback({ ok: false, text: `Gửi thất bại: ${res.error}` });
       return;
     }
+    // r22 M: email loi PHAI hien ro - thong bao in-app da luu nhung PH
+    // khong nhan duoc email nao.
+    if (
+      !res.emailSkipped &&
+      (res.emailError ||
+        ((res.emailFailed ?? 0) > 0 && (res.emailed ?? 0) === 0))
+    ) {
+      setFeedback({
+        ok: false,
+        text:
+          res.emailError === "lookup failed"
+            ? "Đã lưu thông báo in-app nhưng không tra được danh sách phụ huynh - vui lòng thử lại sau."
+            : "Đã lưu thông báo in-app nhưng không gửi được email nào - kiểm tra cấu hình hoặc thử lại.",
+      });
+      router.refresh();
+      return;
+    }
     setTitle("");
     setContent("");
     setTarget("all");
@@ -56,9 +73,11 @@ export function NotifyForm({
       ok: true,
       text: res.emailSkipped
         ? "Đã gửi thông báo in-app (chưa cấu hình RESEND_API_KEY nên không gửi email)."
-        : res.emailed
-          ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
-          : "Đã gửi thông báo đến phụ huynh.",
+        : (res.emailed ?? 0) > 0 && (res.emailFailed ?? 0) > 0
+          ? `Đã gửi email đến ${res.emailed} phụ huynh, ${res.emailFailed} lỗi - một số phụ huynh chưa nhận được.`
+          : res.emailed
+            ? `Đã gửi thông báo + email đến ${res.emailed} phụ huynh.`
+            : "Đã gửi thông báo đến phụ huynh.",
     });
     router.refresh();
   }

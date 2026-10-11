@@ -44,7 +44,15 @@ export async function createIncident(input: {
   // ro "da ghi, chua thong bao duoc" thay vi tra ok gia.
   if (lpErr) {
     console.error("[safety] leader lookup:", lpErr.message);
-    return { error: "Đã ghi sự cố, nhưng chưa thông báo được cho lãnh đạo." };
+    // r22 M: incident da committed - PHAI revalidate truoc khi return de
+    // form hien su co moi va retry khong tao ban ghi trung.
+    revalidatePath("/safety/report");
+    revalidatePath("/safety/bgh");
+    revalidatePath("/safety/followup");
+    return {
+      error:
+        "Đã ghi sự cố, nhưng chưa thông báo được cho lãnh đạo - sự cố đã xuất hiện trong danh sách.",
+    };
   }
   let incidentCampusId: string | null = null;
   let campusUnknown = false;

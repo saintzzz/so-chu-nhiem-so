@@ -1,0 +1,64 @@
+ChatGPT said:
+
+Review độc lập tại 3e52900a31e4326b56227cedcf32359ca99fcfba, đối chiếu source qua GitHub vì checkout local ở r16. Không sửa code, không gọi mutation production. Có 7 finding chứng minh được:
+
+HIGH - Lỗi đọc điểm danh có thể dẫn đến ghi đè chuyên cần cả lớp.
+Vị trí: src/app/(app)/attendance/daily/page.tsx:69,87; src/components/attendance/daily-roster.tsx:161; supabase/migrations/20261118_r16_security_fixes.sql:557.
+Kịch bản: SELECT attendance_records lỗi bị biến thành danh sách rỗng. Editor vẫn mở với tất cả học sinh present, ghi chú rỗng. Người dùng xác nhận; client gửi toàn bộ roster và RPC ON CONFLICT ghi đè trạng thái, ghi chú, source của bản ghi hiện có.
+Fix tối thiểu: kiểm tra lỗi nguồn và chặn editor/nút lưu khi tải điểm danh thất bại.
+
+MEDIUM - Báo cáo ngày vẫn cho lưu trên dữ liệu nguồn lỗi.
+Vị trí: src/app/(app)/attendance/daily-report/page.tsx:64,87; src/components/attendance/daily-report-form.tsx:93; src/app/(app)/attendance/daily-report/actions.ts:36.
+Kịch bản: SELECT chuyên cần/rèn luyện lỗi thành mảng rỗng, số vắng/muộn/vi phạm thành 0. SELECT báo cáo lỗi thành report=null, form mở nháp trống. Người dùng lưu/nộp; UPSERT cùng (class_id,date) có thể ghi đè báo cáo cũ bằng nội dung và số liệu thiếu, đồng thời gửi số liệu đó cho lãnh đạo.
+Fix tối thiểu: kiểm tra lỗi của mọi query nguồn, chặn form lưu khi bất kỳ nguồn nào lỗi.
+
+MEDIUM - announceActivity còn trả sai trạng thái sau commit và thiếu revalidate.
+Vị trí: src/app/(app)/activities/actions.ts:149,164,186,192.
+Kịch bản: announcement đã INSERT, helper email đã chạy; lookup học sinh/đăng ký lỗi thì trả “đã … gửi email” dù helper có thể trả emailError hoặc emailSkipped. Nếu INSERT đăng ký lỗi, message chỉ nói “Không đăng ký được… thử lại”, không phản ánh announcement đã lưu. Cả ba nhánh return trước revalidatePath; thử lại chạy lại INSERT announcement và gửi email.
+Fix tối thiểu: đọc đủ nguồn trước side effect; sau commit luôn revalidate, trả riêng trạng thái committed và kết quả email; retry phần đăng ký không lặp announcement/email.
+
+MEDIUM - Retry lỗi lịch sử hồ sơ không thể phục hồi lịch sử đã thiếu.
+Vị trí: src/app/(app)/records/students/actions.ts:90,113,126,141; src/components/records/student-record-editor.tsx:61.
+Kịch bản: UPDATE học sinh thành công, INSERT history lỗi. Action return trước revalidate và hướng dẫn “thử lại”; client giữ editor, không refresh. Retry cùng patch đọc giá trị mới, không còn diff nên trả “Không có thay đổi nào”, không ghi lại history. Giá trị cũ chỉ nằm trong request trước và không được lưu vào audit lỗi.
+Fix tối thiểu: gộp UPDATE + history trong transaction/RPC; không hướng dẫn retry patch như cách phục hồi history. Nếu giữ partial commit, revalidate và trả rõ committed.
+
+MEDIUM - Form thông báo chuyên cần báo thành công khi email lỗi.
+Vị trí: src/components/attendance/notify-form.tsx:48,55; src/lib/parent-email.ts:35; src/app/(app)/parents/actions.ts:56.
+Kịch bản: lookup phụ huynh lỗi trả emailError="lookup failed" hoặc provider gửi thất bại trả emailFailed/emailError. Action chuyển các trường này về client, nhưng form chỉ kiểm tra res.error, xóa nội dung và hiển thị thành công. Gửi một phần cũng không báo số email thất bại.
+Fix tối thiểu: xử lý emailError/emailFailed như compose-form, phân biệt đã lưu in-app với kết quả gửi email.
+
+MEDIUM - Nhánh lỗi lookup lãnh đạo của createIncident vẫn return trước revalidate.
+Vị trí: src/app/(app)/safety/actions.ts:45; src/components/safety/incident-form.tsx:72.
+Kịch bản: incident đã INSERT, lookup lãnh đạo lỗi. Action trả partial-commit error nhưng không invalidate các trang sự cố. Client giữ nguyên nội dung; bấm gửi lại INSERT thêm một incident cùng nội dung.
+Fix tối thiểu: revalidate ngay sau business commit hoặc trước mọi return sau commit; trả committed để client hoàn tất form và chỉ retry notification.
+
+LOW - Client đánh dấu tin nhắn đã đọc dù action thất bại.
+Vị trí: src/components/parents/inbox-client.tsx:66; src/app/(app)/parents/actions.ts:72.
+Kịch bản: client thêm ID vào readIds trước khi gọi markMessageRead, bỏ qua {error}. Khi UPDATE DB lỗi, chấm chưa đọc vẫn biến mất; mở lại cùng tin nhắn không retry vì ID đã nằm trong set.
+Fix tối thiểu: chỉ cập nhật readIds khi thành công, hoặc rollback trạng thái optimistic và hiển thị lỗi.
+
+Các sửa reviewMaterial, ACL và lỗi cập nhật outbox cron đã kiểm tra có xử lý lỗi tương ứng. Chưa tìm được finding RLS/SECURITY DEFINER/PII/alias bổ sung đủ bằng chứng. Cleanup file giáo án sau partial commit có gọi nhầm, nhưng policy lp_files_delete_same_school chặn xóa file đã được tham chiếu, nên không kết luận mất file.
+
+VERDICT: NOT-CLEAN
+
+2:25 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+Outputs
+Create a file or site

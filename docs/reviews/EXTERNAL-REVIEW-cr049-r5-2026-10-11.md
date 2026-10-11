@@ -501,3 +501,25 @@ Raw report: `docs/reviews/codex-r21-report.txt`. Cung lop loi "bo qua error DB" 
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 74+140 pass
 - `check-consistency` PASS | `npm run build` PASS (126 pages)
 - Khong co migration moi trong r21 (thuan code fixes)
+
+---
+
+## Round 22 (Codex Cloud @ 3e52900) - NOT-CLEAN: 7 findings (1H/5M/1L)
+
+Raw report: `docs/reviews/codex-r22-report.txt`. HIGH dau tien sau 7 round - lop loi "nguon loi -> form mo voi du lieu gia -> luu de" + partial-commit revalidate (phan la regression tu fix r21 thieu revalidate truoc return).
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | attendance/daily: SELECT attendance_records loi -> roster rong -> editor hien all-present -> RPC upsert ghi de chuyen can ca lop | **Fixed** - clsErr/stuErr/attErr -> loadError prop; roster disable save/import/template + hien banner | daily/page.tsx + daily-roster.tsx |
+| 2 | M | daily-report: source SELECT loi -> counts 0 + report null -> UPSERT ghi de bao cao cu bang so lieu sai + gui lanh dao | **Fixed** - att/conduct/report/stu/class errors -> loadError; form chan save/submit/AI | daily-report/page.tsx + form |
+| 3 | M | announceActivity: email helper loi van bao "da gui email"; INSERT dang ky loi return truoc revalidate; retry lap announcement+email | **Fixed** - doc het nguon truoc side effect; dedupe announcement bang title deterministic (idempotency marker) nen retry chi chay lai phan dang ky; committed-error tra kem email result | activities/actions.ts |
+| 4 | M | updateStudentRecord: UPDATE ok + history INSERT loi -> "thu lai" nhung retry cung patch khong con diff -> history mat vinh vien | **Fixed** - revalidate truoc return; audit log luu day du old_value/new_value de dong bo; message bao ro "da luu, chua ghi history" thay vi huong dan retry | records/students/actions.ts |
+| 5 | M | notify-form: chi check res.error -> email loi/partial van hien thanh cong | **Fixed** - check emailError/emailFailed nhu compose-form; giu form khi email loi hoan toan | notify-form.tsx |
+| 6 | M | createIncident: lpErr return truoc revalidate -> client giu noi dung, submit lai tao incident trung | **Fixed** - revalidate truoc return; message noi ro su co da xuat hien trong danh sach | safety/actions.ts |
+| 7 | L | inbox-client: readIds optimistic truoc action, bo qua error -> cham chua doc bien mat du UPDATE loi | **Fixed** - rollback readIds + feedback khi markMessageRead tra error | inbox-client.tsx |
+
+### Gates r22
+
+- `npx tsc --noEmit` PASS | eslint 0 errors (136 warnings pre-existing)
+- `cr049-pii` 75 pass | `r2-regression` 140 pass | `check-consistency` PASS
+- `npm run build` PASS | Khong co migration moi (thuan code fixes)

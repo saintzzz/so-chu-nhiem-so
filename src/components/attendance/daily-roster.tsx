@@ -36,9 +36,11 @@ const CHIP_TONE: Record<AttendanceStatus, string> = {
 export function DailyRoster({
   date,
   rows: unsortedRows,
+  loadError,
 }: {
   date: string;
   rows: RosterRow[];
+  loadError?: string | null;
 }) {
   const rows = useMemo(
     () => sortByVietnameseName(unsortedRows, (r) => r.fullName),
@@ -58,6 +60,9 @@ export function DailyRoster({
   } | null>(null);
   const [dirty, setDirty] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // r22 H: khi du lieu nguon loi (server truyen loadError), chan luu/xac nhan
+  // de khong ghi de chuyen can ca lop bang roster mac dinh.
+  const blocked = loadError != null;
 
   const LABEL_TO_STATUS: Record<string, AttendanceStatus> = {
     "có mặt": "present",
@@ -233,7 +238,7 @@ export function DailyRoster({
           type="button"
           variant="outline"
           onClick={downloadTemplate}
-          disabled={rows.length === 0}
+          disabled={rows.length === 0 || blocked}
         >
           Tải template
         </Button>
@@ -241,7 +246,7 @@ export function DailyRoster({
           type="button"
           variant="outline"
           onClick={() => fileRef.current?.click()}
-          disabled={rows.length === 0}
+          disabled={rows.length === 0 || blocked}
         >
           Import Excel
         </Button>
@@ -255,10 +260,15 @@ export function DailyRoster({
         <Button
           type="button"
           onClick={confirm}
-          disabled={saving || rows.length === 0}
+          disabled={saving || rows.length === 0 || blocked}
         >
           {saving ? "Đang lưu..." : "Xác nhận chuyên cần"}
         </Button>
+        {loadError && (
+          <span className="rounded-lg bg-error-bg px-3 py-2 text-sm text-error">
+            {loadError}
+          </span>
+        )}
         {dirty && (
           <span className="text-sm text-warning">Có thay đổi chưa lưu</span>
         )}

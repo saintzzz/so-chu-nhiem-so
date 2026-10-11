@@ -337,7 +337,9 @@ test("fetchAllRows: doc het nhieu trang", async () => {
 test("R2-08: insert history loi thi tra error ro rang", () => {
   const act = read("src/app/(app)/records/students/actions.ts");
   assert.match(act, /error: histErr/);
-  assert.match(act, /không ghi được lịch sử thay đổi/);
+  // r22: partial commit phai bao committed + gia tri cu trong audit (retry
+  // cung patch khong the phuc hoi history vi khong con diff).
+  assert.match(act, /chưa ghi được lịch sử thay đổi/);
 });
 
 // --- R2-10: PHT chua gan campus -> fail-closed -----------------------------

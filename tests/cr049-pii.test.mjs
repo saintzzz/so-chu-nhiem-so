@@ -913,3 +913,40 @@ test("guard r21: server actions + cron khong bo loi DB truoc mutation/notificati
   const qb = read("src/components/tvc/question-bank.tsx");
   assert.match(qb, /if \(r\.error\)/, "chip ACL chi go khi DELETE thanh cong");
 });
+
+test("guard r22: nguon loi phai chan form; committed state revalidate truoc return", () => {
+  const daily = read("src/app/(app)/attendance/daily/page.tsx");
+  assert.match(daily, /error: attErr/, "attendance SELECT phai check error");
+  assert.match(daily, /loadError/, "page phai truyen loadError vao roster");
+  const roster = read("src/components/attendance/daily-roster.tsx");
+  assert.match(roster, /loadError/, "roster nhan loadError");
+  assert.match(roster, /\|\| blocked/, "nut luu/import phai bi chan khi loadError");
+  const report = read("src/app/(app)/attendance/daily-report/page.tsx");
+  assert.match(report, /attRes\.error/, "attendance counts phai check error");
+  assert.match(report, /reportRes\.error/, "report lookup phai check error");
+  const form = read("src/components/attendance/daily-report-form.tsx");
+  assert.match(form, /\|\| !!loadError/, "save/submit phai bi chan khi loadError");
+  const act = read("src/app/(app)/activities/actions.ts");
+  assert.match(act, /priorAnn/, "announce phai dedupe announcement truoc INSERT (retry khong lap email)");
+  const sa = read("src/app/(app)/safety/actions.ts");
+  assert.match(
+    sa,
+    /leader lookup:[\s\S]{0,300}revalidatePath/,
+    "lpErr branch phai revalidate truoc return",
+  );
+  const rec = read("src/app/(app)/records/students/actions.ts");
+  assert.match(
+    rec,
+    /histErr[\s\S]{0,900}revalidatePath/,
+    "history loi van phai revalidate (committed)",
+  );
+  assert.match(rec, /old_value: h\.old_value/, "audit loi phai luu gia tri cu de dong bo lai");
+  const nf = read("src/components/attendance/notify-form.tsx");
+  assert.match(nf, /res\.emailError/, "notify form phai check emailError nhu compose-form");
+  const inbox = read("src/components/parents/inbox-client.tsx");
+  assert.match(
+    inbox,
+    /markMessageRead\(m\.id\)[\s\S]{0,300}next\.delete/,
+    "mark-read optimistic phai rollback khi action loi",
+  );
+});

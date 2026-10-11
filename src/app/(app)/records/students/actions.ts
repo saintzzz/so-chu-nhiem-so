@@ -55,7 +55,11 @@ export async function updateStudentRecord(
     )
     .eq("id", studentId)
     .single();
-  if (stErr || !st) return { updated: 0, error: "Không tìm thấy học sinh." };
+  if (stErr && stErr.code !== "PGRST116") {
+    console.error("[records] load student:", stErr.message);
+    return { updated: 0, error: "Lỗi hệ thống. Vui lòng thử lại." };
+  }
+  if (!st) return { updated: 0, error: "Không tìm thấy học sinh." };
 
   const cls = Array.isArray(st.classes) ? st.classes[0] : st.classes;
   if (!cls || cls.school_id !== profile.school_id) {
@@ -114,18 +118,27 @@ export async function updateStudentRecord(
     .from("student_record_history")
     .insert(history);
   if (histErr) {
+    // r22 M: retry cung patch khong phuc hoi duoc history (khong con diff).
+    // Ghi day du old/new vao audit de van hanh dong bo lai; revalidate de
+    // client thay gia tri moi; bao ro da committed.
     logAudit(supabase, {
       action: "Lỗi ghi lịch sử hồ sơ học sinh",
       entity: "student_record_history",
       entityId: studentId,
       payload: {
         error: histErr.message,
-        fields: Object.keys(changed),
+        recovery: history.map((h) => ({
+          field: h.field,
+          old_value: h.old_value,
+          new_value: h.new_value,
+        })),
       },
     });
+    revalidatePath("/records/students");
+    revalidatePath("/register/roster");
     return {
       updated: Object.keys(changed).length,
-      error: "Hồ sơ đã lưu nhưng không ghi được lịch sử thay đổi - vui lòng thử lại.",
+      error: "Hồ sơ đã lưu thành công nhưng chưa ghi được lịch sử thay đổi (đã ghi nhận để đồng bộ lại) - vui lòng báo quản trị viên.",
     };
   }
 

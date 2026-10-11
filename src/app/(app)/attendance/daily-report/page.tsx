@@ -16,7 +16,7 @@ export default async function DailyReportPage({
   const { class: classParam, date: dateParam } = await searchParams;
   const supabase = await createClient();
 
-  const { data: classData } = await supabase
+  const { data: classData, error: clsErr } = await supabase
     .from("classes")
     .select("*")
     .eq("gvcn_id", profile.id)
@@ -37,7 +37,7 @@ export default async function DailyReportPage({
     );
   }
 
-  const { data: stuData } = await supabase
+  const { data: stuData, error: stuErr } = await supabase
     .from("students")
     .select("id")
     .eq("class_id", myClass.id)
@@ -61,6 +61,9 @@ export default async function DailyReportPage({
     if (d[0]?.date) today = d[0].date;
   }
 
+  // r22 M: loi bat ky nguon nao (chuyen can, ren luyen, bao cao cu) PHAI chan
+  // form - neu khong, so lieu 0/nhap trong se ghi de bao cao cu va gui sai
+  // len lanh dao.
   const [attRes, conductRes, reportRes] = await Promise.all([
     studentIds.length
       ? supabase
@@ -68,14 +71,14 @@ export default async function DailyReportPage({
           .select("status")
           .in("student_id", studentIds)
           .eq("date", today)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     studentIds.length
       ? supabase
           .from("conduct_records")
           .select("type")
           .in("student_id", studentIds)
           .eq("date", today)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("daily_reports")
       .select("*")
@@ -83,6 +86,11 @@ export default async function DailyReportPage({
       .eq("date", today)
       .maybeSingle(),
   ]);
+  const loadError =
+    (clsErr ?? stuErr ?? attRes.error ?? conductRes.error ?? reportRes.error) !=
+    null
+      ? "Không tải được dữ liệu báo cáo - vui lòng tải lại trang trước khi lưu."
+      : null;
 
   const att = (attRes.data ?? []) as { status: string }[];
   const conduct = (conductRes.data ?? []) as { type: string }[];
@@ -125,6 +133,7 @@ export default async function DailyReportPage({
         date={today}
         counts={counts}
         report={report}
+        loadError={loadError}
       />
     </div>
   );

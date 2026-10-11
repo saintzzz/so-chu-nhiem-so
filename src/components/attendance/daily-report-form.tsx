@@ -22,6 +22,7 @@ export function DailyReportForm({
   date,
   counts,
   report,
+  loadError,
 }: {
   classId: string;
   className: string;
@@ -32,6 +33,7 @@ export function DailyReportForm({
     status: "draft" | "submitted";
     submitted_at: string | null;
   } | null;
+  loadError?: string | null;
 }) {
   const [content, setContent] = useState(report?.content ?? "");
   const [status, setStatus] = useState(report?.status ?? "draft");
@@ -134,7 +136,7 @@ export function DailyReportForm({
           <button
             type="button"
             onClick={aiDraft}
-            disabled={aiLoading}
+            disabled={aiLoading || !!loadError}
             className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary-bg disabled:opacity-50"
           >
             <Sparkles className="size-3.5" />
@@ -154,6 +156,11 @@ export function DailyReportForm({
         />
       </div>
 
+      {loadError && (
+        <p className="rounded-lg border border-error/30 bg-error-bg px-3 py-2 text-sm text-error">
+          {loadError}
+        </p>
+      )}
       {err && (
         <p className="rounded-lg border border-error/30 bg-error-bg px-3 py-2 text-sm text-error">
           {err}
@@ -169,7 +176,7 @@ export function DailyReportForm({
         <button
           type="button"
           onClick={() => save(false)}
-          disabled={pending || status === "submitted"}
+          disabled={pending || status === "submitted" || !!loadError}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
         >
           <Save className="size-4" /> Lưu nháp
@@ -177,7 +184,9 @@ export function DailyReportForm({
         <button
           type="button"
           onClick={() => save(true)}
-          disabled={pending || !content.trim() || status === "submitted"}
+          disabled={
+            pending || !content.trim() || status === "submitted" || !!loadError
+          }
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
         >
           <Send className="size-4" />

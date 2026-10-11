@@ -220,15 +220,20 @@ try {
         `exam=${examId} preview_has_questions=${hasQ}`);
     }
 
-    // A-01 sinh bai doc tieng Anh qua API (AI fallback chain)
-    const ai = await p.evaluate(async () => {
-      const r = await fetch("/api/studio/tools/A-01/generate", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: "tieng_anh", grade: "6", cefr: "A2", topic: "school life" }),
+    // A-01 sinh bai doc tieng Anh qua API (AI fallback chain) - retry 1 lan cho 5xx transient
+    let ai = { status: 0, sections: 0, provider: "?" };
+    for (let i = 0; i < 2; i++) {
+      ai = await p.evaluate(async () => {
+        const r = await fetch("/api/studio/tools/A-01/generate", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject: "tieng_anh", grade: "6", cefr: "A2", topic: "school life" }),
+        });
+        const j = await r.json().catch(() => ({}));
+        return { status: r.status, sections: j?.doc?.sections?.length ?? 0, provider: j?.provider ?? "?" };
       });
-      const j = await r.json().catch(() => ({}));
-      return { status: r.status, sections: j?.doc?.sections?.length ?? 0, provider: j?.provider ?? "?" };
-    });
+      if (ai.status === 200) break;
+      await p.waitForTimeout(3000);
+    }
     step("T1-gv", "A-01 sinh bai doc A2 (AI that)", ai.status === 200 && ai.sections > 0,
       `status=${ai.status} sections=${ai.sections} provider=${ai.provider}`);
 

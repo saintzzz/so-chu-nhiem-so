@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   // khong duoc nuot thanh du lieu rong roi tra ket qua AI tu du lieu thieu.
   const { data: cls, error: clsErr } = await supabase
     .from("classes")
-    .select("id,name,school_id")
+    .select("id,name,school_id,academic_year_id")
     .eq("id", classId)
     .maybeSingle();
   if (clsErr) {
@@ -84,15 +84,23 @@ export async function POST(req: Request) {
       subject_id: string;
       assessment_type: string;
       score: number | null;
-    }>((f, t) =>
-      supabase
+    }>((f, t) => {
+      // CR-049 r7 M6: grades gio da nam - cong diem 2 nam lam sai
+      // thong ke. Loc (NULL legacy + nam hoc cua lop) giong editor.
+      let q = supabase
         .from("grades")
         .select("student_id,subject_id,assessment_type,score")
         .in("student_id", ids)
         .eq("term", term)
         .order("id")
-        .range(f, t),
-    ),
+        .range(f, t);
+      const yearId = (cls as { academic_year_id?: string | null })
+        .academic_year_id;
+      q = yearId
+        ? q.or(`academic_year_id.is.null,academic_year_id.eq.${yearId}`)
+        : q.is("academic_year_id", null);
+      return q;
+    }),
     supabase
       .from("subjects")
       .select("id,name")

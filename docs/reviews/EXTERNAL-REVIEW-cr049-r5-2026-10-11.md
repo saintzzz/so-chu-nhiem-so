@@ -92,3 +92,32 @@ deferred hay not-confirmed.
 - `npm run build` PASS; `node scripts/check-consistency.mjs` PASS
 - Tests: 157 pass / 0 fail (PII suite 17/17)
 - Migration `20261127_cr049_r6_fixes.sql` applied + verified prod
+
+## Codex r7 (commit 8526448) - VERDICT: NOT-CLEAN, 11 findings (4H/7M)
+
+Raw report: `docs/reviews/codex-cloud-report-cr049-r7-raw.txt`.
+Codex xac nhan 6/10 fix r6 hoan chinh; 4 fix con thieu (2, 5, 8, 9) +
+phat hien regression do chinh fix r6 gay ra. Tat ca 11 findings
+source-confirmed -> fix het.
+
+| # | Sev | Finding | Fix | Verify |
+|---|-----|---------|-----|--------|
+| 1 | H | CAS bat doi xung: grades dung `now()`, state dung `clock_timestamp()` -> reload la stale vinh vien (regression tu r6) | Client doc `grade_book_state.last_saved_at` + merge vao `expectedMax`; RPC giu `clock_timestamp()`; them class vao scope | `reload_save_ok=t stale_blocked=t` |
+| 2 | M | 2 lop cung mon/nam share 1 CAS revision | `scope_key` them `class_id`; validate `mixed_class_scope` | prod |
+| 3 | H | `grade_book_state` staff ghi truc tiep -> bypass CAS | Policy -> select-only; `scn_save_grades` -> security definer + authz `scn_can_write_grade` cho p_student_ids LAN p_rows | `denied=t` |
+| 4 | H | PII lookup loi/truncated/case khong an toan | `fetchAllRows` + fail-closed 500; `pseudonymizeNames` case-insensitive + Unicode boundary + whitespace linh hoat | tests 17/17 |
+| 5 | H | warning-advice + advisor gui ten trong free-text | Roster truong -> `minimizePrompt` cho ca provider lan Devin; `deanonymizeNames` khi tra ket qua | source |
+| 6 | M | AI grade analysis cong diem 2 nam | Filter `(NULL or = class year)` trong class-analysis + comments | source |
+| 7 | M | pending-RPC starvation: PH khong con / qua attempts | RPC loai `parent_students` thieu + `attempts >= p_max` (4-param) | prod |
+| 8 | M | `?retry=` khong revive outbox failed | RPC `scn_digest_retry_failed(week, parent_ids)` flip failed/skipped -> queued, bao ve 'sent' | prod |
+| 9 | M | Email config lookup ngoai timeout | `Promise.race` config vs budget; transport dung `leftMs` | source |
+| 10 | M | advisor nuot loi nguon -> tra so lieu ao | 8 nguon check error -> 500 truoc AI call | source |
+| 11 | M | alreadySent lookup khong week-filter/paginate | `fetchAllRows` + `.in(week_start)` theo batch + truncated fail | source |
+
+### Gates r7
+
+- `npx tsc --noEmit` PASS; `npm run lint` 0 errors; `npm run build` PASS
+- Tests 157 pass / 0 fail; `check-consistency` PASS
+- Migration `20261128_cr049_r7_fixes.sql` applied; CAS smoke tren prod
+  qua JWT claims: `denied=t reload_save_ok=t stale_blocked=t`
+- Playwright prod: login + grades + /dept denial OK

@@ -38,13 +38,23 @@ export interface PiiName {
 }
 
 /** Thay moi ten that trong text bang alias (longest-first de tranh
- *  ten long nhau). */
+ *  ten long nhau). CR-049 r7: case-insensitive + boundary theo ky tu
+ *  Unicode - "nguyen van an" (thuong) van bi alias, con "An" trong
+ *  "Anh" khong bi an nham. */
 export function pseudonymizeNames(text: string, names: PiiName[]): string {
   const sorted = [...names].sort((a, b) => b.name.length - a.name.length);
   let out = text;
   for (const n of sorted) {
     if (!n.name || !n.alias) continue;
-    out = out.split(n.name).join(n.alias);
+    const esc = n.name
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      // whitespace linh hoat: "Nguyen  Van  An" (2 spaces) van khop
+      .split(/\s+/)
+      .join("\\s+");
+    out = out.replace(
+      new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "giu"),
+      n.alias,
+    );
   }
   return out;
 }

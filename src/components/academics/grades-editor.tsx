@@ -306,6 +306,7 @@ export function GradesEditor({
   meId,
   className,
   schoolLevel,
+  stateRevision,
 }: {
   students: GradeStudent[];
   grades: ExistingGrade[];
@@ -315,6 +316,7 @@ export function GradesEditor({
   meId: string;
   className: string;
   schoolLevel: "th" | "thcs" | "thpt" | "lien_cap";
+  stateRevision: string | null;
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
   const router = useRouter();
@@ -869,12 +871,17 @@ export function GradesEditor({
       // luu giua chung thi RPC bao stale_write thay vi ghi de lang le.
       // Scope trong luc load -> gui epoch: moi row xuat hien sau do deu
       // la conflict (GV khac ghi truoc), khong phai "khong co gi de check".
-      const expectedMax = grades.length
+      // CR-049 r7 H1: revision CAS ben vung = max(grades.updated_at,
+      // grade_book_state.last_saved_at). Sau delete-all khong con row
+      // grades - neu chi gui epoch thi stale vinh vien (state > epoch).
+      const gradesMax = grades.length
         ? grades.reduce<string>(
             (mx, g) => (g.updated_at && g.updated_at > mx ? g.updated_at : mx),
             "1970-01-01T00:00:00Z",
           )
         : "1970-01-01T00:00:00Z";
+      const expectedMax =
+        stateRevision && stateRevision > gradesMax ? stateRevision : gradesMax;
       const { error: saveErr } = await supabase.rpc("scn_save_grades", {
         p_student_ids: studentIds,
         p_subject_id: subjectId,

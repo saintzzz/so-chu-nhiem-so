@@ -3,7 +3,8 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText } from "@/lib/ai-privacy";
+import { minimizePrompt, deanonymizeNames, type PiiName } from "@/lib/ai-privacy";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
@@ -49,14 +50,14 @@ export async function POST(req: Request) {
 
   const today = todayVN();
   const [
-    { data: att },
-    { data: incidents },
-    { data: reports },
-    { count: pendingPlans },
-    { count: pendingSubs },
-    { count: pendingActs },
-    { data: warnings },
-    { data: teachers },
+    attRes,
+    incRes,
+    repRes,
+    plansRes,
+    subsRes,
+    actsRes,
+    warnRes,
+    teachRes,
   ] = await Promise.all([
     studentIds.length
       ? supabase
@@ -106,6 +107,35 @@ export async function POST(req: Request) {
       .or("role.in.(gvcn,gvbm,to_truong),concurrent_roles.ov.{gvcn,gvbm,to_truong}"),
   ]);
 
+  // CR-049 r7 M10: loi nguon != du lieu rong - fail truoc AI call,
+  // neu khong route tra cau tra loi tren so lieu ao "0" co that quyen.
+  const srcErr = [
+    attRes,
+    incRes,
+    repRes,
+    plansRes,
+    subsRes,
+    actsRes,
+    warnRes,
+    teachRes,
+  ]
+    .map((r) => (r as { error?: { message?: string } | null }).error)
+    .find(Boolean);
+  if (srcErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const { data: att } = attRes;
+  const { data: incidents } = incRes;
+  const { data: reports } = repRes;
+  const { count: pendingPlans } = plansRes;
+  const { count: pendingSubs } = subsRes;
+  const { count: pendingActs } = actsRes;
+  const { data: warnings } = warnRes;
+  const { data: teachers } = teachRes;
+
   const attRows = (att ?? []) as { status: string }[];
   const attTotal = attRows.length;
   const attPresent = attRows.filter((a) => a.status === "present").length;
@@ -147,9 +177,37 @@ Câu hỏi của BGH: "${question}"
 
 Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số liệu trên, không bịa số liệu. Nếu câu hỏi ngoài phạm vi dữ liệu thì nói rõ và gợi ý số liệu liên quan đang có. Trả về CHỈ JSON: {"answer": "..."}`;
 
+  // CR-049 r7 H5: cau hoi BGH + tieu de canh bao co the chua ten HS ->
+  // pseudonymize theo roster truong (fail-closed + paginate).
+  const stuNames = await fetchAllRows<{ full_name: string }>((f, t) =>
+    classIds.length
+      ? supabase
+          .from("students")
+          .select("full_name")
+          .in("class_id", classIds)
+          .eq("status", "active")
+          .order("id")
+          .range(f, t)
+      : Promise.resolve({ data: [], error: null }),
+  );
+  if (stuNames.error || stuNames.truncated) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const piiNames: PiiName[] = stuNames.rows
+    .map((s) => s.full_name)
+    .filter(Boolean)
+    .map((name, i) => ({
+      name,
+      alias: `HS${String(i + 1).padStart(3, "0")}`,
+    }));
+  const safePrompt = minimizePrompt(prompt, piiNames);
+
   const quotaOk = await takeAiQuota("advisor", profile.id);
   const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(prompt, {
+    ? await generateTextDetailed(safePrompt, {
         system:
           "Bạn là trợ lý điều hành nhà trường. Chỉ trả về JSON hợp lệ, tiếng Việt.",
         maxTokens: 1200,
@@ -163,7 +221,7 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
       const job = await fallbackToDevin({
         supabase,
         kind: "advisor",
-        prompt: redactPiiText(prompt),
+        prompt: safePrompt,
         expectedShape: '{"answer": "trả lời ngắn gọn"}',
         createdBy: profile.id,
         req,
@@ -251,10 +309,14 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
     const answer = toText(
       (JSON.parse(cleaned) as Record<string, unknown>).answer,
     );
-    if (answer) return NextResponse.json({ answer });
+    if (answer) {
+      return NextResponse.json({ answer: deanonymizeNames(answer, piiNames) });
+    }
   } catch {
     // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
-    if (cleaned.length > 20) return NextResponse.json({ answer: cleaned });
+    if (cleaned.length > 20) {
+      return NextResponse.json({ answer: deanonymizeNames(cleaned, piiNames) });
+    }
   }
   return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
 }

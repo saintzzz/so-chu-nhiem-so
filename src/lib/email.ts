@@ -98,7 +98,17 @@ export async function sendEmail(input: {
   // provider treo mot request khong duoc giu worker qua invocation budget.
   timeoutMs?: number;
 }): Promise<EmailResult> {
-  const { provider, key, from: fromRaw } = await getEmailConfig();
+  // CR-049 r7 M9: budget ap dung cho ca config lookup (Vault RPC) lan
+  // transport - config treo khong duoc an het deadline cua worker.
+  const budgetMs = Math.max(1_000, input.timeoutMs ?? 15_000);
+  const startedAt = Date.now();
+  const { provider, key, from: fromRaw } = await Promise.race([
+    getEmailConfig(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("email_config_timeout")), budgetMs),
+    ),
+  ]);
+  const leftMs = Math.max(1_000, budgetMs - (Date.now() - startedAt));
   const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
   if (!to.length) return { sent: 0, failed: 0, skipped: true };
   if (!key) return { sent: 0, failed: 0, skipped: true };
@@ -112,7 +122,7 @@ export async function sendEmail(input: {
     try {
       const res = await fetch(provider === "brevo" ? BREVO_URL : RESEND_URL, {
         method: "POST",
-        signal: AbortSignal.timeout(Math.max(1_000, input.timeoutMs ?? 15_000)),
+        signal: AbortSignal.timeout(leftMs),
         headers:
           provider === "brevo"
             ? { "api-key": key, "Content-Type": "application/json" }

@@ -1,0 +1,133 @@
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Share
+You said:
+
+Whole-repo independent review of github.com/saintzzz/so-chu-nhiem-so at commit 8526448 (branch master). This is verification round 7 of the CR-049 external review loop - focus on CONFIRMING the previous round's 10 fixes and hunting regressions they may have introduced.
+
+Previous round (r6, commit bedef17) reported 10 findings (5 HIGH, 5 MEDIUM). Fixes now in 8526448:
+
+HIGH TTS on budget denial: src/app/api/studio/tools/[code]/generate/route.ts - A-03 TTS now gated by quotaOk.
+HIGH CAS delete-all: new table grade_book_state + scn_save_grades writes scope revision even for empty saves; CAS compares greatest(max(updated_at), state.last_saved_at); uses clock_timestamp(). Migration supabase/migrations/20261127_cr049_r6_fixes.sql.
+HIGH grades unique key lacked academic_year_id: old constraint dropped; unique INDEX grades_scope_year_uidx with coalesce(academic_year_id, zero-uuid).
+HIGH editor read all years: src/app/(app)/academics/grades/page.tsx now selects academic_year_id on classes and filters grades by (NULL or = class year).
+HIGH free-text PII: counseling-summary + incident-report now fetch school student names and pass pii.names for pseudonymization.
+MED alreadySent lookup error ignored: now fails closed with 500.
+MED requeue error ignored: now returns 500.
+MED deadline didn't bound sub-batches/transport: sendEmail accepts timeoutMs (AbortSignal.timeout); sub-batch loop breaks under 3s left and passes leftMs-1s to transport.
+MED enqueue starvation past 20k parents: new service-role RPC scn_digest_pending_parents(week, after, limit) excludes parents with outbox rows or 'sent' deliveries this week; route uses it with keyset cursor.
+MED daily-report ignored source errors: roster/attendance/conduct/incident query errors now return 500 before AI calls.
+
+Verify each fix in the current source AND against the migration file. Then re-check the previously-fixed areas for regressions: scn_save_grades (6-arg only, advisory lock, year-scoped delete), AI quota fail-closed (takeAiQuota/recordAiUsage with actor UUID, service-role only), pii_map persistence + callback deanonymize, digest outbox claim/requeue semantics, TT22 requiredTxCount annual-period tiers, org-scope helpers short-circuiting admin.
+
+Also hunt NEW issues in: src/lib/ai-privacy.ts, src/lib/ai-quota.ts, src/app/api/cron/parent-digest/route.ts, src/lib/email.ts, src/app/api/ai//route.ts, src/app/api/studio/**, RLS policies in supabase/migrations/.
+
+For EVERY finding report: severity, exact file:line, reproduction/evidence, and concrete remediation. End with a final verdict line: VERDICT: CLEAN or VERDICT: NOT-CLEAN. 
+
+…
+Show more
+6:20 PM
+Worked for 7m 14s
+ChatGPT said:
+
+Reviewed 85264485e855066329f5469b726988bf5ca63fef. Found 11 actionable issues: 4 HIGH, 7 MEDIUM.
+
+The review copy matches GitHub’s blob hashes for every changed file. SQL conclusions are source-confirmed; deployed migrations, grants, and RLS were not verified against a live database.
+
+The ten r6 fixes were checked against the current source and migration chain:
+
+Fix	Result
+1. TTS gated by quotaOk	Confirmed at src/app/api/studio/tools/[code]/generate/route.ts:922.
+2. Durable delete-all CAS revision	Present, but introduces findings 1–3 below.
+3. Year-aware grade uniqueness	Confirmed: 20261127_cr049_r6_fixes.sql:88 drops the old constraint; line 91 creates the year-aware index.
+4. Editor filters academic year	Confirmed at src/app/(app)/academics/grades/page.tsx:199, including legacy NULL rows.
+5. Counseling/incident name pseudonymization	Present but incomplete; finding 4.
+6. Already-sent lookup errors return 500	Confirmed at parent-digest/route.ts:494; mocked failure prevents sending.
+7. Requeue errors return 500	Confirmed at parent-digest/route.ts:440; mocked failure prevents sending.
+8. Sub-batch and transport deadlines	Present but incomplete; finding 9.
+9. Pending-parent RPC prevents starvation	Works for parents successfully enqueued; finding 7 shows remaining starvation. RPC is service-role-only at migration lines 123–126.
+10. Daily-report source errors return 500	Confirmed. All four mocked source failures returned 500 before AI calls.
+
+HIGH — Freshly reloaded gradebooks become permanently “stale” after saving.
+Location: supabase/migrations/20261127_cr049_r6_fixes.sql:51, :70, :78; src/components/academics/grades-editor.tsx:872.
+Evidence/reproduction: Grade rows receive transaction-start now(), while state receives the later clock_timestamp(). After saving and reloading, the editor submits only max(grades.updated_at), which remains earlier than state. The next save raises stale_write without another writer. After delete-all, reload submits epoch and is also rejected.
+Remediation: Read and return the durable revision alongside the gradebook snapshot, including empty books. Submit that revision for CAS and return its replacement after saving.
+
+MEDIUM — Independent classes share one CAS revision.
+Location: supabase/migrations/20261127_cr049_r6_fixes.sql:39.
+Evidence/reproduction: scope_key contains only subject, term, and year. Load classes A and B for the same subject/year; save A. B’s unrelated student rows are unchanged, but A’s state update invalidates B’s revision. This remains a problem after fixing finding 1.
+Remediation: Include the authoritative school/class gradebook identity in the revision key. Validate that the supplied students belong to that scope.
+
+HIGH — Staff can mutate CAS state outside their grade-writing permissions.
+Location: supabase/migrations/20261127_cr049_r6_fixes.sql:17, :77.
+Evidence/reproduction: The new FOR ALL policy checks only is_staff(). Unlike grade policies, it checks neither school/class scope nor scn_can_write_grade. An authenticated teacher can invoke scn_save_grades with a visible student, an untaught subject, p_rows=[], and NULL expected revision: grade RLS can suppress unauthorized deletes, but the state upsert remains permitted. The policy also authorizes direct state deletion/update wherever table grants permit it.
+Remediation: Validate grade-writing authorization before modifying state, including empty saves. Restrict state access by gradebook scope and prevent arbitrary client mutations.
+
+HIGH — The new PII protection fails on lookup errors, truncated rosters, and ordinary name variations.
+Location: src/app/api/ai/counseling-summary/route.ts:40; src/app/api/ai/incident-report/route.ts:49; src/lib/ai-privacy.ts:47.
+Evidence/reproduction: Both lookups discard errors and use unpaginated school-wide student queries. Mocked lookup failures and a 1,000-row roster cap left Nguyễn Văn An in the external prompt. Even with a complete map, lowercase nguyễn văn an survives the case-sensitive replacement. Both routes continued with HTTP 200.
+Remediation: Paginate deterministically and reject failed/incomplete identity lookups before AI processing. Normalize Unicode, case, and whitespace during matching; define safe handling for identities outside the loaded active roster.
+
+HIGH — Other AI routes still export names with sensitive free text.
+Location: src/app/api/ai/warning-advice/route.ts:46; src/app/api/ai/advisor/route.ts:142.
+Evidence/reproduction: Warning titles/details, advisor questions, and warning context receive only structured-PII redaction. Mocked executions retained Nguyễn Văn An with psychological-counseling information in the provider prompt. Their Devin branches likewise receive only redactPiiText.
+Remediation: Apply the same fail-closed identity pseudonymization to these inputs before both provider and Devin calls, persisting the required alias map.
+
+MEDIUM — AI grade analysis still combines academic years.
+Location: src/app/api/ai/class-analysis/route.ts:89; src/app/api/ai/comments/route.ts:100, :235.
+Evidence/reproduction: These queries omit academic_year_id, then group marks by student/subject/semester. With a complete Y1 set scoring 3 and Y2 set scoring 9, the actual averaging helper produces 7.7 from combined rows instead of Y2’s 9.0. The newly corrected unique index permits these historical sets to coexist.
+Remediation: Resolve the requested class/year and apply the same year predicate used by the editor before calculating statistics.
+
+MEDIUM — Parents who cannot be enqueued still starve later recipients.
+Location: supabase/migrations/20261127_cr049_r6_fixes.sql:109; src/app/api/cron/parent-digest/route.ts:171.
+Evidence/reproduction: The RPC includes parents without linked children and other parents subsequently skipped without an outbox row. With 20,000 such parents before an eligible parent, two mocked invocations both stopped at parent 20,000. The eligible parent remained unreachable.
+Remediation: Exclude non-enqueueable parents in the RPC, persist scan progress, or record terminal skipped candidates so they cannot repeatedly consume the scan limit.
+
+MEDIUM — Explicit digest retries cannot revive existing failed outbox rows.
+Location: src/app/api/cron/parent-digest/route.ts:89, :176; supabase/migrations/20261127_cr049_r6_fixes.sql:112.
+Evidence/reproduction: ?retry=<run_id> collects failed recipients, but the pending-parent RPC excludes every recipient with an existing weekly outbox row. A failed row at three attempts therefore produces zero enqueues; automatic requeue also excludes it. The advertised manual retry cannot bypass the cap.
+Remediation: Implement an explicit, atomic retry transition for matching failed/skipped outbox rows, while preserving sent-delivery protection.
+
+MEDIUM — Email configuration lookup remains outside the timeout.
+Location: src/lib/email.ts:66, :101, :115.
+Evidence/reproduction: sendEmail awaits the Vault RPC before creating its abort signal. A mocked 1.1-second configuration lookup exceeded a supplied 1-second timeout before transport timeout even began. A cold digest worker can consequently exceed its remaining deadline.
+Remediation: Use an absolute deadline covering configuration, transport, and response reading. Abort configuration lookup when that deadline expires and calculate transport time from the remaining budget.
+
+MEDIUM — Advisor source failures become authoritative zero-valued answers.
+Location: src/app/api/ai/advisor/route.ts:51, :192.
+Evidence/reproduction: Source-query errors are discarded and converted to empty arrays/zero counts. With mocked source failures, the route still called AI and returned HTTP 200 with “Hiện không có sự cố nào đang mở.”
+Remediation: Check all required source errors before quota/provider calls or factual fallback answers. Return 500 when the underlying facts are unavailable.
+
+MEDIUM — Successful delivery history can truncate duplicate-send protection.
+Location: src/app/api/cron/parent-digest/route.ts:487.
+Evidence/reproduction: The already-sent query reads all weeks without pagination or a week filter. Under the normal PostgREST cap, historical rows can displace a claimed job’s current-week sent row. A mocked capped history caused the route to send again despite that omitted sent record.
+Remediation: Query only the claimed parent/week pairs through a bounded RPC or paginate completely, failing closed on incomplete results.
+
+Previously fixed protections remain present: only the six-argument scn_save_grades definition survives migration replay; advisory locking and year-scoped deletion remain; quota helpers use authenticated actor UUIDs through service-role-only RPCs and deny on quota errors; pii_map persistence and callback deanonymization remain wired; digest claiming uses SKIP LOCKED and requeue retains sent reconciliation, skipped retries, and all-week recovery; TT22 tiers remain 2/3/4; both org/profile scope helpers retain the admin bypass.
+
+Validation: 157 existing tests passed, typecheck passed, and lint reported 0 errors / 136 warnings. Targeted mocked reproductions confirmed the route findings; CAS/RLS conclusions were checked against source semantics. Build attempts were blocked by review-copy tooling errors; the consistency checker requires unavailable .env.local. No paid services were called.
+
+VERDICT: NOT-CLEAN
+
+6:28 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
+Outputs
+Create a file or site

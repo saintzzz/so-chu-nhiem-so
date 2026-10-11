@@ -54,6 +54,21 @@ export async function POST(req: Request) {
   const codes = students.map((s) => s.code);
   // R7 re-review: roster lookup loi la 500 - khong duoc nuot thanh ids rong
   // (ids rong -> ca 8 query nguon bi skip -> viet nhan xet khong co du lieu).
+  const { data: clsRow, error: clsErr } = await supabase
+    .from("classes")
+    .select("academic_year_id")
+    .eq("id", classId)
+    .maybeSingle();
+  if (clsErr) {
+    console.error("[ai/comments] class:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
+  const classYearId =
+    (clsRow as { academic_year_id?: string | null } | null)
+      ?.academic_year_id ?? null;
   const { data: studentRows, error: stuErr } = await supabase
     .from("students")
     .select("id,code")
@@ -95,14 +110,22 @@ export async function POST(req: Request) {
             term: string;
             assessment_type: string;
             score: number | null;
-          }>((f, t) =>
-            supabase
+          }>((f, t) => {
+            // CR-049 r7 M6: loc theo nam hoc cua lop - grades da nam
+            // se lam sai hk1/hk2 neu cong chung.
+            let q = supabase
               .from("grades")
               .select("student_id,subject_id,term,assessment_type,score")
               .in("student_id", ids)
               .order("id")
-              .range(f, t),
-          ),
+              .range(f, t);
+            q = classYearId
+              ? q.or(
+                  `academic_year_id.is.null,academic_year_id.eq.${classYearId}`,
+                )
+              : q.is("academic_year_id", null);
+            return q;
+          }),
           fetchAllRows<{ student_id: string; status: string }>((f, t) =>
             supabase
               .from("attendance_records")

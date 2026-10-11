@@ -103,6 +103,22 @@ async function run(req: NextRequest) {
     }
     retryParents = new Set(prev.rows.map((r) => r.parent_id));
     for (const r of prev.rows) prevAttempts.set(r.parent_id, r.attempts);
+    // CR-049 r7 M8: PH da co outbox row (failed/skipped) khong qua
+    // duoc pending-RPC -> flip ro rang sang 'queued' de sendPhase giao
+    // lai. 'sent' giu nguyen (RPC tu bao ve).
+    if (retryParents.size) {
+      const { error: retryErr } = await supabase.rpc(
+        "scn_digest_retry_failed",
+        { p_week: weekStart, p_parent_ids: [...retryParents] },
+      );
+      if (retryErr) {
+        console.error("[parent-digest] retry requeue failed:", retryErr);
+        return NextResponse.json(
+          { error: "retry requeue failed" },
+          { status: 500 },
+        );
+      }
+    }
   } else {
     // Load tat ca deliveries tuan nay: sent => bo qua; failed/skipped =>
     // auto-retry neu attempts < MAX_ATTEMPTS (cong don attempts tu run truoc).
@@ -179,6 +195,7 @@ async function run(req: NextRequest) {
         p_week: weekStart,
         p_after: lastParentId || "00000000-0000-0000-0000-000000000000",
         p_limit: CHUNK,
+        p_max_attempts: MAX_ATTEMPTS,
       },
     );
     if (parentsErr) {
@@ -484,11 +501,26 @@ async function sendPhase(
 
       // F6 defense-in-depth: row 'queued' tre (<10ph, reconcile chua bat)
       // nhung deliveries da co 'sent' -> mark sent, KHONG gui lai.
-      const { data: alreadySent, error: sentLookErr } = await supabase
-        .from("digest_deliveries")
-        .select("parent_id, week_start")
-        .in("parent_id", batch.map((j) => j.parent_id))
-        .eq("status", "sent");
+      // CR-049 r7 M11: loc theo week_start cua cac row claimed + paginate
+      // day du - query khong bound co the bi PostgREST cap lam sot row
+      // 'sent' -> gui trung.
+      const weeksInBatch = [...new Set(batch.map((j) => j.week_start))];
+      const sentLook = await fetchAllRows<{
+        parent_id: string;
+        week_start: string;
+      }>((f, t) =>
+        supabase
+          .from("digest_deliveries")
+          .select("parent_id, week_start")
+          .in("parent_id", batch.map((j) => j.parent_id))
+          .in("week_start", weeksInBatch)
+          .eq("status", "sent")
+          .order("id")
+          .range(f, t),
+      );
+      const sentLookErr =
+        sentLook.error ?? (sentLook.truncated ? "truncated" : null);
+      const alreadySent = sentLook.rows;
       // CR-049 r6 M6: lookup loi != chua gui - fail closed, giu row
       // 'sending' cho run sau thay vi co the gui trung.
       if (sentLookErr) {

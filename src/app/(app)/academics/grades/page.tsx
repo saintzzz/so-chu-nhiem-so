@@ -206,6 +206,20 @@ export default async function GradesPage({
       : { rows: [] as GradeRow[], error: null, truncated: false };
   const grades = gradesRes.rows;
 
+  // CR-049 r7 H1: revision CAS ben vung nam trong grade_book_state -
+  // sau delete-all khong con row grades de suy ra revision, nen client
+  // phai doc state truc tiep (scope key giong RPC: mon|term|nam|lop).
+  const stateScope = `${subjectId}|${term}|${classYearId ?? ""}|${classId}`;
+  const { data: gbState } =
+    studentIds.length && subjectId
+      ? await supabase
+          .from("grade_book_state")
+          .select("last_saved_at")
+          .eq("scope_key", stateScope)
+          .maybeSingle()
+      : { data: null };
+  const stateRevision = (gbState?.last_saved_at as string | undefined) ?? null;
+
   const className = classes.find((c) => c.id === classId)?.name ?? "";
   const subjectName = subject?.name ?? "";
 
@@ -309,6 +323,7 @@ export default async function GradesPage({
           meId={profile.id}
           className={className}
           schoolLevel={schoolLevel}
+          stateRevision={stateRevision}
         />
       ) : (
         <div className="rounded-xl border border-border bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">

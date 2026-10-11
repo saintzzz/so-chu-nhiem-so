@@ -3,7 +3,8 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText } from "@/lib/ai-privacy";
+import { minimizePrompt, deanonymizeNames, type PiiName } from "@/lib/ai-privacy";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fallbackToDevin } from "@/lib/devin";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -52,9 +53,49 @@ Chi tiết: ${warn.detail ?? "-"}
 
 Đề xuất 2-3 việc xử lý cụ thể, khả thi trong trường phổ thông Việt Nam (phân công ai, làm gì, bao lâu). Trả về CHỈ JSON: {"suggestion": "..."}`;
 
+  // CR-049 r7 H5: title/detail canh bao co the chua ten HS ->
+  // pseudonymize theo roster truong (fail-closed + paginate).
+  const { data: clsRows, error: clsErr } = await supabase
+    .from("classes")
+    .select("id")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("status", "active");
+  if (clsErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const clsIds = (clsRows ?? []).map((c) => c.id as string);
+  const stuRes = clsIds.length
+    ? await fetchAllRows<{ full_name: string }>((f, t) =>
+        supabase
+          .from("students")
+          .select("full_name")
+          .in("class_id", clsIds)
+          .eq("status", "active")
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { full_name: string }[], error: null, truncated: false };
+  if (stuRes.error || stuRes.truncated) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const piiNames: PiiName[] = stuRes.rows
+    .map((s) => s.full_name)
+    .filter(Boolean)
+    .map((name, i) => ({
+      name,
+      alias: `HS${String(i + 1).padStart(3, "0")}`,
+    }));
+  const safePrompt = minimizePrompt(prompt, piiNames);
+
   const quotaOk = await takeAiQuota("warning-advice", profile.id);
   const aiRes: AiResult = quotaOk
-    ? await generateTextDetailed(prompt, {
+    ? await generateTextDetailed(safePrompt, {
         system: "Bạn là cố vấn quản lý giáo dục. Chỉ trả về JSON hợp lệ.",
         maxTokens: 800,
         temperature: 0.6,
@@ -67,7 +108,7 @@ Chi tiết: ${warn.detail ?? "-"}
       const job = await fallbackToDevin({
         supabase,
         kind: "warning-advice",
-        prompt: redactPiiText(prompt),
+        prompt: safePrompt,
         expectedShape: '{"suggestion": "2-3 việc xử lý cụ thể"}',
         createdBy: profile.id,
         req,
@@ -139,6 +180,7 @@ Chi tiết: ${warn.detail ?? "-"}
   if (!suggestion) {
     return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
   }
+  suggestion = deanonymizeNames(suggestion, piiNames);
   await supabase
     .from("early_warnings")
     .update({ suggestion })

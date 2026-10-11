@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
 
 interface IncidentDraft {
@@ -44,23 +45,40 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  // CR-049 r6 H5: ghi chu tu do co the chua ten HS -> pseudonymize theo
-  // danh sach HS truong truoc khi gui provider.
-  const { data: clsRows } = await supabase
+  // CR-049 r6 H5 + r7 H4: ghi chu tu do co the chua ten HS ->
+  // pseudonymize theo danh sach HS truong. Lookup fail-closed +
+  // paginate day du - roster bi cat/loi de lo ten that.
+  const { data: clsRows, error: clsErr } = await supabase
     .from("classes")
     .select("id")
     .eq("school_id", profile.school_id)
     .eq("status", "active");
+  if (clsErr) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   const classIds = (clsRows ?? []).map((c) => c.id as string);
-  const { data: stuRows } = classIds.length
-    ? await supabase
-        .from("students")
-        .select("full_name")
-        .in("class_id", classIds)
-        .eq("status", "active")
-    : { data: [] };
-  const piiNames = (stuRows ?? [])
-    .map((s) => s.full_name as string)
+  const stuRes = classIds.length
+    ? await fetchAllRows<{ full_name: string }>((f, t) =>
+        supabase
+          .from("students")
+          .select("full_name")
+          .in("class_id", classIds)
+          .eq("status", "active")
+          .order("id")
+          .range(f, t),
+      )
+    : { rows: [] as { full_name: string }[], error: null, truncated: false };
+  if (stuRes.error || stuRes.truncated) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const piiNames = stuRes.rows
+    .map((s) => s.full_name)
     .filter(Boolean)
     .map((name, i) => ({
       name,

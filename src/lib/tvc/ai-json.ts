@@ -131,6 +131,9 @@ export async function generateDoc(
         temperature: 0.7,
         // 25s mac dinh khong du cho doc 40KB+ - 55s/lan van trong budget route.
         timeoutMs: 55000,
+        // CR-049: ban song song AI_DOC_RACE (mac dinh 3) config dau, lay cai
+        // nhanh nhat - cat do tre khi key dau cham/hang ma van giu fallback.
+        race: Math.max(Number(process.env.AI_DOC_RACE ?? 3), 1),
       },
     );
     if (!r.text) return { doc: null, provider: r.provider, error: r.error };

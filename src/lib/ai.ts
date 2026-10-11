@@ -85,10 +85,14 @@ export function getAiConfigs(): AiConfig[] {
     // tat ca key truoc, roi moi xuong model du phong. GEMINI_MODELS cho phep
     // ghi de toan bo chuoi model.
     if (p === "gemini") {
+      // flash-latest la alias universal - chay tren ca key OAuth-style lan
+      // key chuan, nen uu tien truoc de tranh mat 1 vong 404 tren 2.5-flash.
+      // GEMINI_MODEL/AI_MODEL van duoc thu dau tien neu user dat tuong minh.
+      const envModel = model ?? providerModel.gemini;
       const models = (
         process.env.GEMINI_MODELS ??
         [
-          model ?? providerModel.gemini ?? DEFAULT_MODELS.gemini,
+          ...(envModel ? [envModel] : []),
           "gemini-flash-latest",
           "gemini-2.5-flash",
           "gemini-2.5-flash-lite",
@@ -113,6 +117,12 @@ interface GenerateOptions {
   inline?: { data: string; mimeType: string };
   /** Timeout ms cho 1 lan goi provider (mac dinh 25s; doc dai dung 55s). */
   timeoutMs?: number;
+  /**
+   * So config dau tien chay SONG SONG (hedged race) - config nao xong truoc
+   * thi lay, phan con lai thu tuan tu. Mac dinh 1 (tuan tu nhu cu). Dung cho
+   * doc dai (generateDoc) de bo het do tre khi config dau chay cham/loi.
+   */
+  race?: number;
 }
 
 export type AiErrorKind = "no_key" | "quota" | "error";
@@ -296,29 +306,56 @@ export async function generateTextDetailed(
   // provider sau vẫn được thử trước khi rơi vào fallback Devin.
   let lastError: AiErrorKind = "error";
   let lastProvider: AiProvider | null = null;
-  for (const cfg of configs) {
+
+  const callOne = async (
+    cfg: AiConfig,
+  ): Promise<{ text: string | null; error: AiErrorKind | null }> => {
     try {
-      const r =
-        cfg.provider === "gemini"
-          ? await callGemini(cfg, prompt, opts)
-          : cfg.provider === "openai"
-            ? await callOpenAI(cfg, prompt, opts)
-            : await callAnthropic(cfg, prompt, opts);
-      if (r.text) return { ...r, provider: cfg.provider };
-      lastError = r.error ?? "error";
-      lastProvider = cfg.provider;
-      if (r.error === "error") continue; // lỗi mạng/500 - thử provider khác
-      if (r.error === "quota") continue; // hết quota - thử provider khác
-      break;
+      return cfg.provider === "gemini"
+        ? await callGemini(cfg, prompt, opts)
+        : cfg.provider === "openai"
+          ? await callOpenAI(cfg, prompt, opts)
+          : await callAnthropic(cfg, prompt, opts);
     } catch (e) {
       // CR-042: AbortSignal timeout khi doc sinh dai -> nhu "quota" (qua tai
       // tam thoi) de route day sang engine du phong thay vi ban khung.
-      const isTimeout =
-        e instanceof DOMException && e.name === "TimeoutError";
-      lastError = isTimeout ? "quota" : "error";
-      lastProvider = cfg.provider;
-      continue;
+      const isTimeout = e instanceof DOMException && e.name === "TimeoutError";
+      return { text: null, error: isTimeout ? "quota" : "error" };
     }
+  };
+
+  let idx = 0;
+  const raceN = Math.min(Math.max(opts.race ?? 1, 1), configs.length);
+  if (raceN > 1) {
+    // Hedged race: ban song song N config dau - cai nao xong truoc thi dung.
+    // Tat ca deu loi thi di tiep tuan tu tu config thu N+1.
+    const group = configs.slice(0, raceN);
+    const winner = await new Promise<{
+      cfg: AiConfig;
+      r: { text: string | null; error: AiErrorKind | null };
+    } | null>((resolve) => {
+      let pending = group.length;
+      for (const cfg of group) {
+        callOne(cfg).then((r) => {
+          if (r.text) resolve({ cfg, r });
+          else {
+            lastError = r.error ?? "error";
+            lastProvider = cfg.provider;
+            if (--pending === 0) resolve(null);
+          }
+        });
+      }
+    });
+    if (winner) return { ...winner.r, provider: winner.cfg.provider };
+    idx = raceN;
+  }
+
+  for (; idx < configs.length; idx++) {
+    const cfg = configs[idx];
+    const r = await callOne(cfg);
+    if (r.text) return { ...r, provider: cfg.provider };
+    lastError = r.error ?? "error";
+    lastProvider = cfg.provider;
   }
   return { text: null, error: lastError, provider: lastProvider };
 }

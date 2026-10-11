@@ -6,7 +6,8 @@ import { generateDoc, sectionsLookEnglish } from "@/lib/tvc/ai-json";
 import { sanitizeKhbdDoc, docToPlainText } from "@/lib/tvc/khbd-doc";
 import { fallbackToDevin } from "@/lib/devin";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText } from "@/lib/ai-privacy";
+import { redactPiiText, minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
@@ -845,6 +846,20 @@ export async function POST(
 
   // Các tool còn lại: AI -> engine dự phòng (quota) -> rule-based
   const { system, prompt } = tool.buildPrompt(input, ctx);
+  // CR-049 r9 H8: input free-text (van ban/KHBD user dan vao) co the
+  // chua ten HS/GV - pseudonymize theo roster truoc ca provider lan
+  // Devin (fail-closed).
+  const roster = await schoolPiiNames(
+    supabase,
+    (profile as { school_id?: string | null }).school_id ?? "",
+  );
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const safePrompt = minimizePrompt(prompt, roster.names);
   // Tool tieng Anh: noi dung phai la tieng Anh - model yeu doi khi viet
   // tieng Viet, validate bat va retry voi nhac nho ro rang.
   const ENGLISH_TOOLS = new Set(["A-01", "A-03"]);
@@ -852,7 +867,7 @@ export async function POST(
   const ai = quotaOk
     ? await generateDoc(
         system,
-        prompt,
+        safePrompt,
         ENGLISH_TOOLS.has(code)
           ? {
           validate: sectionsLookEnglish,
@@ -883,7 +898,8 @@ export async function POST(
     const job = await fallbackToDevin({
       supabase,
       kind: `tvc-tool:${code}`,
-      prompt: redactPiiText(`${system}\n\n${prompt}`),
+      prompt: redactPiiText(`${system}\n\n${safePrompt}`),
+      piiMap: roster.names,
       expectedShape:
         '{"title":"...","meta":[["nhan","gia tri"]],"sections":[{"title":"...","blocks":[{"kind":"para|list|table|note|kv","text|items|rows|header":"..."}]}]}',
       createdBy: user.id,
@@ -909,7 +925,15 @@ export async function POST(
 
   // CR-037: DC-01 loc section lac de (dap an/phieu bai tap bi AI them vao
   // giao an); doc AI thieu khung bat buoc -> rule-based fallback.
-  const aiDoc = code === "DC-01" && ai.doc ? sanitizeKhbdDoc(ai.doc) : ai.doc;
+  const aiDocRaw =
+    code === "DC-01" && ai.doc ? sanitizeKhbdDoc(ai.doc) : ai.doc;
+  // r9: doc tu provider mang alias HSxxx - khoi phuc ten that truoc
+  // khi luu/tra ve (Devin async da duoc callback deanon).
+  const aiDoc = aiDocRaw
+    ? (JSON.parse(
+        deanonymizeNames(JSON.stringify(aiDocRaw), roster.names),
+      ) as typeof aiDocRaw)
+    : aiDocRaw;
   const doc = aiDoc ?? tool.fallback(input, ctx);
   const provider = aiDoc ? ai.provider : "rule-based";
 

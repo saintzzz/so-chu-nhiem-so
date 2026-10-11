@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
+import { minimizeDeep } from "@/lib/ai-privacy";
 import { todayVN } from "@/lib/utils";
 import { hasRole, hasAnyRole } from "@/lib/roles";
 
@@ -97,7 +98,9 @@ export async function POST(req: Request) {
     pii: { names: roster.names },
     system:
       "Bạn là trợ lý tổng hợp báo cáo ngày cho Ban Giám Hiệu trường THCS. Gộp các báo cáo lớp thành bản tin ngắn cho lãnh đạo đọc nhanh. Không emoji.",
-    prompt: `Gộp báo cáo ngày của các lớp thành bản tin cho BGH (JSON): ${JSON.stringify(facts)}.
+    // r9 H10: minimize TRUOC serialize - ten co \n trong noi dung bao
+    // cao bi JSON-escape se thoat khoi pseudonymize sau stringify.
+    prompt: `Gộp báo cáo ngày của các lớp thành bản tin cho BGH (JSON): ${JSON.stringify(minimizeDeep(facts, roster.names))}.
 
 Viết 4-6 dòng: tổng quan tình hình chung (số lớp nộp, tổng vắng/vi phạm), lớp có việc đáng chú ý (nêu tên lớp), lớp được khen, việc cần BGH can thiệp/hỗ trợ nếu có. Mỗi ý 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["dòng 1", "dòng 2"]}',

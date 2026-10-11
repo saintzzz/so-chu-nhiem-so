@@ -5,6 +5,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fmtDateVN } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeInYear } from "@/lib/grades-year";
 import type { ClassRoom } from "@/types";
 
 export default async function ExamAnalyticsPage() {
@@ -20,7 +21,7 @@ export default async function ExamAnalyticsPage() {
       .order("start_date", { ascending: false }),
     supabase
       .from("classes")
-      .select("id,name")
+      .select("id,name,academic_year_id")
       .eq("school_id", sid)
       .eq("status", "active")
       .order("name"),
@@ -53,7 +54,7 @@ export default async function ExamAnalyticsPage() {
         }>((f, t) =>
           supabase
             .from("grades")
-            .select("student_id,subject_id,term,assessment_type,score,students!inner(class_id)")
+            .select("student_id,subject_id,term,assessment_type,score,academic_year_id,students!inner(class_id)")
             .in("assessment_type", ["ddg_gk", "ddg_ck"])
             .in("students.class_id", classIds)
             .not("score", "is", null)
@@ -70,11 +71,21 @@ export default async function ExamAnalyticsPage() {
     subject_id: string;
     date: string;
   }[];
-  const grades = (gradeRaw ?? []) as unknown as {
+  // CR-049 r9 M8: chi giu diem dung nam hoc cua lop - gk/ck nam truoc
+  // khong duoc tron vao phan tich nam nay.
+  const yearOfClass = new Map(
+    (classes as { id: string; academic_year_id?: string | null }[]).map(
+      (c) => [c.id, c.academic_year_id ?? null],
+    ),
+  );
+  const grades = ((gradeRaw ?? []) as unknown as {
     score: number;
     subject_id: string;
+    academic_year_id: string | null;
     students: { class_id: string };
-  }[];
+  }[]).filter((g) =>
+    gradeInYear(g, yearOfClass.get(g.students.class_id)),
+  );
 
   // ĐTB thi theo lớp
   const byClass = new Map<string, number[]>();

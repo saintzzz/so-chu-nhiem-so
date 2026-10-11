@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeInYear } from "@/lib/grades-year";
 import { fmtDateVN, isoDateVN, todayVN } from "@/lib/utils";
 
 /**
@@ -206,7 +207,10 @@ async function run(req: NextRequest) {
 
   // Keyset paging tren parents.id - khong bi cat 1000, khong offset scan.
   // F14: chung 30s cuoi danh cho sendPhase - enqueue khong an het budget.
-  for (let chunk = 0; chunk < MAX_CHUNKS; chunk++) {
+  // r9 M7: ?retry= chi xu ly cac cap (parent, week) da requeue - KHONG
+  // enqueue scan tuan hien tai (keo theo delivery tuan moi + attempts
+  // cu vao tuan moi). sendPhase drain rows queued moi tuan nao.
+  for (let chunk = 0; !retryRun && chunk < MAX_CHUNKS; chunk++) {
     if (phase !== "enqueue" && Date.now() > deadlineAt - 30_000) break;
     // CR-049 r6 M9: RPC loc san PH da co outbox/delivery 'sent' tuan
     // nay -> run sau chi quet phan chua xu ly, resume duoc qua nguong
@@ -261,8 +265,8 @@ async function run(req: NextRequest) {
     // loi/truncate => dung run, khong gui email thieu du lieu.
     const studentIds = [...new Set(links.map((l) => l.student_id as string))];
     const [studentsRes, att, conduct, grades] = await Promise.all([
-      fetchAllRows<{ id: string }>((f, t) =>
-        supabase.from("students").select("id, full_name, class_id, classes(name)").in("id", studentIds).order("id").range(f, t),
+      fetchAllRows<{ id: string; class_id: string; classes?: { name: string; academic_year_id: string | null } | { name: string; academic_year_id: string | null }[] | null }>((f, t) =>
+        supabase.from("students").select("id, full_name, class_id, classes(name,academic_year_id)").in("id", studentIds).order("id").range(f, t),
       ),
       fetchAllRows<{ student_id: string; date: string; status: string }>((f, t) =>
         supabase.from("attendance_records").select("student_id, date, status").in("student_id", studentIds).gte("date", sinceDate).order("id").range(f, t),
@@ -270,8 +274,8 @@ async function run(req: NextRequest) {
       fetchAllRows<{ student_id: string; date: string; type: string; content: string; points: number | null }>((f, t) =>
         supabase.from("conduct_records").select("student_id, date, type, content, points").in("student_id", studentIds).gte("date", sinceDate).order("id").range(f, t),
       ),
-      fetchAllRows<{ student_id: string; score: number | null; assessment_type: string; subjects: { name: string }[] | { name: string } | null }>((f, t) =>
-        supabase.from("grades").select("student_id, score, assessment_type, subjects(name)").in("student_id", studentIds).gte("created_at", since.toISOString()).order("id").range(f, t),
+      fetchAllRows<{ student_id: string; score: number | null; assessment_type: string; academic_year_id: string | null; subjects: { name: string }[] | { name: string } | null }>((f, t) =>
+        supabase.from("grades").select("student_id, score, assessment_type, academic_year_id, subjects(name)").in("student_id", studentIds).gte("created_at", since.toISOString()).order("id").range(f, t),
       ),
     ]);
     const students = studentsRes.rows;
@@ -310,7 +314,15 @@ async function run(req: NextRequest) {
     };
     const attBySid = bySid(att.rows);
     const condBySid = bySid(conduct.rows);
-    const gradeBySid = bySid(grades.rows);
+    // CR-049 r9 M8: diem chi tinh dung nam hoc cua lop HS (NULL-legacy giu).
+    const yearBySid = new Map<string, string | null>();
+    for (const s of students ?? []) {
+      const cls = Array.isArray(s.classes) ? s.classes[0] : s.classes;
+      yearBySid.set(s.id, cls?.academic_year_id ?? null);
+    }
+    const gradeBySid = bySid(
+      (grades.rows ?? []).filter((g) => gradeInYear(g, yearBySid.get(g.student_id))),
+    );
 
     const outboxRows: {
       week_start: string;
@@ -609,9 +621,12 @@ async function sendPhase(
       // accept: deliveries co 'sent' + outbox con 'sending' -> reconcile
       // run sau mark sent thay vi gui lai. Khong ghi duoc delivery =>
       // dung run ngay, tra 5xx de scheduler retry (rows van 'sending').
+      // r9 H5: retry tren (parent, week) da co row failed -> UPSERT theo
+      // unique (parent_id, week_start); plain insert 23505 sau khi da
+      // gui mail -> outbox ket 'sending' -> gui lai lan nua.
       const { error: delErr } = await supabase
         .from("digest_deliveries")
-        .insert(deliveries);
+        .upsert(deliveries, { onConflict: "parent_id,week_start" });
       if (delErr) {
         console.error("[parent-digest] digest_deliveries insert failed:", delErr);
         return NextResponse.json(

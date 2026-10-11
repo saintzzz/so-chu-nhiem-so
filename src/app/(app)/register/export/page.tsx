@@ -31,7 +31,11 @@ export default async function ExportPage() {
         <EmptyClassNotice />
       ) : (
         <ExportClient
-          classes={classes.map((c) => ({ id: c.id, name: c.name }))}
+          classes={classes.map((c) => ({
+            id: c.id,
+            name: c.name,
+            academic_year_id: c.academic_year_id,
+          }))}
           defaultPeriod={currentMonthVN()}
         />
       )}

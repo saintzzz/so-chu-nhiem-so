@@ -100,19 +100,25 @@ export async function sendEmail(input: {
 }): Promise<EmailResult> {
   // CR-049 r7 M9: budget ap dung cho ca config lookup (Vault RPC) lan
   // transport - config treo khong duoc an het deadline cua worker.
-  const budgetMs = Math.max(1_000, input.timeoutMs ?? 15_000);
+  // CR-049 r9 M13: ton trong budget caller truyen - Math.max(1000,...)
+  // noi rong deadline; budget <=0 hoac rat nho phai dung ngay.
+  const budgetMs = Math.max(0, input.timeoutMs ?? 15_000);
   const deadline = Date.now() + budgetMs;
   const to = [...new Set(input.to.filter((a) => a && !DEMO_EMAIL_RE.test(a)))];
   // CR-049 r8 M8: config timeout/failure phai tra ket qua co cau truc -
   // throw lam reject Promise.all cua caller va mat log delivery cho ca
   // batch, de row outbox ket o 'sending'.
   let cfg: EmailConfig;
+  let cfgTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     cfg = await Promise.race([
       getEmailConfig(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("email_config_timeout")), budgetMs),
-      ),
+      new Promise<never>((_, reject) => {
+        cfgTimer = setTimeout(
+          () => reject(new Error("email_config_timeout")),
+          budgetMs,
+        );
+      }),
     ]);
   } catch (e) {
     return {
@@ -120,6 +126,10 @@ export async function sendEmail(input: {
       failed: to.length,
       error: e instanceof Error ? e.message : "email_config_timeout",
     };
+  } finally {
+    // Timer cua race phai clear ngay khi config resolve - khong de no
+    // song them budgetMs va reject muon.
+    if (cfgTimer) clearTimeout(cfgTimer);
   }
   const { provider, key, from: fromRaw } = cfg;
   if (!to.length) return { sent: 0, failed: 0, skipped: true };

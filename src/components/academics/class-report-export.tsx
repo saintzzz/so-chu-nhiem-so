@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { semesterAverage } from "@/lib/tt22";
 import { compareVietnameseName } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeYearOr } from "@/lib/grades-year";
 import { sanitizeSpreadsheetCell } from "@/lib/excel";
 
 const XLSX_MIME =
@@ -57,7 +58,7 @@ export function ClassReportExport({
 
     const { data: classRow } = await supabase
       .from("classes")
-      .select("school_id")
+      .select("school_id,academic_year_id")
       .eq("id", classId)
       .single();
     const [{ data: studentData }, { data: subjectData }] = await Promise.all([
@@ -95,6 +96,8 @@ export function ClassReportExport({
               .select("student_id,subject_id,assessment_type,score,result,level")
               .in("student_id", studentIds)
               .eq("term", term)
+              // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
+              .or(gradeYearOr(classRow?.academic_year_id))
               .order("id")
               .range(f, t),
           ),

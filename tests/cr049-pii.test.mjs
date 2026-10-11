@@ -265,5 +265,41 @@ test("guard r8: grades page bracket state read truoc + sau fetch", () => {
   const fetch = src.indexOf("fetchAllRows<GradeRow>");
   assert.ok(s0 >= 0 && fetch > s0 && s1 > fetch,
     "phai doc state truoc + sau fetch grades");
-  assert.match(src, /if \(s0 === s1\) break/, "state doi phai retry");
+  // r9 M2: state khac nhau -> retry; het 3 lan unstable -> revision_unstable
+  assert.match(src, /consistent = s0\.value === s1\.value/,
+    "state doi phai retry");
+  assert.match(src, /"revision_unstable"/,
+    "het retry ma state van doi phai loadError, khong mo editor");
+});
+
+test("guard r9: studio extract - binary path co gate confirm_no_pii + audit", () => {
+  const src = read("src/app/api/studio/questions/extract/route.ts");
+  assert.match(src, /confirm_no_pii !== true/,
+    "upload nhi phan phai tu choi khi chua xac nhan no-PII");
+  assert.match(src, /studio\.extract_raw_doc/,
+    "confirm phai audit-log");
+  assert.match(src, /schoolPiiNames/, "text path phai pseudonymize roster");
+  assert.match(src, /piiMap: piiNames/, "Devin fallback phai mang piiMap");
+});
+
+test("guard r9: moi file doc grades phai co year scope", () => {
+  // Sweep dong: bat ky file nao query grades ma khong nhac toi
+  // academic_year la loi M8 (diem nam khac tron vao bao cao nam nay).
+  const scan = (dir) => {
+    const out = [];
+    for (const d of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, d.name);
+      if (d.isDirectory()) out.push(...scan(p));
+      else if (/\.tsx?$/.test(d.name)) out.push(p);
+    }
+    return out;
+  };
+  const bad = [];
+  for (const f of scan(join(ROOT, "src"))) {
+    const src = readFileSync(f, "utf8");
+    if (src.includes('from("grades")') && !src.includes("academic_year")) {
+      bad.push(f.replace(ROOT + "/", ""));
+    }
+  }
+  assert.deepEqual(bad, [], `grade reads thieu year scope: ${bad}`);
 });

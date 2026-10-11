@@ -13,6 +13,7 @@ import {
   type StudentSummaryRow,
 } from "@/components/records/students-explorer";
 import { averageByStudent } from "@/lib/tt22";
+import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -109,6 +110,8 @@ export default async function RecordsStudentsPage({
             .from("grades")
             .select("student_id,subject_id,term,assessment_type,score")
             .in("student_id", ids)
+            // CR-049 r9 M8: scope nam hoc cua lop (NULL-legacy giu lai)
+            .or(gradeYearOr(selected.academic_year_id))
             .order("id")
             .range(f, t),
         ),

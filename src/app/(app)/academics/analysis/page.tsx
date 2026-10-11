@@ -9,6 +9,7 @@ import { FilterSelect } from "@/components/academics/filter-select";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { semesterAverage, averageScoreBand } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
@@ -90,13 +91,15 @@ export default async function AnalysisPage({
 
   let classQuery = supabase
     .from("classes")
-    .select("id,name")
+    .select("id,name,academic_year_id")
     .eq("status", "active");
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
   }
   const { data: classData } = await classQuery.order("name");
-  const classes = (classData ?? []) as ClassRow[];
+  const classes = (classData ?? []) as (ClassRow & {
+    academic_year_id: string | null;
+  })[];
 
   const classId =
     typeof sp.class === "string" && classes.some((c) => c.id === sp.class)
@@ -127,6 +130,10 @@ export default async function AnalysisPage({
   const students = (studentData ?? []) as StudentRow[];
   const studentIds = students.map((s) => s.id);
 
+  // CR-049 r9 M8: diem phai scope nam hoc cua lop - tron nhieu nam se
+  // tinh sai DTB (nam cu + nam nay).
+  const classYearId =
+    classes.find((c) => c.id === classId)?.academic_year_id ?? null;
   const { rows: gradeData } = studentIds.length
     ? await fetchAllRows<GradeRow>((f, t) =>
         supabase
@@ -134,6 +141,7 @@ export default async function AnalysisPage({
           .select("student_id,subject_id,term,assessment_type,score")
           .in("student_id", studentIds)
           .eq("term", term)
+          .or(gradeYearOr(classYearId))
           .order("id")
           .range(f, t),
       )

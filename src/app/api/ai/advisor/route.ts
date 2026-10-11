@@ -3,7 +3,8 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, deanonymizeNames, type PiiName } from "@/lib/ai-privacy";
+import { minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
@@ -189,40 +190,29 @@ export async function POST(req: Request) {
     ),
   };
 
-  const prompt = `Bạn là trợ lý điều hành cho Ban Giám Hiệu trường phổ thông Việt Nam. Dưới đây là số liệu thật của trường (JSON):
-
-${JSON.stringify(context)}
-
-Câu hỏi của BGH: "${question}"
-
-Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số liệu trên, không bịa số liệu. Nếu câu hỏi ngoài phạm vi dữ liệu thì nói rõ và gợi ý số liệu liên quan đang có. Trả về CHỈ JSON: {"answer": "..."}`;
-
-  // CR-049 r7 H5: cau hoi BGH + tieu de canh bao co the chua ten HS ->
-  // pseudonymize theo roster truong (fail-closed + paginate).
-  const stuNames = await fetchAllRows<{ full_name: string }>((f, t) =>
-    classIds.length
-      ? supabase
-          .from("students")
-          .select("full_name")
-          .in("class_id", classIds)
-          .eq("status", "active")
-          .order("id")
-          .range(f, t)
-      : Promise.resolve({ data: [], error: null }),
-  );
-  if (stuNames.error || stuNames.truncated) {
+  // CR-049 r7 H5 + r9 H9: cau hoi BGH + tieu de canh bao co the chua
+  // ten HS -> pseudonymize theo roster TRUONG (tat ca lop/HS ke ca da
+  // nghi hoc - free text lich su van nhac ten ho).
+  const roster = await schoolPiiNames(supabase, sid);
+  if (roster.error) {
     return NextResponse.json(
       { error: "Không tải được dữ liệu nguồn, thử lại sau." },
       { status: 500 },
     );
   }
-  const piiNames: PiiName[] = stuNames.rows
-    .map((s) => s.full_name)
-    .filter(Boolean)
-    .map((name, i) => ({
-      name,
-      alias: `HS${String(i + 1).padStart(3, "0")}`,
-    }));
+  const piiNames = roster.names;
+
+  // r9 H10: context serialize SAU khi co roster - minimizeDeep tung
+  // string truoc JSON.stringify de ten co whitespace khong thoat qua
+  // JSON-escape.
+  const prompt = `Bạn là trợ lý điều hành cho Ban Giám Hiệu trường phổ thông Việt Nam. Dưới đây là số liệu thật của trường (JSON):
+
+${JSON.stringify(minimizeDeep(context, piiNames))}
+
+Câu hỏi của BGH: "${question}"
+
+Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số liệu trên, không bịa số liệu. Nếu câu hỏi ngoài phạm vi dữ liệu thì nói rõ và gợi ý số liệu liên quan đang có. Trả về CHỈ JSON: {"answer": "..."}`;
+
   const safePrompt = minimizePrompt(prompt, piiNames);
 
   const quotaOk = await takeAiQuota("advisor", profile.id);

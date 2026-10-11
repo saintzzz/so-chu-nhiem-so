@@ -348,6 +348,20 @@ export function GradesEditor({
     return cols;
   })();
   const [txCols, setTxCols] = useState<TxCol[]>(initialCols);
+  // CR-049 r9 H1: revision CAS gan voi snapshot luc mount (cung nguon
+  // voi cells) - refresh props ve sau KHONG duoc doi revision, neu khong
+  // cells cu + revision moi se bypass stale_write.
+  const baseRevisionRef = useRef<string>(
+    (() => {
+      const gradesMax = grades.reduce<string>(
+        (mx, g) => (g.updated_at && g.updated_at > mx ? g.updated_at : mx),
+        "1970-01-01T00:00:00Z",
+      );
+      return stateRevision && stateRevision > gradesMax
+        ? stateRevision
+        : gradesMax;
+    })(),
+  );
   const [cells, setCells] = useState<Record<string, CellState>>(() => {
     const byKind = new Map<TxKind, TxCol[]>();
     for (const col of initialCols) {
@@ -871,17 +885,12 @@ export function GradesEditor({
       // luu giua chung thi RPC bao stale_write thay vi ghi de lang le.
       // Scope trong luc load -> gui epoch: moi row xuat hien sau do deu
       // la conflict (GV khac ghi truoc), khong phai "khong co gi de check".
-      // CR-049 r7 H1: revision CAS ben vung = max(grades.updated_at,
-      // grade_book_state.last_saved_at). Sau delete-all khong con row
-      // grades - neu chi gui epoch thi stale vinh vien (state > epoch).
-      const gradesMax = grades.length
-        ? grades.reduce<string>(
-            (mx, g) => (g.updated_at && g.updated_at > mx ? g.updated_at : mx),
-            "1970-01-01T00:00:00Z",
-          )
-        : "1970-01-01T00:00:00Z";
-      const expectedMax =
-        stateRevision && stateRevision > gradesMax ? stateRevision : gradesMax;
+      // CR-049 r7 H1 + r9 H1: revision phai gan voi SNAPSHOT cells dang
+      // hien thi, khong phai props moi nhat - router.refresh() mang
+      // revision R2 trong khi cells van la du lieu R1, gui expected=R2
+      // se ghi de luu cua nguoi khac. Chot revision mot lan luc mount
+      // cung voi cells; save khi co GV khac luu se stale_write.
+      const expectedMax = baseRevisionRef.current;
       const { error: saveErr } = await supabase.rpc("scn_save_grades", {
         p_student_ids: studentIds,
         p_subject_id: subjectId,

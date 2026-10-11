@@ -6,6 +6,7 @@ import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { Bell, CalendarDays } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { gradeYearOr } from "@/lib/grades-year";
 import { currentSchoolYearVN, fmtDateVN, todayVN, PERIODS } from "@/lib/utils";
 import type {
   Announcement,
@@ -32,7 +33,7 @@ export default async function StudentPortalPage() {
   // Embed classes de gop 2 roundtrip tuan tu thanh 1.
   const { data: studentRow } = await supabase
     .from("students")
-    .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id,classes(id,name,school_id)")
+    .select("id,class_id,full_name,code,positive_points,dob,gender,address,national_id,classes(id,name,school_id,academic_year_id)")
     .eq("profile_id", profile.id)
     .limit(1)
     .single();
@@ -47,7 +48,7 @@ export default async function StudentPortalPage() {
     | "gender"
     | "address"
     | "national_id"
-  > & { classes?: Pick<ClassRoom, "id" | "name" | "school_id"> | null }) | null;
+  > & { classes?: Pick<ClassRoom, "id" | "name" | "school_id" | "academic_year_id"> | null }) | null;
   const classroom = student?.classes ?? null;
 
   const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes] =
@@ -61,7 +62,9 @@ export default async function StudentPortalPage() {
         supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
-          .eq("student_id", student.id),
+          .eq("student_id", student.id)
+          // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
+          .or(gradeYearOr(classroom?.academic_year_id)),
         supabase
           .from("subjects")
           .select("id,name")

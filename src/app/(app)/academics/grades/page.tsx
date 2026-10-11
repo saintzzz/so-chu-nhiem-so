@@ -189,20 +189,30 @@ export default async function GradesPage({
   // doc state truoc + sau fetch; state khong doi = snapshot nhat quan
   // (state tang moi lan luu). Doi thi doc lai - toi da 3 lan.
   const stateScope = `${subjectId}|${term}|${classYearId ?? ""}|${classId}`;
+  // r9 M2: state read loi phai ro rang - null==null gia "on dinh" se
+  // mo editor tren revision ao; het 3 lan unstable cung phai loadError.
   const readState = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("grade_book_state")
       .select("last_saved_at")
       .eq("scope_key", stateScope)
       .maybeSingle();
-    return (data?.last_saved_at as string | undefined) ?? null;
+    return {
+      value: (data?.last_saved_at as string | undefined) ?? null,
+      error,
+    };
   };
   let grades: GradeRow[] = [];
   let gradesResError: unknown = null;
   let stateRevision: string | null = null;
   if (studentIds.length && subjectId) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let consistent = false;
+    for (let attempt = 0; attempt < 3 && !consistent; attempt++) {
       const s0 = await readState();
+      if (s0.error) {
+        gradesResError = s0.error;
+        break;
+      }
       const gr = await fetchAllRows<GradeRow>((f, t) => {
         let q = supabase
           .from("grades")
@@ -222,11 +232,20 @@ export default async function GradesPage({
         return q;
       });
       const s1 = await readState();
+      if (s1.error) {
+        gradesResError = s1.error;
+        break;
+      }
       gradesResError = gr.error ?? (gr.truncated ? "truncated" : null);
       if (gradesResError) break;
       grades = gr.rows;
-      stateRevision = s0;
-      if (s0 === s1) break; // snapshot nhat quan voi revision s0
+      stateRevision = s0.value;
+      consistent = s0.value === s1.value; // snapshot nhat quan voi s0
+    }
+    if (!consistent && !gradesResError) {
+      gradesResError = "revision_unstable";
+      grades = [];
+      stateRevision = null;
     }
   }
 

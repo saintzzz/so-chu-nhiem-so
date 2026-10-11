@@ -1,0 +1,212 @@
+You are the independent external reviewer for repo https://…
+Share
+You said:
+
+You are the independent external reviewer for repo 
+https://github.com/saintzzz/so-chu-nhiem-so (Vietnamese school-management app, Next.js 16 + Supabase + Vercel). Review commit 4438792 on branch master — the whole repo, with emphasis on files touched by the CR-049 external-review remediation rounds.
+
+Round 8 (on c76e4d0) reported 12 findings (5 HIGH, 7 MEDIUM). Fixes now in 4438792 + migration supabase/migrations/20261129_cr049_r8_fixes.sql:
+
+HIGH NULL-array bypass: scn_save_grades now rejects p_student_ids NULL/empty/null-element; authz AND payload membership require IS TRUE (no 3-valued-NULL passthrough).
+HIGH snapshot race: grades page brackets grade_book_state reads around the grade fetch (state before + after, retry ≤3x) so the CAS expected revision matches the displayed snapshot.
+HIGH advisor initial lookups: class + student queries now fail-closed (500) and paginated via fetchAllRows.
+HIGH more free-text routes: daily-digest, period-log-summary (pii.names through respondWithAi) and suggest-tasks (minimizePrompt for provider + piiMap for Devin + deanonymizeNames on titles) now use shared schoolPiiNames roster helper (fail-closed).
+HIGH Unicode canonical equivalence: pseudonymizeNames normalizes text AND roster names to NFC before matching.
+MEDIUM piiMap: advisor/warning-advice/suggest-tasks Devin fallback jobs now persist piiMap so the callback can deanonymize.
+MEDIUM email deadline: sendEmail uses one absolute deadline for config + transport; each recipient only gets the remaining budget; config timeout returns a structured EmailResult instead of throwing.
+MEDIUM blank emails: scn_digest_pending_parents excludes nullif(btrim(email),'') IS NULL.
+MEDIUM retry week: ?retry=<run_id> selects week_start, groups parent_ids by week, calls scn_digest_retry_failed per (parent, week) pair.
+MEDIUM radar: grades carry academic_year_id and are filtered to (NULL or the student's class year) before lowGradeStudentIds.
+MEDIUM week calc: weekStart anchors the Vietnam date at UTC-midnight and uses getUTCDay() - host-TZ independent.
+
+Review for:
+1. Correctness regressions in the fixes above (esp. the bracket-read loop semantics, NULL rejection order vs mixed_class_scope, NFC normalizing map names used by deanonymizeNames later, email deadline edge cases).
+2. Security: RLS/RBAC default-deny on all routes, SECURITY DEFINER authz completeness, org/school scoping, SQL/RLS bypass via NULLs or overloads, secrets handling, prompt-injection/PII paths to AI providers (all remaining routes incl. studio/* and extract-records).
+3. Data integrity: CAS still protects empty saves + stale writers; digest outbox durable/retryable/duplicate-safe; academic-year scoping everywhere grades are read/written/aggregated (find any remaining unfiltered path).
+4. New issues anywhere in the repo at the same standard as prior rounds (the repo has had 8 review rounds; look beyond the fixed files).
+
+For EVERY finding: severity, exact file:line, reproduction/evidence, concrete remediation. End with: VERDICT: CLEAN or VERDICT: NOT-CLEAN.
+
+…
+Show more
+7:30 PM
+Worked for 13m 14s
+ChatGPT said:
+
+Reviewed commit 443879270e30bc230198b46a20426699e110254c. Found 15 actionable findings, plus one documented retained privacy risk.
+
+Verification used the exact source revision and targeted mocked executions. SQL findings assume the committed migration chain; deployed grants, constraints, and additional triggers were not verified live.
+
+The NULL-array rejection now precedes mixed_class_scope; payload membership and authorization use fail-closed predicates. NFC matching works, and deanonymization correctly restores the original map names, including NFD names. Devin map persistence, blank-email exclusion, Vietnam week calculation, and radar’s year filtering are present. The remaining problems follow.
+
+HIGH — Refreshed revisions can authorize saves of stale editor cells.
+
+Location: src/components/academics/grades-editor.tsx:351, :883, :910; src/app/(app)/academics/grades/page.tsx:327.
+
+Evidence: Cells initialize through useState, while the expected revision comes from current props. The editor key excludes the revision. A mocked rerender from score 3/R1 to 9/R2 retained cells containing 3, then submitted 3 with expected revision R2. This can occur when another teacher saves before the first teacher’s post-save router.refresh() completes.
+
+Remediation: Keep the displayed cells and their expected revision together as one snapshot. On refreshed props, explicitly reconcile or remount the editor; dirty cells must retain their original revision and trigger conflict handling.
+
+MEDIUM — The bracket loader accepts failed or unstable revision reads.
+
+Location: src/app/(app)/academics/grades/page.tsx:192, :204, :227.
+
+Evidence: readState() discards query errors. Two failures become null === null, falsely indicating stability. After three changing brackets, the loop also opens the editor without recording an error. Both cases reproduced. The RPC generally rejects the resulting stale revision, but users receive an apparently editable snapshot that cannot reliably save.
+
+Remediation: Propagate state-query errors and require an explicitly successful, equal bracket before mounting the editor. Exhausted retries must produce a load error.
+
+MEDIUM — Database CAS remains optional and bypassable.
+
+Location: supabase/migrations/20261129_cr049_r8_fixes.sql:66; supabase/migrations/20260924_cr015_grades_scope.sql:54, :59.
+
+Evidence: An authorized caller can omit p_expected_max, pass NULL, or pass a future timestamp and avoid stale detection. Existing direct UPDATE/DELETE policies also do not maintain grade_book_state; where corresponding grants remain, direct mutations bypass the RPC’s revision mechanism.
+
+Remediation: Require an exact revision match, using an explicit initial-state token. Make the RPC the authenticated mutation boundary, or ensure every permitted mutation participates in revision checking and advancement.
+
+HIGH — Grade authorization does not validate subject/year tenant relationships.
+
+Location: supabase/migrations/20261129_cr049_r8_fixes.sql:33, :48, :86; supabase/migrations/20261116_cr038_multi_role.sql:62.
+
+Evidence: The BGH and homeroom branches authorize students without validating the subject’s school. The definer then accepts any supplied p_academic_year_id. Given valid foreign-school subject/year UUIDs, the visible function can create inconsistent cross-school references; ordinary independent foreign keys do not prevent this.
+
+Remediation: Validate subject, class, student, school, and academic year together. Reject year overrides outside the authorized gradebook scope, and enforce these relationships in database constraints or triggers.
+
+HIGH — Digest retries conflict with the committed delivery uniqueness constraint.
+
+Location: src/app/api/cron/parent-digest/route.ts:612; supabase/migrations/20261118_r16_security_fixes.sql:626.
+
+Evidence: The migration creates a unique (parent_id, week_start) index, but retries use plain INSERT. A mocked retry with an existing failed delivery sent the email successfully, then received 23505, returned HTTP 500, and left the outbox row sending. Stale recovery can subsequently resend it. One conflicting row also aborts audit persistence for successful batch siblings.
+
+Remediation: Separate immutable attempt history from a unique parent/week delivery summary, or atomically update the summary while preserving attempts. Audit persistence must support retries without losing successful sends.
+
+MEDIUM — Provider acceptance followed by a crash can still duplicate email.
+
+Location: src/lib/email.ts:142; src/app/api/cron/parent-digest/route.ts:576, :612; supabase/migrations/20261125_cr049_r5_fixes.sql:225.
+
+Evidence: Provider requests have no outbox-derived idempotency key. If the provider accepts an email and the worker dies—or logging fails—before recording success, stale recovery resends it. Delivery-first logging only protects crashes occurring after that insert succeeds.
+
+Remediation: Pass a stable outbox identity to providers supporting idempotency. For unsupported providers, reconcile ambiguous acceptance before retrying and document the delivery guarantee accurately.
+
+MEDIUM — Historical retry also creates a current-week delivery.
+
+Location: src/app/api/cron/parent-digest/route.ts:119, :211, :317, :395.
+
+Evidence: Historical pairs are correctly requeued, but execution continues through the current-week enqueue scan using a parent-only retry set. A mocked October 12 retry of an October 5 delivery both requeued October 5 and enqueued October 12, carrying the historical attempt count into the new week.
+
+Remediation: Historical retry should operate exclusively on the selected parent/week pairs. Keep current-week enqueueing and attempt accounting separate.
+
+MEDIUM — Twelve grade paths still mix academic years.
+
+Locations:
+
+Path	Line
+src/app/(app)/dashboard/page.tsx	225
+src/app/(app)/academics/analysis/page.tsx	133
+src/app/(app)/academics/support/page.tsx	96
+src/app/(app)/school/exam-analytics/page.tsx	55
+src/app/(app)/records/report/page.tsx	86
+src/app/(app)/records/students/page.tsx	109
+src/app/(app)/parents/portal/page.tsx	104
+src/app/portal/parent/page.tsx	110
+src/app/portal/student/page.tsx	62
+src/components/register/export-client.tsx	87
+src/components/academics/class-report-export.tsx	94
+src/app/api/cron/parent-digest/route.ts	274
+
+Evidence: These queries do not select/filter academic year, and their downstream grouping does not separate it. Executing the actual averaging helper with old-year score 9 and current-year score 3 produced 6, rather than 3. The digest’s creation-time filter also admits recently imported historical grades. Additionally, src/app/portal/student/hoc-ba/page.tsx:67 uses an all-years tautology when class year is missing.
+
+Remediation: Apply one shared grade-year scope everywhere. Historical views must select and group by year explicitly; missing year must fail closed or use a clearly defined legacy scope.
+
+HIGH — Remaining free-text AI routes still export student names.
+
+Location: src/app/api/ai/draft-message/route.ts:48; src/app/api/ai/meeting-notes/route.ts:44; src/app/api/ai/lesson-plan/route.ts:137; src/app/api/studio/tools/[code]/generate/route.ts:847.
+
+Evidence: These paths lack name maps. Mocked draft-message and meeting-notes requests containing “Nguyễn Văn An bị bắt nạt” retained the name after their actual minimization path. Lesson-plan review and Studio’s supplied text/KHBD context have the same structural gap. Structured redaction does not remove names, including on Devin fallback.
+
+Remediation: Minimize applicable identities before either processor, persist maps for asynchronous jobs, and restore names locally.
+
+HIGH — The roster helper silently excludes relevant identities.
+
+Location: src/lib/ai-pii-roster.ts:13, :26; src/app/api/ai/advisor/route.ts:37, :57.
+
+Evidence: Only active classes/students are included, while historical reports, warnings, and free text can reference transferred or inactive students. A mocked transferred-student roster returned successful empty names, leaving the student’s name unchanged. Class queries also remain unpaginated, contrary to the remediation’s completeness claim.
+
+Remediation: Resolve identities relevant to the selected source records, including historical/inactive students. Paginate classes as well as students and reject incomplete roster resolution.
+
+HIGH — JSON serialization defeats whitespace-flexible name matching.
+
+Location: src/lib/ai-privacy.ts:58; src/app/api/ai/daily-digest/route.ts:100; src/app/api/ai/period-log-summary/route.ts:131.
+
+Evidence: These routes serialize facts before pseudonymization. With roster name Nguyễn Văn An, the actual minimizer leaves {"content":"Nguyễn\\nVăn An bị bắt nạt"} unchanged. The regex matches actual whitespace, not JSON escape sequences; providers interpret the escaped name normally.
+
+Remediation: Pseudonymize string values before JSON serialization, preferably through a recursive structured-data minimizer.
+
+HIGH — Studio attachments bypass PII minimization entirely.
+
+Location: src/app/api/studio/questions/extract/route.ts:111; src/lib/ai.ts:297.
+
+Evidence: Image/PDF bytes are passed unchanged as inline.data; central redaction processes only prompt text. A mocked PDF containing a student name and phone number reached the provider adapter unchanged. The text extraction path also lacks name pseudonymization.
+
+Remediation: Perform local extraction/redaction before external processing, or enforce an explicit approved raw-document processing gate. Prompt instructions to ignore identifying headers do not prevent their disclosure.
+
+HIGH — The shared redactor misses the app’s ten-digit student identifiers.
+
+Location: src/lib/ai-privacy.ts:24, :25; src/app/(app)/records/students/actions.ts:107.
+
+Evidence: Student-record validation accepts exactly ten digits, while identity redaction covers nine and twelve digits. Running the actual minimizer on “Mã định danh học sinh: 1234567890” returned it unchanged.
+
+Remediation: Include the actual student identifier format in minimization, preferably using typed fields and known identifier substitution, with separator-aware regression cases.
+
+MEDIUM — Subsecond email deadlines are expanded to one second.
+
+Location: src/lib/email.ts:103.
+
+Evidence: Math.max(1_000, timeoutMs) enlarges the caller’s budget. A virtual-clock call requesting 100 ms supplied 1,000 ms to transport and completed after 1,000 ms. The configuration-race timer also remains scheduled after successful configuration.
+
+Remediation: Honor the supplied deadline without increasing it, immediately stop for exhausted budgets, and clear the configuration timer when the race settles.
+
+MEDIUM — Task deduplication runs before deanonymization.
+
+Location: src/app/api/ai/suggest-tasks/route.ts:119, :124.
+
+Evidence: An existing title “Liên hệ Nguyễn Văn An” does not match generated “Liên hệ HS001” during filtering. The route then restores the name and returns the existing task as a new suggestion. This reproduced through the actual route.
+
+Remediation: Deanonymize and normalize titles before deduplicating against existing tasks and other generated suggestions.
+
+HIGH — Documented retained risk: extract-records still exports raw child/parent records.
+
+Location: src/app/api/ai/extract-records/route.ts:48, :58; src/lib/ai-route.ts:50, :67, :86.
+
+Evidence: allowRawPrompt: true disables minimization for names, birth dates, parent names, and phones, including Devin fallback. docs/project/DPIA-v1-tvc-scn.md:35 documents this as an owner-retained exception pending legal approval; it is an existing risk, not a newly discovered regression.
+
+Remediation: Enforce the documented approval/consent gate before enabling raw processing, or use local extraction with minimized external inputs.
+
+Regression test files and typecheck passed. Lint reported 0 errors / 136 warnings. Docker access was unavailable; the consistency checker could not run because .env.local is missing. No production mutations or external provider calls were performed.
+
+VERDICT: NOT-CLEAN
+
+7:43 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++51,504
+-4,234
+Outputs
+Create a file or site

@@ -10,6 +10,7 @@ import {
 } from "@/components/academics/support-plan-board";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeYearOr } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
 
 interface ClassRow {
@@ -59,7 +60,7 @@ export default async function SupportPage({
 
   let classQuery = supabase
     .from("classes")
-    .select("id,name")
+    .select("id,name,academic_year_id")
     .eq("status", "active");
   if (hasRole(profile, "gvcn")) {
     classQuery = classQuery.eq("gvcn_id", profile.id);
@@ -89,6 +90,11 @@ export default async function SupportPage({
   const studentName = new Map(students.map((s) => [s.id, s]));
   const studentIds = students.map((s) => s.id);
 
+  // CR-049 r9 M8: diem scope nam hoc cua lop.
+  const classYearId =
+    (classes.find((c) => c.id === classId) as
+      | { academic_year_id?: string | null }
+      | undefined)?.academic_year_id ?? null;
   const [{ rows: gradeData }, { data: planData }] = studentIds.length
     ? await Promise.all([
         fetchAllRows<GradeRow>((f, t) =>
@@ -96,6 +102,7 @@ export default async function SupportPage({
             .from("grades")
             .select("student_id,subject_id,term,assessment_type,score")
             .in("student_id", studentIds)
+            .or(gradeYearOr(classYearId))
             .order("id")
             .range(f, t),
         ),

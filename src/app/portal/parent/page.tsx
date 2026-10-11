@@ -25,6 +25,7 @@ import type {
   Student,
 } from "@/types";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
+import { gradeYearOr } from "@/lib/grades-year";
 
 interface ParentStudentLink {
   parent_id: string;
@@ -65,7 +66,7 @@ export default async function ParentPortalPage({
   const { data: parentRow, error: parentErr } = await supabase
     .from("parents")
     .select(
-      "id,full_name,relationship,parent_students(parent_id,student_id,students(id,class_id,full_name,code,classes(id,name,school_id,gvcn_id)))",
+      "id,full_name,relationship,parent_students(parent_id,student_id,students(id,class_id,full_name,code,classes(id,name,school_id,gvcn_id,academic_year_id)))",
     )
     .eq("profile_id", profile.id)
     .limit(1)
@@ -78,7 +79,7 @@ export default async function ParentPortalPage({
   type LinkedStudent = Pick<
     Student,
     "id" | "class_id" | "full_name" | "code"
-  > & { classes: Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id"> | null };
+  > & { classes: Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id" | "academic_year_id"> | null };
   const linkRows = (
     (parentRow as { parent_students?: (ParentStudentLink & { students: LinkedStudent | null })[] } | null)
       ?.parent_students ?? []
@@ -92,7 +93,7 @@ export default async function ParentPortalPage({
   const classById = new Map(
     children
       .map((s) => s.classes)
-      .filter((c): c is Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id"> => !!c)
+      .filter((c): c is Pick<ClassRoom, "id" | "name" | "school_id" | "gvcn_id" | "academic_year_id"> => !!c)
       .map((c) => [c.id, c]),
   );
   const classroom = student ? (classById.get(student.class_id) ?? null) : null;
@@ -109,7 +110,9 @@ export default async function ParentPortalPage({
         supabase
           .from("grades")
           .select("id,subject_id,term,assessment_type,score,result")
-          .eq("student_id", student.id),
+          .eq("student_id", student.id)
+          // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
+          .or(gradeYearOr(classroom?.academic_year_id)),
         supabase
           .from("announcements")
           .select("id,title,content,created_at")

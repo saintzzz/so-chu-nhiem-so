@@ -10,6 +10,7 @@ import type { Grade, Student, StudentGroup } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
 import { isoDateVN, sortByVietnameseName } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeYearOr } from "@/lib/grades-year";
 
 interface ExportRow {
   code: string;
@@ -43,7 +44,7 @@ export function ExportClient({
   classes,
   defaultPeriod,
 }: {
-  classes: { id: string; name: string }[];
+  classes: { id: string; name: string; academic_year_id: string | null }[];
   defaultPeriod: string;
 }) {
   const supabase = createClient();
@@ -87,6 +88,12 @@ export function ExportClient({
                 .from("grades")
                 .select("*")
                 .in("student_id", ids)
+                // CR-049 r9 M8: chi diem nam hoc cua lop (NULL-legacy giu)
+                .or(
+                  gradeYearOr(
+                    classes.find((c) => c.id === classId)?.academic_year_id,
+                  ),
+                )
                 .order("id")
                 .range(f, t),
             ),

@@ -3,7 +3,13 @@ import { getProfile } from "@/lib/auth";
 import { hasFeature } from "@/lib/permissions";
 import { getAiConfig, generateTextDetailed } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText } from "@/lib/ai-privacy";
+import {
+  deanonymizeNames,
+  minimizePrompt,
+  type PiiName,
+} from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
+import { logAudit } from "@/lib/audit";
 import { extractJson } from "@/lib/tvc/ai-json";
 import { createClient } from "@/lib/supabase/server";
 import { fallbackToDevin } from "@/lib/devin";
@@ -57,7 +63,12 @@ export async function POST(req: Request) {
     );
   }
 
-  let body: { data?: string; mime?: string; text?: string };
+  let body: {
+    data?: string;
+    mime?: string;
+    text?: string;
+    confirm_no_pii?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -71,6 +82,20 @@ export async function POST(req: Request) {
       : null;
 
   if (inline) {
+    // CR-049 r9: anh/PDF di THANG toi provider duoi dang bytes - text
+    // redaction khong cham duoc. Gate xu ly tai lieu tho: GV phai xac
+    // nhan tai lieu khong chua dinh danh HS (DPIA muc 3a mo rong);
+    // confirm duoc audit-log lam bang chung dong y.
+    if (body.confirm_no_pii !== true) {
+      return NextResponse.json(
+        {
+          error:
+            "Anh/PDF duoc xu ly boi AI ben ngoai - can xac nhan tai lieu khong chua thong tin ca nhan hoc sinh.",
+          needs_no_pii_confirm: true,
+        },
+        { status: 400 },
+      );
+    }
     if (cfg.provider !== "gemini") {
       return NextResponse.json(
         { error: "Doc anh/PDF can provider ho tro file dinh kem." },
@@ -97,6 +122,26 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  if (inline) {
+    logAudit(supabase, {
+      action: "studio.extract_raw_doc",
+      entity: "ai_job",
+      payload: { mime: body.mime, bytes: body.data!.length },
+    });
+  }
+  // CR-049 r9: van ban docx co the chua ten HS (de thi thu, bai kiem tra
+  // lop) - pseudonymize theo roster truoc khi goi provider, fail-closed.
+  let piiNames: PiiName[] = [];
+  if (!inline && profile.school_id) {
+    const roster = await schoolPiiNames(supabase, profile.school_id);
+    if (roster.error) {
+      return NextResponse.json(
+        { error: "Khong tai duoc danh sach de bao ve du lieu." },
+        { status: 500 },
+      );
+    }
+    piiNames = roster.names;
+  }
   const { data: stds } = await supabase
     .from("tvc_curriculum_standards")
     .select("code, subject_code, grade, description")
@@ -105,10 +150,13 @@ export async function POST(req: Request) {
     .map((s) => `${s.code} [${s.subject_code} lop ${s.grade}]: ${s.description}`)
     .join("\n");
   const promptFull = `${prompt}\n\nDANH SACH MA YEU CAU CAN DAT (chon ma gan nhat cho moi cau, de rong neu khong chac):\n${stdList}`;
+  const safePrompt = inline
+    ? promptFull // binary path: prompt khong chua du lieu nguoi dung
+    : minimizePrompt(promptFull, piiNames);
 
   const quotaOk = await takeAiQuota("tvc-question-extract", profile.id);
   const r = quotaOk
-    ? await generateTextDetailed(promptFull, {
+    ? await generateTextDetailed(safePrompt, {
         inline: inline ?? undefined,
         maxTokens: 16384,
         temperature: 0.2,
@@ -127,7 +175,8 @@ export async function POST(req: Request) {
       const job = await fallbackToDevin({
         supabase,
         kind: "tvc-question-extract",
-        prompt: redactPiiText(promptFull),
+        prompt: safePrompt,
+        piiMap: piiNames,
         expectedShape:
           '[{"stem":"...","context":"","qtype":"multiple_choice|true_false_4|short_answer|essay","level":"biet|hieu|van_dung","points":0.25,"answer":"...","solution":"...","topic":"...","subject":"toan|tieng_viet|tieng_anh","grade":3,"standard_code":"TOAN3.1.2"}]',
         createdBy: profile.id,
@@ -189,6 +238,19 @@ export async function POST(req: Request) {
         : "",
       grade: Number(q.grade) >= 1 && Number(q.grade) <= 12 ? Number(q.grade) : null,
       standard_code: String(q.standard_code ?? ""),
-    }));
+    }))
+    // Khoi phuc ten that trong noi dung trich xuat (chi khi docx chua
+    // ten HS bi pseudonymize - de thi thuong khong co).
+    .map((q) =>
+      piiNames.length
+        ? {
+            ...q,
+            stem: deanonymizeNames(q.stem, piiNames),
+            context: deanonymizeNames(q.context, piiNames),
+            answer: deanonymizeNames(q.answer, piiNames),
+            solution: deanonymizeNames(q.solution, piiNames),
+          }
+        : q,
+    );
   return NextResponse.json({ rows });
 }

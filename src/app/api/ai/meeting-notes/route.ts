@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 interface MeetingDraft {
@@ -34,11 +35,20 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r9 H8: y chinh free-text co the chua ten GV/HS.
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   return respondWithAi<MeetingDraft>({
     req,
     supabase,
     profile,
     kind: "meeting-notes",
+    pii: { names: roster.names },
     system:
       "Bạn là tổ trưởng chuyên môn trường phổ thông Việt Nam soạn biên bản sinh hoạt tổ. Chỉ trả về JSON hợp lệ.",
     prompt: `Soạn nội dung/biên bản buổi sinh hoạt chuyên môn:

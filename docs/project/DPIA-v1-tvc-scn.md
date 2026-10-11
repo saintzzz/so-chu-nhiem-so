@@ -45,6 +45,21 @@ Trạng thái: bản nháp nội bộ - cần pháp chế/chuyên gia rà soát 
   nhà cung cấp AI (mục 4), hoặc tiền xử lý ẩn danh/loại PII trước khi
   gọi provider.
 
+## 3b. Studio extract - gate xử lý tài liệu thô (CR-049 r9, 2026-11)
+
+- `src/app/api/studio/questions/extract/route.ts` nhận ảnh/PDF nguyên
+  byte (`inline.data`) - redaction dạng text không áp dụng được cho
+  nội dung nhị phân.
+- **Gate đã áp dụng:** server yêu cầu `confirm_no_pii === true` cho
+  mọi upload nhị phân; client hiển thị xác nhận "tài liệu không chứa
+  thông tin cá nhân học sinh" và mỗi xác nhận được ghi `audit_logs`
+  (`studio.extract_raw_doc`). Đây là gate xử lý tài liệu thô được
+  phê duyệt tường minh - GV chịu trách nhiệm chỉ tải nội dung đề thi.
+- Đường `text` (docx trích phía client) đã qua pseudonymization theo
+  roster trường + `piiMap` cho Devin fallback + deanonymize đầu ra.
+- Rủi ro còn lại: GV tải nhầm file có PII dù đã xác nhận - giảm thiểu
+  bằng audit trail; đóng hoàn toàn khi có tiền xử lý OCR/redact nội bộ.
+
 ## 4. Còn thiếu (đưa vào roadmap pilot)
 
 - [ ] Điều khoản đồng ý PH (consent) cho dữ liệu HS + bản ghi consent.

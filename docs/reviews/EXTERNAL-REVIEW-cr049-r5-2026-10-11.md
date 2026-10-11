@@ -150,3 +150,38 @@ Verdict: **NOT-CLEAN - 12 findings (5 HIGH / 7 MEDIUM)**
 - build: PASS | check-consistency: PASS
 - prod verify: `null_ids_denied=t` (NULL-array exploit bi chan)
 - migration: `20261129_cr049_r8_fixes.sql` (r7 file revert - append-only)
+
+---
+
+## Round 9 - Codex Cloud on 4438792 (2026-11-30)
+
+Raw report: `docs/reviews/codex-cloud-report-cr049-r9-raw.txt`
+Verdict: **NOT-CLEAN - 15 findings (10 HIGH / 5 MEDIUM) + 1 retained risk**
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | Refresh props dua revision R2 trong khi cells van R1 -> CAS bi bypass | **Fixed** - `baseRevisionRef` chot revision cung snapshot cells luc mount; props refresh khong doi revision | source + test guard |
+| 2 | M | Bracket loader nuot loi state-read (null==null gia "on dinh") va mo editor sau 3 lan unstable | **Fixed** - s0/s1 error -> loadError; het retry -> `revision_unstable` -> khoa editor | source + test guard |
+| 3 | M | CAS tuy chon - goi RPC khong `p_expected_max` bo qua stale detection; direct UPDATE/DELETE khong bump state | **Fixed** - RPC raise `expected_revision_required` khi NULL; trigger `scn_grades_state_touch` bump `grade_book_state` moi INSERT/UPDATE/DELETE | prod `prosrc` + trigger verified |
+| 4 | H | Khong kiem tenant subject/year - BGH/GVCN branch authz theo lop, definer nhan `p_academic_year_id` bat ky | **Fixed** - RPC kiem `subjects.school_id = class.school_id` + `year_scope_mismatch` | prod verified |
+| 5 | H | Retry insert trung unique index (parent_id, week_start) -> 23505, batch audit bi abort | **Fixed** - unique index -> real UNIQUE constraint; insert -> `upsert(onConflict:"parent_id,week_start")` | prod constraint verified |
+| 6 | M | Provider accept roi crash truoc khi ghi log -> stale recovery resend | **Deferred (documented)** - Resend khong ho tro idempotency key; deliveries-ghi-truoc-outbox thu hep cua so crash con ~ms; reconcile qua provider message_id la phase tiep theo | retained risk |
+| 7 | M | `?retry=` van chay enqueue scan tuan hien tai -> tao delivery tuan moi nham | **Fixed** - retry mode chi drain outbox requeue, bo qua enqueue scan | test guard |
+| 8 | M | 12 duong doc grades tron nam hoc | **Fixed** - helper `src/lib/grades-year.ts` (`gradeYearOr`/`gradeInYear`); 12 paths scoped: dashboard, analysis, support, exam-analytics, records report/students, parents portal, portal parent/student, register export, class-report-export, digest | sweep test guard |
+| 9 | H | draft-message / meeting-notes / lesson-plan / studio generate van gui ten HS thuc | **Fixed** - roster `schoolPiiNames` + minimize cho provider + `piiMap` Devin + deanon output | source + test guard |
+| 10 | H | Roster helper chi lay lop/HS active -> ten HS chuyen/nghi khong bi alias; class query khong paginate | **Fixed** - lay tat ca lop/HS (ke ca inactive), `fetchAllRows` ca hai tang, chunk `.in()` 200 | source |
+| 11 | H | JSON.stringify facts truoc khi pseudonymize -> `Nguyễn\nVăn` escaped khong match regex | **Fixed** - `minimizeDeep` pseudonymize gia tri string TRUOC serialize; ap dung cho cac route JSON-facts | source + test guard |
+| 12 | H | Studio extract: anh/PDF bytes di thang toi provider, bypass moi redaction | **Fixed (gate)** - binary upload yeu cau `confirm_no_pii` + `audit_logs(studio.extract_raw_doc)`; text path pseudonymize roster + piiMap + deanon; DPIA muc 3b | test guard |
+| 13 | H | Redactor thieu pattern ma dinh danh HS 10 so | **Fixed** - regex bo sung 10-digit | unit test |
+| 14 | M | `Math.max(1000, timeoutMs)` phong to budget caller; config timer khong clear | **Fixed** - ton trong budget chinh xac, `clearTimeout` khi config race settle | source |
+| 15 | M | Dedup suggest-tasks chay tren alias (HS001) truoc deanon -> trung khong phat hien | **Fixed** - deanonymize titles truoc khi dedup | source |
+| R | H | extract-records `allowRawPrompt` - rui ro DPIA da ghi nhan (muc 3a), cho ruling phap ly | **Retained** - khong thay doi; gate phap ly/consent/DPA la dieu kien pilot | DPIA-v1 muc 3a |
+
+### Gates r9
+
+- `npx tsc --noEmit` PASS | lint 0 errors (136 warnings) | tests 170/170 (30 PII + 140 regression)
+- `npm run build` PASS | `check-consistency` PASS
+- prod verified: `scn_save_grades` co `expected_revision_required` + tenant check;
+  trigger `scn_grades_state_touch` tren grades; UNIQUE constraint
+  `digest_deliveries_parent_week` (contype='u'); CAS smoke `fresh_save=t stale_blocked=t`
+- migration: `20261130_cr049_r9_fixes.sql` (r9 deltas tach khoi r8 file - append-only)

@@ -466,7 +466,7 @@ export function QuestionBank({
     setAiScanning(true);
     void (async () => {
       try {
-        let payload: Record<string, string>;
+        let payload: Record<string, string | boolean>;
         if (/\.docx$/i.test(file.name)) {
           // docx: trích text + công thức OMML -> LaTeX phía client, gửi text cho AI
           const { docxToText } = await import("@/lib/tvc/docx-text");
@@ -474,13 +474,25 @@ export function QuestionBank({
           if (!text.trim()) return setError("File Word không có nội dung đọc được.");
           payload = { text };
         } else {
+          // CR-049 r9: anh/PDF di nguyen byte toi provider ben ngoai -
+          // gate xac nhan tai lieu khong chua dinh danh HS truoc khi gui.
+          const ok = window.confirm(
+            "Ảnh/PDF sẽ được xử lý bởi AI bên ngoài.\n\nXác nhận tài liệu KHÔNG chứa thông tin cá nhân học sinh (họ tên, mã HS, ngày sinh, số điện thoại, ảnh chân dung).",
+          );
+          if (!ok) {
+            setError(
+              "Đã hủy quét AI - chỉ tải lên tài liệu không chứa thông tin cá nhân học sinh.",
+            );
+            setAiScanning(false);
+            return;
+          }
           const b64 = await new Promise<string>((res, rej) => {
             const r = new FileReader();
             r.onload = () => res(String(r.result ?? "").split(",")[1] ?? "");
             r.onerror = rej;
             r.readAsDataURL(file);
           });
-          payload = { data: b64, mime: file.type };
+          payload = { data: b64, mime: file.type, confirm_no_pii: true };
         }
         const res = await fetch("/api/studio/questions/extract", {
           method: "POST",

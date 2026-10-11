@@ -20,6 +20,7 @@ import type {
   Profile,
   Student, Role } from "@/types";
 import { semesterAverage } from "@/lib/tt22";
+import { gradeYearOr } from "@/lib/grades-year";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -103,7 +104,14 @@ export default async function PortalPage({
       supabase
         .from("grades")
         .select("subject_id,term,assessment_type,score")
-        .eq("student_id", selectedId),
+        .eq("student_id", selectedId)
+        // CR-049 r9 M8: chi diem nam hoc cua lop con (NULL-legacy giu)
+        .or(
+          gradeYearOr(
+            classes.find((c) => c.id === student.class_id)
+              ?.academic_year_id,
+          ),
+        ),
       supabase
         .from("announcements")
         .select("*")

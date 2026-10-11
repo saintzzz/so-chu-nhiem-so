@@ -19,6 +19,9 @@ const RE_PHONE =
 // CCCD 12 so, CMND 9 so (tranh cham diem 8-9.x / ma so ngan hon) -
 // cho phep separator giua cac cum (0123 456 789)
 const RE_CCCD = /(?<!\d)\d(?:[\s.\-]?\d){11}(?!\d)/g;
+// r9 H12: ma dinh danh HS 10 so (records/students validation = 10
+// digits) - redact truoc khi CMND 9 so an vao trong.
+const RE_MAHS = /(?<!\d)\d(?:[\s.\-]?\d){9}(?!\d)/g;
 const RE_CMND = /(?<!\d)\d(?:[\s.\-]?\d){8}(?!\d)/g;
 
 /** Cat PII co cau truc ro rang. KHONG cat dd/mm/yyyy - ngay thang la
@@ -29,6 +32,7 @@ export function redactPiiText(text: string): string {
     .replace(RE_EMAIL, "[email]")
     .replace(RE_PHONE, "[sdt]")
     .replace(RE_CCCD, "[so_dinh_danh]")
+    .replace(RE_MAHS, "[so_dinh_danh]")
     .replace(RE_CMND, "[so_dinh_danh]");
 }
 
@@ -83,4 +87,25 @@ export function deanonymizeNames(text: string, names: PiiName[]): string {
 /** Goi gon: pseudonymizeNames + redactPiiText cho moi external call. */
 export function minimizePrompt(text: string, names: PiiName[] = []): string {
   return redactPiiText(pseudonymizeNames(text, names));
+}
+
+/** CR-049 r9 H10: minimize DU LIEU CAU TRUC truoc JSON.stringify.
+ *  Ten co whitespace ("Nguyen\nVan An") bi JSON-escape thanh \\n -
+ *  regex \s+ khong con khop sau serialize. Pseudonymize/redact tung
+ *  string trong facts truoc khi stringify de alias luon khop. */
+export function minimizeDeep<T>(value: T, names: PiiName[] = []): T {
+  if (typeof value === "string") {
+    return redactPiiText(pseudonymizeNames(value, names)) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => minimizeDeep(v, names)) as T;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = minimizeDeep(v, names);
+    }
+    return out as T;
+  }
+  return value;
 }

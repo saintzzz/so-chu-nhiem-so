@@ -10,6 +10,7 @@ import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { Sparkles } from "lucide-react";
 import { averageByStudent } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeInYear } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
 
 interface ClassStats {
@@ -81,10 +82,11 @@ export default async function RecordsReportPage() {
           term: string;
           assessment_type: string;
           score: number | null;
+          academic_year_id: string | null;
         }>((f, t) =>
           supabase
             .from("grades")
-            .select("student_id,subject_id,term,assessment_type,score")
+            .select("student_id,subject_id,term,assessment_type,score,academic_year_id")
             .in("student_id", allIds)
             .order("id")
             .range(f, t),
@@ -117,15 +119,24 @@ export default async function RecordsReportPage() {
     attByClass.set(cid, a);
   }
 
-  const avgByStudent = averageByStudent(
-    gradesRes.rows as {
-      student_id: string;
-      subject_id: string;
-      term: string;
-      assessment_type: string;
-      score: number | null;
-    }[],
+  // CR-049 r9 M8: chi tinh diem dung nam hoc cua lop HS (NULL-legacy
+  // duoc giu) - nam khac bi loai khoi thong ke.
+  const yearOfClass = new Map(
+    (classes as { id: string; academic_year_id?: string | null }[]).map(
+      (c) => [c.id, c.academic_year_id ?? null],
+    ),
   );
+  const yearGrades = (gradesRes.rows as {
+    student_id: string;
+    subject_id: string;
+    term: string;
+    assessment_type: string;
+    score: number | null;
+    academic_year_id: string | null;
+  }[]).filter((g) =>
+    gradeInYear(g, yearOfClass.get(classOf.get(g.student_id) ?? "")),
+  );
+  const avgByStudent = averageByStudent(yearGrades);
   const scoreByClass = new Map<string, number[]>();
   for (const [sid, avg] of avgByStudent) {
     const cid = classOf.get(sid);

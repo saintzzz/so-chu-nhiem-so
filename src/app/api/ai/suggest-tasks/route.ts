@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText, minimizePrompt, deanonymizeNames } from "@/lib/ai-privacy";
+import { redactPiiText, minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
@@ -54,12 +54,6 @@ export async function POST(req: Request) {
     ((tasksData ?? []) as { title: string }[]).map((t) => t.title),
   );
 
-  const prompt = `Lớp: ${className}. Ngày hôm nay: ${today}.
-Sự kiện năm học sắp tới (JSON): ${JSON.stringify(eventsData ?? [])}.
-Công việc đã có (không được trùng): ${JSON.stringify([...existing])}.
-
-Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
-
   // CR-049 r8 H4: tieu de task/su kien co the chua ten HS - an danh hoa
   // theo roster truoc ca provider lan Devin (fail-closed).
   const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
@@ -69,6 +63,13 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
       { status: 500 },
     );
   }
+
+  const prompt = `Lớp: ${className}. Ngày hôm nay: ${today}.
+Sự kiện năm học sắp tới (JSON): ${JSON.stringify(minimizeDeep(eventsData ?? [], roster.names))}.
+Công việc đã có (không được trùng): ${JSON.stringify(minimizeDeep([...existing], roster.names))}.
+
+Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cần chuẩn bị cho lớp trong 4 tuần tới, dựa trên sự kiện và nghiệp vụ chủ nhiệm (điểm danh, sổ đầu bài, liên lạc phụ huynh, rèn luyện, thu chi, an toàn). Trả về CHỈ JSON array, mỗi phần tử {"title": "...", "due_date": "YYYY-MM-DD"}, due_date trong tương lai gần, không markdown.`;
+
   const safePrompt = minimizePrompt(prompt, roster.names);
 
   const quotaOk = await takeAiQuota("suggest-tasks", profile.id);
@@ -110,6 +111,15 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
     const cleaned = text.replace(/```json|```/g, "").trim();
     const arr = JSON.parse(cleaned) as SuggestedTask[];
     parsed = arr
+      // CR-049 r9 M14: deanon TRUOC dedup - "Lien he HS001" phai thanh
+      // ten that truoc khi so voi `existing`, neu khong task trung
+      // van duoc de xuat lai nhu moi.
+      .map((t) => ({
+        ...t,
+        title: typeof t?.title === "string"
+          ? deanonymizeNames(t.title, roster.names)
+          : t?.title,
+      }))
       .filter(
         (t) =>
           t &&
@@ -118,11 +128,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
           t.due_date >= today &&
           !existing.has(t.title),
       )
-      .slice(0, 10)
-      .map((t) => ({
-        ...t,
-        title: deanonymizeNames(t.title, roster.names),
-      }));
+      .slice(0, 10);
   } catch {
     parsed = [];
   }

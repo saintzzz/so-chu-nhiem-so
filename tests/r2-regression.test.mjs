@@ -304,8 +304,8 @@ test("R2-07: loi nguon tra 500, insert delivery log khong nuot", () => {
   assert.match(fatal[0], /error: fatalError/,
     "response 5xx chi tra nhan loi chung, khong phai raw DB error");
   // digest_deliveries insert error duoc bat
-  assert.match(route, /const \{ error: delErr \} = await supabase[\s\S]*?digest_deliveries[\s\S]*?insert\(deliveries\)/,
-    "insert digest_deliveries van khong check error");
+  assert.match(route, /const \{ error: delErr \} = await supabase[\s\S]*?digest_deliveries[\s\S]*?(?:insert|upsert)\(deliveries/,
+    "insert/upsert digest_deliveries van khong check error");
   // sendPhase: delErr -> tra 500 ngay (scheduler retry) kem counters
   // partial-send; rows van 'sending' -> requeue/reconcile run sau.
   const delBlock = route.match(/if \(delErr\) \{[\s\S]*?status: 500[\s\S]*?\}\);/);
@@ -2974,7 +2974,7 @@ test("CR-042B: pptx xuat note blocks vao speaker notes", () => {
 
 test("CR-042C: dashboard gom wave - embed classes + windowed attendance", () => {
   const page = readSrc("src/app/(app)/dashboard/page.tsx");
-  assert.match(page, /classes\(id,name\)/); // embed FK bo wave taughtCls
+  assert.match(page, /classes\(id,name(,academic_year_id)?\)/); // embed FK bo wave taughtCls
   assert.doesNotMatch(page, /latestAtt/); // bo wave latestAtt
   assert.match(page, /gte\("date", since30\)/); // cua so -> suy ra attDate
 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 interface DraftResult {
@@ -38,11 +39,20 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r9 H8: bullets/context la free-text co the chua ten HS.
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
   return respondWithAi<DraftResult>({
     req,
     supabase,
     profile,
     kind: "draft-message",
+    pii: { names: roster.names },
     system:
       "Bạn là giáo viên trường phổ thông Việt Nam soạn thông báo gửi phụ huynh. Chỉ trả về JSON hợp lệ.",
     prompt: `Soạn thông báo gửi ${audience} từ các ý chính sau (mỗi dòng một ý):

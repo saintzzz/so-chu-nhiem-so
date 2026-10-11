@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
+import { minimizeDeep } from "@/lib/ai-privacy";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -128,7 +129,7 @@ export async function POST(req: Request) {
     pii: { names: roster.names },
     system:
       "Bạn là trợ lý tổng hợp sổ đầu bài cho GVCN/BGH trường THCS. Tóm tắt ngắn gọn theo số liệu. Không emoji.",
-    prompt: `Tóm tắt sổ đầu bài gần nhất của lớp (JSON): ${JSON.stringify(facts)}.
+    prompt: `Tóm tắt sổ đầu bài gần nhất của lớp (JSON): ${JSON.stringify(minimizeDeep(facts, roster.names))}.
 
 Viết 3-5 nhận xét: số tiết đã ghi và môn nào nhiều/ít, tiết có ghi chú đáng chú ý (vi phạm, chưa hoàn thành), sĩ số có mặt trung bình, môn nào chưa được ghi. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',

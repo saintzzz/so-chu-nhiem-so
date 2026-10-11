@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { khbdHasContent, parseKhbdStrict } from "@/lib/khbd";
 import { hasAnyRole } from "@/lib/roles";
 
@@ -44,6 +45,14 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r9 H8: noi dung giao an la free-text co the chua ten HS/GV.
+  const roster = await schoolPiiNames(supabase, profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
 
   if (mode === "outline") {
     return respondWithAi<{ sections: unknown }>({
@@ -51,6 +60,7 @@ export async function POST(req: Request) {
       supabase,
       profile,
       kind: "lesson-plan-outline",
+      pii: { names: roster.names },
       system:
         "Bạn là giáo viên trường phổ thông Việt Nam soạn kế hoạch bài dạy theo Công văn 5512 và CTGDPT 2018 (khởi động - khám phá - luyện tập - vận dụng). Chỉ trả về JSON hợp lệ.",
       prompt: `Soạn giáo án theo biểu mẫu:
@@ -102,6 +112,7 @@ Huong dan: to_chuc viet dang gach dau dong "GV ..." / "HS ..." theo tung buoc. K
     supabase,
     profile,
     kind: "lesson-plan-review",
+    pii: { names: roster.names },
     system:
       "Bạn là tổ trưởng chuyên môn nhận xét giáo án đồng nghiệp - góp ý xây dựng, nhắc phần còn thiếu. Chỉ trả về JSON hợp lệ.",
     prompt: `Nhận xét giáo án sau (môn ${subject || "chưa rõ"}, bài "${title}"):

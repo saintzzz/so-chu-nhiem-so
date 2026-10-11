@@ -25,6 +25,7 @@ import {
   currentPeriodVN,
 } from "@/lib/utils";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { gradeYearOr } from "@/lib/grades-year";
 
 
 
@@ -106,7 +107,7 @@ export default async function DashboardPage({
     await Promise.all([
       supabase
         .from("classes")
-        .select("id,name")
+        .select("id,name,academic_year_id")
         .eq("gvcn_id", profile.id)
         .order("name"),
       profile.school_id
@@ -120,18 +121,30 @@ export default async function DashboardPage({
       // de bo wave truy van classes.in(taughtIds) rieng.
       supabase
         .from("timetable_entries")
-        .select("class_id, classes(id,name)")
+        .select("class_id, classes(id,name,academic_year_id)")
         .eq("teacher_id", profile.id),
     ]);
   const homeroomClasses = (clsRaw ?? []) as ClassRow[];
   const homeroomIds = new Set(homeroomClasses.map((c) => c.id));
   const taughtMap = new Map<string, string>();
+  const yearOfClass = new Map<string, string | null>(
+    homeroomClasses.map((c) => [
+      c.id,
+      (c as { academic_year_id?: string | null }).academic_year_id ?? null,
+    ]),
+  );
   for (const t of (taughtRaw ?? []) as {
     class_id: string;
-    classes: { id: string; name: string } | { id: string; name: string }[] | null;
+    classes:
+      | { id: string; name: string; academic_year_id?: string | null }
+      | { id: string; name: string; academic_year_id?: string | null }[]
+      | null;
   }[]) {
     const c = Array.isArray(t.classes) ? t.classes[0] : t.classes;
-    if (c && !homeroomIds.has(t.class_id)) taughtMap.set(t.class_id, c.name);
+    if (c && !homeroomIds.has(t.class_id)) {
+      taughtMap.set(t.class_id, c.name);
+      yearOfClass.set(t.class_id, c.academic_year_id ?? null);
+    }
   }
   // Lớp chủ nhiệm trước, lớp đang dạy sau (đánh dấu "(dạy)")
   const allClasses: ClassRow[] = [
@@ -225,6 +238,8 @@ export default async function DashboardPage({
             .from("grades")
             .select("student_id,subject_id,term,assessment_type,score")
             .in("student_id", studentIds)
+            // CR-049 r9 M8: scope nam hoc cua lop dang xem
+            .or(gradeYearOr(classId ? yearOfClass.get(classId) : null))
             .order("id")
             .range(f, t),
         ).then((r) => ({ data: r.rows }))

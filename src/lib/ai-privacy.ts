@@ -106,7 +106,11 @@ export function collectUsedNames(
     if (typeof v === "string") texts.push(v);
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") {
-      for (const val of Object.values(v as Record<string, unknown>)) walk(val);
+      // r14: JSON key cung co the chua ten/PII - gom key vao haystack.
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+        walk(k);
+        walk(val);
+      }
     }
   };
   walk(source);
@@ -139,7 +143,10 @@ export function minimizeDeep<T>(value: T, names: PiiName[] = []): T {
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = minimizeDeep(v, names);
+      // r14: key cung la free-text co the mang ten/PII (payload tuy y cua
+      // client) - minimize key truoc khi serialize.
+      const mk = redactPiiText(pseudonymizeNames(k, names));
+      out[mk] = minimizeDeep(v, names);
     }
     return out as T;
   }

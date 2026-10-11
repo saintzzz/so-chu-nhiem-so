@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
+import { minimizeDeep } from "@/lib/ai-privacy";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -16,11 +17,13 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 
+  // r14 M: loi nguon KHONG duoc bien thanh du lieu rong - AI chay tren
+  // facts thieu se de xuat sai (mat mon day, mat lop).
   const [
-    { data: teachers },
-    { data: teacherSubjects },
-    { data: subjects },
-    { data: classes },
+    { data: teachers, error: tErr },
+    { data: teacherSubjects, error: tsErr },
+    { data: subjects, error: sjErr },
+    { data: classes, error: cErr },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -35,6 +38,16 @@ export async function POST(req: Request) {
       .eq("school_id", sid)
       .eq("status", "active"),
   ]);
+  if (tErr || tsErr || sjErr || cErr) {
+    console.error(
+      "[ai/assignment-suggest] sources:",
+      (tErr ?? tsErr ?? sjErr ?? cErr)?.message,
+    );
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
 
   const subjName = new Map(
     ((subjects ?? []) as { id: string; name: string }[]).map((s) => [s.id, s.name]),
@@ -73,7 +86,7 @@ export async function POST(req: Request) {
     kind: "assignment-suggest",
     system:
       "Bạn là trợ lý điều hành phân công giảng dạy cho BGH trường THCS. Đề xuất thực tế theo đội ngũ hiện có. Không emoji.",
-    prompt: `Đề xuất phân công giảng dạy năm học từ số liệu (JSON): ${JSON.stringify(facts)}.
+    prompt: `Đề xuất phân công giảng dạy năm học từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, names))}.
 
 Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối lớp hợp lý, GV kiêm nhiệm cần cân đối, lưu ý cho BGH. Mỗi đề xuất 1 dòng, dùng mã GV (GV01, GV02...), không đánh số.`,
     expectedShape: '{"lines": ["đề xuất 1", "đề xuất 2"]}',

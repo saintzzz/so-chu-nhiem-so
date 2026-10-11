@@ -1,0 +1,135 @@
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day la vong REVIEW DOC LAP thu 14 - cac vong truoc da triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+supabase/migrations/20261204_cr049_r13_fixes.sql (moi nhat): bind signoff_insert (BGH->scn_class_in_school), nlpc_upd/del + task_upd/del (self-attribution + BGH->scn_student/class_in_school), chot drift inc_ins + classes_write_ins. Sweep THEM tren TOAN BO migrations + tat ca policies/funcs: con policy nao (a) self-attribution gvcn_id/teacher_id/recorded_by/evaluated_by/created_by/uploaded_by/reviewed_by/approved_by/submitted_by = auth.uid() khong co tenant anchor, HOAC (b) nhanh role (bgh/pht/to_truong/gvbm/gvcn/dept) khong co scn_*_in_school/my_school_id anchor, HOAC (c) join student->class->school ma thieu check school = truong caller? Liet ke tung cai con sot kem proof.
+
+src/app/api/studio/tools/[code]/generate/route.ts: usedNames = collectUsedNames({input, ctx}) + minimizeDeep(input). Kiem: ctx con duong nao embed data ngoai used (DC-03 matrix rows, DC-04/DC-05, standards, subject) mang ten khong restore? piiMap gui Devin co can gioi han hon khong?
+
+src/app/api/ai/report-analysis/route.ts: roster fail-closed + minimizeDeep(stats) + pii source. Sweep tat ca AI routes (respondWithAi callers + custom-flow): con route nao gui user-controlled text/JSON toi provider ma khong qua minimize/pii? Con route nao JSON.stringify input truoc minimize?
+
+Toan bo: security/RLS/privacy/correctness khac ban tim thay. Moi finding: severity, file:line, kich ban khai thac, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+11:19 PM
+Worked for 5m 25s
+ChatGPT said:
+
+Đã review source tại d6aafe794b8801ff8bdccc25e7f6f339265caa5b, đối chiếu migrations theo thứ tự và chạy payload kiểm chứng bằng helper thực tế. Không sửa repo gốc, không gọi provider hay mutation DB.
+
+Có 7 findings: 1 HIGH, 5 MEDIUM, 1 LOW.
+
+HIGH — Nhánh BGH của dept_meetings vẫn global.
+
+File: supabase/migrations/20260925_cr016_role_scope.sql:243 (dm_ins), :245 (dm_upd), :248 (dm_del).
+
+Cả ba dùng scn_is_dept_head(department_id) OR my_role() IN ('bgh','admin'). Migration multi-role chỉ chuyển phép kiểm tra role thành kiểm tra mảng; không thêm tenant anchor. Không có migration sau thay các policy này.
+
+BGH trường A có thể INSERT biên bản với department_id trường B. dm_del cũng cho phép DELETE toàn bảng khi câu SQL không cần SELECT/RETURNING; SELECT policy theo trường không bảo vệ đường đó. Với UPDATE có filter, không khẳng định bypass SELECT policy.
+
+Fix tối thiểu: tách admin; nhánh BGH phải có scn_dept_in_school(department_id) trong USING/WITH CHECK.
+
+MEDIUM — scn_is_dept_head không bind trường hiện tại.
+
+File: supabase/migrations/20261116_cr038_multi_role.sql:150.
+
+Helper SECURITY DEFINER chỉ kiểm tra p.id = auth.uid(), p.department_id = did và role tổ trưởng. Không kiểm tra trường của department.
+
+Nếu chuyển profile sang trường B nhưng còn giữ department_id trường A, helper vẫn trả true cho tổ cũ; dm_ins/dm_del vẫn cấp quyền tại trường A. Guard profile cho phép admin/service-role cập nhật mà không buộc department cùng trường (20261120_r3_security_fixes.sql:15).
+
+Fix tối thiểu: thêm scn_dept_in_school(did) vào helper, đồng thời áp dụng anchor chung cho các policy họp tổ.
+
+MEDIUM — JSON key vượt minimization trong studio generate.
+
+File: src/app/api/studio/tools/[code]/generate/route.ts:441; src/lib/ai-privacy.ts:141; src/lib/tvc/prompts.ts:156.
+
+Route nhận mọi key của request. minimizeDeep chỉ xử lý value, còn collectUsedNames cũng bỏ qua key. DC-04/T-02/V-01 dùng generic prompt và stringify toàn bộ input.
+
+Payload có key thực chứa newline:
+
+JSON
+{"Nguyễn\nVăn An - 090\n123\n4567":"soạn câu hỏi"}
+
+Helper thực tế giữ nguyên tên và điện thoại dạng escaped trong prompt, dù roster có “Nguyễn Văn An”; usedNames rỗng. Redaction sau stringify không khớp nữa. Prompt này đi tới cả provider và Devin fallback.
+
+Fix tối thiểu: allowlist key theo fields của tool; nếu hỗ trợ key tùy ý, minimize key trước serialize và thu thập tên từ key.
+
+MEDIUM — emulation-summary còn gửi tên thật trong input period.
+
+File: src/app/api/ai/emulation-summary/route.ts:19, :93.
+
+period là chuỗi caller cung cấp, được nội suy thẳng vào prompt; route không tải roster hay truyền pii.names. respondWithAi chỉ redact PII cấu trúc khi danh sách tên rỗng.
+
+Caller có quyền chấm thi đua có thể lưu một kỳ mang tên học sinh rồi gọi route với kỳ đó. RPC scn_save_emulation chỉ yêu cầu period không rỗng (20261111_r15_atomic_writes.sql:76). Khi có scores, tên thật được gửi ra provider/Devin.
+
+Fix tối thiểu: validate định dạng kỳ; tải roster fail-closed và truyền pii.names.
+
+MEDIUM — Bốn route vẫn stringify dữ liệu trước minimization.
+
+File:line	Dữ liệu chưa minimize trước stringify
+src/app/api/ai/emulation-summary/route.ts:93	Tên lớp, tên tiêu chí
+src/app/api/ai/dept-brief/route.ts:64	Tên trường
+src/app/api/ai/class-analysis/route.ts:169	Tên lớp, tên môn
+src/app/api/ai/assignment-suggest/route.ts:76	Tên lớp, tên môn
+
+Các trường chuỗi lấy từ DB được đưa vào JSON rồi mới đi qua redaction tập trung. Ví dụ giá trị thực 090\n123\n4567 thành 090\\n123\\n4567, vượt regex điện thoại. Đã kiểm chứng bằng helper thực tế. Với tên người chứa newline, class-analysis/assignment-suggest cũng không pseudonymize được sau serialize, kể cả tên có trong map.
+
+Fix tối thiểu: minimizeDeep(facts, names) trước stringify ở từng route; truyền raw source để giữ đúng map deanon.
+
+MEDIUM — Hai luồng AI vẫn coi lỗi nguồn là dữ liệu rỗng.
+
+File: src/app/api/ai/assignment-suggest/route.ts:19; src/app/api/ai/suggest-tasks/route.ts:36.
+
+Cả hai destructure riêng data và bỏ error. Lỗi đọc teacher-subjects tạo facts “không có môn dạy”; lỗi đọc tasks tạo existing = [], làm mất cả thông tin chống đề xuất trùng. Roster thành công không chứng minh các query nghiệp vụ đã thành công; route vẫn gọi AI trên dữ liệu thiếu.
+
+Fix tối thiểu: kiểm tra lỗi từng query trước tạo prompt; class không tồn tại phải bị từ chối. Với danh sách cần đầy đủ, paginate và từ chối truncation.
+
+LOW — Staff đọc được revision sổ điểm của mọi trường.
+
+File: supabase/migrations/20261128_cr049_r7_fixes.sql:15.
+
+grade_book_state_read chỉ có is_staff(), không tenant anchor; SELECT được grant cho authenticated. scope_key chứa subject/year/class UUID (20261202_cr049_r11_fixes.sql:202).
+
+Staff trường A có thể liệt kê UUID lớp/môn/năm và thời điểm cập nhật sổ điểm trường B. Đây là lộ metadata; không chứng minh đọc được điểm hoặc ghi state.
+
+Fix tối thiểu: scope SELECT theo class thuộc trường/quyền caller, tách admin nếu cần.
+
+Các điểm trọng tâm đã xác nhận: bảy policy r13 có tenant binding như mô tả; report-analysis đã fail-closed roster và minimize trước stringify. DC-03 trả từ question-bank trước luồng AI; DC-04/DC-05, standards và subject không có đường ctx mới làm mất restore ngoài lỗi JSON key nêu trên.
+
+piiMap không gửi cho Devin: nó được lưu tại ai_jobs.pii_map (src/lib/devin.ts:157); session chỉ nhận prompt. Map studio có thể thu hẹp thêm bằng cách thu tên từ prompt thực tế trước minimization, vì { input, ctx } gồm cả field không được embed. Chưa có bằng chứng riêng rằng việc dư map này mở quyền đọc tên mới.
+
+Hai đường raw-PII có consent/audit (extract-records, studio binary extract) và residual job cũ full-roster không được tính lại thành finding mới.
+
+VERDICT: NOT-CLEAN
+
+11:25 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++55,107
+-4,325
+Outputs
+Create a file or site

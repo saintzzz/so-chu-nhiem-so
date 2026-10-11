@@ -4,6 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { minimizeDeep } from "@/lib/ai-privacy";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -166,14 +167,14 @@ export async function POST(req: Request) {
     kind: "class-analysis",
     system:
       "Bạn là trợ lý phân tích kết quả học tập cho GVCN/BGH trường THCS. Nhận xét thực tế, cụ thể theo số liệu. Không emoji.",
-    prompt: `Phân tích kết quả học tập lớp từ số liệu (JSON): ${JSON.stringify(facts)}.
+    prompt: `Phân tích kết quả học tập lớp từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, piiNames))}.
 
 Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu mã học sinh), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1200,
     // r12 H3: facts embed alias HSxx san -> ten that chi co trong
     // students (lop cua caller - ho da nhin thay ten), khai bao source.
-    pii: { names: piiNames, source: students },
+    pii: { names: piiNames, source: { students, facts } },
     // text da duoc respondWithAi deanon theo usedNames (r12 H3) -
     // khong deanon lai full roster o day se mo lai lo inject alias.
     parse: (text) => {

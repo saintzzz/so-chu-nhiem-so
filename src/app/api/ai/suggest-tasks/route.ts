@@ -33,23 +33,41 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   const today = todayVN();
 
-  const [{ data: classData }, { data: eventsData }, { data: tasksData }] =
-    await Promise.all([
-      supabase.from("classes").select("id,name").eq("id", classId).single(),
-      supabase
-        .from("school_year_events")
-        .select("title,event_date,category")
-        .gte("event_date", today)
-        .order("event_date")
-        .limit(30),
-      supabase
-        .from("tasks")
-        .select("title")
-        .eq("class_id", classId)
-        .neq("status", "dismissed"),
-    ]);
+  // r14 M: loi nguon KHONG duoc bien thanh du lieu rong - class khong
+  // ton tai/error phai tu choi; mat task list = mat chong-de-xuat-trung.
+  const [
+    { data: classData, error: cErr },
+    { data: eventsData, error: evErr },
+    { data: tasksData, error: tkErr },
+  ] = await Promise.all([
+    supabase.from("classes").select("id,name").eq("id", classId).single(),
+    supabase
+      .from("school_year_events")
+      .select("title,event_date,category")
+      .gte("event_date", today)
+      .order("event_date")
+      .limit(30),
+    supabase
+      .from("tasks")
+      .select("title")
+      .eq("class_id", classId)
+      .neq("status", "dismissed"),
+  ]);
+  if (evErr || tkErr) {
+    console.error(
+      "[ai/suggest-tasks] sources:",
+      (evErr ?? tkErr)?.message,
+    );
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
+  if (cErr || !classData) {
+    return NextResponse.json({ error: "Không tìm thấy lớp." }, { status: 404 });
+  }
 
-  const className = (classData as { name: string } | null)?.name ?? "";
+  const className = (classData as { name: string }).name ?? "";
   const existing = new Set(
     ((tasksData ?? []) as { title: string }[]).map((t) => t.title),
   );

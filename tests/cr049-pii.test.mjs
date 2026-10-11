@@ -592,3 +592,45 @@ test("guard r13: studio usedNames gom ctx + report-analysis minimize", () => {
     "stats[].name phai minimize truoc JSON.stringify");
   assert.match(ra, /pii: \{ names: roster\.names, source: stats \}/);
 });
+
+test("guard r14: dept_meetings + dept_head + grade_book_state bound", () => {
+  const src = read("supabase/migrations/20261205_cr049_r14_fixes.sql");
+  const fnIdx = src.indexOf("function public.scn_is_dept_head");
+  const fnBlock = src.slice(fnIdx, fnIdx + 800);
+  assert.match(fnBlock, /scn_dept_in_school\(did\)/,
+    "to truong chuyen truong khong con quyen o to cu");
+  const dmIdx = src.indexOf("dm_del");
+  const dmBlock = src.slice(dmIdx, dmIdx + 800);
+  assert.match(dmBlock, /'bgh'\] and scn_dept_in_school/);
+  const gsIdx = src.indexOf("grade_book_state_read on grade_book_state");
+  const gsBlock = src.slice(gsIdx, gsIdx + 500);
+  assert.match(gsBlock, /split_part\(scope_key, '\|', 4\)/,
+    "staff chi doc revision lop thuoc truong minh");
+});
+
+test("guard r14: minimizeDeep xu ly ca JSON key", () => {
+  const src = read("src/lib/ai-privacy.ts");
+  const mdIdx = src.indexOf("function minimizeDeep");
+  const mdBlock = src.slice(mdIdx, mdIdx + 1200);
+  assert.match(mdBlock, /out\[mk\]/, "key phai minimize truoc serialize");
+  const cuIdx = src.indexOf("function collectUsedNames");
+  const cuBlock = src.slice(cuIdx, cuIdx + 900);
+  assert.match(cuBlock, /walk\(k\)/, "key cung dua vao haystack");
+});
+
+test("guard r14: routes minimize truoc stringify + fail-closed nguon", () => {
+  const es = read("src/app/api/ai/emulation-summary/route.ts");
+  assert.match(es, /JSON\.stringify\(minPerClass\)/);
+  assert.match(es, /pii: \{ names: roster\.names, source:/);
+  const db = read("src/app/api/ai/dept-brief/route.ts");
+  assert.match(db, /JSON\.stringify\(minSchool\)/);
+  const ca = read("src/app/api/ai/class-analysis/route.ts");
+  assert.match(ca, /JSON\.stringify\(minimizeDeep\(facts/);
+  const asg = read("src/app/api/ai/assignment-suggest/route.ts");
+  assert.match(asg, /JSON\.stringify\(minimizeDeep\(facts/);
+  assert.match(asg, /tErr \|\| tsErr \|\| sjErr \|\| cErr/,
+    "loi nguon khong duoc bien thanh du lieu rong");
+  const st = read("src/app/api/ai/suggest-tasks/route.ts");
+  assert.match(st, /evErr \|\| tkErr/);
+  assert.match(st, /cErr \|\| !classData/);
+});

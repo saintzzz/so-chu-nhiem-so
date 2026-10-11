@@ -4,6 +4,8 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
+import { minimizeDeep } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
  * AI tóm tắt tuần/kỳ thi đua giữa các lớp - dùng cho /emulation/ranking.
@@ -83,6 +85,19 @@ export async function POST(req: Request) {
   });
   perClass.sort((a, b) => b.tong - a.tong);
 
+  // CR-049 r14 M: period la chuoi caller gui, perClass chua ten lop/tieu
+  // chi tu DB - minimize theo roster TRUOC stringify; source tho de deanon
+  // dung pham vi caller.
+  const roster = await schoolPiiNames(sid);
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const minPeriod = minimizeDeep(period, roster.names);
+  const minPerClass = minimizeDeep(perClass, roster.names);
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -90,7 +105,8 @@ export async function POST(req: Request) {
     kind: "emulation-summary",
     system:
       "Bạn là trợ lý tổng hợp thi đua cho ban giám hiệu trường THCS. Nhận xét ngắn, theo số liệu. Không emoji.",
-    prompt: `Tóm tắt kết quả thi đua kỳ ${period} giữa các lớp (JSON): ${JSON.stringify(perClass)}.
+    pii: { names: roster.names, source: { period, perClass } },
+    prompt: `Tóm tắt kết quả thi đua kỳ ${minPeriod} giữa các lớp (JSON): ${JSON.stringify(minPerClass)}.
 
 Viết 3-5 nhận xét: lớp dẫn đầu và điểm mạnh, lớp tụt hạng/tiêu chí nào kéo xuống, tiêu chí toàn trường đang yếu, 1-2 đề xuất. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',

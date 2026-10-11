@@ -4,6 +4,8 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
+import { minimizeDeep } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
  * AI báo cáo bằng chữ cho cấp quản lý (Sở/Phòng/UBND) - dùng cho /dept/dashboard.
@@ -54,6 +56,23 @@ export async function POST(req: Request) {
     }),
   );
 
+  // r14 M: ten truong la du lieu DB free-text - minimizeDeep TRUOC
+  // stringify de PII pattern/ten trung roster khong bo sot sau khi
+  // JSON-escape. Dept user co school_id NULL -> names rong, van redact
+  // cau truc; co school_id thi fail-closed nhu cac route khac.
+  let rosterNames: import("@/lib/ai-privacy").PiiName[] = [];
+  if (profile.school_id) {
+    const roster = await schoolPiiNames(profile.school_id);
+    if (roster.error) {
+      return NextResponse.json(
+        { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+        { status: 500 },
+      );
+    }
+    rosterNames = roster.names;
+  }
+  const minSchool = minimizeDeep(perSchool, rosterNames);
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -61,7 +80,8 @@ export async function POST(req: Request) {
     kind: "dept-brief",
     system:
       "Bạn là trợ lý phân tích cho cán bộ quản lý giáo dục (Sở GD&ĐT, UBND cấp xã). Viết báo cáo ngắn gọn, khách quan, theo số liệu. Không emoji.",
-    prompt: `Viết bản tin tổng hợp cho cán bộ quản lý giáo dục từ số liệu các trường (JSON): ${JSON.stringify(perSchool)}.
+    pii: { names: rosterNames, source: perSchool },
+    prompt: `Viết bản tin tổng hợp cho cán bộ quản lý giáo dục từ số liệu các trường (JSON): ${JSON.stringify(minSchool)}.
 
 Viết 4-6 nhận xét: tổng quan quy mô, trường có chuyên cần tốt/kém nhất (nêu tên + %), trường cần hỗ trợ, 1-2 đề xuất hành động cho cấp quản lý. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',

@@ -304,3 +304,24 @@ Verdict: **NOT-CLEAN - 3 findings (3 HIGH)**
 - `check-consistency` PASS (rename r13 -> `20261204` cho unique version) | `npm run build` PASS
 - prod verified: 7/7 policies bound (`signoff_insert`, `inc_ins`, `classes_write_ins`, `nlpc_upd/del`, `task_upd/del`)
 - migration: `20261204_cr049_r13_fixes.sql`
+
+---
+
+## Round 14 (Codex Cloud @ d6aafe7) - NOT-CLEAN: 7 findings (1H/5M/1L)
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | `dept_meetings` `dm_del`/`dm_upd` USING + `dm_ins` nhanh BGH global - BGH truong A xoa/sua/tao bien ban hop to cua truong B (DELETE khong WHERE bo qua SELECT) | **Fixed** - `20261205_cr049_r14_fixes.sql`: admin global rieng, BGH + `scn_dept_in_school(department_id)` ca 3 policy | prod bound |
+| 2 | M | `scn_is_dept_head` chi check `p.department_id = did` - profile chuyen truong con FK dept cu van true | **Fixed** - helper + `scn_dept_in_school(did)` | funcdef verified |
+| 3 | M | JSON **key** vuot minimize: `minimizeDeep` chi xu ly value; payload co key chua ten/PII (ke ca newline) van serialize tho | **Fixed** - `minimizeDeep` minimize ca key (`out[mk]`); `collectUsedNames` walk ca key vao haystack de deanon restore duoc | guard tests |
+| 4 | M | `emulation-summary` gui `period` (chuoi caller) + perClass ten lop/tieu chi raw, khong roster/pii | **Fixed** - roster fail-closed + `minimizeDeep(period/perClass)` + `pii:{names,source}` | guard tests |
+| 5 | M | 4 routes stringify truoc minimize (`emulation-summary`, `dept-brief`, `class-analysis`, `assignment-suggest`) - PII ten/SDT co newline bi JSON-escape vuot redact | **Fixed** - tat ca `minimizeDeep(facts)` truoc stringify; dept-brief: dept user school NULL van duoc pattern-redact, co school thi roster fail-closed | guard tests |
+| 6 | M | `assignment-suggest` + `suggest-tasks` bo qua query error -> AI chay tren du lieu thieu/rong | **Fixed** - check tung error; class khong ton tai -> 404; nguon loi -> 500 | guard tests |
+| 7 | L | `grade_book_state_read` chi `is_staff()` - staff truong A doc revision so diem truong B (metadata leak) | **Fixed** - admin OR (is_staff AND `scn_class_in_school(split_part(scope_key,'|',4))`) | prod bound |
+
+### Gates r14
+
+- `npx tsc --noEmit` PASS | eslint changed-paths clean | tests 197 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- prod verified: `scn_is_dept_head` bound + `dm_*` + `grade_book_state_read` bound
+- migration: `20261205_cr049_r14_fixes.sql`

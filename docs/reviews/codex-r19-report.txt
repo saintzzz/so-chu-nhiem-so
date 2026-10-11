@@ -1,0 +1,119 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 17a73c1 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+REVIEW ROUND 11 - security/privacy verification pass on com…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+You are the independent external reviewer for repo https://…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Review repo saintzzz/so-chu-nhiem-so tai commit bedef17 (ma…
+Review repo saintzzz/so-chu-nhiem-so tai commit b877b8e (br…
+WHOLE-REPOSITORY REVIEW - ROUND 4 (verification round). Rep…
+You are reviewing the repository at commit 4e39cb3 (master)…
+Confirmation review (round 3). The attached workspace is th…
+Confirmation review (round 3) of student-self-practice-web…
+Independent whole-repo verification review of this reposito…
+Linh Le Duy
+Plus
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day la vong REVIEW DOC LAP thu 19 - cac vong truoc da triage/fix (18 vong: RLS bind, CAS, PII pipeline, alias sentinel+nonce, RPC transaction, error split). KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+src/lib/ai-privacy.ts: pseudonymizeNames gio chia text thanh doan quanh alias literal (split capture group) - name regex chi chay trong doan ngoai. Kiem: con case nao an/smuggle? split+aliasRe edge cases (alias o dau/cuoi, lien tiep, trong doan le)? spec cache WeakMap?
+
+4 authz/callback lookup da tach PGRST116: context+generate+export profiles, devin-callback job. Kiem: con lookup phan quyen/data nao bo error -> 401/403/404 sai?
+
+Full sweep cuoi: bat ky route ai/studio/cron nao bo qua query error truoc AI/mutation/response; RLS self-attribution/is_staff khong anchor; SECURITY DEFINER thieu bind; alias construction site nao thieu nonce.
+
+Moi finding: severity, file:line, kich ban, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+1:05 AM
+Worked for 5m 14s
+ChatGPT said:
+
+Đã review đúng commit f8cba2b9472a2bb9f48a11ad6131221e5a66a2b3, đối chiếu 371 blob src/ và supabase/ với GitHub. Không sửa code, không gọi provider hoặc mutation DB. Có 3 findings LOW.
+
+LOW: Helper phân quyền vẫn che lỗi DB thành 401/403.
+
+File: 
+src/lib/auth.ts:48, 
+src/lib/permissions.ts:13.
+
+getProfile() bỏ error của query profile và trả null. Với session hợp lệ nhưng query DB lỗi, studio/questions/extract trả 401 tại dòng 51; các route AI dùng helper này trả 403. hasFeature() cũng biến lỗi RPC thành false, khiến các route Studio trả 403 “tính năng đã bị tắt”.
+
+Ngoài API, requireProfile() tiếp tục bỏ lỗi query retry tại dòng 65; nếu cả hai query lỗi, người dùng bị chuyển tới /api/auth/reset, nơi thực sự gọi signOut().
+
+Fix tối thiểu: phân biệt profile thiếu/quyền bị deny với lỗi DB; truyền lỗi lên caller để trả 500. Giữ fail-closed và chỉ reset session khi query thành công, xác nhận thiếu profile.
+
+LOW: Lookup lớp của suggest-tasks vẫn biến lỗi DB thành 404.
+
+File: 
+src/app/api/ai/suggest-tasks/route.ts:66.
+
+Query lớp dùng .single(). Khi query này lỗi, nhưng query sự kiện và task thành công, điều kiện cErr || !classData trả 404 “Không tìm thấy lớp” cho cả lỗi kết nối/lỗi DB. Đây là cùng loại lỗi đã sửa ở các lookup r17/r18.
+
+Fix tối thiểu: trả 500 khi cErr.code !== "PGRST116"; chỉ trả 404 khi không có row. Hoặc dùng .maybeSingle(), xử lý mọi error trước khi kiểm tra data.
+
+LOW: Callback bỏ lỗi cập nhật failed, để job tiếp tục treo pending.
+
+File: 
+src/app/api/ai/devin-callback/route.ts:92.
+
+Callback có token hợp lệ nhưng tài liệu sai schema chạy update({ status: "failed" }), bỏ kết quả rồi luôn trả 400 bad_doc. Nếu UPDATE lỗi DB, job vẫn pending; client không nhận được trạng thái để chạy onFail. use-tvc-ai-job.ts:74 chỉ dừng polling sau 15 phút, không gọi onFail hoặc xóa trạng thái job.
+
+Fix tối thiểu: kiểm tra error của UPDATE, trả 500 khi ghi thất bại; chỉ trả 400 bad_doc sau khi xác nhận chuyển trạng thái thành công.
+
+Các kiểm tra còn lại:
+
+Split alias vượt qua 11 case chạy trực tiếp: đầu/cuối, liên tiếp, đoạn rỗng, tên sát token, tên bắt đầu trước token, Unicode/NFD và gọi lặp. Chưa chứng minh được bypass mới.
+Chưa thấy call site mutate mapping sau khi WeakMap compile. Sáu nơi tạo alias đều có nonce; mergePiiNames giữ nonce.
+Bốn lookup sửa ở r18 xử lý lỗi DB đúng. Chưa chứng minh thêm bypass tenant còn hiệu lực trong sweep RLS/SECURITY DEFINER.
+Source thiếu định nghĩa nền của một số relation/view TVC; kết luận RLS không bao gồm xác nhận cấu hình production ngoài repo.
+
+VERDICT: NOT-CLEAN
+
+1:11 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++56,399
+-4,377
+Outputs
+Create a file or site

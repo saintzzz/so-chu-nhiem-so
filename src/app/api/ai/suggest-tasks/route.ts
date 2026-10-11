@@ -63,7 +63,15 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-  if (cErr || !classData) {
+  // r19 L: loi DB khac PGRST116 phai 500 - khong bien thanh 404 sai.
+  if (cErr && cErr.code !== "PGRST116") {
+    console.error("[ai/suggest-tasks] class:", cErr.message);
+    return NextResponse.json(
+      { error: "Lỗi tra cứu lớp, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  if (!classData) {
     return NextResponse.json({ error: "Không tìm thấy lớp." }, { status: 404 });
   }
 

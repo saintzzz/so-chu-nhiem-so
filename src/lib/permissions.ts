@@ -8,9 +8,9 @@ export { FEATURES } from "@/lib/feature-keys";
 export async function hasFeature(feature: string): Promise<boolean> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("scn_has_feature", { f: feature });
-  // fail-CLOSED: loi RPC = khong xac dinh duoc quyen -> tu choi (CR-034 fix).
-  // Nen mac dinh van nam trong scn_has_feature (SQL), chi khoa khi rpc that su loi.
-  if (error) return false;
+  // r19 L: van fail-CLOSED nhung phan biet loi DB - no 500 thay vi
+  // tra 403 "tinh nang da bi tat" sai nguyen nhan.
+  if (error) throw new Error(`scn_has_feature failed: ${error.message}`);
   return Boolean(data);
 }
 

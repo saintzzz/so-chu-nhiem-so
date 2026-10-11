@@ -45,11 +45,14 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub;
   if (!userId) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
+  // r19 L: loi DB phai no ra 500 - khong bien thanh "khong co profile"
+  // (403/reset session). maybeSingle => error chi la loi DB that.
+  if (error) throw new Error(`profile lookup failed: ${error.message}`);
   return (data as Profile | null) ?? null;
 });
 
@@ -62,11 +65,14 @@ export async function requireProfile(): Promise<Profile> {
   if (userId) {
     // Transient PostgREST/RLS loi co the tra null du profile ton tai -
     // retry mot lan (bypass cache) truoc khi ket luan profile that su thieu.
-    const { data: retry } = await supabase
+    const { data: retry, error: retryErr } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .maybeSingle();
+    // r19 L: chi reset session khi query THANH CONG va xac nhan
+    // thieu profile - loi DB phai no 500, khong signOut nham.
+    if (retryErr) throw new Error(`profile retry failed: ${retryErr.message}`);
     if (retry) return retry as Profile;
     // co session nhung khong co profile -> sign out de thoat redirect loop
     redirect("/api/auth/reset");

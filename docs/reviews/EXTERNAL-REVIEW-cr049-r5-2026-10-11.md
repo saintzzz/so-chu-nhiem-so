@@ -424,3 +424,27 @@ Raw report: `docs/reviews/codex-r18-report.txt`
 - `npx tsc --noEmit` PASS | eslint 0 errors | tests 210 pass/1 skip
 - `check-consistency` PASS | `npm run build` PASS
 - Khong co migration moi trong r18 (thuan code fixes)
+
+---
+
+## Round 19 (Codex Cloud @ f8cba2b) - NOT-CLEAN: 3 findings (0H/0M/3L)
+
+Raw report: `docs/reviews/codex-r19-report.txt`
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | L | getProfile bo error -> null -> 401/403 sai; requireProfile retry bo error -> reset+signOut khi DB loi; hasFeature bien loi RPC thanh "tinh nang tat" (403) | **Fixed** - getProfile/requireProfile retry dung maybeSingle + throw tren loi DB (500); hasFeature throw tren loi RPC - van fail-closed, khong 403 sai nguyen nhan | src/lib/auth.ts, permissions.ts |
+| 2 | L | suggest-tasks class lookup: `cErr \|\| !classData` bien loi DB thanh 404 | **Fixed** - cErr khac PGRST116 -> 500; chi !classData -> 404 | route.ts:66 |
+| 3 | L | devin-callback UPDATE status=failed bo error -> job treo pending, client poll 15 phut | **Fixed** - check failErr -> 500; chi tra bad_doc sau khi update thanh cong | route.ts:91 |
+
+### Ghi nhan khong phai finding
+
+- Split-alias v19 vuot 11 case truc tiep (dau/cuoi/lien tiep/doan rong/ten sat token/NFD/lap) - khong bypass moi.
+- 6 alias site deu co nonce; WeakMap spec cache khong mutate.
+- Ket luan RLS khong bao gom xac nhan production config ngoai repo (mot so TVC relation/view khong co trong migrations).
+
+### Gates r19
+
+- `npx tsc --noEmit` PASS | eslint 0 errors | tests 72/72 dedicated
+- `check-consistency` PASS | `npm run build` PASS (126 pages)
+- Khong co migration moi trong r19 (thuan code fixes)

@@ -89,11 +89,17 @@ export async function POST(req: NextRequest) {
       (["A-01", "A-03"].includes(toolCode) &&
         !sectionsLookEnglish(body.result));
     if (bad) {
-      await admin
+      // r19 L: UPDATE loi -> job con pending, client poll 15p vo ich.
+      // Chi tra bad_doc sau khi xac nhan da chuyen trang thai.
+      const { error: failErr } = await admin
         .from("ai_jobs")
         .update({ status: "failed" })
         .eq("id", row.id)
         .eq("status", "pending");
+      if (failErr) {
+        console.error("[devin-callback] fail update:", failErr.message);
+        return NextResponse.json({ error: "update_failed" }, { status: 500 });
+      }
       return NextResponse.json({ error: "bad_doc" }, { status: 400 });
     }
   }

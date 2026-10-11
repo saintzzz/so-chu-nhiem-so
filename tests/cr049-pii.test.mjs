@@ -632,7 +632,9 @@ test("guard r14: routes minimize truoc stringify + fail-closed nguon", () => {
     "loi nguon khong duoc bien thanh du lieu rong");
   const st = read("src/app/api/ai/suggest-tasks/route.ts");
   assert.match(st, /evErr \|\| tkErr/);
-  assert.match(st, /cErr \|\| !classData/);
+  // r19: cErr duoc tach - loi DB khac PGRST116 -> 500, !classData -> 404.
+  assert.match(st, /cErr && cErr\.code !== "PGRST116"/);
+  assert.match(st, /!classData/);
 });
 
 test("guard r15: mergePiiNames + preserveKeys", () => {
@@ -847,4 +849,20 @@ test("guard r18: authz/callback lookup tach loi DB khoi 401/403", () => {
     assert.match(s, /profErr|jobErr/, `${f} phai check error cua lookup phan quyen/job`);
     assert.match(s, /PGRST116/, `${f} phai chi deny khi row that su vang`);
   }
+});
+
+test("guard r19: auth helpers truyen loi DB len 500, khong bien thanh null/false", () => {
+  const auth = read("src/lib/auth.ts");
+  assert.match(auth, /profile lookup failed/, "getProfile phai throw khi profile query loi");
+  assert.match(auth, /profile retry failed/, "requireProfile retry phai throw khi query loi - khong signOut nham");
+  assert.match(auth, /\.maybeSingle\(\)/, "profile lookup dung maybeSingle de tach missing row");
+  const perm = read("src/lib/permissions.ts");
+  assert.match(perm, /scn_has_feature failed/, "hasFeature phai throw khi RPC loi (500, khong phai 403 sai)");
+});
+
+test("guard r19: suggest-tasks + devin-callback tach loi DB", () => {
+  const st = read("src/app/api/ai/suggest-tasks/route.ts");
+  assert.match(st, /cErr\.code !== "PGRST116"/, "class lookup chi 404 khi row vang, loi DB khac -> 500");
+  const cb = read("src/app/api/ai/devin-callback/route.ts");
+  assert.match(cb, /failErr/, "bad_doc UPDATE phai check error - job khong duoc treo pending");
 });

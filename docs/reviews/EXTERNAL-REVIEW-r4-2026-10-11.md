@@ -28,10 +28,12 @@
 
 ## Gates
 
-- `tsc --noEmit`: PASS
+- `tsc --noEmit`: PASS (0 errors)
 - `eslint`: PASS (0 errors)
-- `next build` + `check-consistency`: (cap nhat)
-- Studio E2E sau deploy: (cap nhat)
+- `next build`: PASS
+- `check-consistency`: PASS (all checks)
+- Studio E2E sau deploy `a37dffe`: **17 pass / 0 fail** — DC-01 xuong 34s
+  (hedged race), A-01 provider=gemini 14s, flow duyet 3 lop + deny PH OK
 
 ## Trang thai loop
 

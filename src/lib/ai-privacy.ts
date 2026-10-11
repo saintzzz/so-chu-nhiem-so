@@ -133,24 +133,48 @@ export function collectUsedNames(
  *  Ten co whitespace ("Nguyen\nVan An") bi JSON-escape thanh \\n -
  *  regex \s+ khong con khop sau serialize. Pseudonymize/redact tung
  *  string trong facts truoc khi stringify de alias luon khop. */
-export function minimizeDeep<T>(value: T, names: PiiName[] = []): T {
+export function minimizeDeep<T>(
+  value: T,
+  names: PiiName[] = [],
+  preserveKeys?: ReadonlySet<string>,
+  depth = 0,
+): T {
   if (typeof value === "string") {
     return redactPiiText(pseudonymizeNames(value, names)) as T;
   }
   if (Array.isArray(value)) {
-    return value.map((v) => minimizeDeep(v, names)) as T;
+    return value.map((v) => minimizeDeep(v, names, undefined, depth + 1)) as T;
   }
   if (value && typeof value === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
       // r14: key cung la free-text co the mang ten/PII (payload tuy y cua
       // client) - minimize key truoc khi serialize.
-      const mk = redactPiiText(pseudonymizeNames(k, names));
-      out[mk] = minimizeDeep(v, names);
+      // r15 L: key thuoc schema tool (lesson, note...) duoc giu nguyen o
+      // depth 0 - builder doc input.<key>; doi key do se mat du lieu.
+      const mk =
+        depth === 0 && preserveKeys?.has(k)
+          ? k
+          : redactPiiText(pseudonymizeNames(k, names));
+      out[mk] = minimizeDeep(v, names, undefined, depth + 1);
     }
     return out as T;
   }
   return value;
+}
+
+/** CR-049 r15 M: gop map alias NGHIEP VU (HS/GV alias local trong facts)
+ *  voi roster full-school cho minimization.
+ *  - Dedupe theo ten: alias nghiep vu thang (facts da embed san).
+ *  - Alias roster doi prefix "R" (HS001 -> RHS001): roster tu dem so
+ *    nen de trung alias nghiep vu - trung alias khien deanon restore
+ *    sai ten khi ca hai deu ton tai trong output. */
+export function mergePiiNames(biz: PiiName[], roster: PiiName[]): PiiName[] {
+  const seen = new Set(biz.map((n) => n.name.normalize("NFC")));
+  const extra = roster
+    .filter((r) => r.name && !seen.has(r.name.normalize("NFC")))
+    .map((r) => ({ name: r.name, alias: `R${r.alias}` }));
+  return [...biz, ...extra];
 }
 
 /** CR-049 r10 M: deanon tren JSON da parse, KHONG tren chuoi JSON tho.

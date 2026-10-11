@@ -83,10 +83,19 @@ export async function POST(req: Request) {
     });
   }
 
-  const { data: subjects } = await supabase
+  // r15 M: loi query mon hoc KHONG duoc bien thanh subjName rong - moi
+  // mon se thanh "-" va AI nhan xet tren facts thieu.
+  const { data: subjects, error: subjErr } = await supabase
     .from("subjects")
     .select("id,name")
     .eq("school_id", profile.school_id ?? "");
+  if (subjErr) {
+    console.error("[ai/period-log-summary] subjects:", subjErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const subjName = new Map(
     ((subjects ?? []) as { id: string; name: string }[]).map((s) => [
       s.id,

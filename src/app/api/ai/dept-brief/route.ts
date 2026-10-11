@@ -4,7 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { isoDateVN } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/roles";
-import { minimizeDeep } from "@/lib/ai-privacy";
+import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 
 /**
@@ -56,11 +56,18 @@ export async function POST(req: Request) {
     }),
   );
 
-  // r14 M: ten truong la du lieu DB free-text - minimizeDeep TRUOC
-  // stringify de PII pattern/ten trung roster khong bo sot sau khi
-  // JSON-escape. Dept user co school_id NULL -> names rong, van redact
-  // cau truc; co school_id thi fail-closed nhu cac route khac.
-  let rosterNames: import("@/lib/ai-privacy").PiiName[] = [];
+  // r14 M + r15 M: ten truong la du lieu DB tuy y (createSchool chi check
+  // non-empty <=200 ky tu) - co the chua ten nguoi that. Alias moi truong
+  // thanh TRxx (self-contained, khong can roster cross-school); names
+  // longest-first nen toan ten truong duoc alias tron ven. Dept user co
+  // school_id NULL -> roster rong van duoc TR-alias + redact cau truc.
+  const schoolAliases = statRows
+    .filter((s) => s.school_name)
+    .map((s, i) => ({
+      name: s.school_name,
+      alias: `TR${String(i + 1).padStart(2, "0")}`,
+    }));
+  let allNames: import("@/lib/ai-privacy").PiiName[] = schoolAliases;
   if (profile.school_id) {
     const roster = await schoolPiiNames(profile.school_id);
     if (roster.error) {
@@ -69,9 +76,9 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
-    rosterNames = roster.names;
+    allNames = mergePiiNames(schoolAliases, roster.names);
   }
-  const minSchool = minimizeDeep(perSchool, rosterNames);
+  const minSchool = minimizeDeep(perSchool, allNames);
 
   return respondWithAi<{ lines: string[] }>({
     req,
@@ -80,7 +87,7 @@ export async function POST(req: Request) {
     kind: "dept-brief",
     system:
       "Bạn là trợ lý phân tích cho cán bộ quản lý giáo dục (Sở GD&ĐT, UBND cấp xã). Viết báo cáo ngắn gọn, khách quan, theo số liệu. Không emoji.",
-    pii: { names: rosterNames, source: perSchool },
+    pii: { names: allNames, source: perSchool },
     prompt: `Viết bản tin tổng hợp cho cán bộ quản lý giáo dục từ số liệu các trường (JSON): ${JSON.stringify(minSchool)}.
 
 Viết 4-6 nhận xét: tổng quan quy mô, trường có chuyên cần tốt/kém nhất (nêu tên + %), trường cần hỗ trợ, 1-2 đề xuất hành động cho cấp quản lý. Mỗi nhận xét 1 dòng, không đánh số.`,

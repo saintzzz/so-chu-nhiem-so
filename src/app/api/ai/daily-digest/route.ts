@@ -25,11 +25,20 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
-  const { data: classData } = await supabase
+  // r15 L: loi doc nguon khong duoc bien thanh "chua nop" - check error
+  // truoc khi ket luan nghiep vu.
+  const { data: classData, error: clsErr } = await supabase
     .from("classes")
     .select("id,name,campus_id")
     .eq("school_id", profile.school_id ?? "")
     .eq("status", "active");
+  if (clsErr) {
+    console.error("[ai/daily-digest] classes:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   let classes = (classData ?? []) as {
     id: string;
     name: string;
@@ -43,13 +52,20 @@ export async function POST(req: Request) {
   }
   const className = new Map(classes.map((c) => [c.id, c.name]));
 
-  const { data: repData } = classes.length
+  const { data: repData, error: repErr } = classes.length
     ? await supabase
         .from("daily_reports")
         .select("class_id,content,absent_count,late_count,violation_count,commendation_count,status")
         .in("class_id", classes.map((c) => c.id))
         .eq("date", date)
-    : { data: [] };
+    : { data: [], error: null };
+  if (repErr) {
+    console.error("[ai/daily-digest] reports:", repErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
   const reports = ((repData ?? []) as {
     class_id: string;
     content: string | null;

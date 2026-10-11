@@ -871,8 +871,24 @@ export async function POST(
   // trong DB, DC-01 nhung template; ten trong do bi minimizePrompt alias
   // nhung neu thieu khoi used se khong duoc restore (alias leak output).
   const usedNames = collectUsedNames({ input, ctx }, roster.names);
+  // CR-049 r15 L: key thuoc schema tool (lesson, note, material_id...)
+  // duoc giu nguyen - builder doc input.<key>; doi key do se mat du lieu
+  // ("Lesson" la ten nhan vien hop le). Key tuy y ngoai schema van bi
+  // minimize (r14: PII trong key).
+  const schemaKeys = new Set(
+    [...tool.fields, ...(tool.coDraftFields ?? [])].map((f) => f.key),
+  );
+  for (const k of [
+    "material_id",
+    "matrix_id",
+    "pack",
+    "tf_score",
+    "approved_only",
+    "shuffle",
+  ])
+    schemaKeys.add(k);
   const { system, prompt } = tool.buildPrompt(
-    minimizeDeep(input, roster.names),
+    minimizeDeep(input, roster.names, schemaKeys),
     ctx,
   );
   const safePrompt = minimizePrompt(prompt, roster.names);

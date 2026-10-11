@@ -36,13 +36,22 @@ export async function POST(req: Request) {
     title: string;
     detail: string | null;
   };
-  const { data: cls } = warn.class_id
+  // r15 M: loi lookup lop khong duoc bien thanh "-" roi goi AI - phan
+  // biet class_id null (hop le) voi query loi (fail-closed).
+  const { data: cls, error: clsErr } = warn.class_id
     ? await supabase
         .from("classes")
         .select("name")
         .eq("id", warn.class_id)
         .maybeSingle()
-    : { data: null };
+    : { data: null, error: null };
+  if (clsErr) {
+    console.error("[ai/warning-advice] class lookup:", clsErr.message);
+    return NextResponse.json(
+      { error: "Không tải đủ dữ liệu nguồn." },
+      { status: 500 },
+    );
+  }
 
   const prompt = `Bạn là cố vấn quản lý cho Ban Giám Hiệu trường phổ thông Việt Nam. Cảnh báo sớm sau cần phương án xử lý:
 

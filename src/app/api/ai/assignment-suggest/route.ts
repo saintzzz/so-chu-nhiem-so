@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
-import { minimizeDeep } from "@/lib/ai-privacy";
+import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -79,6 +80,18 @@ export async function POST(req: Request) {
     mon_hoc: [...subjName.values()],
   };
 
+  // r15 M: ten lop/mon la chuoi DB tuy y - co the chua ten nguoi NGOAI
+  // map GV (vd ten HS trong ten lop). Minimize theo roster truong day
+  // du; alias nghiep vu GVxx giu nguyen de deanon dung.
+  const roster = await schoolPiiNames(sid);
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const allNames = mergePiiNames(names, roster.names);
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -86,7 +99,7 @@ export async function POST(req: Request) {
     kind: "assignment-suggest",
     system:
       "Bạn là trợ lý điều hành phân công giảng dạy cho BGH trường THCS. Đề xuất thực tế theo đội ngũ hiện có. Không emoji.",
-    prompt: `Đề xuất phân công giảng dạy năm học từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, names))}.
+    prompt: `Đề xuất phân công giảng dạy năm học từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, allNames))}.
 
 Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối lớp hợp lý, GV kiêm nhiệm cần cân đối, lưu ý cho BGH. Mỗi đề xuất 1 dòng, dùng mã GV (GV01, GV02...), không đánh số.`,
     expectedShape: '{"lines": ["đề xuất 1", "đề xuất 2"]}',
@@ -94,7 +107,7 @@ Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối 
     // r12 H3: facts embed alias GVxx san -> ten that chi co trong
     // teachers, phai khai bao source de usedNames bat duoc (deanon
     // dung pham vi, chan inject alias).
-    pii: { names, source: teachers },
+    pii: { names: allNames, source: { teachers, facts } },
     parse: (text) => {
       try {
         const o = JSON.parse(text) as { lines?: string[] };

@@ -1,0 +1,108 @@
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Share
+You said:
+
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day la vong REVIEW DOC LAP thu 15 - cac vong truoc da triage/fix. KHONG sua code, chi doc va bao cao.
+
+Repo: Next.js 16 + Supabase (Postgres RLS), quan ly truong hoc Viet Nam. Trong tam adversarial:
+
+supabase/migrations/20261205_cr049_r14_fixes.sql (moi nhat): scn_is_dept_head + scn_dept_in_school, dm_ins/upd/del BGH bound, grade_book_state_read scoped theo class trong scope_key seg4. Sweep THEM: con policy/function nao self-attribution hoac role-branch thieu tenant anchor? Check ca SELECT policies chi co is_staff() global - metadata nao con leak cross-truong?
+
+src/lib/ai-privacy.ts: minimizeDeep gio xu ly ca KEY (out[mk]) + collectUsedNames walk key. Kiem: key minimize co the pha contract JSON nao khong (prompt builder dung key co dinh)? deanon restore dung khong?
+
+emulation-summary / dept-brief / class-analysis / assignment-suggest: minimizeDeep facts truoc stringify. dept-brief: dept user school NULL -> names rong (chi pattern redact) - co duong nao lo ten ca nhan ra provider khong?
+
+suggest-tasks + assignment-suggest: fail-closed tren source errors. Sweep THEM tat ca AI routes: con route nao bo qua query error roi goi AI tren du lieu thieu?
+
+Toan bo: security/RLS/privacy/correctness khac ban tim thay. Moi finding: severity, file:line, kich ban khai thac, fix toi thieu. Chi bao cao dieu chung minh duoc tu source.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+
+…
+Show more
+11:40 PM
+Worked for 4m 32s
+ChatGPT said:
+
+Đã review source tại d3dee31185eff38b7bd4719dc522b71f7406831b. Không sửa code, không gọi provider hay mutation DB. Có 5 findings: 3 MEDIUM, 2 LOW.
+
+MEDIUM - dept-brief vẫn có đường gửi tên cá nhân trong tên trường.
+
+File: src/app/api/ai/dept-brief/route.ts:63, :74, :84.
+
+Khi profile.school_id NULL, rosterNames = []; nếu có school, route chỉ tải roster của trường đó dù facts chứa nhiều trường. minimizeDeep chỉ redact pattern số/email, không nhận diện tên ngoài map.
+
+Kịch bản: createSchool cho phép so_gd/admin lưu tên tùy ý, chỉ kiểm tra không rỗng và dài tối đa 200 ký tự (src/app/(app)/dept/actions.ts:54). Tên trường chứa tên học sinh thật, chẳng hạn THCS - Nguyễn Văn An, đi qua RPC vào perSchool.truong và được gửi nguyên tên tới provider/Devin. Đã kiểm chứng bằng helper thực tế với map rỗng.
+
+Fix tối thiểu: dùng định danh trường trong prompt thay tên free-text; hoặc tải roster đầy đủ của các trường xuất hiện trong stats, fail-closed và chỉ restore tên thực sự được dùng.
+
+MEDIUM - Roster của ba route phân tích vẫn quá hẹp đối với metadata free-text.
+
+File:
+
+src/app/api/ai/class-analysis/route.ts:69, :170.
+src/app/api/ai/attendance-insight/route.ts:66, :142.
+src/app/api/ai/assignment-suggest/route.ts:71, :89.
+
+Hai route đầu chỉ có tên học sinh active của lớp; route cuối chỉ có tên các giáo viên được query. Tên lớp/môn vẫn là chuỗi DB tùy ý. Minimization trước stringify không bảo vệ tên người không nằm trong map.
+
+Kịch bản: BGH đặt tên lớp 6A - CN: Nguyễn Văn An, trong đó An là giáo viên; gọi class-analysis hoặc attendance-insight với dữ liệu đủ để chạy AI. Tên An không thuộc roster học sinh và được gửi nguyên văn. Tương tự, tên học sinh trong tên lớp/môn vượt map giáo viên của assignment-suggest. Đã kiểm chứng fragment prompt bằng helper thực tế.
+
+Fix tối thiểu: dùng schoolPiiNames đầy đủ cho minimization; giữ riêng alias nghiệp vụ hiện tại và giới hạn map restore theo raw facts/đối tượng được phép trả về.
+
+MEDIUM - period-log-summary vẫn gọi AI khi query nguồn môn học lỗi.
+
+File: src/app/api/ai/period-log-summary/route.ts:86, :104, :124.
+
+Query subjects chỉ lấy data, bỏ error. Khi query lỗi, subjName rỗng, mọi môn thành "-". Nếu timetable/logs và roster thành công, route vẫn gọi AI để nhận xét môn nào nhiều/ít hoặc chưa ghi trên facts thiếu.
+
+warning-advice cũng bỏ lỗi lookup lớp tại src/app/api/ai/warning-advice/route.ts:39, thay lớp bằng "-" rồi gọi AI.
+
+Fix tối thiểu: kiểm tra lỗi từng query trước dựng prompt; lỗi nguồn trả 500. Phân biệt trường hợp không có class_id hợp lệ với lookup có ID nhưng lỗi/không tìm thấy.
+
+LOW - Minimization key có thể phá contract của prompt builder.
+
+File: src/lib/ai-privacy.ts:148; src/app/api/studio/tools/[code]/generate/route.ts:875; src/lib/tvc/prompts.ts:52.
+
+minimizeDeep đổi cả key cố định trước khi builder truy cập input.lesson, input.note… Regex tên không phân biệt hoa/thường.
+
+Kịch bản được source cho phép: BGH tạo staff có fullName = "Lesson"; validation chỉ yêu cầu tên không rỗng (src/app/(app)/school/actions.ts:593). Roster chứa tên đó, nên {lesson:"Phương trình bậc hai"} thành {GVxxx:"Phương trình bậc hai"}. Chạy helper và builder DC-01 thực tế cho kết quả bài "theo YCCĐ trên", mất chủ đề người dùng nhập. Deanon output không khôi phục được input đã mất trước dựng prompt.
+
+Fix tối thiểu: giữ nguyên key schema đã allowlist khi builder đọc input; chỉ minimize value. Với key tùy ý cần serialize, xử lý riêng sau bước đọc schema.
+
+LOW - daily-digest báo “chưa nộp” khi nguồn đọc lỗi.
+
+File: src/app/api/ai/daily-digest/route.ts:28, :46, :63.
+
+Cả query lớp và báo cáo đều bỏ error. Lỗi đọc nguồn bị chuyển thành mảng rỗng và HTTP 200 với thông báo “Chưa có lớp nào nộp báo cáo”, kể cả khi DB có báo cáo submitted. Nhánh này không gọi provider, nhưng trả kết luận nghiệp vụ sai.
+
+Fix tối thiểu: check lỗi hai query và trả 500; chỉ thông báo chưa nộp khi query thành công.
+
+Các sửa R14 đã được xác nhận: scn_is_dept_head có anchor trường hiện tại; ba policy dm_* bind nhánh BGH; grade_book_state_read scope theo class ở segment 4. Sweep migrations chưa chứng minh thêm bypass tenant hoặc SELECT metadata chỉ dựa vào is_staff() global còn hiệu lực. Key chứa tên/newline đã được minimize và restore đúng trong payload kiểm chứng thông thường; lỗi contract ở finding 4 vẫn còn.
+
+VERDICT: NOT-CLEAN
+
+11:45 PM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++55,107
+-4,325
+Outputs
+Create a file or site

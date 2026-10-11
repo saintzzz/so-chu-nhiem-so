@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 const WEEKDAY = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -132,6 +134,19 @@ export async function POST(req: Request) {
     });
   }
 
+  // r15 M: ten lop/mon la chuoi DB tuy y - co the chua ten nguoi NGOAI
+  // map HS cua lop. Minimize theo roster truong day du, giu alias nghiep
+  // vu HS001 cho deanon.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const allNames = mergePiiNames(piiNames, roster.names);
+  const classFacts = { lop: (cls as { name?: string }).name };
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -139,14 +154,14 @@ export async function POST(req: Request) {
     kind: "attendance-insight",
     system:
       "Bạn là trợ lý phân tích chuyên cần cho GVCN trường THCS. Chỉ ra pattern cụ thể theo số liệu, không suy đoán nguyên nhân y khoa. Không emoji.",
-    prompt: `Phân tích dữ liệu vắng/muộn của học sinh lớp ${(cls as { name?: string }).name} (JSON): ${JSON.stringify(facts)}.
+    prompt: `Phân tích dữ liệu vắng/muộn của học sinh lớp ${minimizeDeep(classFacts.lop, allNames)} (JSON): ${JSON.stringify(minimizeDeep(facts, allNames))}.
 
 Viết 3-5 nhận xét: ai vắng nhiều nhất, ai có pattern theo ngày trong tuần (VD hay vắng thứ 2), nhóm cần liên hệ phụ huynh ngay, 1-2 đề xuất. Mỗi nhận xét 1 dòng, nêu mã học sinh (ma_hs), không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1000,
     // r12 H3: facts embed alias HSxx san -> ten that chi co trong
     // students (lop cua caller), khai bao source cho usedNames.
-    pii: { names: piiNames, source: students },
+    pii: { names: allNames, source: { students, classFacts, facts } },
     // text da duoc respondWithAi deanon theo usedNames (r12 H3) -
     // khong deanon lai full roster o day se mo lai lo inject alias.
     parse: (text) => {

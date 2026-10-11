@@ -325,3 +325,21 @@ Verdict: **NOT-CLEAN - 3 findings (3 HIGH)**
 - `check-consistency` PASS | `npm run build` PASS
 - prod verified: `scn_is_dept_head` bound + `dm_*` + `grade_book_state_read` bound
 - migration: `20261205_cr049_r14_fixes.sql`
+
+---
+
+## Round 15 (Codex Cloud @ d3dee31) - NOT-CLEAN: 5 findings (3M/2L, 0 HIGH)
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | M | `dept-brief`: ten truong la free-text tuy y (`createSchool` chi check non-empty) - "THCS - Nguyen Van An" gui nguyen toi provider khi dept user khong co roster | **Fixed** - alias moi truong thanh `TRxx` (self-contained) + merge roster khi caller co school | guard tests |
+| 2 | M | `class-analysis`/`attendance-insight`/`assignment-suggest`: map minimize chi gom HS lop / GV query - ten lop/mon la chuoi DB tuy y co the chua ten nguoi ngoai map | **Fixed** - `mergePiiNames`: minimize theo `schoolPiiNames` day du, alias nghiep vu giu nguyen, roster doi prefix `R*` tranh trung alias | guard tests |
+| 3 | M | `period-log-summary` bo loi query subjects (moi mon thanh "-"); `warning-advice` bo loi lookup lop | **Fixed** - check `subjErr`/`clsErr` -> 500; class_id null hop le, query loi fail-closed | guard tests |
+| 4 | L | `minimizeDeep` doi ca key schema (`lesson`) - roster co nhan vien ten "Lesson" (case-insensitive) thi builder mat `input.lesson` | **Fixed** - `preserveKeys` (tool.fields + coDraftFields + control keys) giu key schema o depth 0; key tuy y van minimize | guard tests |
+| 5 | L | `daily-digest` bao "chua nop" khi query lop/bao cao loi | **Fixed** - check `clsErr`/`repErr` -> 500 | guard tests |
+
+### Gates r15
+
+- `npx tsc --noEmit` PASS | eslint changed-paths clean | tests 201 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- Khong co migration moi trong r15 (thuan code fixes)

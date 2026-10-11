@@ -4,7 +4,8 @@ import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
-import { minimizeDeep } from "@/lib/ai-privacy";
+import { minimizeDeep, mergePiiNames } from "@/lib/ai-privacy";
+import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasAnyRole } from "@/lib/roles";
 
 /**
@@ -160,6 +161,18 @@ export async function POST(req: Request) {
     hs_dau_lop: studentAvgs.slice(0, 5).map((s) => ({ ma_hs: s.ma_hs, tb: s.tb })),
   };
 
+  // r15 M: ten lop/mon la chuoi DB tuy y - co the chua ten nguoi NGOAI
+  // map HS cua lop ("6A - CN: Nguyen Van An"). Minimize theo roster
+  // truong day du; map nghiep vu HS001 giu nguyen de deanon dung.
+  const roster = await schoolPiiNames(profile.school_id ?? "");
+  if (roster.error) {
+    return NextResponse.json(
+      { error: "Không tải được dữ liệu nguồn, thử lại sau." },
+      { status: 500 },
+    );
+  }
+  const allNames = mergePiiNames(piiNames, roster.names);
+
   return respondWithAi<{ lines: string[] }>({
     req,
     supabase,
@@ -167,14 +180,14 @@ export async function POST(req: Request) {
     kind: "class-analysis",
     system:
       "Bạn là trợ lý phân tích kết quả học tập cho GVCN/BGH trường THCS. Nhận xét thực tế, cụ thể theo số liệu. Không emoji.",
-    prompt: `Phân tích kết quả học tập lớp từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, piiNames))}.
+    prompt: `Phân tích kết quả học tập lớp từ số liệu (JSON): ${JSON.stringify(minimizeDeep(facts, allNames))}.
 
 Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu mã học sinh), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1200,
     // r12 H3: facts embed alias HSxx san -> ten that chi co trong
     // students (lop cua caller - ho da nhin thay ten), khai bao source.
-    pii: { names: piiNames, source: { students, facts } },
+    pii: { names: allNames, source: { students, facts } },
     // text da duoc respondWithAi deanon theo usedNames (r12 H3) -
     // khong deanon lai full roster o day se mo lai lo inject alias.
     parse: (text) => {

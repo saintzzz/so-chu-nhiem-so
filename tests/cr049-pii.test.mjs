@@ -634,3 +634,41 @@ test("guard r14: routes minimize truoc stringify + fail-closed nguon", () => {
   assert.match(st, /evErr \|\| tkErr/);
   assert.match(st, /cErr \|\| !classData/);
 });
+
+test("guard r15: mergePiiNames + preserveKeys", () => {
+  const src = read("src/lib/ai-privacy.ts");
+  assert.match(src, /export function mergePiiNames/);
+  assert.match(src, /alias: `R\$\{r\.alias\}`/,
+    "alias roster phai doi prefix de khong dung alias nghiep vu");
+  assert.match(src, /preserveKeys\?\.has\(k\)/,
+    "key schema tool phai giu nguyen cho builder");
+});
+
+test("guard r15: 3 route widen roster + dept-brief TR-alias", () => {
+  const ca = read("src/app/api/ai/class-analysis/route.ts");
+  assert.match(ca, /schoolPiiNames\(profile\.school_id/);
+  assert.match(ca, /mergePiiNames\(piiNames, roster\.names\)/);
+  const ai = read("src/app/api/ai/attendance-insight/route.ts");
+  assert.match(ai, /mergePiiNames\(piiNames, roster\.names\)/);
+  const asg = read("src/app/api/ai/assignment-suggest/route.ts");
+  assert.match(asg, /mergePiiNames\(names, roster\.names\)/);
+  const db = read("src/app/api/ai/dept-brief/route.ts");
+  assert.match(db, /alias: `TR\$\{String\(i \+ 1\)/,
+    "ten truong phai alias TRxx - ten truong la free-text co the chua ten nguoi");
+});
+
+test("guard r15: routes fail-closed tren loi nguon con sot", () => {
+  const pl = read("src/app/api/ai/period-log-summary/route.ts");
+  assert.match(pl, /subjErr/);
+  const wa = read("src/app/api/ai/warning-advice/route.ts");
+  assert.match(wa, /clsErr/);
+  const dd = read("src/app/api/ai/daily-digest/route.ts");
+  assert.match(dd, /clsErr/);
+  assert.match(dd, /repErr/);
+});
+
+test("guard r15: studio generate preserveKeys cho builder", () => {
+  const gen = read("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(gen, /schemaKeys/);
+  assert.match(gen, /minimizeDeep\(input, roster\.names, schemaKeys\)/);
+});

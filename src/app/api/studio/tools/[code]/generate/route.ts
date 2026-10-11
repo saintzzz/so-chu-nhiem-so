@@ -552,24 +552,34 @@ export async function POST(
     // R2: fetch theo tung standard co cap rieng thay vi 1 query cap chung -
     // standard "hot" truoc day an het 5000 slots lam cell khac doi cau.
     // Moi standard lay toi da 300 ung vien (du cho moi cell dung no).
-    // R3: cap theo standard van co the loc sot qtype/level can - limit ap
-    // TRUOC filter phia client, nen 300 cau trac nghiem an het slot cua
-    // 1 cau tu luan. Fetch theo cap (standard x qtype) co cap rieng cho
-    // nhu cau cua cell, cong pool nho moi standard cho tier thay the.
-    const PAIR_LIMIT = 200;
+    // R4: cap theo (standard x qtype) van co the loc sot level can - 200
+    // cau "nhan biet" an het slot cua 1 cau "van dung" cung qtype. Fetch
+    // theo bo ba (standard x qtype x level) khop chinh xac yeu cau cell,
+    // cong pool nho moi standard cho cac tier thay the (khac qtype/level).
+    const TRIPLE_LIMIT = 120;
     const POOL_LIMIT = 80;
     const CHUNK = 8;
-    const pairs = [
+    const triples = [
       ...new Map(
         cells.map((c) => [
-          `${c.standard_id}|${c.qtype}`,
-          { sid: c.standard_id, qt: c.qtype },
+          `${c.standard_id}|${c.qtype}|${c.level}`,
+          { sid: c.standard_id, qt: c.qtype, lv: c.level },
         ]),
       ).values(),
     ];
     const jobs = [
-      ...pairs.map((p) => ({ sid: p.sid, qt: p.qt as string | null, limit: PAIR_LIMIT })),
-      ...allStdIds.map((sid) => ({ sid, qt: null as string | null, limit: POOL_LIMIT })),
+      ...triples.map((p) => ({
+        sid: p.sid,
+        qt: p.qt as string | null,
+        lv: p.lv as string | null,
+        limit: TRIPLE_LIMIT,
+      })),
+      ...allStdIds.map((sid) => ({
+        sid,
+        qt: null as string | null,
+        lv: null as string | null,
+        limit: POOL_LIMIT,
+      })),
     ];
     const rawBank: Question[] = [];
     let bankFailed = false;
@@ -582,6 +592,7 @@ export async function POST(
             .overlaps("standard_ids", [j.sid])
             .limit(j.limit);
           if (j.qt) q = q.eq("qtype", j.qt);
+          if (j.lv) q = q.eq("level", j.lv);
           if (approvedOnly) q = q.eq("review_state", "approved");
           else q = q.neq("review_state", "flagged");
           return q;
@@ -847,7 +858,15 @@ export async function POST(
       : undefined,
   );
 
-  if (!ai.doc && (ai.error === "quota" || ai.error === "bad_json")) {
+  // R4: Devin fallback cung nam trong budget route - tao session toi 20s
+  // + insert/select jobs, khong duoc bat dau khi da gan het gio.
+  const routeLeftForFallback =
+    ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
+  if (
+    !ai.doc &&
+    (ai.error === "quota" || ai.error === "bad_json") &&
+    routeLeftForFallback > 15_000
+  ) {
     const job = await fallbackToDevin({
       supabase,
       kind: `tvc-tool:${code}`,
@@ -856,6 +875,7 @@ export async function POST(
         '{"title":"...","meta":[["nhan","gia tri"]],"sections":[{"title":"...","blocks":[{"kind":"para|list|table|note|kv","text|items|rows|header":"..."}]}]}',
       createdBy: user.id,
       req,
+      timeoutMs: routeLeftForFallback - 5_000,
     });
     if (job) {
       await supabase.from("tvc_generations").insert({
@@ -892,7 +912,10 @@ export async function POST(
       const routeLeft = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
       if (turns.length >= 2 && routeLeft >= 25_000) {
         const audio = await synthesizeDialogue(turns, routeLeft - 15_000);
-        if (audio) {
+        // R4: upload cung nam trong deadline route - ket qua TTS ve sau
+        // khi het budget bi bo, khong upload muon.
+        const leftAfter = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
+        if (audio && leftAfter > 8_000) {
           audioPath = await uploadTtsAudio(
             (profile as { school_id?: string | null }).school_id ?? null,
             audio,

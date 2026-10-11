@@ -45,12 +45,30 @@ export function aiEndpointAllowed(url: string): boolean {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  if (!allow.length) return true;
+  let u: URL;
   try {
-    return allow.includes(new URL(url).hostname);
+    u = new URL(url);
   } catch {
     return false;
   }
+  // R4: HTTPS bat buoc ngoai localhost - http://allowed.example tuong lai
+  // giu nguyen hostname nhung gui bearer key cleartext.
+  const isLocal = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  if (u.protocol !== "https:" && !isLocal) return false;
+  if (!allow.length) return true;
+  return allow.includes(u.hostname);
+}
+
+/** R4: endpoint co dinh cua tung provider - tat ca transports deu qua
+ * AI_ALLOWED_ENDPOINTS, khong chi slot openai. */
+export function providerEndpointAllowed(provider: AiProvider): boolean {
+  const host =
+    provider === "gemini"
+      ? "https://generativelanguage.googleapis.com"
+      : provider === "openai"
+        ? null // openai di qua openaiBaseUrl() - da fail-closed
+        : "https://api.anthropic.com";
+  return host === null || aiEndpointAllowed(host);
 }
 
 /**
@@ -254,6 +272,9 @@ async function callGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${cfg.key}`,
     {
       method: "POST",
+      // R4: khong follow redirect - endpoint duoc phep co the 307 sang host
+      // ngoai allowlist, mang theo key trong query/body.
+      redirect: "error",
       signal: callSignal(opts),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -309,6 +330,7 @@ async function callOpenAI(
   const base = openaiBaseUrl();
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
+    redirect: "error",
     signal: callSignal(opts),
     headers: {
       "Content-Type": "application/json",
@@ -344,6 +366,7 @@ async function callAnthropic(
 ): Promise<{ text: string | null; error: AiErrorKind | null }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    redirect: "error",
     signal: callSignal(opts),
     headers: {
       "Content-Type": "application/json",
@@ -413,6 +436,11 @@ export async function generateTextDetailed(
         const remaining = deadline - Date.now();
         if (remaining <= 0) return { text: null, error: "error" };
         o.timeoutMs = Math.min(o.timeoutMs ?? 25000, remaining);
+      }
+      // R4: endpoint co dinh cua provider cung phai nam trong allowlist -
+      // truoc day chi slot openai bi kiem tra (gemini/anthropic bypass).
+      if (!providerEndpointAllowed(cfg.provider)) {
+        return { text: null, error: "error" };
       }
       return cfg.provider === "gemini"
         ? await callGemini(cfg, prompt, o)

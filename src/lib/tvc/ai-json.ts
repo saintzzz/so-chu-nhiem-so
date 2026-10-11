@@ -56,6 +56,21 @@ export function isDocContent(v: unknown): v is DocContent {
   // huy ca candidate hop le; blocks:[null] thi no cleanDoc. Doc hop le phai
   // co it nhat 1 section, moi section >=1 block, moi block la object co
   // kind dang string. Appendix (neu co) cung phai cung hinh dang.
+  const validBlock = (b: unknown): boolean => {
+    if (!b || typeof b !== "object") return false;
+    const blk = b as { kind?: unknown; text?: unknown; items?: unknown };
+    if (typeof blk.kind !== "string") return false;
+    // R4: payload phai dung kieu - text:42 tung qua predicate roi no .trim()
+    // luc clean/render; items khong phai array cung no cleanDoc.
+    if (blk.text !== undefined && blk.text !== null && typeof blk.text !== "string")
+      return false;
+    if (blk.items !== undefined && blk.items !== null) {
+      if (!Array.isArray(blk.items)) return false;
+      if (!blk.items.every((i) => typeof i === "string")) return false;
+    }
+    if (blk.kind === "list" && !Array.isArray(blk.items)) return false;
+    return true;
+  };
   const validSection = (s: unknown): boolean => {
     const sec = s as DocContent["sections"][0];
     return (
@@ -63,9 +78,7 @@ export function isDocContent(v: unknown): v is DocContent {
       typeof sec.title === "string" &&
       Array.isArray(sec.blocks) &&
       sec.blocks.length > 0 &&
-      sec.blocks.every(
-        (b) => !!b && typeof b === "object" && typeof b.kind === "string",
-      )
+      sec.blocks.every(validBlock)
     );
   };
   return (
@@ -74,7 +87,11 @@ export function isDocContent(v: unknown): v is DocContent {
     Array.isArray(d.sections) &&
     d.sections.length > 0 &&
     d.sections.every(validSection) &&
-    (!Array.isArray(d.appendix) || d.appendix.every(validSection))
+    // R4: appendix: {} tung duoc chap nhan (neu khong phai array thi bo qua
+    // check) roi .map no trong cleanDoc - phai la array hoac absent/null.
+    (d.appendix === undefined ||
+      d.appendix === null ||
+      (Array.isArray(d.appendix) && d.appendix.every(validSection)))
   );
 }
 
@@ -161,11 +178,12 @@ export async function generateDoc(
         // race va huy ca candidate hop le dang chay cham hon.
         validate: (t) => {
           const parsed = extractJson<DocContent>(t);
-          return (
-            parsed !== null &&
-            isDocContent(parsed) &&
-            (opts?.validate?.(parsed) ?? true)
-          );
+          if (!parsed || !isDocContent(parsed)) return false;
+          // R4: validate tren doc DA CLEAN - "chi toan para rong" tung thang
+          // race roi cleanDoc tra ve 0 block. It nhat 1 block phai con lai.
+          const cleaned = cleanDoc(parsed);
+          if (!cleaned.sections.some((s) => s.blocks.length > 0)) return false;
+          return opts?.validate?.(cleaned) ?? true;
         },
         maxTotalMs: left,
       },
@@ -180,8 +198,14 @@ export async function generateDoc(
       continue;
     }
     const parsed = extractJson<DocContent>(r.text);
-    if (parsed && isDocContent(parsed) && (opts?.validate?.(parsed) ?? true)) {
-      return { doc: cleanDoc(parsed), provider: r.provider, error: null };
+    if (parsed && isDocContent(parsed)) {
+      const cleaned = cleanDoc(parsed);
+      if (
+        cleaned.sections.some((s) => s.blocks.length > 0) &&
+        (opts?.validate?.(cleaned) ?? true)
+      ) {
+        return { doc: cleaned, provider: r.provider, error: null };
+      }
     }
     // Parse/shape/tool-validation fail -> attempt 2 co retryNote corrective.
   }

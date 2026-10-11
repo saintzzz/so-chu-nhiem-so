@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { aiProviderAllowed } from "@/lib/ai";
+import { aiProviderAllowed, aiEndpointAllowed } from "@/lib/ai";
 
 const DEVIN_API_BASE = "https://api.devin.ai/v1";
 
@@ -22,18 +22,21 @@ export function devinEnabled(): boolean {
   // khong co 'devin' trong list cung la cam processor nay.
   if (process.env.AI_ALLOW_DEVIN_FALLBACK === "false") return false;
   if (!aiProviderAllowed("devin")) return false;
+  // R4: devin session API cung la endpoint ngoai - tuan theo allowlist.
+  if (!aiEndpointAllowed(DEVIN_API_BASE)) return false;
   return Boolean(process.env.DEVIN_API_KEY);
 }
 
 export async function createDevinSession(
   prompt: string,
+  timeoutMs = 20_000,
 ): Promise<DevinSession | null> {
   const key = process.env.DEVIN_API_KEY;
   if (!key) return null;
   try {
     const res = await fetch(`${DEVIN_API_BASE}/sessions`, {
       method: "POST",
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(Math.min(20_000, Math.max(1_000, timeoutMs))),
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
@@ -129,6 +132,8 @@ export async function fallbackToDevin(params: {
   expectedShape: string;
   createdBy: string;
   req: Request;
+  /** R4: budget con lai cua route - session-create khong vuot deadline. */
+  timeoutMs?: number;
 }): Promise<{ jobId: string; devinUrl: string } | null> {
   if (!devinEnabled()) return null;
   const { supabase, kind, prompt, expectedShape, createdBy, req } = params;
@@ -154,6 +159,7 @@ export async function fallbackToDevin(params: {
       expectedShape,
       callbackBase: devinCallbackBase(req),
     }),
+    params.timeoutMs,
   );
   if (!session) {
     await supabase.from("ai_jobs").update({ status: "failed" }).eq("id", row.id);

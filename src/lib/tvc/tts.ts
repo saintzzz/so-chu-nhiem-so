@@ -69,20 +69,27 @@ async function ttsSegment(
   voice: string,
   keys: string[],
   url: string,
-  timeoutMs: number,
+  deadlineAt: number,
 ): Promise<Buffer | null> {
   const model = process.env.TTS_MODEL ?? "gpt-4o-mini-tts";
   for (const key of keys) {
+    // R4: budget tinh lai TRUOC MOI KEY - truoc day moi key nhan lai
+    // timeout day du nen 30s budget chay toi 90s khi key loi.
+    const left = deadlineAt - Date.now();
+    if (left < 1_000) break;
     try {
       const res = await fetch(url, {
         method: "POST",
+        // R4: khong follow redirect - 307/308 forward body + bearer key sang
+        // host ngoai allowlist.
+        redirect: "error",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, voice, input: text.slice(0, 4000) }),
-        signal: AbortSignal.timeout(Math.min(30_000, Math.max(1_000, timeoutMs))),
+        signal: AbortSignal.timeout(Math.min(30_000, left)),
       });
       if (res.ok) return Buffer.from(await res.arrayBuffer());
     } catch {
-      // Timeout/network - thu key tiep.
+      // Timeout/network/redirect - thu key tiep.
     }
   }
   return null;
@@ -110,7 +117,7 @@ export async function synthesizeDialogue(
     .filter(Boolean);
   const effectiveKeys = keys.length ? keys : expandKeys("openai");
   if (!turns.length || !effectiveKeys.length) return null;
-  const started = Date.now();
+  const deadlineAt = Date.now() + deadlineMs;
   const voiceA = process.env.TTS_VOICE_A ?? "alloy";
   const voiceB = process.env.TTS_VOICE_B ?? "nova";
   const speakers = new Map<string, string>();
@@ -122,8 +129,7 @@ export async function synthesizeDialogue(
   const parts: Buffer[] = [];
   // Gioi han 4 song song de khong doi qua lau.
   for (let i = 0; i < turns.length; i += 4) {
-    const left = deadlineMs - (Date.now() - started);
-    if (left < 8_000) return null; // het budget route - bo audio, giu doc.
+    if (deadlineAt - Date.now() < 8_000) return null; // het budget - bo audio, giu doc.
     const segs = await Promise.all(
       turns.slice(i, i + 4).map((t) =>
         ttsSegment(
@@ -131,7 +137,7 @@ export async function synthesizeDialogue(
           speakers.get(t.speaker) ?? voiceA,
           effectiveKeys,
           url,
-          left,
+          deadlineAt,
         ),
       ),
     );

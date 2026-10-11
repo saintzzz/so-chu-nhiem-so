@@ -61,6 +61,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad_result_shape" }, { status: 400 });
   }
 
+  // R4: fallback docs cung phai qua schema doc giong direct path -
+  // {"title":"","sections":[]} tung duoc ghi nhan "done" va render malformed.
+  // Doc loi -> danh dau failed de client fallback rule-based thay vi poll mai.
+  if (row.kind.startsWith("tvc-tool:")) {
+    const { isDocContent, sectionsLookEnglish } = await import(
+      "@/lib/tvc/ai-json"
+    );
+    const toolCode = row.kind.slice("tvc-tool:".length);
+    const bad =
+      !isDocContent(body.result) ||
+      (["A-01", "A-03"].includes(toolCode) &&
+        !sectionsLookEnglish(body.result));
+    if (bad) {
+      await admin
+        .from("ai_jobs")
+        .update({ status: "failed" })
+        .eq("id", row.id)
+        .eq("status", "pending");
+      return NextResponse.json({ error: "bad_doc" }, { status: 400 });
+    }
+  }
+
   // Conditional update on status=pending: mot callback duy nhat thang race;
   // callback thu hai tra ve 0 rows -> 409 thay vi ghi de ket qua.
   const { data: updated, error } = await admin

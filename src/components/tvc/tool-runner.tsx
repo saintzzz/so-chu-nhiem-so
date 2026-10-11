@@ -196,7 +196,14 @@ export function ToolRunner({
         aiJob.start(data.jobId, data.sessionUrl, {
           onDone: (res: unknown) => {
             const d = res as DocContent;
-            const ok = d && typeof d.title === "string" && Array.isArray(d.sections);
+            // R4: defensive check day du - server da validate schema cho
+            // tvc-tool:* jobs, nhung client van loc doc rong/malformed.
+            const ok =
+              d &&
+              typeof d.title === "string" &&
+              Array.isArray(d.sections) &&
+              d.sections.length > 0 &&
+              d.sections.every((s) => Array.isArray(s?.blocks));
             // CR-037: async path cung loc section lac de cho DC-01
             const clean = ok && tool.code === "DC-01" ? sanitizeKhbdDoc(d) : ok ? d : null;
             if (clean) {

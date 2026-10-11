@@ -2,8 +2,7 @@
 
 - Commit review: `ae0da3e` (r25 remediation)
 - Verdict: **NOT-CLEAN — 14 findings (2H/10M/2L)**
-- Raw report: extract lai tu Codex thread khi dispatch r27 (DOM virtualized,
-  khong luu duoc luc doc).
+- Raw report: `docs/reviews/codex-r26-report.txt` (scroll-extract tu Codex DOM).
 
 ## Doc quan trong: escalation sang class RLS tenant-consistency
 

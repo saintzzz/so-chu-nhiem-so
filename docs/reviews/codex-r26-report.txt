@@ -1,0 +1,124 @@
+Skip to content
+Codex
+New chat
+Scheduled
+Library
+Plugins
+Explore
+Recents
+Review doc lap repo https://github.com/saintzzz/so-chu-nhie…
+Doc review so-chu-nhiem-so @ commit c908cbe (master). Vong…
+Doc review so-chu-nhiem-so @ commit f8ba665 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 67e8633 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 3e52900 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 3f3d1c7 (master). Vong…
+Doc review so-chu-nhiem-so @ commit 1337d6e (master). Day l…
+Doc review so-chu-nhiem-so @ commit f8cba2b (master). Day l…
+Doc review so-chu-nhiem-so @ commit ba4a714 (master). Day l…
+Doc review so-chu-nhiem-so @ commit f716d84 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 17a73c1 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d3dee31 (master). Day l…
+Doc review so-chu-nhiem-so @ commit d6aafe7 (master). Day l…
+Doc review so-chu-nhiem-so @ commit 639959b (master). Day l…
+REVIEW ROUND 11 - security/privacy verification pass on com…
+You are the independent external reviewer for repo https://…
+Whole-repo independent review of github.com/saintzzz/so-chu…
+Linh Le Duy
+Plus
+Share
+You said:
+Review doc lap repo 
+https://github.com/saintzzz/so-chu-nhiem-so tai commit ae0da3e (branch master). KHONG sua code, chi doc + bao cao.
+San pham: So Chu Nhiem So - Next.js 16 + Supabase + Vercel.
+Ngu canh: 25 round truoc da fix ~150 findings. Gate scripts/check-reliability.mjs da duoc hardening sau r25 (dynamic .from(), discarded awaits, bare fetchAllRows, .in("school_id"), .update(var) status, paginated-no-order, CAS predicate+select). Migration 20261209_cr049_r25_fixes.sql them token-based email claim (email_claim_token) + fulfill re-check approved + complete re-check authz.
+Hay review TOAN REPO tap trung:
+1. Security: RLS/policy bypass, SECURITY DEFINER RPC thieu authz, token claim/complete co the bi gia mao, tenant mixing.
+2. Correctness: loi DB bi nuot, pagination thieu order/limit, transitions khong CAS, coordination race con lai (ke ca trong RPC).
+3. Tinh nhat quan: marker activity_announcements + announcements + email flow.
+4. Reliability: action server tra {error} bi client bo qua; optimistic UI khong rollback.
+MOI finding canh bao: severity HIGH/MEDIUM/LOW + file:line + kich ban cu the (ai lam gi the nao) + fix toi thieu.
+Ket thuc bang dung 1 dong: VERDICT: CLEAN hoac VERDICT: NOT-CLEAN
+…
+Show more
+5:28 AM
+Worked for 5m 56s
+ChatGPT said:
+Review tại ae0da3ef8ff3533870a087225d8d445249d31b91. Đã đối chiếu source với cây GitHub; không sửa code, checkout gốc vẫn sạch. Các finding dưới đây dựa trên source và migration, chưa kiểm chứng bằng mutation trên DB.
+HIGH - GVCN có thể tự duyệt hoạt động qua RLS.
+File:line: supabase/migrations/20260925_cr016_role_scope.sql:318
+Kịch bản: GVCN gọi trực tiếp Supabase UPDATE hoạt động từ draft/pending sang approved. Policy act_upd chỉ kiểm tra vai trò và trường, không giới hạn cột status, transition hay lớp chủ nhiệm. Sau đó GVCN gọi announceActivity() cho lớp mình, vượt qua quy trình BGH duyệt. Policy còn cho phép sửa hoạt động lớp khác cùng trường. Migration multi-role chỉ chuyển cách kiểm tra role, không đóng quyền này.
+Fix tối thiểu: Giới hạn mutation của GVCN theo lớp chủ nhiệm; bảo vệ transition tại DB, chỉ BGH/PHT đúng scope được duyệt.
+HIGH - Announcement cho phép trộn trường của sender với lớp của tenant khác.
+File:line: supabase/migrations/20260925_cr016_role_scope.sql:348; src/app/(app)/parents/actions.ts:37
+Kịch bản: GVCN trường A gọi sendAnnouncement() với UUID lớp trường B. INSERT ghi school_id=A, nhưng policy không xác thực class_id/student_id thuộc A. Policy đọc tại supabase/migrations/20261121_cr049_org_scope_rls.sql:205 lại xác định scope theo lớp, khiến nhân viên B đọc được announcement do A chèn. Trong cùng trường, action cũng không chặn GVCN gửi email cho lớp khác mình chủ nhiệm.
+Fix tối thiểu: Kiểm tra quan hệ trường-lớp-học sinh và quyền chủ nhiệm ở action lẫn DB; ràng buộc các FK cùng tenant khi INSERT/UPDATE.
+MEDIUM - Activity attendance không xác thực quan hệ hoạt động-học sinh.
+File:line: supabase/migrations/20260925_cr016_role_scope.sql:330; src/app/(app)/activities/actions.ts:406
+Kịch bản: GVCN truyền học sinh lớp mình cùng UUID hoạt động lớp khác, kể cả trường khác, vào saveActivityAttendance(). Policy chỉ kiểm tra student_id; action upsert không kiểm tra học sinh thuộc lớp của hoạt động. Bản ghi không hợp lệ vẫn có thể được tạo.
+Fix tối thiểu: Tại DB, bắt buộc students.class_id = activities.class_id, kèm quyền ghi trên hoạt động và trường hiện tại.
+MEDIUM - Token không ngăn caller giả mạo kết quả email complete.
+File:line: supabase/migrations/20261209_cr049_r25_fixes.sql:116, :150, :151
+Kịch bản: GVCN có quyền announce gọi trực tiếp scn_announce_email_claim(), nhận token hợp lệ, rồi gọi complete với p_done=true, counters tùy ý mà không gửi email. Complete chỉ xác thực quyền, UID và token; lần chạy action sau thấy email_done=true và bỏ gửi. Không cần đoán token hoặc dùng token người khác.
+Fix tối thiểu: Chuyển RPC quản lý delivery sang service-only; server truyền actor đã xác thực và kiểm tra quyền. Browser không được tự ghi kết quả transport.
+MEDIUM - Complete thất bại sau khi gửi vẫn dẫn đến gửi trùng.
+File:line: src/app/(app)/activities/actions.ts:250, :263; supabase/migrations/20261209_cr049_r25_fixes.sql:106; src/lib/email.ts:205
+Kịch bản: Provider nhận email thành công nhưng RPC complete lỗi hoặc worker chết. Marker vẫn email_done=false. Sau năm phút, invocation mới lấy token mới và gửi lại cho toàn bộ phụ huynh. Transport không có idempotency key; token chỉ bảo vệ ghi marker, không bảo vệ side effect đã xảy ra.
+Fix tối thiểu: Dùng delivery ID ổn định theo announcement/người nhận làm provider idempotency key và lưu trạng thái từng delivery; xử lý trạng thái chưa rõ trước khi resend.
+MEDIUM - Retry có thể gửi email khác announcement đã lưu.
+File:line: src/app/(app)/activities/actions.ts:163, :250; supabase/migrations/20261209_cr049_r25_fixes.sql:34
+Kịch bản: Lần đầu đã tạo announcement nhưng email lookup/provider lỗi. Người có quyền sửa title/description của activity rồi retry. Fulfill giữ announcement cũ; email lại lấy nội dung activity mới. Nếu đổi lớp của activity, tập người nhận cũng có thể khác lớp trong announcement.
+Fix tối thiểu: Gửi email từ snapshot announcement đã link trong marker; cố định nội dung và lớp/người nhận của delivery.
+MEDIUM - Thua email claim vẫn báo kết quả thành công sai.
+File:line: src/app/(app)/activities/actions.ts:292, :305; src/components/activities/announce-list.tsx:45
+Kịch bản: Request A đang gửi email; B không claim được nên đọc marker có email_done=false, counters bằng 0. B bỏ qua giá trị email_done, trả kết quả bình thường. Client hiển thị “không có email phụ huynh”, dù email đang gửi hoặc A sẽ thất bại.
+Fix tối thiểu: Trả trạng thái emailPending khi marker chưa complete; client hiển thị đang xử lý và đọc lại kết quả.
+MEDIUM - Truy vấn qua biến builder vẫn nuốt lỗi DB.
+File:line: src/app/(app)/records/intake/page.tsx:32; src/app/(app)/activities/announce/page.tsx:23; src/app/(app)/school/journals/page.tsx:77; src/app/(app)/register/audit/page.tsx:142, :181, :211
+Kịch bản: Query trả error; code chỉ destructure data/count, rồi dựng danh sách rỗng hoặc count 0. BGH thấy không có nhật ký, delivery hay lớp thay vì lỗi tải nguồn. Dạng await query/await query.range(...) này vẫn vượt gate hiện tại.
+Fix tối thiểu: Bọc kết quả builder bằng must() hoặc kiểm tra error trước render; scanner phải theo dõi builder đến điểm await, kể cả destructuring và chain tiếp theo.
+MEDIUM - .in(class_id/student_id) vẫn bị coi nhầm là giới hạn cardinality.
+File:line: src/app/(app)/records/intake/page.tsx:43; src/app/(app)/academics/plans/page.tsx:93, :104; src/app/(app)/register/audit/page.tsx:110
+Kịch bản: BGH trường có 1.200 học sinh mở intake/plans. SELECT students không phân trang chỉ nhận tối đa khoảng 1.000 rows nhưng không có error. Sĩ số bị thiếu; plans và lịch sử của học sinh ngoài phần trả về biến mất. Query support plans cũng có thể vượt cap độc lập. must() không phát hiện truncation này.
+Fix tối thiểu: Phân trang bằng khóa duy nhất và mustRows(); scanner không được mặc định mọi .in(*_id) là bounded.
+MEDIUM - RPC incident giữ note nhưng vẫn ghi đè trạng thái mới hơn.
+File:line: supabase/migrations/20261109_r11_atomic_writes.sql:29; src/components/safety/followup-list.tsx:57
+Kịch bản: A và B cùng mở sự cố following. A chuyển sang resolved; B thêm note trên tab cũ, gửi kèm following. RPC append note nguyên tử nhưng UPDATE chỉ lọc ID, đưa sự cố đã xử lý về đang theo dõi.
+Fix tối thiểu: Truyền expected status/revision vào RPC, đưa vào WHERE và báo stale khi không cập nhật được; note-only không nên ghi lại status.
+MEDIUM - Upsert báo cáo ngày có thể đưa submitted về draft.
+File:line: src/app/(app)/attendance/daily-report/actions.ts:39
+Kịch bản: Hai tab GVCN cùng mở bản nháp. A nộp báo cáo và gửi notification cho lãnh đạo. B lưu nháp từ dữ liệu cũ; upsert theo (class_id,date) ghi đè nội dung, đổi status về draft, xóa submitted_at. Notification đã nộp vẫn tồn tại.
+Fix tối thiểu: Tách create khỏi update; update phải CAS theo revision/status và xác thực transition trong DB.
+MEDIUM - Partial commit tin nhắn chưa được client xử lý, retry tạo bản sao.
+File:line: src/app/(app)/parents/actions.ts:169; src/components/parents/inbox-client.tsx:180; src/app/portal/parent/actions.ts:183; src/components/portal/parent-actions.tsx:79
+Kịch bản: INSERT message thành công, INSERT notification thất bại. Action trả {error} nhưng không trả committed/messageId. Client giữ nguyên nội dung; người dùng bấm gửi lại sẽ INSERT thêm tin nhắn giống hệt. Refresh không reset local reply state.
+Fix tối thiểu: Trả {committed:true,messageId,...} và xóa draft khi message đã commit; retry riêng notification hoặc dùng transaction/outbox cùng idempotency key.
+LOW - Optimistic đánh dấu đã đọc không rollback khi action reject.
+File:line: src/components/parents/inbox-client.tsx:69; src/lib/auth.ts:55
+Kịch bản: Client thêm ID vào readIds trước await. Lookup profile lỗi khiến getProfile() throw, hoặc request mất kết nối; action reject thay vì trả {error}. Handler không catch nên rollback không chạy, tin chưa đọc vẫn bị hiển thị đã đọc và lần mở tiếp theo không retry.
+Fix tối thiểu: Catch rejection và rollback như nhánh {error}; dùng finally để giải phóng trạng thái chờ ở các handler tương tự.
+LOW - Pagination audit chưa có thứ tự duy nhất.
+File:line: src/app/(app)/register/audit/page.tsx:137, :174, :207
+Kịch bản: Bulk mutation tạo nhiều rows cùng timestamp. Các trang offset chỉ order theo timestamp nên thứ tự giữa rows bằng nhau không được đảm bảo; chuyển trang có thể lặp hoặc bỏ sót log. Insert mới giữa hai lần đọc còn làm dịch offset.
+Fix tối thiểu: Thêm order theo ID; dùng cursor (timestamp,id) để ổn định khi có ghi đồng thời.
+Validation: reliability gate PASS 4/4; regression 144/144 và PII 76/76 PASS. Self-test scanner bị sandbox chặn spawnSync; fixture chạy trực tiếp nhận diện các pattern lỗi đã biết. check-consistency chưa chạy được do bản đọc riêng thiếu .env.local.
+VERDICT: NOT-CLEAN
+5:34 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++58,758
+-4,646
+Outputs
+Create a file or site

@@ -78,7 +78,10 @@ export async function POST(req: Request) {
 Viết 4-6 đề xuất: môn nào thừa/thiếu GV, phân bổ GV theo khối lớp hợp lý, GV kiêm nhiệm cần cân đối, lưu ý cho BGH. Mỗi đề xuất 1 dòng, dùng mã GV (GV01, GV02...), không đánh số.`,
     expectedShape: '{"lines": ["đề xuất 1", "đề xuất 2"]}',
     maxTokens: 1200,
-    pii: { names },
+    // r12 H3: facts embed alias GVxx san -> ten that chi co trong
+    // teachers, phai khai bao source de usedNames bat duoc (deanon
+    // dung pham vi, chan inject alias).
+    pii: { names, source: teachers },
     parse: (text) => {
       try {
         const o = JSON.parse(text) as { lines?: string[] };

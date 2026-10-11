@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
+import { minimizePrompt, minimizeDeep, deanonymizeNames, collectUsedNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import type { Student } from "@/types";
@@ -101,7 +101,6 @@ export async function POST(req: Request) {
   const codeOf = new Map(
     students.map((s) => [s.id, aliasByName.get(s.full_name) ?? "?"]),
   );
-  const deanon = (t: string) => deanonymizeNames(t, piiNames);
   const att = (attRes.data ?? []) as {
     student_id: string;
     status: string;
@@ -137,6 +136,11 @@ export async function POST(req: Request) {
     su_co_dang_mo: incidents.map((i) => `${i.type} (${i.severity})`),
   };
 
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten thuc su co trong du
+  // lieu caller (facts + danh sach HS lop) - chan inject alias vao noi
+  // dung free-text (vi pham/khen thuong) de echo lo ten ngoai pham vi.
+  const usedNames = collectUsedNames({ facts, students }, piiNames);
+  const deanon = (t: string) => deanonymizeNames(t, usedNames);
   // r10 H: minimizeDeep TREN CAU TRUC truoc JSON.stringify - free-text
   // trong facts chua ten that, serialize truoc se lam regex redact
   // khong khop chuoi da escape (\n -> \\n).
@@ -167,7 +171,7 @@ Trả về CHỈ JSON: {"draft": "nội dung báo cáo"}`;
         expectedShape: '{"draft": "nội dung báo cáo 2-4 câu"}',
         createdBy: profile.id,
         req,
-        piiMap: piiNames,
+        piiMap: usedNames,
       });
       if (job) {
         return NextResponse.json({

@@ -248,3 +248,31 @@ Verdict: **NOT-CLEAN - 7 findings (5 HIGH / 1 MEDIUM / 1 LOW)**
 - prod verified: 4 helpers bound (funcdef), `scn_save_grades` returns timestamptz,
   grants chi authenticated+service_role (anon/public revoked)
 - migration: `20261202_cr049_r11_fixes.sql`
+
+---
+
+## Round 12 - reviewer-claude (cross-model fallback) on a7401ae (2026-12-02)
+
+Channel note: Codex Cloud quota reset ~22:52; loop tiep tuc qua pinned
+reviewer-claude (model family thu 3, khac implementer lan reviewer-gpt).
+Verdict: **NOT-CLEAN - 3 findings (3 HIGH)**
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | `scn_is_my_homeroom_class` (cr013) thieu bind truong hien tai - ~10 write policies (`students`, `es_*`, `dr_*`, `ew_*`, `seat_*`, `sg_*`, `signoff_*`, `inc_upd`) van cho GV chuyen truong ghi vao lop cu. `signoff_insert` cung loi inline. Sweep them: `digest_deliveries` gvcn read, `cr_upd/cr_del` recorded_by, `inc_upd/inc_del` bgh+recorded_by, `lp_del`, `appt_s_upd/del` gvcn, `nlpc_cmt_upd/del` evaluated_by deu thieu bind | **Fixed** - `20261203_cr049_r12_fixes.sql`: helper bound `c.school_id = my_school_id()`; tat ca policies ke tren duoc recreate voi anchor truong (class/student/parent/school_id); admin giu global | prod `pg_policies` + funcdef verified bound |
+| 2 | H | Editor giu students live tu props: HS chuyen vao giua phien khong co cell nhung bi gui trong `p_student_ids` -> RPC xoa sach diem cua HS do | **Fixed** - `students` + `mountStudentIdsRef` chot luc mount (useState lazy init, dong bo voi cells/revision/year) | test guard |
+| 3 | H | Full-school roster (admin client, r10 H6) vuot campus scope PHT: (a) deanon full roster cho phep inject alias "HS001..." vao free-text de LLM echo lo ten ngoai pham vi; (b) `ai_jobs.pii_map` luu nguyen roster - BGH/dept doc duoc qua `ai_jobs_staff_read` | **Fixed** - `collectUsedNames`: deanon + pii_map chi gom ten thuc su co trong input caller (prompt tho + payload tho + nguoi caller nhin thay). respondWithAi + 7 custom-flow routes + 3 routes embed alias-facts (`source:`) deu scope lai; 2 parse-callback deanon full-roster thua da go bo | unit tests + guards |
+
+### Gates r12
+
+- `npx tsc --noEmit` PASS | lint 0 errors (136 warnings) | tests 192 pass/1 skip
+- `check-consistency` PASS | `npm run build` PASS
+- prod verified: `scn_is_my_homeroom_class` + 9 policies da bound
+- migration: `20261203_cr049_r12_fixes.sql`
+
+### Residual (documented)
+
+- `ai_jobs.pii_map` cua cac job CU (truoc r12) van chua full roster map -
+  khong rewrite retroactive duoc; job moi chi luu usedNames.
+- `extract-records` raw-PII path: co gate consent + durable audit (r11).
+- Resend accept->crash truoc delivery log: khong co idempotency - documented.

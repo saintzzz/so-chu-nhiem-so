@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     supabase,
     profile,
     kind: "period-log-summary",
-    pii: { names: roster.names },
+    pii: { names: roster.names, source: facts },
     system:
       "Bạn là trợ lý tổng hợp sổ đầu bài cho GVCN/BGH trường THCS. Tóm tắt ngắn gọn theo số liệu. Không emoji.",
     prompt: `Tóm tắt sổ đầu bài gần nhất của lớp (JSON): ${JSON.stringify(minimizeDeep(facts, roster.names))}.

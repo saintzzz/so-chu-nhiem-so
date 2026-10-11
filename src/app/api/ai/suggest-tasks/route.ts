@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { redactPiiText, minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
+import { redactPiiText, minimizePrompt, minimizeDeep, deanonymizeNames, collectUsedNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import { todayVN } from "@/lib/utils";
@@ -64,6 +64,13 @@ export async function POST(req: Request) {
     );
   }
 
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong du lieu
+  // caller nhin thay (su kien + task hien co) - chan inject alias de
+  // echo lo ten ngoai pham vi.
+  const usedNames = collectUsedNames(
+    { eventsData, existing: [...existing], className },
+    roster.names,
+  );
   const prompt = `Lớp: ${className}. Ngày hôm nay: ${today}.
 Sự kiện năm học sắp tới (JSON): ${JSON.stringify(minimizeDeep(eventsData ?? [], roster.names))}.
 Công việc đã có (không được trùng): ${JSON.stringify(minimizeDeep([...existing], roster.names))}.
@@ -90,7 +97,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
         supabase,
         kind: "suggest-tasks",
         prompt: redactPiiText(`Bạn là trợ lý nghiệp vụ cho giáo viên chủ nhiệm trường phổ thông Việt Nam.\n\n${safePrompt}`),
-        piiMap: roster.names,
+        piiMap: usedNames,
         expectedShape: '[{"title": "...", "due_date": "YYYY-MM-DD"}]',
         createdBy: profile.id,
         req,
@@ -117,7 +124,7 @@ Hãy đề xuất 5-8 công việc cụ thể mà giáo viên chủ nhiệm cầ
       .map((t) => ({
         ...t,
         title: typeof t?.title === "string"
-          ? deanonymizeNames(t.title, roster.names)
+          ? deanonymizeNames(t.title, usedNames)
           : t?.title,
       }))
       .filter(

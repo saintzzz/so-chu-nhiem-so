@@ -6,6 +6,7 @@ import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import {
   deanonymizeNames,
   minimizePrompt,
+  collectUsedNames,
   type PiiName,
 } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
@@ -150,6 +151,10 @@ export async function POST(req: Request) {
     }
     piiNames = roster.names;
   }
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong van ban docx
+  // caller gui - chan inject alias "HS001..." de echo lo ten ngoai
+  // pham vi campus.
+  const usedNames = collectUsedNames(body.text ?? "", piiNames);
   const { data: stds } = await supabase
     .from("tvc_curriculum_standards")
     .select("code, subject_code, grade, description")
@@ -184,7 +189,7 @@ export async function POST(req: Request) {
         supabase,
         kind: "tvc-question-extract",
         prompt: safePrompt,
-        piiMap: piiNames,
+        piiMap: usedNames,
         expectedShape:
           '[{"stem":"...","context":"","qtype":"multiple_choice|true_false_4|short_answer|essay","level":"biet|hieu|van_dung","points":0.25,"answer":"...","solution":"...","topic":"...","subject":"toan|tieng_viet|tieng_anh","grade":3,"standard_code":"TOAN3.1.2"}]',
         createdBy: profile.id,
@@ -250,13 +255,13 @@ export async function POST(req: Request) {
     // Khoi phuc ten that trong noi dung trich xuat (chi khi docx chua
     // ten HS bi pseudonymize - de thi thuong khong co).
     .map((q) =>
-      piiNames.length
+      usedNames.length
         ? {
             ...q,
-            stem: deanonymizeNames(q.stem, piiNames),
-            context: deanonymizeNames(q.context, piiNames),
-            answer: deanonymizeNames(q.answer, piiNames),
-            solution: deanonymizeNames(q.solution, piiNames),
+            stem: deanonymizeNames(q.stem, usedNames),
+            context: deanonymizeNames(q.context, usedNames),
+            answer: deanonymizeNames(q.answer, usedNames),
+            solution: deanonymizeNames(q.solution, usedNames),
           }
         : q,
     );

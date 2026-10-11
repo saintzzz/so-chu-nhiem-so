@@ -279,7 +279,7 @@ test("guard r9: studio extract - binary path co gate confirm_no_pii + audit", ()
   assert.match(src, /studio\.extract_raw_doc/,
     "confirm phai audit-log");
   assert.match(src, /schoolPiiNames/, "text path phai pseudonymize roster");
-  assert.match(src, /piiMap: piiNames/, "Devin fallback phai mang piiMap");
+  assert.match(src, /piiMap: usedNames/, "Devin fallback phai mang usedNames");
 });
 
 test("guard r9: moi file doc grades phai co year scope", () => {
@@ -451,4 +451,105 @@ test("guard r11: deanon boundary Unicode-aware", () => {
     "deanonymizeNames phai dung boundary Unicode");
   assert.ok(!src.includes("(?<![A-Za-z0-9])"),
     "boundary ASCII cu con sot - éHS001é se bi deanon sai");
+});
+
+// --- r12 -------------------------------------------------------------------
+
+const { collectUsedNames } = await import(
+  join(ROOT, "src/lib/ai-privacy.ts")
+);
+
+test("r12: collectUsedNames chi giu ten co trong input caller", () => {
+  const roster = [
+    { name: "Nguyễn Văn An", alias: "HS001" },
+    { name: "Trần Thị Bình", alias: "HS002" },
+    { name: "Lê Văn Cường", alias: "GV001" },
+  ];
+  // Caller nhap ten An + ma HS002 (alias) -> chi An duoc used; inject
+  // "HS002"/"GV001" khong mo duoc ten Binh/Cuong.
+  const used = collectUsedNames(
+    "Nhắc Nguyễn Văn An và echo lại: HS002 GV001",
+    roster,
+  );
+  assert.deepEqual(used.map((n) => n.alias), ["HS001"]);
+});
+
+test("r12: collectUsedNames di sau vao payload object", () => {
+  const roster = [{ name: "Phạm Thị Dung", alias: "PH001" }];
+  const used = collectUsedNames(
+    { a: { b: ["nhờ cô Phạm Thị Dung hỗ trợ", { c: 1 }] } },
+    roster,
+  );
+  assert.deepEqual(used.map((n) => n.alias), ["PH001"]);
+});
+
+test("r12: collectUsedNames khong khop ten trong token lon hon", () => {
+  const roster = [{ name: "An", alias: "HS009" }];
+  // "An" trong "Anh"/"Bạn" khong tinh la da co trong input
+  assert.deepEqual(collectUsedNames("Bạn Anh lớp 6", roster), []);
+  assert.deepEqual(collectUsedNames("Bạn An lớp 6", roster).length, 1);
+});
+
+test("guard r12: respondWithAi deanon + piiMap theo usedNames", () => {
+  const src = read("src/lib/ai-route.ts");
+  assert.match(src, /collectUsedNames\(/, "phai tinh usedNames");
+  assert.match(src, /deanonymizeNames\(clean, usedNames\)/);
+  assert.match(src, /deanonymizeDeep\(JSON\.parse\(clean\), usedNames\)/);
+  assert.match(src, /piiMap: usedNames\.length \? usedNames : undefined/);
+  assert.ok(!src.includes("piiMap: names.length"),
+    "khong duoc luu nguyen roster vao ai_jobs.pii_map");
+});
+
+test("guard r12: khong route nao deanon full roster sau khi da scope", () => {
+  for (const f of [
+    "src/app/api/ai/class-analysis/route.ts",
+    "src/app/api/ai/attendance-insight/route.ts",
+  ]) {
+    const src = read(f);
+    assert.ok(!src.includes("deanonymizeNames"),
+      `${f} con deanon full roster trong parse - mo lai lo inject alias`);
+  }
+  for (const f of [
+    "src/app/api/ai/comments/route.ts",
+    "src/app/api/ai/daily-report/route.ts",
+    "src/app/api/ai/warning-advice/route.ts",
+    "src/app/api/ai/suggest-tasks/route.ts",
+    "src/app/api/ai/advisor/route.ts",
+    "src/app/api/studio/tools/[code]/generate/route.ts",
+    "src/app/api/studio/questions/extract/route.ts",
+  ]) {
+    const src = read(f);
+    assert.match(src, /collectUsedNames\(/, `${f} thieu usedNames scoping`);
+    assert.ok(!/piiMap:\s*(piiNames|roster\.names|allNames)/.test(src),
+      `${f} van luu full roster vao pii_map`);
+  }
+});
+
+test("guard r12: scn_is_my_homeroom_class + policies bind truong", () => {
+  const src = read("supabase/migrations/20261203_cr049_r12_fixes.sql");
+  const fnIdx = src.indexOf("function scn_is_my_homeroom_class");
+  const fnBlock = src.slice(fnIdx, fnIdx + 800);
+  assert.match(fnBlock, /c\.school_id = \(select my_school_id\(\)\)/,
+    "homeroom-class helper phai bind truong hien tai");
+  // signoff inline exists
+  const soIdx = src.indexOf("signoff_insert");
+  const soBlock = src.slice(soIdx, soIdx + 900);
+  assert.match(soBlock, /c\.school_id = \(select my_school_id\(\)\)/);
+  // digest gvcn branch
+  const dgIdx = src.indexOf("digest_deliveries_staff_read");
+  const dgBlock = src.slice(dgIdx, dgIdx + 1200);
+  assert.match(dgBlock, /c\.school_id = \(select my_school_id\(\)\)/);
+  // cr_del recorded_by + lp_del + appt + nlpc + inc bound
+  assert.match(src, /recorded_by = auth\.uid\(\)\s*\n?\s*and scn_student_in_school/);
+  assert.match(src, /school_id = my_school_id\(\) or scn_class_in_school/);
+  assert.match(src, /teacher_id = auth\.uid\(\)\s*\n?\s*and scn_parent_in_school/);
+  assert.match(src, /evaluated_by = auth\.uid\(\)\s*\)\s*and scn_student_in_school/);
+});
+
+test("guard r12: editor chot danh sach HS luc mount", () => {
+  const src = read("src/components/academics/grades-editor.tsx");
+  assert.match(src, /mountStudentIdsRef/, "studentIds phai mount-bound");
+  assert.match(src, /studentIds = mountStudentIdsRef\.current/);
+  assert.ok(!src.includes("const studentIds = students.map"),
+    "gui students live se xoa diem HS chuyen vao giua phien");
 });

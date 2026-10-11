@@ -320,7 +320,14 @@ export function GradesEditor({
   stateRevision: string | null;
   classYearId: string | null;
 }) {
-  const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
+  // CR-049 r12 H2: danh sach HS chot luc mount cung cells/revision/year -
+  // HS chuyen vao giua phien hien o props nhung khong co cell; gui id ho
+  // trong p_student_ids se lam RPC xoa diem cua ho, con nhap diem cho HS
+  // moi thi RPC tu choi (rows phai nam trong p_student_ids). Danh sach
+  // moi chi xuat hien khi mo lai editor (remount).
+  const [students] = useState(() =>
+    sortByVietnameseName(rawStudents, (s) => s.full_name),
+  );
   const router = useRouter();
   const isTh = schoolLevel === "th";
   // Số cột điểm thường xuyên mỗi loại = max seq của dữ liệu hiện có;
@@ -369,6 +376,8 @@ export function GradesEditor({
   // year moi + cells cu se ghi diem sai nam (strict check chi kiem year
   // hop le, khong biet snapshot tu nam nao).
   const classYearIdRef = useRef<string | null>(classYearId);
+  // mount-bound ids gui len RPC (students da duoc chot o tren).
+  const mountStudentIdsRef = useRef<string[]>(students.map((s) => s.id));
   const [cells, setCells] = useState<Record<string, CellState>>(() => {
     const byKind = new Map<TxKind, TxCol[]>();
     for (const col of initialCols) {
@@ -809,7 +818,7 @@ export function GradesEditor({
 
     startTransition(async () => {
       const supabase = createClient();
-      const studentIds = students.map((s) => s.id);
+      const studentIds = mountStudentIdsRef.current;
 
       const rows: Record<string, unknown>[] = [];
       for (const s of students) {

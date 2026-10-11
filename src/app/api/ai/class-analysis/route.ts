@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
-import { deanonymizeNames } from "@/lib/ai-privacy";
 import { semesterAverage } from "@/lib/tt22";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasAnyRole } from "@/lib/roles";
@@ -172,23 +171,24 @@ export async function POST(req: Request) {
 Viết 4-6 nhận xét ngắn: môn mạnh/môn yếu của lớp, mức độ phân hóa, nhóm HS cần phụ đạo (nêu mã học sinh), 1-2 đề xuất hành động cụ thể cho GVCN. Mỗi nhận xét 1 dòng, không đánh số.`,
     expectedShape: '{"lines": ["nhận xét 1", "nhận xét 2"]}',
     maxTokens: 1200,
-    pii: { names: piiNames },
+    // r12 H3: facts embed alias HSxx san -> ten that chi co trong
+    // students (lop cua caller - ho da nhin thay ten), khai bao source.
+    pii: { names: piiNames, source: students },
+    // text da duoc respondWithAi deanon theo usedNames (r12 H3) -
+    // khong deanon lai full roster o day se mo lai lo inject alias.
     parse: (text) => {
-      const deanon = (s: string) => deanonymizeNames(s, piiNames);
       try {
         const o = JSON.parse(text) as { lines?: string[] };
         if (Array.isArray(o.lines) && o.lines.length) {
           return {
-            lines: o.lines
-              .filter((l) => typeof l === "string")
-              .map(deanon),
+            lines: o.lines.filter((l) => typeof l === "string"),
           };
         }
       } catch {
         /* fallthrough */
       }
       const lines = parseLines(text);
-      return lines ? { lines: lines.map(deanon) } : null;
+      return lines ? { lines } : null;
     },
   });
 }

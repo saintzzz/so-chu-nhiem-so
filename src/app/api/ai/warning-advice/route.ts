@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, deanonymizeNames, type PiiName } from "@/lib/ai-privacy";
+import { minimizePrompt, deanonymizeNames, collectUsedNames, type PiiName } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
 import { hasAnyRole } from "@/lib/roles";
@@ -63,6 +63,10 @@ Chi tiết: ${warn.detail ?? "-"}
     );
   }
   const piiNames: PiiName[] = roster.names;
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong input caller
+  // (title/detail canh bao) - chan inject alias de echo lo ten ngoai
+  // pham vi campus.
+  const usedNames = collectUsedNames(prompt, piiNames);
   const safePrompt = minimizePrompt(prompt, piiNames);
 
   const quotaOk = await takeAiQuota("warning-advice", profile.id);
@@ -81,7 +85,7 @@ Chi tiết: ${warn.detail ?? "-"}
         supabase,
         kind: "warning-advice",
         prompt: safePrompt,
-        piiMap: piiNames,
+        piiMap: usedNames,
         expectedShape: '{"suggestion": "2-3 việc xử lý cụ thể"}',
         createdBy: profile.id,
         req,
@@ -153,7 +157,7 @@ Chi tiết: ${warn.detail ?? "-"}
   if (!suggestion) {
     return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });
   }
-  suggestion = deanonymizeNames(suggestion, piiNames);
+  suggestion = deanonymizeNames(suggestion, usedNames);
   await supabase
     .from("early_warnings")
     .update({ suggestion })

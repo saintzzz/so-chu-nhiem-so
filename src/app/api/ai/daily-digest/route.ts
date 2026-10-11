@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     supabase,
     profile,
     kind: "daily-digest",
-    pii: { names: roster.names },
+    pii: { names: roster.names, source: facts },
     system:
       "Bạn là trợ lý tổng hợp báo cáo ngày cho Ban Giám Hiệu trường THCS. Gộp các báo cáo lớp thành bản tin ngắn cho lãnh đạo đọc nhanh. Không emoji.",
     // r9 H10: minimize TRUOC serialize - ten co \n trong noi dung bao

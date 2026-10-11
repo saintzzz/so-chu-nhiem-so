@@ -13,6 +13,7 @@ import {
   pseudonymizeNames,
   deanonymizeNames,
   deanonymizeDeep,
+  collectUsedNames,
   type PiiName,
 } from "@/lib/ai-privacy";
 import type { Profile } from "@/types";
@@ -37,8 +38,11 @@ export interface AiRouteParams<T> {
    * truyen, lop redactPiiText van cat email/SDT/so dinh danh.
    * allowRawPrompt: bo redact - CHI cho route ma PII la muc tieu trich
    * xuat (extract-records); prompt van duoc minimize thu cong.
+   * source: noi dung THO cua caller khi prompt da embed du lieu da
+   * minimizeDeep san (JSON alias); r12 H3 - deanon/pii_map chi gioi
+   * han trong cac ten thuc su co trong input caller.
    */
-  pii?: { names?: PiiName[]; allowRawPrompt?: boolean };
+  pii?: { names?: PiiName[]; allowRawPrompt?: boolean; source?: unknown };
 }
 
 export async function respondWithAi<T>(
@@ -48,6 +52,12 @@ export async function respondWithAi<T>(
   // Devin fallback dung lai cung prompt da minimize -> khong co duong tat.
   const names = p.pii?.names ?? [];
   const raw = p.pii?.allowRawPrompt === true;
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten caller da co trong
+  // input (prompt tho + payload tho neu prompt da duoc minimize san).
+  // Chan vec inject alias "HS001..." vao free-text de LLM echo lo ten.
+  const usedNames = raw
+    ? []
+    : collectUsedNames({ prompt: p.prompt, source: p.pii?.source }, names);
   const safePrompt = raw ? p.prompt : redactPiiText(pseudonymizeNames(p.prompt, names));
   const safeSystem = raw ? p.system : redactPiiText(p.system);
   // CR-049 P3c+r5: het budget ngay -> KHONG goi provider VA khong tao
@@ -77,10 +87,10 @@ export async function respondWithAi<T>(
     // CR-049 r10 M: neu output la JSON thi deanon TREN CAU TRUC da parse
     // (ten that co the chua ky tu pha JSON - dau ngoac kep, backslash);
     // fallback deanon text cho output khong phai JSON.
-    let restored = deanonymizeNames(clean, names);
-    if (names.length) {
+    let restored = deanonymizeNames(clean, usedNames);
+    if (usedNames.length) {
       try {
-        restored = JSON.stringify(deanonymizeDeep(JSON.parse(clean), names));
+        restored = JSON.stringify(deanonymizeDeep(JSON.parse(clean), usedNames));
       } catch {
         /* output khong phai JSON thuan - giu deanon text */
       }
@@ -101,7 +111,9 @@ export async function respondWithAi<T>(
       createdBy: p.profile.id,
       req: p.req,
       // F18: alias map luu tren job - devin-callback deanonymize output.
-      piiMap: names.length ? names : undefined,
+      // r12 H3: chi luu ten caller da co trong input - pii_map nam trong
+      // ai_jobs (BGH/dept-scope doc duoc), luu nguyen roster la lo PII.
+      piiMap: usedNames.length ? usedNames : undefined,
     });
     if (job) {
       return NextResponse.json({

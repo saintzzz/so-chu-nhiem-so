@@ -90,6 +90,41 @@ export function minimizePrompt(text: string, names: PiiName[] = []): string {
   return redactPiiText(pseudonymizeNames(text, names));
 }
 
+/** CR-049 r12 H3: chi deanon/luu pii_map cho cac ten THUC SU xuat hien
+ *  trong noi dung caller gui (prompt/payload tho truoc khi minimize).
+ *  Neu deanon tren toan roster, caller co the inject "HS001 HS002..."
+ *  vao free-text de LLM echo lai -> lo ten HS/GV/PH ngoai pham vi
+ *  campus cua ho (roster admin la full-school). Ten khong co trong
+ *  input cua caller thi alias cua no khong duoc khoi phuc.
+ *  source: string hoac cay object/array bat ky (minimizeDeep payload). */
+export function collectUsedNames(
+  source: unknown,
+  names: PiiName[],
+): PiiName[] {
+  const texts: string[] = [];
+  const walk = (v: unknown) => {
+    if (typeof v === "string") texts.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") {
+      for (const val of Object.values(v as Record<string, unknown>)) walk(val);
+    }
+  };
+  walk(source);
+  if (!texts.length) return [];
+  const hay = texts.join("\n").normalize("NFC");
+  return names.filter((n) => {
+    if (!n.name || !n.alias) return false;
+    const esc = n.name
+      .normalize("NFC")
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      .split(/\s+/)
+      .join("\\s+");
+    return new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "iu").test(
+      hay,
+    );
+  });
+}
+
 /** CR-049 r9 H10: minimize DU LIEU CAU TRUC truoc JSON.stringify.
  *  Ten co whitespace ("Nguyen\nVan An") bi JSON-escape thanh \\n -
  *  regex \s+ khong con khop sau serialize. Pseudonymize/redact tung

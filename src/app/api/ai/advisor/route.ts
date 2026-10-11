@@ -3,7 +3,7 @@ import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
-import { minimizePrompt, minimizeDeep, deanonymizeNames } from "@/lib/ai-privacy";
+import { minimizePrompt, minimizeDeep, deanonymizeNames, collectUsedNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { fallbackToDevin } from "@/lib/devin";
@@ -201,6 +201,10 @@ export async function POST(req: Request) {
     );
   }
   const piiNames = roster.names;
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong du lieu BGH
+  // nhin thay (context + cau hoi) - chan inject alias de echo lo ten
+  // ngoai pham vi.
+  const usedNames = collectUsedNames({ context, question }, piiNames);
 
   // r9 H10: context serialize SAU khi co roster - minimizeDeep tung
   // string truoc JSON.stringify de ten co whitespace khong thoat qua
@@ -232,7 +236,7 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
         supabase,
         kind: "advisor",
         prompt: safePrompt,
-        piiMap: piiNames,
+        piiMap: usedNames,
         expectedShape: '{"answer": "trả lời ngắn gọn"}',
         createdBy: profile.id,
         req,
@@ -321,12 +325,12 @@ Trả lời ngắn gọn 2-5 câu bằng tiếng Việt, dựa đúng vào số 
       (JSON.parse(cleaned) as Record<string, unknown>).answer,
     );
     if (answer) {
-      return NextResponse.json({ answer: deanonymizeNames(answer, piiNames) });
+      return NextResponse.json({ answer: deanonymizeNames(answer, usedNames) });
     }
   } catch {
     // LLM trả text thuần thay vì JSON - dùng trực tiếp nếu hợp lệ
     if (cleaned.length > 20) {
-      return NextResponse.json({ answer: deanonymizeNames(cleaned, piiNames) });
+      return NextResponse.json({ answer: deanonymizeNames(cleaned, usedNames) });
     }
   }
   return NextResponse.json({ error: "AI trả về định dạng không hợp lệ." });

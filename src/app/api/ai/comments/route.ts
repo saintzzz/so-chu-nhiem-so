@@ -7,6 +7,7 @@ import {
   minimizePrompt,
   minimizeDeep,
   deanonymizeDeep,
+  collectUsedNames,
 } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
@@ -405,6 +406,10 @@ export async function POST(req: Request) {
     };
   });
 
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten+ma thuc su co trong
+  // input caller (payload + students gui len) - chan caller inject alias
+  // "HS001..." vao NLPC de LLM echo lo ten HS/GV/PH ngoai pham vi.
+  const usedNames = collectUsedNames({ payload, students }, allNames);
   // CR-049 r11: minimizeDeep TREN PAYLOAD truoc JSON.stringify - NLPC
   // free-text co the chua sdt/so dinh danh; serialize truoc lam \\n
   // escape khong khop regex (chung minh duoc: "090\n123\n4567" sot nguyen
@@ -441,7 +446,7 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
         expectedShape: '{"MA_HS": "nhận xét 1-2 câu"}',
         createdBy: profile.id,
         req,
-        piiMap: allNames,
+        piiMap: usedNames,
       });
       if (job) {
         return NextResponse.json({
@@ -460,7 +465,7 @@ Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
     const cleaned = text.replace(/```json|```/g, "").trim();
     const obj = deanonymizeDeep(
       JSON.parse(cleaned) as Record<string, string>,
-      allNames,
+      usedNames,
     );
     const comments: Record<string, string> = {};
     for (const [k, v] of Object.entries(obj)) {

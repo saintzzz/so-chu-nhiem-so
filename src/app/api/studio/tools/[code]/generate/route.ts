@@ -11,6 +11,7 @@ import {
   minimizePrompt,
   minimizeDeep,
   deanonymizeDeep,
+  collectUsedNames,
 } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
@@ -863,6 +864,10 @@ export async function POST(
       { status: 500 },
     );
   }
+  // CR-049 r12 H3: deanon/pii_map chi pham vi ten co trong input caller
+  // - chan inject alias "HS001..." vao field tool de echo lo ten HS/GV/PH
+  // ngoai pham vi campus (roster la full-school).
+  const usedNames = collectUsedNames(input, roster.names);
   const { system, prompt } = tool.buildPrompt(
     minimizeDeep(input, roster.names),
     ctx,
@@ -907,7 +912,7 @@ export async function POST(
       supabase,
       kind: `tvc-tool:${code}`,
       prompt: redactPiiText(`${system}\n\n${safePrompt}`),
-      piiMap: roster.names,
+      piiMap: usedNames,
       expectedShape:
         '{"title":"...","meta":[["nhan","gia tri"]],"sections":[{"title":"...","blocks":[{"kind":"para|list|table|note|kv","text|items|rows|header":"..."}]}]}',
       createdBy: user.id,
@@ -940,7 +945,7 @@ export async function POST(
   // r10 M: deanon tren cau truc da co, khong phai chuoi JSON tho -
   // deanonymizeNames(stringify) co the pha cau truc JSON khi ten that
   // chua ky tu dac biet.
-  const aiDoc = aiDocRaw ? deanonymizeDeep(aiDocRaw, roster.names) : aiDocRaw;
+  const aiDoc = aiDocRaw ? deanonymizeDeep(aiDocRaw, usedNames) : aiDocRaw;
   const doc = aiDoc ?? tool.fallback(input, ctx);
   const provider = aiDoc ? ai.provider : "rule-based";
 

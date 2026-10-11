@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
 import { hasAnyRole } from "@/lib/roles";
+import { writeAudit } from "@/lib/audit";
 
 interface ExtractedRow {
   name: string;
@@ -22,9 +23,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
   let text = "";
+  let confirmed = false;
   try {
-    const body = (await req.json()) as { text?: string };
+    const body = (await req.json()) as {
+      text?: string;
+      confirm_raw_pii?: boolean;
+    };
     text = (body.text ?? "").trim();
+    confirmed = body.confirm_raw_pii === true;
   } catch {
     return NextResponse.json({ error: "Body không hợp lệ" }, { status: 400 });
   }
@@ -36,6 +42,30 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+  // CR-049 r11: route gui PII THO (ten/NS/SDT PH) toi provider ben ngoai
+  // (allowRawPrompt) - bat buoc xac nhan tuong minh + bang chung audit
+  // DURABLE truoc khi goi provider/Devin. Audit fail -> fail-closed.
+  if (!confirmed) {
+    return NextResponse.json(
+      {
+        error:
+          "Nội dung chứa dữ liệu cá nhân học sinh sẽ được xử lý bởi AI bên ngoài - cần xác nhận.",
+        needs_raw_pii_confirm: true,
+      },
+      { status: 400 },
+    );
+  }
+  const { error: auditErr } = await writeAudit(supabase, {
+    action: "ai.extract_records_raw_pii",
+    entity: "ai_job",
+    payload: { chars: text.length },
+  });
+  if (auditErr) {
+    return NextResponse.json(
+      { error: "Không ghi được xác nhận, thử lại sau." },
+      { status: 500 },
+    );
+  }
   return respondWithAi<{ rows: ExtractedRow[] }>({
     req,
     supabase,

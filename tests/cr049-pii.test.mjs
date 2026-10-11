@@ -392,3 +392,63 @@ test("guard r10: hoc-ba NULL-year chi rows legacy - khong all-years fallback", (
     "OR not.null+is.null la tautology = tat ca nam hoc");
   assert.match(src, /: "academic_year_id\.is\.null"/);
 });
+
+test("guard r11: moi leaf helper authz deu bind truong hien tai", () => {
+  const src = read("supabase/migrations/20261202_cr049_r11_fixes.sql");
+  for (const fn of ["scn_is_my_ttentry", "scn_is_sub_ttentry_date",
+                    "scn_student_in_my_teaching", "scn_sync_period_attendance"]) {
+    const idx = src.indexOf(`function public.${fn}`);
+    assert.ok(idx >= 0, `thieu ${fn} trong r11 migration`);
+    const block = src.slice(idx, idx + 4000);
+    assert.match(block, /school_id = \(select my_school_id\(\)\)/,
+      `${fn} chua bind my_school_id()`);
+  }
+});
+
+test("guard r11: save_grades tra revision trong cung transaction", () => {
+  const src = read("supabase/migrations/20261202_cr049_r11_fixes.sql");
+  assert.match(src, /returns timestamptz/, "RPC phai tra timestamptz");
+  assert.match(src, /v_now := clock_timestamp\(\)/);
+  assert.match(src, /return v_now/, "phai return revision da ghi");
+  const editor = read("src/components/academics/grades-editor.tsx");
+  assert.match(editor, /classYearIdRef/, "year phai chot luc mount");
+  assert.match(editor, /newRevision/, "revision lay tu RPC return");
+  assert.ok(!editor.includes('from("grade_book_state")'),
+    "khong duoc doc lai state sau commit (race R2/cells R1)");
+});
+
+test("guard r11: extract-records co gate confirm + audit durable", () => {
+  const src = read("src/app/api/ai/extract-records/route.ts");
+  assert.match(src, /confirm_raw_pii !== true|confirmed/);
+  assert.match(src, /needs_raw_pii_confirm/);
+  assert.match(src, /await writeAudit/);
+  const gate = src.indexOf("confirm_raw_pii") >= 0 ? src.indexOf("confirm") : -1;
+  const audit = src.indexOf("await writeAudit");
+  assert.ok(gate >= 0 && audit > gate, "audit phai sau confirm");
+  const client = read("src/components/records/ai-extract.tsx");
+  assert.match(client, /confirm_raw_pii/, "client phai gui confirm flag");
+});
+
+test("guard r11: comments minimizeDeep tren payload truoc stringify", () => {
+  const src = read("src/app/api/ai/comments/route.ts");
+  assert.match(src, /JSON\.stringify\(minimizeDeep\(payload, allNames\)\)/,
+    "payload phai minimizeDeep truoc serialize - sdt co \\n se sot");
+});
+
+test("guard r11: phase=send retry van loc p_parent_ids", () => {
+  const src = read("src/app/api/cron/parent-digest/route.ts");
+  const retryIdx = src.indexOf('searchParams.get("retry")');
+  const sendIdx = src.indexOf('if (phase === "send")');
+  assert.ok(retryIdx >= 0 && sendIdx > retryIdx,
+    "phase=send dispatch phai sau khi retry set duoc giai quyet");
+});
+
+test("guard r11: deanon boundary Unicode-aware", () => {
+  const src = read("src/lib/ai-privacy.ts");
+  const deanonIdx = src.indexOf("export function deanonymizeNames");
+  const block = src.slice(deanonIdx, deanonIdx + 1500);
+  assert.ok(block.includes("\\\\p{L}\\\\p{N}"),
+    "deanonymizeNames phai dung boundary Unicode");
+  assert.ok(!src.includes("(?<![A-Za-z0-9])"),
+    "boundary ASCII cu con sot - éHS001é se bi deanon sai");
+});

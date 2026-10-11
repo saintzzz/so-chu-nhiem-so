@@ -29,6 +29,7 @@ export function AiExtract() {
   const [rows, setRows] = useState<ExtractedRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmPii, setConfirmPii] = useState(false);
 
   useEffect(() => {
     if (job.done && job.result !== null) {
@@ -52,7 +53,7 @@ export function AiExtract() {
       const res = await fetch("/api/ai/extract-records", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, confirm_raw_pii: confirmPii }),
       });
       const json = (await res.json()) as {
         result?: { rows?: ExtractedRow[] } | null;
@@ -60,7 +61,12 @@ export function AiExtract() {
         jobId?: string;
         devinUrl?: string;
         error?: string;
+        needs_raw_pii_confirm?: boolean;
       };
+      if (json.needs_raw_pii_confirm) {
+        setErr(json.error ?? "Cần xác nhận xử lý dữ liệu cá nhân.");
+        return;
+      }
       if (json.pending && json.jobId && json.devinUrl) {
         job.start(json.jobId, json.devinUrl);
         return;
@@ -147,11 +153,24 @@ export function AiExtract() {
             placeholder="Dán danh sách học sinh ở bất kỳ định dạng nào (copy từ giấy tờ, tin nhắn, Excel lộn xộn)..."
             className={INPUT_CLS}
           />
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={confirmPii}
+              onChange={(e) => setConfirmPii(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Nội dung chứa dữ liệu cá nhân học sinh (họ tên, ngày sinh, SĐT
+              phụ huynh) sẽ được xử lý bởi nhà cung cấp AI bên ngoài. Tôi có
+              thẩm quyền và đồng ý cho phép xử lý này.
+            </span>
+          </label>
           <div className="flex items-center gap-2">
             <Button
               size="sm"
               onClick={run}
-              disabled={waiting || text.trim().length < 10}
+              disabled={waiting || !confirmPii || text.trim().length < 10}
             >
               {waiting ? "Đang trích xuất..." : "Trích xuất"}
             </Button>

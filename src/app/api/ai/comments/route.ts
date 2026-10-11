@@ -5,8 +5,8 @@ import { generateTextDetailed, type AiResult } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import {
   minimizePrompt,
+  minimizeDeep,
   deanonymizeDeep,
-  pseudonymizeNames,
 } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { fallbackToDevin } from "@/lib/devin";
@@ -362,8 +362,15 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-  const redactNames = (t: string | null): string | null =>
-    t ? pseudonymizeNames(t, roster.names) : t;
+  // CR-049 r5 F16: ma HS so (9/12 chu so) bi redactPiiText an thanh
+  // [so_dinh_danh] va dap laan key - alias K### cho tung ma.
+  const codeAliases = students.map((s, i) => ({
+    name: s.code,
+    alias: `K${String(i + 1).padStart(3, "0")}`,
+  }));
+  // Ket hop alias ma HS + alias ten that (roster) - alias prefix khac
+  // nhau nen khong dung do khi deanon.
+  const allNames = [...roster.names, ...codeAliases];
   const payload = students.map((s) => {
     const id = idByCode.get(s.code);
     const viol = id ? violById.get(id) : undefined;
@@ -394,25 +401,20 @@ export async function POST(req: Request) {
           ? Math.round((act.joined / act.total) * 100)
           : null,
       tu_van_dang_mo: id ? (counselById.get(id) ?? 0) : 0,
-      nhan_xet_nlpc_gan_nhat: id ? redactNames(nlpcById.get(id) ?? null) : null,
+      nhan_xet_nlpc_gan_nhat: id ? (nlpcById.get(id) ?? null) : null,
     };
   });
 
-  const prompt = `Viết nhận xét rèn luyện ${term === "hk1" ? "học kỳ I" : term === "hk2" ? "học kỳ II" : "cả năm"} cho từng học sinh THCS dưới đây (JSON): ${JSON.stringify(payload)}.
+  // CR-049 r11: minimizeDeep TREN PAYLOAD truoc JSON.stringify - NLPC
+  // free-text co the chua sdt/so dinh danh; serialize truoc lam \\n
+  // escape khong khop regex (chung minh duoc: "090\n123\n4567" sot nguyen
+  // qua JSON.stringify + minimizePrompt, bi minimizeDeep cat).
+  const prompt = `Viết nhận xét rèn luyện ${term === "hk1" ? "học kỳ I" : term === "hk2" ? "học kỳ II" : "cả năm"} cho từng học sinh THCS dưới đây (JSON): ${JSON.stringify(minimizeDeep(payload, allNames))}.
 
 Yêu cầu: mỗi nhận xét 1-2 câu, văn phong giáo viên chủ nhiệm Việt Nam, phù hợp xếp loại, đề cập điểm mạnh và điều cần cố gắng dựa trên số liệu (vi phạm, khen thưởng, điểm TB, môn mạnh/yếu, chuyên cần, sự cố, năng lực-phẩm chất, tham gia hoạt động). Nếu tu_van_dang_mo>0 thì viết nhẹ nhàng, tập trung động viên. Không emoji, không khô khan lặp mẫu.
 
 Trả về CHỈ JSON object dạng {"MA_HS": "nhận xét"}, không markdown.`;
 
-  // CR-049 r5 F16: ma HS so (9/12 chu so) bi redactPiiText an thanh
-  // [so_dinh_danh] va dap laan key - alias HSxxx cho tung ma.
-  const codeAliases = students.map((s, i) => ({
-    name: s.code,
-    alias: `K${String(i + 1).padStart(3, "0")}`,
-  }));
-  // Ket hop alias ma HS + alias ten that (roster) - alias prefix khac
-  // nhau nen khong dung do khi deanon.
-  const allNames = [...roster.names, ...codeAliases];
   const safePrompt = minimizePrompt(prompt, allNames);
   const safeSystem = minimizePrompt(
     "Bạn là giáo viên chủ nhiệm trường phổ thông Việt Nam viết nhận xét học sinh. Chỉ trả về JSON hợp lệ.",

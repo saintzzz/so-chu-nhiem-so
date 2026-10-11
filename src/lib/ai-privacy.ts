@@ -68,8 +68,9 @@ export function pseudonymizeNames(text: string, names: PiiName[]): string {
 }
 
 /** Dao nguoc: alias -> ten that tren output LLM. Alias dai truoc
- *  (GV100 truoc GV10) + boundary regex: "GV10" khong duoc an vao token
- *  "GV100" hay "XGV100" khi chi co GV10 trong map. */
+ *  (GV100 truoc GV10) + boundary regex Unicode (dong nhat voi
+ *  pseudonymizeNames): "GV10" khong duoc an vao token "GV100" hay
+ *  "XGV100" hay "éHS001é" (chu Unicode van la mot token). */
 export function deanonymizeNames(text: string, names: PiiName[]): string {
   const sorted = [...names].sort((a, b) => b.alias.length - a.alias.length);
   let out = text;
@@ -77,7 +78,7 @@ export function deanonymizeNames(text: string, names: PiiName[]): string {
     if (!n.name || !n.alias) continue;
     const esc = n.alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     out = out.replace(
-      new RegExp(`(?<![A-Za-z0-9])${esc}(?![A-Za-z0-9])`, "g"),
+      new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "gu"),
       () => n.name,
     );
   }

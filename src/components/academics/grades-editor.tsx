@@ -307,7 +307,6 @@ export function GradesEditor({
   className,
   schoolLevel,
   stateRevision,
-  classId,
   classYearId,
 }: {
   students: GradeStudent[];
@@ -319,7 +318,6 @@ export function GradesEditor({
   className: string;
   schoolLevel: "th" | "thcs" | "thpt" | "lien_cap";
   stateRevision: string | null;
-  classId: string;
   classYearId: string | null;
 }) {
   const students = sortByVietnameseName(rawStudents, (s) => s.full_name);
@@ -366,6 +364,11 @@ export function GradesEditor({
         : gradesMax;
     })(),
   );
+  // CR-049 r11: classYearId cung phai chot luc mount cung cells+revision -
+  // refresh props co the mang year moi trong khi cells van nam cu; gui
+  // year moi + cells cu se ghi diem sai nam (strict check chi kiem year
+  // hop le, khong biet snapshot tu nam nao).
+  const classYearIdRef = useRef<string | null>(classYearId);
   const [cells, setCells] = useState<Record<string, CellState>>(() => {
     const byKind = new Map<TxKind, TxCol[]>();
     for (const col of initialCols) {
@@ -895,17 +898,20 @@ export function GradesEditor({
       // se ghi de luu cua nguoi khac. Chot revision mot lan luc mount
       // cung voi cells; save khi co GV khac luu se stale_write.
       const expectedMax = baseRevisionRef.current;
-      const { error: saveErr } = await supabase.rpc("scn_save_grades", {
-        p_student_ids: studentIds,
-        p_subject_id: subjectId,
-        p_term: term,
-        p_rows: rows,
-        p_expected_max: expectedMax,
-        // r10: nam hoc chot cung snapshot luc mount - lop doi nam sau
-        // do (year_scope_mismatch) thi save bi reject thay vi ghi sang
-        // nam moi bang du lieu cu.
-        p_academic_year_id: classYearId,
-      });
+      const { data: newRevision, error: saveErr } = await supabase.rpc(
+        "scn_save_grades",
+        {
+          p_student_ids: studentIds,
+          p_subject_id: subjectId,
+          p_term: term,
+          p_rows: rows,
+          p_expected_max: expectedMax,
+          // r10+r11: nam hoc chot cung snapshot luc mount - lop doi nam
+          // sau do (year_scope_mismatch) thi save bi reject thay vi ghi
+          // sang nam moi bang du lieu cu.
+          p_academic_year_id: classYearIdRef.current,
+        },
+      );
       if (saveErr) {
         console.error("[grades-editor] scn_save_grades:", saveErr.message);
         const stale =
@@ -918,19 +924,11 @@ export function GradesEditor({
         );
         return;
       }
-      // r10 M: save thanh cong bump grade_book_state len revision MOI -
-      // cap nhat baseRevision ve revision do, neu khong save tiep theo
-      // luon stale_write (state > expected cu).
-      const { data: newState } = await supabase
-        .from("grade_book_state")
-        .select("last_saved_at")
-        .eq(
-          "scope_key",
-          `${subjectId}|${term}|${classYearId ?? ""}|${classId}`,
-        )
-        .maybeSingle();
-      if (newState?.last_saved_at) {
-        baseRevisionRef.current = newState.last_saved_at as string;
+      // r11: revision moi lay TRA VE tu RPC trong cung transaction (duoi
+      // advisory lock) - khong doc lai state sau commit, tranh race GV
+      // khac save xen giua lam ref nhay toi R2 trong khi cells van R1.
+      if (typeof newRevision === "string" && newRevision) {
+        baseRevisionRef.current = newRevision;
       }
       logAudit(supabase, {
         action: "grades.save",

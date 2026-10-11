@@ -220,3 +220,31 @@ Verdict: **NOT-CLEAN - 16 findings (11 HIGH / 5 MEDIUM)**
   `direct_revoked=t` (authenticated khong con INSERT/UPDATE/DELETE tren grades);
   `scn_digest_outbox_claim(int,uuid[])` dung signature; policies chi con read
 - migration: `20261201_cr049_r10_fixes.sql`
+
+---
+
+## Round 11 - reviewer-gpt (cross-model fallback) on 02231f0 (2026-12-01)
+
+Channel note: Codex Cloud het usage limit giua r11 (reset 10:52 PM);
+OpenRouter + OpenAI + Anthropic + Gemini API keys deu het credits ->
+fallback tier-3 pinned reviewer-gpt tren checkout that.
+Raw report: `docs/reviews/openrouter-review-r11.md`
+Verdict: **NOT-CLEAN - 7 findings (5 HIGH / 1 MEDIUM / 1 LOW)**
+
+| # | Sev | Finding | Triage / Fix | Evidence |
+|---|-----|---------|--------------|----------|
+| 1 | H | Cac leaf helper CON LAI van thieu bind truong hien tai (`scn_is_my_ttentry`, `scn_is_sub_ttentry_date`, `scn_student_in_my_teaching`, homeroom branch cua `scn_sync_period_attendance`) - GV chuyen truong van sync attendance/ghi conduct lop cu | **Fixed** - 4 helpers them `c.school_id = my_school_id()` | prod funcdef verified |
+| 2 | H | Post-save reconciliation race: editor doc grade_book_state SAU commit, GV khac save xen giua -> ref=R2 voi cells=R1 -> CAS bypass | **Fixed** - `scn_save_grades` returns timestamptz (revision ghi trong cung transaction duoi advisory lock); editor dung return value, khong doc lai state | prod `prorettype=timestamptz` verified |
+| 3 | H | extract-records `allowRawPrompt` gui PII tho khong consent, khong audit durable | **Fixed** - gate `confirm_raw_pii` + `await writeAudit(ai.extract_records_raw_pii)` fail-closed; UI checkbox explicit consent | test guard |
+| 4 | H | comments serialize NLPC truoc redact - sdt co \n song sot qua JSON escape | **Fixed** - `JSON.stringify(minimizeDeep(payload, allNames))`; reviewer reproduce duoc ca truoc lan sau fix | test guard |
+| 5 | H | `classYearId` prop co the doi sau refresh trong khi cells van cu -> cells nam cu ghi vao nam moi | **Fixed** - `classYearIdRef` chot luc mount + key gom year de remount snapshot khi year doi | test guard |
+| 6 | M | `phase=send&retry=` return som truoc khi resolve retryParents -> claim khong loc | **Fixed** - dispatch send sau retry resolution, truyen retry set | test guard |
+| 7 | L | deanon boundary chi ASCII - `éHS001é` bi replace sai | **Fixed** - boundary Unicode `\p{L}\p{N}` dong nhat pseudonymizeNames | test guard |
+
+### Gates r11
+
+- `npx tsc --noEmit` PASS | lint 0 errors | tests 185/185 (45 PII + 140 regression)
+- `check-consistency` PASS | `npm run build` PASS
+- prod verified: 4 helpers bound (funcdef), `scn_save_grades` returns timestamptz,
+  grants chi authenticated+service_role (anon/public revoked)
+- migration: `20261202_cr049_r11_fixes.sql`

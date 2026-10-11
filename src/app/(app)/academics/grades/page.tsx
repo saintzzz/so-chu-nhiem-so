@@ -343,7 +343,7 @@ export default async function GradesPage({
         </p>
       ) : classId && subjectId ? (
         <GradesEditor
-          key={`${classId}-${subjectId}-${term}`}
+          key={`${classId}-${subjectId}-${term}-${classYearId ?? ""}`}
           students={students}
           grades={grades}
           subjectId={subjectId}
@@ -353,7 +353,6 @@ export default async function GradesPage({
           className={className}
           schoolLevel={schoolLevel}
           stateRevision={stateRevision}
-          classId={classId}
           classYearId={classYearId}
         />
       ) : (

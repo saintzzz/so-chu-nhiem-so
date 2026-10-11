@@ -84,10 +84,6 @@ async function run(req: NextRequest) {
   const phase = req.nextUrl.searchParams.get("phase") ?? "all";
   const subject = `[Sổ Chủ Nhiệm Số] Báo cáo tuần của con - tuần tới ${fmtDateVN(todayVN())}`;
 
-  if (phase === "send") {
-    return sendPhase(supabase, runId, deadlineAt);
-  }
-
   // CR-021: idempotent - ph da gui thanh cong tuan nay khong gui lai.
   // ?retry=<run_id> chi gui lai cho ph failed/skipped cua run do, tang attempts.
   const retryRun = req.nextUrl.searchParams.get("retry");
@@ -142,7 +138,7 @@ async function run(req: NextRequest) {
         );
       }
     }
-  } else {
+  } else if (phase !== "send") {
     // Load tat ca deliveries tuan nay: sent => bo qua; failed/skipped =>
     // auto-retry neu attempts < MAX_ATTEMPTS (cong don attempts tu run truoc).
     const all = await fetchAllRows<{
@@ -197,6 +193,17 @@ async function run(req: NextRequest) {
     if (!ob.error) {
       for (const r of ob.rows) sentThisWeek.add(r.parent_id);
     }
+  }
+
+  // r11 M: phase=send phai dispatch SAU khi retry set da duoc giai quyet -
+  // dat early-return tren dau se bypass loc p_parent_ids trong retry mode.
+  if (phase === "send") {
+    return sendPhase(
+      supabase,
+      runId,
+      deadlineAt,
+      retryRun ? [...(retryParents ?? [])] : null,
+    );
   }
 
   let parentsTotal = 0, chunks = 0;

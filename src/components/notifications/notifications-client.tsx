@@ -87,10 +87,20 @@ export function NotificationsClient({
         setUnread((c) => Math.max(0, c - 1));
       }
     }
-    // r27 M: chi dieu huong route noi bo - link ngoai (ca protocol-
-    // relative //host) khong duoc mo de chan phishing qua notif gia.
-    if (n.link && n.link.startsWith("/") && !n.link.startsWith("//")) {
-      router.push(n.link);
+    // r27 M: chi dieu huong route noi bo - link ngoai khong duoc mo.
+    // r28 H: startsWith("/") bi bypass boi "/\host" (WHATWG URL chuan hoa
+    // \ -> / nen parse ra //host) - phai resolve origin, chi push khi khop.
+    if (n.link) {
+      try {
+        if (
+          new URL(n.link, window.location.origin).origin ===
+          window.location.origin
+        ) {
+          router.push(n.link);
+        }
+      } catch {
+        // link khong parse duoc - bo qua dieu huong
+      }
     }
   }
 

@@ -3073,15 +3073,47 @@ test("r27: claim email phai duoc release tren moi duong thoat that bai", () => {
   assert.ok(blk.indexOf("releaseClaim") < blk.indexOf("return {"));
 });
 
-test("r27: reply draft chi reset khi chua doi sau luc gui (draft race)", () => {
+test("r27+r28: reply draft chi reset khi cung draft VA cung hoi thoai", () => {
   const inbox = readSrc("src/components/parents/inbox-client.tsx");
-  assert.match(inbox, /prev === sentDraft \? "" : prev/);
+  // r27: chot draft tai luc gui
+  assert.match(inbox, /const sentDraft = reply/);
+  // r28: phai kiem ca identity hoi thoai - cung noi dung nhung da chuyen
+  // sang nguoi nhan khac thi KHONG duoc xoa draft / hien feedback.
+  assert.match(inbox, /const sentFor = selected\.id/);
+  assert.match(inbox, /selectedIdRef\.current === sentFor/);
   const portal = readSrc("src/components/portal/parent-actions.tsx");
   assert.match(portal, /composerRef/);
   assert.match(portal, /cur\.reply === sentDraft && cur\.replyTo === sentReplyTo/);
 });
 
-test("r27: notification link chi dieu huong route noi bo", () => {
+test("r28: notification link phai resolve origin - startsWith bi bypass boi backslash", () => {
   const nc = readSrc("src/components/notifications/notifications-client.tsx");
-  assert.match(nc, /startsWith\("\/"\) && !n\.link\.startsWith\("\/\/"\)/);
+  // r28 H: "/\host" qua startsWith("/") - phai parse URL voi origin va so khop.
+  assert.match(nc, /new URL\(n\.link, window\.location\.origin\)/);
+  assert.match(nc, /===\s*window\.location\.origin/);
+  assert.doesNotMatch(nc, /n\.link\.startsWith\("\/"\)/);
+});
+
+test("r28: notification link DB policy chan backslash + protocol-relative", () => {
+  const mig = read("supabase/migrations/20261212_cr049_r28_fixes.sql");
+  assert.match(mig, /link ~ '\^\/\[a-zA-Z0-9_\/\?=&%#\.~:\+-\]\*\$'/);
+  // whitelist co "/" trong charset nen //evil van match - phai chan rieng
+  assert.match(mig, /link !~ '\^\/\/'/);
+});
+
+test("r28: positive_points la cot dan xuat - trigger guard chan ghi truc tiep", () => {
+  const mig = read("supabase/migrations/20261212_cr049_r28_fixes.sql");
+  // column grant khong tru duoc table-level UPDATE -> phai dung trigger;
+  // cho phep depth>1 (trigger sync tu conduct_records) va service_role.
+  assert.match(mig, /trg_guard_student_positive_points/);
+  assert.match(mig, /pg_trigger_depth\(\) > 1/);
+  assert.match(mig, /current_role in \('service_role'/);
+  assert.match(mig, /is distinct from old\.positive_points/);
+});
+
+test("r28: incident chi co studentId phai resolve campus tu hoc sinh - fail closed BGH", () => {
+  const act = readSrc("src/app/(app)/safety/actions.ts");
+  const blk = act.slice(act.indexOf("else if (input.studentId)"));
+  assert.match(blk, /select\("classes\(campus_id\)"\)/);
+  assert.match(blk, /campusUnknown = true/);
 });

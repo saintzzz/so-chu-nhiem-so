@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn, fmtDateTimeVN } from "@/lib/utils";
 import { olderMessagesPredicate } from "@/lib/chat";
@@ -59,6 +59,12 @@ export function InboxClient({
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const selected = items.find((m) => m.id === selectedId) ?? null;
+  // r28 M: ref giu selectedId hien tai de async reply biet nguoi dung da
+  // chuyen sang hoi thoai khac hay chua (state trong closure la stale).
+  const selectedIdRef = useRef<string | null>(selectedId);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
 
   async function openMessage(m: InboxMessageItem) {
     setSelectedId(m.id);
@@ -202,7 +208,11 @@ export function InboxClient({
     // r27 M: chot draft tai luc bam gui - response ve cham chi duoc xoa
     // draft neu nguoi dung chua go them / chua chuyen tin khac (draft da
     // thay so voi ban da gui thi giu nguyen).
+    // r28 M: so sanh draft THIEU identity hoi thoai - cung noi dung nhung
+    // da chuyen sang phu huynh khac thi van xoa nham draft moi. Phai kiem
+    // ca selectedId con khop voi hoi thoai da gui hay khong.
     const sentDraft = reply;
+    const sentFor = selected.id;
     const res = await replyMessage({
       recipientId: selected.senderId,
       studentId: selected.studentId,
@@ -212,8 +222,11 @@ export function InboxClient({
     // r26 M: tin nhan da commit (committed=true) -> xoa draft ngay, ke ca
     // khi kem loi notification - neu giu draft thi retry tao tin trung.
     if (res.committed) {
-      setReply((prev) => (prev === sentDraft ? "" : prev));
-      setFeedback(res.error ?? "Đã gửi phản hồi.");
+      const stillHere = selectedIdRef.current === sentFor;
+      setReply((prev) => (prev === sentDraft && stillHere ? "" : prev));
+      // r28 M: chi hien feedback khi con o dung hoi thoai - hien "Da gui"
+      // trong ngu canh phu huynh khac danh lua nguoi dung nham nguoi nhan.
+      if (stillHere) setFeedback(res.error ?? "Đã gửi phản hồi.");
     } else {
       setFeedback(res.error ?? "Không gửi được phản hồi.");
     }

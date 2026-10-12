@@ -80,6 +80,30 @@ export async function createIncident(input: {
         (cls as Pick<{ campus_id: string | null }, "campus_id"> | null)
           ?.campus_id ?? null;
     }
+  } else if (input.studentId) {
+    // r28 M: su co chi gan studentId (classId null) truoc day de
+    // incidentCampusId=null + campusUnknown=false -> mo ta bi gui cho PHT
+    // moi campus. Resolve lop/campus tu hoc sinh; khong xac dinh duoc thi
+    // fail closed nhu loi lookup (chi BGH nhan).
+    const { data: stu, error: stuErr } = await supabase
+      .from("students")
+      .select("classes(campus_id)")
+      .eq("id", input.studentId)
+      .single();
+    if (stuErr) {
+      if (stuErr.code !== "PGRST116") {
+        console.error("[safety] student campus lookup:", stuErr.message);
+      }
+      campusUnknown = true;
+    } else {
+      // Supabase join typing tra array - runtime many-to-one la object don.
+      const raw = (stu as { classes: unknown }).classes;
+      const cls = (Array.isArray(raw) ? raw[0] : raw) as {
+        campus_id: string | null;
+      } | null;
+      incidentCampusId = cls?.campus_id ?? null;
+      if (!cls) campusUnknown = true;
+    }
   }
   const notifRows = (
     (leaderProfiles ?? []) as {

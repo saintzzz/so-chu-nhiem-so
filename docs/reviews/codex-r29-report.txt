@@ -1,0 +1,76 @@
+Review toan repo so-chu-nhiem tai commit 682a816 (khong sua…
+Share
+You said:
+
+Review toan repo so-chu-nhiem tai commit 682a816 (khong sua code). Day la vong r29 sau remediation r28.
+
+Boi canh: repo da qua nhieu vong review voi regression gate scripts/check-reliability.mjs + tests/r2-regression.test.mjs. r28 da fix 4 findings:
+
+(H) Bypass link noi bo bang backslash - notif_ins whitelist charset ^/[a-zA-Z0-9_/?=&%#.~:+-]*$ + chan ^//, client resolve origin qua new URL.
+(M) students.positive_points (cot dan xuat tu conduct_records) - trigger trg_guard_student_positive_points chan ghi truc tiep depth 1, cho phep depth>1 + service_role.
+(M) createIncident chi co studentId - resolve campus tu students->classes, fail closed chi gui BGH.
+(M) draft race inbox - kiem ca identity hoi thoai (selectedIdRef === sentFor) khong chi noi dung.
+
+Nhiem vu: tim class loi MOI hoac false negative cua gate hien tai, KHONG lap lai cac instance da dong:
+
+unchecked/discarded read, unbounded read, .in() list lon, CAS transition, tenant/RBAC gap, derived/cached column ghi truc tiep, race draft/state client, link/redirect unsafe, claim/lease bo roi, notification leak du lieu ngoai pham vi.
+Moi finding ghi ro file:line, kich ban tan cong cu the, va tai sao gate khong bat duoc (neu co).
+Chi bao finding thuc te, khong bao van de da fix o tren.
+
+VERDICT: CLEAN neu khong co actionable Critical/High; nguoc lai NOT-CLEAN kem danh sach. 
+
+…
+Show more
+7:14 AM
+Worked for 6m 25s
+ChatGPT said:
+
+VERDICT: CLEAN theo tiêu chí không có actionable Critical/High. Có 1 finding Medium là false negative của kiểm tra schema, không trùng các instance đã đóng.
+
+M — Table block sai cấu trúc vượt validator, làm crash trang học liệu.
+
+File:line: src/lib/tvc/ai-json.ts:59–72; src/components/tvc/doc-render.tsx:47; đường lưu tại src/lib/tvc/actions.ts:111.
+Kịch bản: GV hợp lệ gọi saveMaterial với content chứa payload sau. Action chuyển nguyên content vào DB, không validate runtime. Khi tác giả hoặc người duyệt mở học liệu, renderer gọi .map() trên null và crash. Cùng payload từ AI cũng vượt validator hiện tại:
+JSON
+{
+  "title": "Học liệu",
+  "sections": [{
+    "title": "Bảng",
+    "blocks": [{
+      "kind": "table",
+      "header": ["A"],
+      "rows": [null]
+    }]
+  }]
+}
+Đã tái hiện: isDocContent trả true; predicate chọn kết quả AI trả true; generateDoc trả doc; render bằng React gây Cannot read properties of null (reading 'map'). Probe dùng provider giả lập, không gọi AI ngoài.
+Vì sao gate bỏ sót: scanner chỉ kiểm tra bốn nhóm reliability, không kiểm tra schema payload. Regression chưa có ca table với hàng null. Đây là lỗ còn sót trong validator r4; các ca text:42, appendix:{} đã sửa không bị báo lại.
+Khắc phục: validate từng loại block; table phải có header: string[], rows: string[][]. Áp dụng trước render, lưu và nhận callback.
+
+Review trên snapshot 682a8168b93944130b917a7697f5eff904a706c1: reliability 4/4 PASS, regression 154/154 PASS, PII 76/76 PASS. Fixture scanner chạy trực tiếp nhận diện lỗi đúng; wrapper bị spawnSync EPERM. Không thử ghi production hoặc xác minh constraint DB live. Không sửa code repo.
+
+7:20 AM
+ChatGPT can make mistakes. Check important info.
+Latest response
+
+
+
+
+Approve for me
+GPT-6.1 Sol
+Light
+None
+Minimal
+Light
+Medium
+High
+Extra High
+Max
+Ultra
+Persistent
+so-chu-nhiem-so
+Changes
++61,690
+-5,369
+Outputs
+Create a file or site

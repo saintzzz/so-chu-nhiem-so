@@ -3117,3 +3117,22 @@ test("r28: incident chi co studentId phai resolve campus tu hoc sinh - fail clos
   assert.match(blk, /select\("classes\(campus_id\)"\)/);
   assert.match(blk, /campusUnknown = true/);
 });
+
+test("r29: isDocContent validate tung kind payload - table rows:[null] bi chan", () => {
+  const aj = readSrc("src/lib/tvc/ai-json.ts");
+  assert.match(aj, /case "table":/);
+  assert.match(aj, /strArr\(blk\.header\)/);
+  assert.match(aj, /blk\.rows\.every\(strArr\)/);
+  // moi kind co payload phai duoc kiem: formula.tex, kv.pairs, audio.path
+  assert.match(aj, /case "formula":\s*return typeof blk\.tex === "string"/);
+  assert.match(aj, /case "kv":/);
+  assert.match(aj, /case "audio":\s*return typeof blk\.path === "string"/);
+});
+
+test("r29: save/update material validate content truoc khi ghi DB", () => {
+  const act = readSrc("src/lib/tvc/actions.ts");
+  const save = act.slice(act.indexOf("export async function saveMaterial"));
+  assert.ok(save.indexOf("isDocContent(input.content)") < save.indexOf('.from("tvc_materials")'));
+  const upd = act.slice(act.indexOf("export async function updateMaterialContent"));
+  assert.ok(upd.indexOf("isDocContent(content)") < upd.indexOf(".update({"));
+});

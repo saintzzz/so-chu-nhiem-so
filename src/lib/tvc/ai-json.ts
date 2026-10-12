@@ -58,18 +58,57 @@ export function isDocContent(v: unknown): v is DocContent {
   // kind dang string. Appendix (neu co) cung phai cung hinh dang.
   const validBlock = (b: unknown): boolean => {
     if (!b || typeof b !== "object") return false;
-    const blk = b as { kind?: unknown; text?: unknown; items?: unknown };
+    const blk = b as Record<string, unknown>;
     if (typeof blk.kind !== "string") return false;
-    // R4: payload phai dung kieu - text:42 tung qua predicate roi no .trim()
-    // luc clean/render; items khong phai array cung no cleanDoc.
-    if (blk.text !== undefined && blk.text !== null && typeof blk.text !== "string")
-      return false;
-    if (blk.items !== undefined && blk.items !== null) {
-      if (!Array.isArray(blk.items)) return false;
-      if (!blk.items.every((i) => typeof i === "string")) return false;
+    // R4 + r29 M: payload moi kind phai dung kieu - table rows:[null] tung
+    // qua predicate roi no .map() luc render. Validate theo DocBlock union.
+    const strArr = (x: unknown): x is string[] =>
+      Array.isArray(x) && x.every((i) => typeof i === "string");
+    const optStr = (x: unknown) => x === undefined || typeof x === "string";
+    switch (blk.kind) {
+      case "heading":
+        return (
+          typeof blk.text === "string" &&
+          (blk.level === undefined || [1, 2, 3].includes(blk.level as number))
+        );
+      case "para":
+      case "note":
+        return typeof blk.text === "string";
+      case "list":
+        return (
+          strArr(blk.items) &&
+          (blk.ordered === undefined || typeof blk.ordered === "boolean")
+        );
+      case "table":
+        return (
+          strArr(blk.header) &&
+          Array.isArray(blk.rows) &&
+          blk.rows.every(strArr)
+        );
+      case "formula":
+        return typeof blk.tex === "string";
+      case "kv":
+        return (
+          Array.isArray(blk.pairs) &&
+          blk.pairs.every(
+            (p) =>
+              Array.isArray(p) &&
+              p.length === 2 &&
+              typeof p[0] === "string" &&
+              typeof p[1] === "string",
+          )
+        );
+      case "divider":
+        return true;
+      case "image":
+        return optStr(blk.svg) && optStr(blk.path) && optStr(blk.caption);
+      case "audio":
+        return typeof blk.path === "string" && optStr(blk.caption);
+      default:
+        // kind ngoai union - renderer se bo qua; giu permissive de doc cu
+        // hoac kind moi khong bi vo hieu toan bo tai lieu.
+        return true;
     }
-    if (blk.kind === "list" && !Array.isArray(blk.items)) return false;
-    return true;
   };
   const validSection = (s: unknown): boolean => {
     const sec = s as DocContent["sections"][0];

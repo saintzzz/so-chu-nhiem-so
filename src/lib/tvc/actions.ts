@@ -7,6 +7,7 @@ import { checkActionRole, getProfile } from "@/lib/auth";
 import { assertFeature } from "@/lib/permissions";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { validateQuestion } from "@/lib/tvc/question-validate";
+import { isDocContent } from "@/lib/tvc/ai-json";
 import type { DocContent, MaterialType } from "@/types/tvc";
 
 /**
@@ -72,6 +73,11 @@ export interface SaveMaterialInput {
 export async function saveMaterial(input: SaveMaterialInput) {
   const err = await featErr("studio");
   if (err) return { error: err };
+  // r29 M: content la input tu client - payload sai hinh dang (vi du table
+  // rows:[null]) tung vao DB roi crash renderer. Validate truoc khi ghi.
+  if (!isDocContent(input.content)) {
+    return { error: "Nội dung học liệu không hợp lệ - vui lòng tạo lại." };
+  }
   const profile = (await getProfile())!;
   const supabase = await createClient();
   await ensureTvcProfile();
@@ -129,6 +135,11 @@ export async function updateMaterialContent(
 ) {
   const err = await featErr("studio");
   if (err) return { error: err };
+  // r29 M: cung lo validate nhu saveMaterial - update co the ghi payload
+  // sai hinh dang vao material da ton tai.
+  if (!isDocContent(content)) {
+    return { error: "Nội dung học liệu không hợp lệ - vui lòng tạo lại." };
+  }
   const profile = (await getProfile())!;
   const supabase = await createClient();
   const { data, error } = await supabase

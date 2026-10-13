@@ -114,6 +114,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
       ],
     },
+    { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   gvbm: [
     {

@@ -356,7 +356,7 @@ export function mergedNav(roles: Role[]): NavSection[] {
       const key = sec.href ?? sec.label;
       let target = byLabel.get(key);
       if (!target) {
-        target = { label: sec.label, children: [] };
+        target = { label: sec.label };
         if (sec.href && !seenHref.has(sec.href)) {
           target.href = sec.href;
           seenHref.add(sec.href);

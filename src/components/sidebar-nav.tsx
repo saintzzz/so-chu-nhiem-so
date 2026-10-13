@@ -33,7 +33,7 @@ export function SidebarNav({
           const SectionIcon = SECTION_ICONS[section.label] ?? FALLBACK_ICON;
           return (
           <li key={section.label}>
-            {section.children ? (
+            {section.children?.length ? (
               <>
                 <button
                   onClick={() =>

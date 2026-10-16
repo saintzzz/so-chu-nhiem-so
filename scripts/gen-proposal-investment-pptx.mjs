@@ -188,15 +188,16 @@ function note(s, txt, y = 6.9) {
 // ---------- S8 Phuong an share-risk ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHƯƠNG ÁN SHARE-RISK", "Chọn 1 hoặc kết hợp - phần A (~794M) không hoàn, không khấu trừ");
+  slideTitle(s, "PHƯƠNG ÁN KÊU GỌI & CHIA SẺ", "Chia doanh thu T03/27-T03/29 (2 năm đầu) - sau đó chuyển cổ phần");
   table(s, [
-    ["Tiêu chí", "PA-1: Đồng đầu tư theo tỷ lệ", "PA-2: Recoupable advance"],
-    ["Nhà đầu tư bỏ ra", "X% của B+C (~1 995M)", "Ứng toàn bộ B (~829M) + C trả theo tháng (~55.5M)"],
-    ["Bên phát triển gánh", "Phần A sunk + (100-X)% của B+C", "Phần A sunk; advance khấu trừ từ share khi có doanh thu"],
-    ["Rủi ro nhà đầu tư", "Mất tối đa phần đã bỏ nếu dự án dừng", "Advance chỉ thu hồi khi có doanh thu - rủi ro timing, không mất vốn nếu thành công"],
-    ["Phù hợp khi", "Muốn rủi ro thấp + chia upside dài hạn", "Tin sản phẩm, muốn cơ chế hoàn vốn rõ ràng"],
-  ], { rowH: 0.62 });
-  note(s, "PA-2 là chuẩn 'recoupable advance against royalty' trong licensing/publishing tech - không clawback tiền mặt, chỉ trừ từ phần share tương lai.", 6.3);
+    ["Tiêu chí", "PA-1: fund phần B (ưu tiên)", "PA-2: fund B + C"],
+    ["Nhà đầu tư bỏ ra", "~829M (5.5 tháng phát triển)", "~1 995M (B ứng trước + C theo tháng)"],
+    ["Dev gánh", "A sunk ~794M + tự gánh C ~1 166M + vận hành", "A sunk ~794M + vận hành"],
+    ["Rev-share T03/27-T03/29", "Nhà đầu tư 40-45% / dev 55-60%", "Nhà đầu tư 60-65% / dev 35-40%"],
+    ["Recoup-first", "Share NĐT trừ gốc 829M; recoup xong còn ~30-35%", "Trừ trên tổng giải ngân; recoup xong còn ~40-45%"],
+    ["Cổ phần sau T03/2029", "~10-15%", "~20-25%"],
+  ], { rowH: 0.55, fontSize: 11 });
+  note(s, "Nhà đầu tư được share cao hơn tỷ lệ vốn đóng góp (bù rủi ro early); dev giữ majority/IP vì gánh sunk A + maintain + vận hành.", 6.45);
 }
 
 // ---------- S9 Dieu khoan + tom tat ----------
@@ -207,14 +208,14 @@ function note(s, txt, y = 6.9) {
     ["Mục", "Giá trị"],
     ["Tổng kinh phí dự án", "~2 788 650 000 VND (~2.79 tỷ)"],
     ["Đã đầu tư (sunk - sweat equity)", "~793.7M (28%) - T03/26 → 15/10/26"],
-    ["Cần đồng đầu tư (B + C)", "~1 995M (72%)"],
-    ["Burn rate build phase", "129M nhân sự + ~8.1M infra /tháng × 5.5 tháng"],
-    ["Burn rate maintain", "46.5M nhân sự + ~9M infra /tháng × 21 tháng"],
+    ["PA-1 - kêu gọi trước tiên", "Phần B ~829M → NĐT 40-45% rev-share 2 năm + ~10-15% cổ phần sau 2029"],
+    ["PA-2 - mở rộng", "B+C ~1 995M → NĐT 60-65% rev-share 2 năm + ~20-25% cổ phần sau 2029"],
+    ["Burn rate", "Build: 129M NS + ~8.1M infra /th · Maintain: 46.5M NS + ~9M infra /th"],
     ["Trạng thái sản phẩm", "Live production - 3 trường demo - QA xanh - ~30 vòng external review"],
-  ], { rowH: 0.48 });
+  ], { rowH: 0.48, fontSize: 11 });
   bullets(s, [
-    { t: "Điều khoản bắt buộc: giải ngân theo milestone - phần A không hoàn/khấu trừ - báo cáo burn hàng tháng + audit rights - IP thuộc bên phát triển - clock doanh thu đếm từ khách paid đầu tiên - scale >5 trường thì review hạ tầng qua CR riêng", c: C.muted },
-  ], { y: 5.35, fontSize: 11.5 });
+    { t: "Điều khoản bắt buộc: giải ngân theo milestone - phần A không hoàn/khấu trừ - clock doanh thu đếm từ khách paid đầu tiên (trễ thì dịch cửa sổ) - cổ phần vesting từ ngày ký - báo cáo burn hàng tháng + audit rights - IP thuộc bên phát triển - scale >5 trường thì review hạ tầng qua CR riêng", c: C.muted },
+  ], { y: 5.4, fontSize: 11.5 });
 }
 
 mkdirSync("docs/handover", { recursive: true });

@@ -1,4 +1,4 @@
-# ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.74 TỶ ĐỒNG
+# ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.79 TỶ ĐỒNG
 
 **Mục tiêu:** kêu gọi đồng đầu tư / share-risk cho VieSchool - Sổ Chủ Nhiệm Số + TVC360.
 **Ngày:** 16/10/2026. Trạng thái: bản nháp để negotiate.
@@ -113,29 +113,46 @@ Vận hành lean sau launch - không giữ team build.
 | **TỔNG** | | **~2 788 650 000 (~2.79 tỷ)** |
 
 - Bên phát triển đã bỏ: ~794M (28%) - sunk, không hoàn, không khấu trừ
-- Cần đồng đầu tư (B + C): ~1 995M (72%)
+- Kêu gọi trước tiên: phần B (~829M) - forecast 5.5 tháng tới
+- Nếu đồng ý mở rộng: B + C = ~1 995M (72%)
 - Burn rate build: 129M nhân sự + ~8.1M infra /tháng
 - Burn rate maintain: 46.5M nhân sự + ~9M infra /tháng
 
 ---
 
-## PHƯƠNG ÁN SHARE-RISK
+## PHƯƠNG ÁN KÊU GỌI & CHIA SẺ
 
-### PA-1: Đồng đầu tư theo tỷ lệ
+Mô hình chung: **T03/2027 - T03/2029 (2 năm đầu) chia doanh thu; sau T03/2029 chuyển sang chia cổ phần.** Phần A (~794M) là sweat equity của bên phát triển - không hoàn, không khấu trừ.
 
-Nhà đầu tư gánh X% của phần B + C (~1.995 tỷ); bên phát triển gánh phần còn lại + toàn bộ phần A (~794M sweat equity, không hoàn lại).
+### PA-1 - Kêu gọi phần B (~829 450 000) - ưu tiên trước
 
-### PA-2: Recoupable advance
+| Mục | Đề xuất |
+|---|---|
+| Nhà đầu tư bỏ | ~829M cho 5.5 tháng phát triển |
+| Bên phát triển gánh | Phần A sunk (~794M) + tự gánh phần C (~1 166M maintain) + toàn bộ công sức vận hành |
+| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư 40-45% / dev 55-60%**, có cơ chế recoup-first: phần share nhà đầu tư trừ vào gốc 829M; recoup xong thì nhà đầu tư còn ~30-35% đến hết kỳ |
+| Cổ phần sau T03/2029 | Nhà đầu tư ~**10-15%** |
 
-Nhà đầu tư ứng toàn bộ phần B (~829M); khi có doanh thu, phần share của bên phát triển vượt payroll sẽ khấu trừ dần. Phần C trả theo tháng thực tế (~55.5M).
+> Lý do tỉ lệ: nhà đầu tư gánh 30% tổng chi phí dự án nhưng nhận 40-45% doanh thu 2 năm đầu - ưu đãi bù rủi ro early; dev giữ majority vì đóng góp ~70% (sunk A + maintain C) và sở hữu IP.
+
+### PA-2 - Kêu gọi B + C (~1 994 950 000)
+
+| Mục | Đề xuất |
+|---|---|
+| Nhà đầu tư bỏ | ~1 995M: ứng B (~829M) + trả C theo tháng thực tế (~55.5M/th × 21 tháng) |
+| Bên phát triển gánh | Phần A sunk (~794M) + vận hành |
+| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư 60-65% / dev 35-40%**, recoup-first trên tổng đã giải ngân; recoup xong thì nhà đầu tư còn ~40-45% đến hết kỳ |
+| Cổ phần sau T03/2029 | Nhà đầu tư ~**20-25%** |
+
+> Nhà đầu tư gánh 72% tổng chi phí → nhận 60-65% doanh thu - dev vẫn giữ trên mức tỷ lệ vốn nhờ IP + sunk A + vai trò vận hành.
 
 ### Điều khoản bắt buộc kèm theo
 
 - Giải ngân theo milestone có deliverable kiểm chứng được - không ứng trọn
-- Phần A là contribution không hoàn, không khấu trừ
-- Báo cáo burn + progress hàng tháng; audit rights cho phần giải ngân
-- IP codebase thuộc bên phát triển; nhà đầu tư nhận quyền sử dụng / chia doanh thu theo deal
-- Clock chia doanh thu chỉ đếm từ khách trả phí đầu tiên - pilot free không tính
+- Clock chia doanh thu chỉ đếm từ khách trả phí đầu tiên - pilot free không tính; nếu khách paid đầu tiên trễ hơn T03/2027, cửa sổ 2 năm dịch tương ứng
+- Cổ phần vesting từ ngày ký, ghi rõ entity - không phải hứa sau 2 năm
+- Báo cáo burn + doanh thu hàng tháng; audit rights cho phần giải ngân
+- IP codebase thuộc bên phát triển; nhà đầu tư nhận quyền sử dụng / chia theo deal
 - Khi scale >5 trường đồng thời: review hạ tầng (compute tier, read replica) - chi phí vượt khung C tính CR riêng có phê duyệt 2 bên
 
 ---

@@ -113,8 +113,8 @@ Vận hành lean sau launch - không giữ team build.
 | **TỔNG** | | **~2 788 650 000 (~2.79 tỷ)** |
 
 - Bên phát triển đã bỏ: ~794M (28%) - sunk, không hoàn, không khấu trừ
-- Kêu gọi trước tiên: phần B (~829M) - forecast 5.5 tháng tới
-- Nếu đồng ý mở rộng: B + C = ~1 995M (72%)
+- Kêu gọi trước tiên (PA-1): **50% phần B ≈ 414 725 000** - dev gánh 50% còn lại
+- Nếu mở rộng (PA-2): **50% của B + C ≈ 997 475 000** - dev gánh 50% còn lại
 - Burn rate build: 129M nhân sự + ~8.1M infra /tháng
 - Burn rate maintain: 46.5M nhân sự + ~9M infra /tháng
 
@@ -122,29 +122,27 @@ Vận hành lean sau launch - không giữ team build.
 
 ## PHƯƠNG ÁN KÊU GỌI & CHIA SẺ
 
-Mô hình chung: **T03/2027 - T03/2029 (2 năm đầu) chia doanh thu; sau T03/2029 chuyển sang chia cổ phần.** Phần A (~794M) là sweat equity của bên phát triển - không hoàn, không khấu trừ.
+Mô hình chung: **share-risk 50-50** - nhà đầu tư và bên phát triển mỗi bên gánh 50% chi phí kêu gọi. **T03/2027 - T03/2029 (2 năm đầu) chia doanh thu; sau T03/2029 chuyển sang chia cổ phần.** Phần A (~794M) là sweat equity của bên phát triển - không hoàn, không khấu trừ, không tính vào phần 50-50.
 
-### PA-1 - Kêu gọi phần B (~829 450 000) - ưu tiên trước
+### PA-1 - Share-risk 50-50 phần B (~829 450 000) - ưu tiên trước
 
 | Mục | Đề xuất |
 |---|---|
-| Nhà đầu tư bỏ | ~829M cho 5.5 tháng phát triển |
-| Bên phát triển gánh | Phần A sunk (~794M) + tự gánh phần C (~1 166M maintain) + toàn bộ công sức vận hành |
-| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư 40-45% / dev 55-60%**, có cơ chế recoup-first: phần share nhà đầu tư trừ vào gốc 829M; recoup xong thì nhà đầu tư còn ~30-35% đến hết kỳ |
+| Nhà đầu tư gánh | **50% phần B ≈ 414 725 000** cho 5.5 tháng phát triển |
+| Bên phát triển gánh | 50% phần B (~414.7M sweat equity) + phần A sunk (~794M) + tự gánh phần C (~1 166M maintain) + toàn bộ công sức vận hành |
+| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư ~40% / dev ~60%** - dev giữ majority vì gánh A sunk + C + IP + vận hành |
 | Cổ phần sau T03/2029 | Nhà đầu tư ~**10-15%** |
 
-> Lý do tỉ lệ: nhà đầu tư gánh 30% tổng chi phí dự án nhưng nhận 40-45% doanh thu 2 năm đầu - ưu đãi bù rủi ro early; dev giữ majority vì đóng góp ~70% (sunk A + maintain C) và sở hữu IP.
-
-### PA-2 - Kêu gọi B + C (~1 994 950 000)
+### PA-2 - Share-risk 50-50 cả B + C (~1 994 950 000)
 
 | Mục | Đề xuất |
 |---|---|
-| Nhà đầu tư bỏ | ~1 995M: ứng B (~829M) + trả C theo tháng thực tế (~55.5M/th × 21 tháng) |
-| Bên phát triển gánh | Phần A sunk (~794M) + vận hành |
-| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư 60-65% / dev 35-40%**, recoup-first trên tổng đã giải ngân; recoup xong thì nhà đầu tư còn ~40-45% đến hết kỳ |
-| Cổ phần sau T03/2029 | Nhà đầu tư ~**20-25%** |
+| Nhà đầu tư gánh | **50% của B+C ≈ 997 475 000** - phần B ứng theo milestone, phần C trả theo tháng thực tế (~27.75M/th × 21 tháng) |
+| Bên phát triển gánh | 50% của B+C (~997.5M) + phần A sunk (~794M) + vận hành |
+| Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư ~45% / dev ~55%** - cam kết lớn hơn PA-1 → share cao hơn |
+| Cổ phần sau T03/2029 | Nhà đầu tư ~**15-20%** |
 
-> Nhà đầu tư gánh 72% tổng chi phí → nhận 60-65% doanh thu - dev vẫn giữ trên mức tỷ lệ vốn nhờ IP + sunk A + vai trò vận hành.
+> Tổng quan contribute: PA-1 dev gánh ~2.37 tỷ vs NĐT ~415M; PA-2 dev gánh ~1.79 tỷ vs NĐT ~997M. Cổ phần sau kỳ phản ánh chênh lệch cam kết.
 
 ### Điều khoản bắt buộc kèm theo
 

@@ -191,13 +191,12 @@ function note(s, txt, y = 6.9) {
   slideTitle(s, "PHƯƠNG ÁN KÊU GỌI & CHIA SẺ", "Chia doanh thu T03/27-T03/29 (2 năm đầu) - sau đó chuyển cổ phần");
   table(s, [
     ["Tiêu chí", "PA-1: fund phần B (ưu tiên)", "PA-2: fund B + C"],
-    ["Nhà đầu tư bỏ ra", "~829M (5.5 tháng phát triển)", "~1 995M (B ứng trước + C theo tháng)"],
-    ["Dev gánh", "A sunk ~794M + tự gánh C ~1 166M + vận hành", "A sunk ~794M + vận hành"],
-    ["Rev-share T03/27-T03/29", "Nhà đầu tư 40-45% / dev 55-60%", "Nhà đầu tư 60-65% / dev 35-40%"],
-    ["Recoup-first", "Share NĐT trừ gốc 829M; recoup xong còn ~30-35%", "Trừ trên tổng giải ngân; recoup xong còn ~40-45%"],
-    ["Cổ phần sau T03/2029", "~10-15%", "~20-25%"],
+    ["Nhà đầu tư gánh (50%)", "~414 725 000 (50% phần B)", "~997 475 000 (50% của B+C)"],
+    ["Dev gánh", "50% B + A sunk ~794M + tự gánh C ~1 166M + vận hành", "50% (B+C) + A sunk ~794M + vận hành"],
+    ["Rev-share T03/27-T03/29", "Nhà đầu tư ~40% / dev ~60%", "Nhà đầu tư ~45% / dev ~55%"],
+    ["Cổ phần sau T03/2029", "~10-15%", "~15-20% (cam kết lớn hơn)"],
   ], { rowH: 0.55, fontSize: 11 });
-  note(s, "Nhà đầu tư được share cao hơn tỷ lệ vốn đóng góp (bù rủi ro early); dev giữ majority/IP vì gánh sunk A + maintain + vận hành.", 6.45);
+  note(s, "Share-risk 50-50 về chi phí ở cả 2 phương án; dev giữ majority rev-share vì gánh sunk A + IP + toàn bộ công sức vận hành.", 6.45);
 }
 
 // ---------- S9 Dieu khoan + tom tat ----------
@@ -208,8 +207,8 @@ function note(s, txt, y = 6.9) {
     ["Mục", "Giá trị"],
     ["Tổng kinh phí dự án", "~2 788 650 000 VND (~2.79 tỷ)"],
     ["Đã đầu tư (sunk - sweat equity)", "~793.7M (28%) - T03/26 → 15/10/26"],
-    ["PA-1 - kêu gọi trước tiên", "Phần B ~829M → NĐT 40-45% rev-share 2 năm + ~10-15% cổ phần sau 2029"],
-    ["PA-2 - mở rộng", "B+C ~1 995M → NĐT 60-65% rev-share 2 năm + ~20-25% cổ phần sau 2029"],
+    ["PA-1 - kêu gọi trước tiên", "NĐT gánh 50% B ≈ ~414.7M → NĐT ~40% rev-share 2 năm + ~10-15% cổ phần sau 2029"],
+    ["PA-2 - mở rộng", "NĐT gánh 50% (B+C) ≈ ~997.5M → NĐT ~45% rev-share 2 năm + ~15-20% cổ phần sau 2029"],
     ["Burn rate", "Build: 129M NS + ~8.1M infra /th · Maintain: 46.5M NS + ~9M infra /th"],
     ["Trạng thái sản phẩm", "Live production - 3 trường demo - QA xanh - ~30 vòng external review"],
   ], { rowH: 0.48, fontSize: 11 });

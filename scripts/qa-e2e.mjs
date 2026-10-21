@@ -178,6 +178,8 @@ section("C. Cross-module data linkage (DB vs UI)");
 {
   const { data: ann } = await sb.from("announcements").select("id,title").is("class_id", null).not("school_id", "is", null).order("created_at", { ascending: false }).limit(1);
   if (ann?.length) {
+    // AC-3.1/AC-3.2 (CR-034): PH login -> /portal/parent render du lieu
+    // con minh qua RLS parent_students; visit() assert redirect dung role home.
     const rs = await visit("hocsinh", "/portal/student");
     const rp = await visit("phuhuynh", "/portal/parent");
     check("announcement on student portal", rs.bodyText.includes(ann[0].title.slice(0, 30)), ann[0].title.slice(0, 40));

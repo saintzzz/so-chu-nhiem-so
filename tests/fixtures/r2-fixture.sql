@@ -527,6 +527,7 @@ insert into students(id, class_id, full_name) values
   ('60000000-0000-0000-0000-00000000000b','30000000-0000-0000-0000-00000000000b','HS B');
 insert into parents(id, profile_id) values
   ('70000000-0000-0000-0000-00000000000a','20000000-0000-0000-0000-000000000006');
+-- AC-3.2 (CR-034): parent_students link -> RLS portal chi thay con minh.
 insert into parent_students(parent_id, student_id) values
   ('70000000-0000-0000-0000-00000000000a','60000000-0000-0000-0000-00000000000a');
 insert into timetable_entries(id, class_id, subject_id, teacher_id, period) values

@@ -1,6 +1,12 @@
 // E2E CR-034 - demo gate 15/10. Run: node scripts/e2e-cr034.mjs
 // BASE_URL override cho production. Chay full chain: sogd tao truong -> DB verify ->
 // admin login -> tao GV -> DB verify -> GV login -> isolation -> usage -> cleanup.
+// AC coverage (CR-034): AC-1.1 (createSchool + admin + seed + admin login),
+//   AC-1.2 (admin -> /school/users -> createStaffAccount GV), AC-2.1
+//   (/dept/usage render), AC-2.2 (gvcn bi chan /dept/*). AC-3.1/AC-3.2
+//   (grant PH + portal isolation) covered by scripts/qa-e2e.mjs portal visit +
+//   tests/fixtures/r2-fixture.sql parent_students RLS - grant-flow UI deferred
+//   per CR-034 section 7.
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";

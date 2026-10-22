@@ -483,7 +483,11 @@ export async function POST(
 
   // r16 M: lookup duoc yeu cau ma loi KHONG duoc bien thanh
   // null/rong - AI se sinh tai lieu tren yeu cau thieu.
-  if (input.subject) {
+  // CR-052 QA: chi tra cuu subject khi tool khai bao field subject - GVBM
+  // co mon ngoai TVC (lsdl, gdcd...) duoc client tu dien vao values va bi
+  // 500 tren cac tool khong can mon (DC-03 lay mon tu ma tran).
+  const toolTakesSubject = tool.fields.some((f) => f.key === "subject");
+  if (input.subject && toolTakesSubject) {
     const { data, error } = await supabase
       .from("tvc_subjects")
       .select("*")
@@ -630,6 +634,23 @@ export async function POST(
     }
     if (!matrix) {
       return NextResponse.json({ error: "Ma trận không tồn tại." }, { status: 404 });
+    }
+    // Mon hoc cua de lay tu ma tran (DC-03 khong co field subject - input
+    // co the mang mon GVBM ngoai TVC va bi chan o tren).
+    if (!subject && matrix.subject_code) {
+      const { data: subj, error: subjErr } = await supabase
+        .from("tvc_subjects")
+        .select("*")
+        .eq("code", matrix.subject_code)
+        .single();
+      if (subjErr && subjErr.code !== "PGRST116") {
+        console.error("[studio] matrix subject lookup:", subjErr.message);
+        return NextResponse.json(
+          { error: "Không tải được dữ liệu nguồn." },
+          { status: 500 },
+        );
+      }
+      subject = (subj as Subject | null) ?? null;
     }
     const cells = (matrix.cells as MatrixCell[]) ?? [];
     const pack = input.pack ?? "full";

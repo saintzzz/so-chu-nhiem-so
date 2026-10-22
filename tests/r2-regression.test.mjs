@@ -3296,3 +3296,17 @@ test("AC-52.4: DC-06 TTS ton trong route budget - skip khi het han", () => {
   // khong key/quota -> bo am thanh, van tra doc
   assert.match(dc06, /quotaOk/);
 });
+
+test("QA r30: input.subject chi tra cuu khi tool khai bao field subject", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  // GVBM mon ngoai TVC (lsdl, gdcd) duoc client tu dien vao values.subject
+  // va gay 500 tren tool khong can mon (DC-03, T-02). Gate tren server.
+  assert.match(route, /toolTakesSubject = tool\.fields\.some/);
+  assert.match(route, /input\.subject && toolTakesSubject/);
+  // DC-03 lay mon tu matrix.subject_code, khong tin input.subject.
+  const dc03 = route.slice(route.indexOf('code === "DC-03"'));
+  assert.match(dc03, /matrix\.subject_code/);
+  const runner = readSrc("src/components/tvc/tool-runner.tsx");
+  // client chi prefill mon GVBM khi tool co field subject.
+  assert.match(runner, /tool\.fields\.some\(\(f\) => f\.key === "subject"\)/);
+});

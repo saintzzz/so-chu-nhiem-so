@@ -48,8 +48,11 @@ export function ToolRunner({
     tool.fields.forEach((f) => {
       if (f.default != null) v[f.key] = String(f.default);
     });
-    // CR-032: GVBM vao tool thi mon mac dinh = mon phu trach
-    if (defaultSubject && !v.subject) v.subject = defaultSubject;
+    // CR-032: GVBM vao tool thi mon mac dinh = mon phu trach - chi voi
+    // tool co field subject; tool khong khai bao (DC-03, T-02) ma van gui
+    // se lam route tra cuu tvc_subjects va 500 khi mon nam ngoai TVC.
+    if (defaultSubject && !v.subject && tool.fields.some((f) => f.key === "subject"))
+      v.subject = defaultSubject;
     // CR-042: prefill tu giao an nguon
     if (fromMaterial) {
       if (fromMaterial.subject) v.subject = fromMaterial.subject;
@@ -263,9 +266,12 @@ export function ToolRunner({
       ? docTabs.map((t) => ({ title: t.doc.title, content: t.doc }))
       : [{ title: doc.title, content: doc }];
     const packId = packExamId ?? crypto.randomUUID();
-    let firstId: string | null = null;
+    setPackExamId(packId);
+    let firstId: string | null = savedId;
     let savedMatrixId: string | null = null;
-    for (let i = 0; i < docsToSave.length; i++) {
+    // Retry sau loi luu pack: bo qua cac van ban da luu (savedCount) thay
+    // vi luu lai tu dau -> khong tao ban trung trong thu vien.
+    for (let i = savedCount; i < docsToSave.length; i++) {
       const d = docsToSave[i];
       const res = await saveMaterial({
         title: d.title,
@@ -292,18 +298,20 @@ export function ToolRunner({
       });
       if (res.error) {
         setSaving(false);
+        // Giu nut Luu (savedId chi set khi luu xong het) de retry tiep tuc
+        // tu van ban loi - khong bo roi phan con lai cua pack.
         setError(
-          i > 0
-            ? `Đã lưu ${i}/${docsToSave.length} văn bản - lỗi ở "${d.title}": ${res.error}`
+          i > savedCount
+            ? `Đã lưu ${i}/${docsToSave.length} văn bản - lỗi ở "${d.title}": ${res.error}. Bấm Lưu để thử lại phần còn lại.`
             : res.error,
         );
-        if (firstId) setSavedId(firstId);
         return;
       }
-      if (i === 0) {
+      if (i === 0 && !firstId) {
         firstId = res.id!;
         savedMatrixId = res.matrixId ?? null;
       }
+      setSavedCount(i + 1);
     }
     setSaving(false);
     setSavedId(firstId!);

@@ -34,7 +34,7 @@ async function login(email) {
 }
 
 for (const [role, routes] of Object.entries(ROUTES)) {
-  const email = { teacher: "anhptl@nd.scn", school: "hainv@nd.scn", parent: "minhtv@nd.scn" }[role];
+  const email = { teacher: "anhptl@nd.scn", school: "hainv@nd.scn", parent: "annv@nd.scn" }[role];
   const ok = await login(email);
   check(`${role}-login`, `${role} login`, ok, page.url());
   if (!ok) continue;

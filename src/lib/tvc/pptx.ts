@@ -6,8 +6,9 @@ import { injectInteractions, type SlideJob } from "./pptx-anim.ts";
 // .interactive, tach ra shape rieng an, hien khi click vao cau hoi.
 const ANSWER_LINE = /^\s*(đáp\s*án|answer|đa|trả\s*lời)\s*[::]/i;
 // QA r30: AI co the nhung "Đáp án:" giua mot dong dai - cat tai marker de
-// phan duoi van bat duoc boi ANSWER_LINE khi interactive.
-const ANSWER_INLINE = /(đáp\s*án|answer|đa|trả\s*lời)\s*[::]/i;
+// phan duoi van bat duoc boi ANSWER_LINE khi interactive. "trả lời" bi loai
+// khoi inline vi "HS trả lời:" la van thuong, khong phai truong dap an.
+const ANSWER_INLINE = /(đáp\s*án|answer|đa)\s*[::]/i;
 // Phan duoi sau dap an thuong di kem ghi chu to chuc ("Thời gian: 8 phút") -
 // cat bo khi dua len slide.
 const NOTE_TAIL_CUT = /\s*[-.]?\s*(thời\s*gian|ghi\s*chú|lưu\s*ý|tổ\s*chức)\s*[::].*$/i;
@@ -193,7 +194,12 @@ export async function docToPptx(
           (t ?? "").split(/\n+/).flatMap((line) => {
             const m = line.match(ANSWER_INLINE);
             if (!m || m.index === undefined) return [];
-            const tail = line.slice(m.index).replace(NOTE_TAIL_CUT, "").trim();
+            const full = line.slice(m.index).trim();
+            // r30 M: chi cat duoi ghi chu ("Thời gian:"...) khi no xuat hien
+            // sau noi dung dap an thuc - "Đáp án: Thời gian: 8 giờ" la dap
+            // an hop le, khong duoc cat thanh "Đáp án:".
+            const cut = full.search(NOTE_TAIL_CUT);
+            const tail = (cut > 12 ? full.slice(0, cut) : full).trim();
             return tail ? [{ text: tail, bullet: false }] : [];
           }),
         )

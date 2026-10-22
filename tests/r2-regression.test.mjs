@@ -3345,3 +3345,40 @@ test("QA r30: DC-06 prompt co nhanh interactive yeu cau dap an dong rieng", () =
   // khong fetch context khi mon nam ngoai danh sach TVC.
   assert.match(runner, /subjects\.some\(\(x\) => x\.code === s\)/);
 });
+
+test("r30: inline split khong an van thuong 'trả lời:' + NOTE_TAIL_CUT khong cat dap an hop le", async () => {
+  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const JSZip = (await import("jszip")).default;
+  // "HS trả lời:" la noi dung binh thuong - khong duoc bien thanh reveal.
+  const doc = {
+    title: "T", interactive: true,
+    sections: [{ title: "BT", blocks: [
+      { kind: "para", text: "Học sinh trả lời: Em quan sát thấy cây đang lớn." },
+      { kind: "note", text: "Ghi chú GV: hoi ca lop. Đáp án: Thời gian: 8 giờ; quãng đường: 12 km." },
+    ]}],
+  };
+  const buf = await docToPptx(doc, "qa");
+  const z = await JSZip.loadAsync(buf);
+  const s = await z.file("ppt/slides/slide2.xml").async("string");
+  const aShape = s.split("</p:sp>").find((x) => x.includes('name="scn:ans:'));
+  const qShape = s.split("</p:sp>").find((x) => x.includes('name="scn:q:'));
+  // dap an tu note len reveal, noi dung "Thời gian" khong bi cat bo
+  assert.ok(aShape?.includes("8 giờ") || aShape?.includes("8 gi"), "dap an 'Thời gian: 8 giờ' bi cat mat");
+  assert.ok(aShape?.includes("12 km"), "dap an phan sau bi cat mat");
+  // cau "HS trả lời:" van la noi dung hien thi, khong bi giau
+  assert.ok(qShape?.includes("quan sát") || s.includes("quan sát"),
+    "van thuong co 'trả lời:' bi an nham");
+});
+
+test("r30: save/gen state guards + TTS doc ban alias (aiDocRaw)", () => {
+  const runner = readSrc("src/components/tvc/tool-runner.tsx");
+  // generate khong chay khi dang save; save khong chay khi dang sinh/luu
+  assert.match(runner, /const generate = \(\) => \{\s*if \(saving\) return/);
+  assert.match(runner, /if \(!doc \|\| saving \|\| pending\) return/);
+  // pack state chi reset khi chap nhan ket qua moi
+  assert.match(runner, /resetPackState\(\);[\s\S]{0,80}setDoc\(data\.doc\)/);
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  // DC-06 TTS doc tu aiDocRaw (con alias HSxxx) - khong leak ten that
+  assert.match(route, /const ttsDoc = aiDocRaw \?\? doc/);
+  assert.match(route, /ttsDoc\.sections\?\.\[i\]/);
+});

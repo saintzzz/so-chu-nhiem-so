@@ -1134,9 +1134,13 @@ export async function POST(
       // Chi doc doan Tieng Anh (narration GV doc cho HS nghe mau).
       const englishLine = /[a-zA-Z]{4,}/;
       let budget = Math.max(0, ROUTE_BUDGET_MS - (Date.now() - routeStartedAt) - 15_000);
-      for (const sec of doc.sections) {
+      // r30 H: doc text cho TTS tu ban CON ALIAS (aiDocRaw truoc deanon) -
+      // doc da khoi phuc ten that, gui len TTS provider = ro ri PII.
+      const ttsDoc = aiDocRaw ?? doc;
+      for (let i = 0; i < doc.sections.length; i++) {
         if (budget < 15_000) break;
-        const text = (sec.blocks ?? [])
+        const sec = doc.sections[i];
+        const text = (ttsDoc.sections?.[i]?.blocks ?? sec.blocks ?? [])
           .flatMap((b) =>
             b.kind === "list" ? (b.items ?? []) : "text" in b && typeof b.text === "string" ? [b.text] : [],
           )

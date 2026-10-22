@@ -175,16 +175,22 @@ export function ToolRunner({
   };
 
   const generate = () => {
+    if (saving) return;
     const err = validate();
     if (err) {
       setError(err);
       return;
     }
     setError("");
-    setSavedId(null);
-    setSavedCount(0);
-    setFirstSavedId(null);
-    setPackExamId(null);
+    // r30 H: khong reset pack state luc bat dau generate - neu regen loi,
+    // doc cu + trang thai luu cu phai con nguyen de retry, khong bi save
+    // trung vao pack id moi. Reset chi khi ket qua moi duoc chap nhan.
+    const resetPackState = () => {
+      setSavedId(null);
+      setSavedCount(0);
+      setFirstSavedId(null);
+      setPackExamId(null);
+    };
     const input = {
       ...values,
       ...coValues,
@@ -217,6 +223,7 @@ export function ToolRunner({
             // CR-037: async path cung loc section lac de cho DC-01
             const clean = ok && tool.code === "DC-01" ? sanitizeKhbdDoc(d) : ok ? d : null;
             if (clean) {
+              resetPackState();
               setDoc(clean);
               setDocTabs(null);
               setProvider("fallback-engine");
@@ -228,6 +235,7 @@ export function ToolRunner({
         });
         return;
       }
+      resetPackState();
       setDoc(data.doc);
       setPackExamId(data.examId ?? null);
       // Exam-pack (CR-023/050/051): DC-03 tra nhieu van ban - ma de,
@@ -264,7 +272,9 @@ export function ToolRunner({
   };
 
   const save = async () => {
-    if (!doc) return;
+    // r30 H: cam save khi dang sinh (doc cu se ghi trung vao pack id moi)
+    // va cam save kep khi mot luot luu dang chay.
+    if (!doc || saving || pending) return;
     setSaving(true);
     // CR-051: co pack thi luu toan bo van ban cua bo ho so, moi van ban
     // 1 material (export docx rieng), origin_note=pack:<examId> lien ket.
@@ -639,7 +649,7 @@ export function ToolRunner({
             ) : (
               <button
                 onClick={save}
-                disabled={saving}
+                disabled={saving || pending}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border bg-background py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />

@@ -73,14 +73,27 @@ const tryRead = (f) => {
   }
 };
 
-function collectIds(files) {
+function collectIds(files, { trackStubs = false } = {}) {
   const ids = new Map(); // id -> first file seen in
+  const stubs = new Map(); // id seen ONLY inside todo/skip declarations
   for (const f of files) {
     const text = tryRead(f);
     if (text === null) continue;
-    for (const m of text.matchAll(AC_RE)) if (!ids.has(m[0])) ids.set(m[0], f);
+    for (const m of text.matchAll(AC_RE)) {
+      const stub =
+        trackStubs &&
+        /(?:test|it|describe|xit|xtest)\s*\.\s*(?:todo|skip|fixme)\s*\(/.test(
+          text.slice(text.lastIndexOf('\n', m.index) + 1, m.index + 200),
+        );
+      if (stub) {
+        if (!ids.has(m[0]) && !stubs.has(m[0])) stubs.set(m[0], f);
+      } else {
+        if (!ids.has(m[0])) ids.set(m[0], f);
+        stubs.delete(m[0]);
+      }
+    }
   }
-  return ids;
+  return { ids, stubs };
 }
 
 // Declared ACs: AC-x.y ids in requirements docs under --docs.
@@ -89,14 +102,16 @@ const docFiles = DOC_DIRS.flatMap((d) => walk(d, (p) => extname(p) === '.md'))
     const t = tryRead(f);
     return t !== null && isReqDoc(f, t);
   });
-const declared = collectIds(docFiles);
+const declared = collectIds(docFiles).ids;
 
 // Covered ACs: ids in test dirs + any *.test.* / *.spec.* file repo-wide.
 const testFiles = [
   ...TEST_DIRS.flatMap((d) => walk(d, () => true)),
   ...walk('.', (p) => TEST_FILE_RE.test(p)),
 ];
-const covered = collectIds(testFiles);
+// test.todo/it.skip are NOT coverage - a stub proves nothing was verified.
+// Stub-only ACs count as uncovered so perf/skip-debt can't hide behind RTM.
+const { ids: covered, stubs } = collectIds(testFiles, { trackStubs: true });
 if (unreadable.length)
   console.log(`rtm: ${unreadable.length} unreadable file(s) skipped: ${unreadable.slice(0, 5).join(', ')}`);
 
@@ -119,7 +134,11 @@ console.log(
   `rtm: ${declared.size} ACs declared, ${declared.size - uncovered.length} covered` +
     (waived.length ? `, ${waived.length} waived` : ''),
 );
-for (const [id, f] of unwaived) console.log(`  UNCOVERED ${id}  (declared in ${f})`);
+for (const [id, f] of unwaived)
+  console.log(
+    `  ${stubs.has(id) ? 'STUB-ONLY' : 'UNCOVERED'} ${id}  (declared in ${f}` +
+      (stubs.has(id) ? `, stub in ${stubs.get(id)}` : '') + ')',
+  );
 for (const [id] of waived) console.log(`  WAIVED    ${id}  (${waivers[id]})`);
 for (const [id, f] of orphans) console.log(`  warn: test references ${id} not in any requirement doc (${f})`);
 

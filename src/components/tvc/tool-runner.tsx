@@ -93,6 +93,8 @@ export function ToolRunner({
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [savedCount, setSavedCount] = useState(0);
+  const [firstSavedId, setFirstSavedId] = useState<string | null>(null);
   const [savedMatrixId, setSavedMatrixId] = useState<string | null>(null);
   const aiJob = useTvcAiJob();
 
@@ -179,6 +181,9 @@ export function ToolRunner({
     }
     setError("");
     setSavedId(null);
+    setSavedCount(0);
+    setFirstSavedId(null);
+    setPackExamId(null);
     const input = {
       ...values,
       ...coValues,
@@ -267,7 +272,7 @@ export function ToolRunner({
       : [{ title: doc.title, content: doc }];
     const packId = packExamId ?? crypto.randomUUID();
     setPackExamId(packId);
-    let firstId: string | null = savedId;
+    let firstId: string | null = firstSavedId;
     let savedMatrixId: string | null = null;
     // Retry sau loi luu pack: bo qua cac van ban da luu (savedCount) thay
     // vi luu lai tu dau -> khong tao ban trung trong thu vien.
@@ -309,6 +314,7 @@ export function ToolRunner({
       }
       if (i === 0 && !firstId) {
         firstId = res.id!;
+        setFirstSavedId(res.id!);
         savedMatrixId = res.matrixId ?? null;
       }
       setSavedCount(i + 1);
@@ -638,9 +644,11 @@ export function ToolRunner({
                 <Save className="h-4 w-4" />
                 {saving
                   ? "Đang lưu..."
-                  : docTabs && docTabs.length > 1
-                    ? `Lưu bộ hồ sơ (${docTabs.length} văn bản)`
-                    : "Lưu học liệu"}
+                  : savedCount > 0 && docTabs
+                    ? `Lưu tiếp ${docTabs.length - savedCount}/${docTabs.length} văn bản còn lại`
+                    : docTabs && docTabs.length > 1
+                      ? `Lưu bộ hồ sơ (${docTabs.length} văn bản)`
+                      : "Lưu học liệu"}
               </button>
             )}
             {stdCount > 0 && (

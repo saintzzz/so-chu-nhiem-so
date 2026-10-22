@@ -67,7 +67,7 @@ async function imageToPng64(
     }
     if (b.path) {
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${b.path}`;
-      const r = await fetch(url);
+      const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
       if (!r.ok) return null;
       const buf = await sharp(Buffer.from(await r.arrayBuffer()))
         .resize({ width: 480, withoutEnlargement: true })
@@ -82,13 +82,26 @@ async function imageToPng64(
 }
 
 // CR-018 P1: tai mp3 tu bucket public -> base64 de addMedia nhung vao slide.
-async function audioToB64(path: string): Promise<string | null> {
+// Gioi han 15MB/file, 15s timeout + tong ngan sach media 120MB/deck (AC-52.4:
+// deck phai duoi 150MB, chua cho XML/anh).
+const AUDIO_MAX_BYTES = 15 * 1024 * 1024;
+const MEDIA_BUDGET = 120 * 1024 * 1024;
+// budget dem theo tung lan docToPptx - khong de module-level vi request
+// concurrent se dung chung bo dem.
+async function audioToB64(
+  path: string,
+  budget: { used: number },
+): Promise<string | null> {
   try {
     const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${path}`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok || !r.body) return null;
+    const len = Number(r.headers.get("content-length") ?? 0);
+    if (len > AUDIO_MAX_BYTES || budget.used + len > MEDIA_BUDGET) return null;
     const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length) return null;
+    if (!buf.length || buf.length > AUDIO_MAX_BYTES) return null;
+    if (budget.used + buf.length > MEDIA_BUDGET) return null;
+    budget.used += buf.length;
     return `audio/mpeg;base64,${buf.toString("base64")}`;
   } catch {
     return null;
@@ -109,6 +122,7 @@ export async function docToPptx(
   const th = THEMES[doc.theme ?? ""] ?? THEMES.navy;
   const lightCover = (doc.theme ?? "") === "light";
   const slideJobs: SlideJob[] = [];
+  const mediaBudget = { used: 0 };
 
   // Slide bia
   const cover = pptx.addSlide();
@@ -212,7 +226,7 @@ export async function docToPptx(
     const audioBlocks = (sec.blocks ?? []).filter((b) => b.kind === "audio");
     for (let i = 0; i < Math.min(audioBlocks.length, 2); i++) {
       const ab = audioBlocks[i] as { path?: string; caption?: string };
-      const b64 = ab.path ? await audioToB64(ab.path) : null;
+      const b64 = ab.path ? await audioToB64(ab.path, mediaBudget) : null;
       if (b64) {
         s.addMedia({
           type: "audio",

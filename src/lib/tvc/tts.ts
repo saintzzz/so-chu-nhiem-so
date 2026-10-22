@@ -33,25 +33,28 @@ async function edgeSegment(
   if (!aiProviderAllowed("edge")) return null;
   // R3: endpoint thuc te cua edge-tts cung qua AI_ALLOWED_ENDPOINTS.
   if (!aiEndpointAllowed("https://speech.platform.bing.com")) return null;
+  // Deadline cover ca setMetadata (mo WebSocket) lan stream - fallback het
+  // budget thi bo qua thay vi lech khoi budget route.
+  const left = deadlineAt - Date.now();
+  if (left < 2_000) return null;
+  const { MsEdgeTTS, OUTPUT_FORMAT } = await import("msedge-tts");
+  const tts = new MsEdgeTTS();
+  const timeout = setTimeout(() => tts.close(), Math.min(25_000, left));
   try {
-    const { MsEdgeTTS, OUTPUT_FORMAT } = await import("msedge-tts");
-    const tts = new MsEdgeTTS();
     await tts.setMetadata(
       voice,
       OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3,
     );
     const { audioStream } = tts.toStream(text.slice(0, 4000));
     const chunks: Buffer[] = [];
-    const timeout = setTimeout(() => audioStream.destroy(), Math.min(25_000, deadlineAt - Date.now()));
-    try {
-      for await (const c of audioStream as AsyncIterable<Buffer>) chunks.push(c);
-    } finally {
-      clearTimeout(timeout);
-    }
+    for await (const c of audioStream as AsyncIterable<Buffer>) chunks.push(c);
     return chunks.length ? Buffer.concat(chunks) : null;
   } catch (e) {
     console.error("[tts-edge] failed:", e instanceof Error ? e.message : e);
     return null;
+  } finally {
+    clearTimeout(timeout);
+    tts.close();
   }
 }
 

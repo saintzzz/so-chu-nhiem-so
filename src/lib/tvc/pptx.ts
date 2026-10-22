@@ -5,6 +5,12 @@ import { injectInteractions, type SlideJob } from "./pptx-anim.ts";
 // CR-052: dong bat dau bang "Đáp án"/"Answer"/"ĐA:" la dap an - khi doc
 // .interactive, tach ra shape rieng an, hien khi click vao cau hoi.
 const ANSWER_LINE = /^\s*(đáp\s*án|answer|đa|trả\s*lời)\s*[::]/i;
+// QA r30: AI co the nhung "Đáp án:" giua mot dong dai - cat tai marker de
+// phan duoi van bat duoc boi ANSWER_LINE khi interactive.
+const ANSWER_INLINE = /(đáp\s*án|answer|đa|trả\s*lời)\s*[::]/i;
+// Phan duoi sau dap an thuong di kem ghi chu to chuc ("Thời gian: 8 phút") -
+// cat bo khi dua len slide.
+const NOTE_TAIL_CUT = /\s*[-.]?\s*(thời\s*gian|ghi\s*chú|lưu\s*ý|tổ\s*chức)\s*[::].*$/i;
 
 // Chuyen DocContent -> .pptx: moi section = 1 slide.
 // Font Arial de dam bao Unicode tieng Viet trong PowerPoint.
@@ -168,12 +174,34 @@ export async function docToPptx(
     const allLines = (sec.blocks ?? [])
       .filter((b) => b.kind !== "note" && b.kind !== "audio")
       .flatMap(blockToLines)
+      .flatMap((l) => {
+        if (!interactive) return [l];
+        const m = l.text.match(ANSWER_INLINE);
+        if (!m || m.index === undefined || m.index === 0) return [l];
+        return [
+          { ...l, text: l.text.slice(0, m.index).trim() },
+          { ...l, text: l.text.slice(m.index).trim() },
+        ];
+      })
       .filter((l) => l.text.trim());
     // CR-052: interactive -> dong "Dap an:" tach thanh shape an ben duoi,
     // reveal khi click vao vung cau hoi (scn:q -> scn:ans interactiveSeq).
-    const answerLines = interactive
-      ? allLines.filter((l) => ANSWER_LINE.test(l.text))
+    // QA r30: prompt cu dua dap an vao note block (speaker notes) - khi
+    // interactive van trich dap an tu notes len slide cho co che reveal.
+    const noteAnswers = interactive
+      ? notes.flatMap((t) =>
+          (t ?? "").split(/\n+/).flatMap((line) => {
+            const m = line.match(ANSWER_INLINE);
+            if (!m || m.index === undefined) return [];
+            const tail = line.slice(m.index).replace(NOTE_TAIL_CUT, "").trim();
+            return tail ? [{ text: tail, bullet: false }] : [];
+          }),
+        )
       : [];
+    const answerLines = [
+      ...(interactive ? allLines.filter((l) => ANSWER_LINE.test(l.text)) : []),
+      ...noteAnswers,
+    ];
     const lines = (interactive
       ? allLines.filter((l) => !ANSWER_LINE.test(l.text))
       : allLines

@@ -125,23 +125,24 @@ export function ToolRunner({
     }
   }, [tool.code]);
 
-  // Cascade: subject -> grades -> standards
+  // Cascade: subject -> grades -> standards. Mon prefill cua GVBM co the nam
+  // ngoai danh sach TVC (lsdl, gdcd) - bo qua fetch thay vi an 404.
   useEffect(() => {
     const s = values.subject;
-    if (!s) return;
+    if (!s || !subjects.some((x) => x.code === s)) return;
     fetch(`/api/studio/context?kind=grades&subject=${s}`)
       .then((r) => r.json())
       .then((d) => setGrades(d.data ?? []));
-  }, [values.subject]);
+  }, [values.subject, subjects]);
 
   useEffect(() => {
     const s = values.subject;
     const g = values.grade;
-    if (!s || !g) return;
+    if (!s || !g || !subjects.some((x) => x.code === s)) return;
     fetch(`/api/studio/context?kind=standards&subject=${s}&grade=${g}`)
       .then((r) => r.json())
       .then((d) => setStandards(d.data ?? []));
-  }, [values.subject, values.grade]);
+  }, [values.subject, values.grade, subjects]);
 
   const set = (k: string, v: string) => {
     setValues((prev) => {

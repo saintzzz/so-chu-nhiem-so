@@ -103,7 +103,11 @@ Mỗi section = 1 slide: tiêu đề slide ngắn gọn + nội dung trình chi�
 Cấu trúc bám tiến trình KHBD: mở đầu (slide bìa + mục tiêu), khởi động, khám phá (có thể 2-3 slide), luyện tập, vận dụng, tổng kết.
 YÊU CẦU NỘI DUNG:
 - Slide dẫn vào mỗi hoạt động phải có CÂU HỎI/NHIỆM VỤ cụ thể chiếu cho học sinh (viết nguyên văn câu hỏi/bài tập dạng list - KHÔNG ghi "GV nêu câu hỏi").
-- Slide luyện tập: viết đề bài đầy đủ để chiếu; ĐÁP ÁN/dự kiến trả lời đặt trong block "note", không đưa lên nội dung slide.
+${
+      input.interactive === "yes"
+        ? `- Slide luyện tập/bài tập: sau đề bài, ghi đáp án ngắn gọn ở DÒNG RIÊNG bắt đầu bằng "Đáp án:" ở CUỐI nội dung slide (ví dụ: "Đáp án: 1. cooks, 2. goes, 3. does"). Dòng này sẽ được ẩn và chỉ hiện khi GV click - KHÔNG đưa đáp án vào ghi chú GV.`
+        : `- Slide luyện tập: viết đề bài đầy đủ để chiếu; ĐÁP ÁN/dự kiến trả lời đặt trong block "note", không đưa lên nội dung slide.`
+    }
 - Mỗi slide (trừ slide bìa) kết thúc bằng đúng 1 block "note" = ghi chú thuyết trình cho GV, bắt đầu bằng "Ghi chú GV: " - gồm lời thoại gợi ý, đáp án/dự kiến câu trả lời của HS, lưu ý tổ chức (thời gian, chia nhóm).
 - Bullet ngắn gọn, tối đa 15 từ/dòng, KHÔNG viết đoạn văn dài. Có gợi ý hình ảnh/minh họa dạng [Gợi ý hình: ...] ở bullet riêng khi cần.
 Nội dung bám YCCĐ đã chọn, phù hợp lứa tuổi học sinh lớp ${ctx.grade ?? ""}.`,

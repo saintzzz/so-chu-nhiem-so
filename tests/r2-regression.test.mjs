@@ -3310,3 +3310,38 @@ test("QA r30: input.subject chi tra cuu khi tool khai bao field subject", () => 
   // client chi prefill mon GVBM khi tool co field subject.
   assert.match(runner, /tool\.fields\.some\(\(f\) => f\.key === "subject"\)/);
 });
+
+test("QA r30: interactive trich dap an tu note block + dong nhung giua doan", async () => {
+  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const JSZip = (await import("jszip")).default;
+  // content that AI that bam prompt cu: dap an nam trong note block.
+  const doc = {
+    title: "T", interactive: true,
+    sections: [{ title: "BT", blocks: [
+      { kind: "para", text: "Chia động từ." },
+      { kind: "list", items: ["1. She ___ (cook)"] },
+      { kind: "note", text: "Ghi chú GV: HS lam bai. Đáp án: 1. cooks. Thời gian: 8 phút." },
+    ]}],
+  };
+  const buf = await docToPptx(doc, "qa");
+  const z = await JSZip.loadAsync(buf);
+  const s = await z.file("ppt/slides/slide2.xml").async("string");
+  const aShape = s.split("</p:sp>").find((x) => x.includes('name="scn:ans:'));
+  assert.ok(aShape?.includes("cooks"), "dap an trong note khong len reveal shape");
+  assert.ok(!/Thời gian/.test(aShape ?? ""), "ghi chu to chuc lot vao dap an");
+  assert.ok(s.includes("interactiveSeq"), "khong co timing cho reveal");
+  // static: note van chi la speaker notes, khong boc len slide
+  const bufS = await docToPptx({ ...doc, interactive: false }, "qa");
+  const sS = await (await JSZip.loadAsync(bufS)).file("ppt/slides/slide2.xml").async("string");
+  assert.ok(!sS.includes("scn:ans:") && !sS.includes("cooks"),
+    "slide tinh boc dap an tu note");
+});
+
+test("QA r30: DC-06 prompt co nhanh interactive yeu cau dap an dong rieng", () => {
+  const p = readSrc("src/lib/tvc/prompts.ts");
+  assert.match(p, /input\.interactive === "yes"/);
+  assert.match(p, /bắt đầu bằng "Đáp án:"/);
+  const runner = readSrc("src/components/tvc/tool-runner.tsx");
+  // khong fetch context khi mon nam ngoai danh sach TVC.
+  assert.match(runner, /subjects\.some\(\(x\) => x\.code === s\)/);
+});

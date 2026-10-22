@@ -32,15 +32,20 @@ export function AiExtract() {
   const [confirmPii, setConfirmPii] = useState(false);
 
   useEffect(() => {
-    if (job.done && job.result !== null) {
-      const r = job.result as { rows?: ExtractedRow[] };
-      job.reset();
-      setRows(r.rows ?? null);
-      if (!r.rows?.length) setErr("Không trích xuất được dữ liệu. Thử lại.");
-    } else if (job.failed) {
-      job.reset();
-      setErr("Không nhận được kết quả. Vui lòng thử lại.");
-    }
+    // Defer setState sang microtask - ket qua job la event ngoai, khong
+    // duoc setState dong bo trong effect (react-hooks/set-state-in-effect).
+    const done = job.done, failed = job.failed, result = job.result;
+    queueMicrotask(() => {
+      if (done && result !== null) {
+        const r = result as { rows?: ExtractedRow[] };
+        job.reset();
+        setRows(r.rows ?? null);
+        if (!r.rows?.length) setErr("Không trích xuất được dữ liệu. Thử lại.");
+      } else if (failed) {
+        job.reset();
+        setErr("Không nhận được kết quả. Vui lòng thử lại.");
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.done, job.failed, job.result]);
 

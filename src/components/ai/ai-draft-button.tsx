@@ -36,18 +36,23 @@ export function AiDraftButton<T = unknown>({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const onApplyRef = useRef(onApply);
-  onApplyRef.current = onApply;
-
-  // Kết quả fallback về sau -> tự điền
   useEffect(() => {
-    if (job.done && job.result !== null) {
-      const r = job.result as T;
-      job.reset();
-      onApplyRef.current(r);
-    } else if (job.failed) {
-      job.reset();
-      setErr("Không nhận được kết quả. Vui lòng thử lại.");
-    }
+    onApplyRef.current = onApply;
+  });
+
+  // Kết quả fallback về sau -> tự điền (defer microtask: khong setState
+  // dong bo trong effect).
+  useEffect(() => {
+    const done = job.done, failed = job.failed, result = job.result;
+    queueMicrotask(() => {
+      if (done && result !== null) {
+        job.reset();
+        onApplyRef.current(result as T);
+      } else if (failed) {
+        job.reset();
+        setErr("Không nhận được kết quả. Vui lòng thử lại.");
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.done, job.failed, job.result]);
 

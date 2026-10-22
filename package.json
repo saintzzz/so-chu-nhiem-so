@@ -1,5 +1,8 @@
 {
   "name": "so-chu-nhiem",
+  "pnpm": {
+    "onlyBuiltDependencies": ["msedge-tts", "unrs-resolver"]
+  },
   "version": "0.5.0",
   "private": true,
   "description": "Clone any website into a clean, modern Next.js codebase using AI coding agents",
@@ -49,6 +52,7 @@
     "katex": "^0.19.0",
     "lucide-react": "^1.6.0",
     "mathml2omml": "^0.5.0",
+    "msedge-tts": "^2.1.0",
     "next": "^16.4.0",
     "pptxgenjs": "^4.0.1",
     "react": "19.2.4",
@@ -68,9 +72,9 @@
     "eslint-config-next": "16.3.0",
     "playwright": "^1.63.0",
     "server-only": "^0.0.1",
+    "shadcn": "^4.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "shadcn": "^4.1.0"
+    "typescript": "^5"
   },
   "overrides": {
     "pptxgenjs": {

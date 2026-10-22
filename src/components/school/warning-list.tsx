@@ -52,15 +52,19 @@ export function WarningList({ rows }: { rows: WarningRow[] }) {
   const aiJob = useAiJob();
   const [jobFor, setJobFor] = useState<string | null>(null);
 
-  // Devin fallback: kết quả về sau -> điền vào suggestion của cảnh báo tương ứng
+  // Devin fallback: kết quả về sau -> điền vào suggestion của cảnh báo tương ứng.
+  // Defer sang microtask - khong setState dong bo trong effect.
   useEffect(() => {
-    if (!aiJob.done || !aiJob.result || !jobFor) return;
-    const obj = aiJob.result as { suggestion?: string };
-    if (obj.suggestion?.trim()) {
-      setSuggestions((s) => ({ ...s, [jobFor]: obj.suggestion!.trim() }));
-    }
-    setJobFor(null);
-    aiJob.reset();
+    const done = aiJob.done, result = aiJob.result, forId = jobFor;
+    queueMicrotask(() => {
+      if (!done || !result || !forId) return;
+      const obj = result as { suggestion?: string };
+      if (obj.suggestion?.trim()) {
+        setSuggestions((s) => ({ ...s, [forId]: obj.suggestion!.trim() }));
+      }
+      setJobFor(null);
+      aiJob.reset();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiJob.done, aiJob.result]);
 

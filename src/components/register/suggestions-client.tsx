@@ -60,22 +60,26 @@ export function SuggestionsClient({
     }
   }
 
-  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs
+  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs.
+  // Defer sang microtask - insert/setState khong chay dong bo trong effect.
   useEffect(() => {
-    if (!aiJob.done || !aiJob.result) return;
-    const arr = aiJob.result as { title?: string; due_date?: string }[];
-    if (Array.isArray(arr)) {
-      void insertSuggestions(
-        arr.filter(
-          (s): s is { title: string; due_date: string } =>
-            typeof s.title === "string" &&
-            typeof s.due_date === "string" &&
-            /^\d{4}-\d{2}-\d{2}$/.test(s.due_date),
-        ),
-        "Devin",
-      );
-    }
-    aiJob.reset();
+    const done = aiJob.done, result = aiJob.result;
+    queueMicrotask(() => {
+      if (!done || !result) return;
+      const arr = result as { title?: string; due_date?: string }[];
+      if (Array.isArray(arr)) {
+        void insertSuggestions(
+          arr.filter(
+            (s): s is { title: string; due_date: string } =>
+              typeof s.title === "string" &&
+              typeof s.due_date === "string" &&
+              /^\d{4}-\d{2}-\d{2}$/.test(s.due_date),
+          ),
+          "Devin",
+        );
+      }
+      aiJob.reset();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiJob.done, aiJob.result]);
 

@@ -1,9 +1,27 @@
 import PptxGenJS from "pptxgenjs";
 import type { DocContent, DocBlock } from "@/types/tvc";
+import { injectInteractions, type SlideJob } from "./pptx-anim.ts";
+
+// CR-052: dong bat dau bang "Đáp án"/"Answer"/"ĐA:" la dap an - khi doc
+// .interactive, tach ra shape rieng an, hien khi click vao cau hoi.
+const ANSWER_LINE = /^\s*(đáp\s*án|answer|đa|trả\s*lời)\s*[::]/i;
 
 // Chuyen DocContent -> .pptx: moi section = 1 slide.
 // Font Arial de dam bao Unicode tieng Viet trong PowerPoint.
 const FONT = "Arial";
+
+// CR-018 P3: slide themes - doc.theme chon palette. navy = giu nguyen cu.
+const THEMES: Record<
+  string,
+  { cover: string; coverSub: string; coverAuthor: string; title: string; accent: string; body: string }
+> = {
+  navy: { cover: "1F3B73", coverSub: "D6E4FF", coverAuthor: "B8C9E8", title: "1F3B73", accent: "2F5BA8", body: "222222" },
+  emerald: { cover: "14532D", coverSub: "D1FAE5", coverAuthor: "A7F3D0", title: "14532D", accent: "16A34A", body: "1F2937" },
+  plum: { cover: "581C87", coverSub: "E9D5FF", coverAuthor: "D8B4FE", title: "581C87", accent: "9333EA", body: "1F2937" },
+  light: { cover: "F8FAFC", coverSub: "475569", coverAuthor: "64748B", title: "0F172A", accent: "2563EB", body: "1F2937" },
+};
+
+export const PPTX_THEMES = Object.keys(THEMES);
 
 function blockToLines(b: DocBlock): { text: string; bullet: boolean }[] {
   switch (b.kind) {
@@ -29,7 +47,8 @@ function blockToLines(b: DocBlock): { text: string; bullet: boolean }[] {
     case "image":
       return [];
     case "audio":
-      return b.caption ? [{ text: `[Audio] ${b.caption}`, bullet: false }] : [];
+      // CR-018 P1: audio nhung bang addMedia - dong caption chi la nhan.
+      return b.caption ? [{ text: `Audio: ${b.caption}`, bullet: false }] : [];
   }
 }
 
@@ -62,19 +81,42 @@ async function imageToPng64(
   return null;
 }
 
-export async function docToPptx(doc: DocContent, author: string): Promise<Buffer> {
+// CR-018 P1: tai mp3 tu bucket public -> base64 de addMedia nhung vao slide.
+async function audioToB64(path: string): Promise<string | null> {
+  try {
+    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${path}`;
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length) return null;
+    return `audio/mpeg;base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+export async function docToPptx(
+  doc: DocContent,
+  author: string,
+  opts: { interactive?: boolean } = {},
+): Promise<Buffer> {
+  const interactive = opts.interactive ?? doc.interactive === true;
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "WIDE", width: 10, height: 5.625 });
   pptx.layout = "WIDE";
   pptx.title = doc.title;
   pptx.author = author;
+  const th = THEMES[doc.theme ?? ""] ?? THEMES.navy;
+  const lightCover = (doc.theme ?? "") === "light";
+  const slideJobs: SlideJob[] = [];
 
   // Slide bia
   const cover = pptx.addSlide();
-  cover.background = { color: "1F3B73" };
+  cover.background = { color: th.cover };
   cover.addText(doc.title, {
     x: 0.6, y: 1.6, w: 8.8, h: 1.4,
-    fontFace: FONT, fontSize: 30, bold: true, color: "FFFFFF", align: "center",
+    fontFace: FONT, fontSize: 30, bold: true,
+    color: lightCover ? "0F172A" : "FFFFFF", align: "center",
   });
   const metaLine = (doc.meta ?? [])
     .map(([k, v]) => `${k}: ${v}`)
@@ -82,42 +124,78 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
   if (metaLine) {
     cover.addText(metaLine, {
       x: 0.6, y: 3.2, w: 8.8, h: 0.5,
-      fontFace: FONT, fontSize: 14, color: "D6E4FF", align: "center",
+      fontFace: FONT, fontSize: 14, color: th.coverSub, align: "center",
     });
   }
   cover.addText(author, {
     x: 0.6, y: 4.7, w: 8.8, h: 0.4,
-    fontFace: FONT, fontSize: 12, color: "B8C9E8", align: "center",
+    fontFace: FONT, fontSize: 12, color: th.coverAuthor, align: "center",
   });
 
+  let slideNo = 1;
   for (const sec of doc.sections ?? []) {
     const s = pptx.addSlide();
+    slideNo++;
+    // CR-018 P3: thanh accent duoi title + so slide o footer.
     s.addText(sec.title, {
       x: 0.5, y: 0.25, w: 9, h: 0.7,
-      fontFace: FONT, fontSize: 22, bold: true, color: "1F3B73",
+      fontFace: FONT, fontSize: 22, bold: true, color: th.title,
+    });
+    s.addShape("rect", { x: 0.5, y: 0.98, w: 1.4, h: 0.06, fill: { color: th.accent } });
+    s.addText(`${slideNo}`, {
+      x: 9.3, y: 5.15, w: 0.5, h: 0.3,
+      fontFace: FONT, fontSize: 10, color: "94A3B8", align: "right",
     });
     // CR-042: note blocks = loi thuyet trinh cua GV -> speaker notes,
     // khong hien thi tren slide chieu cho HS.
     const notes = (sec.blocks ?? [])
       .filter((b) => b.kind === "note")
       .map((b) => b.text);
-    const lines = (sec.blocks ?? [])
-      .filter((b) => b.kind !== "note")
+    const allLines = (sec.blocks ?? [])
+      .filter((b) => b.kind !== "note" && b.kind !== "audio")
       .flatMap(blockToLines)
-      .filter((l) => l.text.trim())
-      .slice(0, 9);
+      .filter((l) => l.text.trim());
+    // CR-052: interactive -> dong "Dap an:" tach thanh shape an ben duoi,
+    // reveal khi click vao vung cau hoi (scn:q -> scn:ans interactiveSeq).
+    const answerLines = interactive
+      ? allLines.filter((l) => ANSWER_LINE.test(l.text))
+      : [];
+    const lines = (interactive
+      ? allLines.filter((l) => !ANSWER_LINE.test(l.text))
+      : allLines
+    ).slice(0, 9);
     if (notes.length) s.addNotes(notes.join("\n\n"));
+    const hasReveal = interactive && answerLines.length > 0;
     s.addText(
       lines.map((l) => ({
         text: l.text,
         options: { bullet: l.bullet ? { code: "2022" } : undefined },
       })),
       {
-        x: 0.7, y: 1.1, w: 8.6, h: 4.1,
-        fontFace: FONT, fontSize: 16, color: "222222",
+        x: 0.7, y: 1.1, w: 8.6, h: 3.6,
+        fontFace: FONT, fontSize: 16, color: th.body,
         valign: "top", lineSpacingMultiple: 1.25,
+        ...(hasReveal ? { objectName: `scn:q:${slideNo}` } : {}),
       },
     );
+    if (hasReveal) {
+      s.addText(
+        answerLines.slice(0, 4).map((l) => ({
+          text: l.text,
+          options: { bullet: false },
+        })),
+        {
+          x: 0.7, y: 4.15, w: 8.6, h: 1.0,
+          fontFace: FONT, fontSize: 15, bold: true, color: "15803D",
+          valign: "top", lineSpacingMultiple: 1.2,
+          objectName: `scn:ans:${slideNo}`,
+        },
+      );
+      slideJobs.push({
+        slideNo,
+        reveals: [{ trigger: `scn:q:${slideNo}`, target: `scn:ans:${slideNo}` }],
+      });
+    }
     // CR-031: image blocks trong slide
     const imgBlocks = (sec.blocks ?? []).filter((b) => b.kind === "image");
     for (let i = 0; i < Math.min(imgBlocks.length, 2); i++) {
@@ -129,13 +207,37 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
           sizing: { type: "contain", w: 2.8, h: 2.1 },
         });
     }
+    // CR-018 P1: audio blocks nhung that vao slide (mo trong PowerPoint
+    // -> bieu tuong loa, click phat truc tiep). Fetch lo -> caption van in.
+    const audioBlocks = (sec.blocks ?? []).filter((b) => b.kind === "audio");
+    for (let i = 0; i < Math.min(audioBlocks.length, 2); i++) {
+      const ab = audioBlocks[i] as { path?: string; caption?: string };
+      const b64 = ab.path ? await audioToB64(ab.path) : null;
+      if (b64) {
+        s.addMedia({
+          type: "audio",
+          data: b64,
+          x: 0.5, y: 4.85, w: 0.5, h: 0.5,
+        });
+      }
+      s.addText(`Audio${i + 1}: ${ab.caption ?? "nghe tai lieu"}`, {
+        x: 1.1, y: 4.95, w: 8, h: 0.3,
+        fontFace: FONT, fontSize: 11, italic: true, color: th.accent,
+      });
+    }
   }
 
   for (const ap of doc.appendix ?? []) {
     const s = pptx.addSlide();
+    slideNo++;
     s.addText(ap.title, {
       x: 0.5, y: 0.25, w: 9, h: 0.7,
       fontFace: FONT, fontSize: 20, bold: true, color: "5B6577",
+    });
+    s.addShape("rect", { x: 0.5, y: 0.98, w: 1.4, h: 0.06, fill: { color: th.accent } });
+    s.addText(`${slideNo}`, {
+      x: 9.3, y: 5.15, w: 0.5, h: 0.3,
+      fontFace: FONT, fontSize: 10, color: "94A3B8", align: "right",
     });
     const notes = (ap.blocks ?? [])
       .filter((b) => b.kind === "note")
@@ -160,5 +262,10 @@ export async function docToPptx(doc: DocContent, author: string): Promise<Buffer
   }
 
   const buf = await pptx.write({ outputType: "nodebuffer" });
-  return Buffer.isBuffer(buf) ? buf : Buffer.from(buf as ArrayBuffer);
+  const raw = Buffer.isBuffer(buf) ? buf : Buffer.from(buf as ArrayBuffer);
+  // CR-052: patch XML - fade transition moi slide + interactiveSeq reveal.
+  if (interactive && raw.length) {
+    return injectInteractions(raw, slideJobs);
+  }
+  return raw;
 }

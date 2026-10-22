@@ -39,14 +39,16 @@ export function AiInsightCard({
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    if (job.done && job.result !== null) {
-      const r = job.result as InsightResult;
-      job.reset();
-      applyResult(r);
-    } else if (job.failed) {
-      job.reset();
-      setErr("Không nhận được kết quả. Vui lòng thử lại.");
-    }
+    const done = job.done, failed = job.failed, result = job.result;
+    queueMicrotask(() => {
+      if (done && result !== null) {
+        job.reset();
+        applyResult(result as InsightResult);
+      } else if (failed) {
+        job.reset();
+        setErr("Không nhận được kết quả. Vui lòng thử lại.");
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.done, job.failed, job.result]);
 

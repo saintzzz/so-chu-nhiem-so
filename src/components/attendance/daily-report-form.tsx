@@ -44,14 +44,18 @@ export function DailyReportForm({
   const aiJob = useAiJob();
 
   // Kết quả Devin fallback về sau qua ai_jobs -> tự điền vào nội dung
+  // (defer microtask: khong setState dong bo trong effect).
   useEffect(() => {
-    if (!aiJob.done || !aiJob.result) return;
-    const obj = aiJob.result as { draft?: string };
-    if (obj.draft?.trim()) {
-      setContent(obj.draft.trim());
-      setMsg("AI dự phòng đã soạn xong nháp.");
-    }
-    aiJob.reset();
+    const done = aiJob.done, result = aiJob.result;
+    queueMicrotask(() => {
+      if (!done || !result) return;
+      const obj = result as { draft?: string };
+      if (obj.draft?.trim()) {
+        setContent(obj.draft.trim());
+        setMsg("AI dự phòng đã soạn xong nháp.");
+      }
+      aiJob.reset();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiJob.done, aiJob.result]);
 

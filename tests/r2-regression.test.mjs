@@ -3136,3 +3136,163 @@ test("r29: save/update material validate content truoc khi ghi DB", () => {
   const upd = act.slice(act.indexOf("export async function updateMaterialContent"));
   assert.ok(upd.indexOf("isDocContent(content)") < upd.indexOf(".update({"));
 });
+
+// --- CR-050: ma de hoan vi ------------------------------------------------
+const { shufflePicked } = await import(
+  join(ROOT, "src/lib/tvc/exam-shuffle.ts")
+);
+
+const mkPicked = (id, qtype, context = null) => ({ q: { id, qtype, context, stem: `q${id}` } });
+
+test("CR-050: shufflePicked giu nguyen tap cau, doi thu tu", () => {
+  const src = [
+    ...[1, 2, 3, 4].map((i) => mkPicked(`mc${i}`, "multiple_choice")),
+    ...[1, 2, 3].map((i) => mkPicked(`es${i}`, "essay")),
+  ];
+  const sh = shufflePicked(src, () => 0.99); // rand=0.99 -> reverse-ish, deterministic
+  assert.deepEqual(
+    [...sh.map((p) => p.q.id)].sort(),
+    [...src.map((p) => p.q.id)].sort(),
+  );
+  // thu tu phan giu nguyen (MC truoc essay), thu tu trong phan bi xao
+  assert.deepEqual(
+    sh.map((p) => p.q.qtype),
+    src.map((p) => p.q.qtype),
+  );
+});
+
+test("CR-050: cum context khong bi tach khi shuffle", () => {
+  const ctx = "doan doc A";
+  const src = [
+    mkPicked("a1", "multiple_choice", ctx),
+    mkPicked("b1", "multiple_choice"),
+    mkPicked("a2", "multiple_choice", ctx),
+    mkPicked("c1", "multiple_choice"),
+  ];
+  for (let r = 0; r < 20; r++) {
+    const sh = shufflePicked(src);
+    const ids = sh.map((p) => p.q.id);
+    const i1 = ids.indexOf("a1"), i2 = ids.indexOf("a2");
+    assert.equal(i2 - i1, 1, `context cluster tach: ${ids.join(",")}`);
+  }
+});
+
+test("CR-050: route luu ma de 2 vao pack + tra docB tab", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(route, /MÃ ĐỀ 2/);
+  assert.match(route, /code:\s*"B"/);
+  assert.match(route, /docB,/);
+  const runner = readSrc("src/components/tvc/tool-runner.tsx");
+  assert.match(runner, /Mã đề 2/);
+});
+
+// --- CR-051: bo ho so de thi ----------------------------------------------
+test("CR-051: de thi sach dap an - appendix khong con trong doc", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  // buildExamDoc tra {doc, answerDoc} - dap an la DocContent rieng
+  assert.match(route, /const \{ doc: docCT, answerDoc: ansCT \} = buildExamDoc/);
+  // doc khong con appendix nhung dap an
+  const ret = route.slice(route.indexOf("return {\n    doc: {"));
+  const end = ret.indexOf("answerDoc,\n  };");
+  assert.ok(end > 0, "return {doc, answerDoc} khong tim thay");
+  const docPart = ret.slice(0, end);
+  assert.ok(!/appendix/.test(docPart), "de thi con appendix lo dap an");
+});
+
+test("CR-051: response tra dap an + de du phong + bien ban rieng", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  for (const k of ["docDA", "docDB", "docBBPB", "docDADB"])
+    assert.match(route, new RegExp(`${k}[:,]`));
+  const runner = readSrc("src/components/tvc/tool-runner.tsx");
+  assert.match(runner, /Đáp án - HD chấm/);
+  assert.match(runner, /Đề dự phòng/);
+  assert.match(runner, /Biên bản phản biện/);
+  assert.match(runner, /pack:\$\{packId\}/);
+});
+
+test("CR-051: trang chi tiet material nhom cac van ban cung pack", () => {
+  const page = readSrc("src/app/(app)/studio/library/[id]/page.tsx");
+  assert.match(page, /origin_note\?\.startsWith\("pack:"\)/);
+  assert.match(page, /Cùng bộ hồ sơ đề thi/);
+});
+
+// --- CR-052: pptx tuong tac -------------------------------------------------
+test("CR-052: docToPptx interactive - answer shape an + interactiveSeq trong XML", async () => {
+  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const JSZip = (await import("jszip")).default;
+  const doc = {
+    title: "T", author: "a", sections: [{
+      title: "Warm-up",
+      blocks: [
+        { kind: "para", text: "Question 1: What is the capital?" },
+        { kind: "para", text: "Đáp án: London" },
+        { kind: "list", items: ["Part A", "Đáp án: 1. A 2. B"] },
+      ],
+    }],
+  };
+  const buf = await docToPptx(doc, "qa", { interactive: true });
+  const z = await JSZip.loadAsync(buf);
+  const slide1 = await z.file("ppt/slides/slide2.xml").async("string");
+  // answer shape duoc tach rieng voi objectName scn:ans
+  assert.match(slide1, /name="scn:ans:\d+"/, "khong co shape dap an");
+  assert.match(slide1, /name="scn:q:\d+"/, "khong co shape cau hoi");
+  // timing interactiveSeq: clickEffect treo trong par delay=indefinite
+  assert.match(slide1, /nodeType="interactiveSeq"/, "khong co interactiveSeq");
+  assert.match(slide1, /nodeType="clickEffect"/, "khong co clickEffect");
+  assert.match(slide1, /<p:transition[^>]*><p:fade\/>/, "khong co fade transition");
+  // dap an khong nam trong txBody cua shape cau hoi (chi trong scn:ans)
+  const qShape = slide1.split("</p:sp>").find((x) => x.includes('name="scn:q:'));
+  assert.ok(qShape && !qShape.includes("London"),
+    "dap an van nam trong shape cau hoi");
+  const aShape = slide1.split("</p:sp>").find((x) => x.includes('name="scn:ans:'));
+  assert.ok(aShape?.includes("London"), "dap an khong o trong shape an");
+});
+
+test("CR-052: docToPptx khong interactive - khong timing, dap an in san", async () => {
+  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const JSZip = (await import("jszip")).default;
+  const doc = {
+    title: "T", author: "a", sections: [{
+      title: "S",
+      blocks: [{ kind: "para", text: "Q: 2+2=?" }, { kind: "para", text: "Đáp án: 4" }],
+    }],
+  };
+  const buf = await docToPptx(doc, "qa");
+  const z = await JSZip.loadAsync(buf);
+  const slide1 = await z.file("ppt/slides/slide2.xml").async("string");
+  assert.ok(!slide1.includes("interactiveSeq"), "slide tinh lai co timing");
+  assert.ok(!slide1.includes("scn:ans:"), "slide tinh lai co answer shape");
+  assert.ok(slide1.includes("Đáp án: 4") || slide1.includes("&#273;"),
+    "slide tinh phai in dap an");
+});
+
+test("CR-052: doc.interactive flag + DC-06 fields + TTS wiring trong route", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(route, /doc\.interactive = true/);
+  assert.match(route, /input\.audio === "yes"/);
+  assert.match(route, /synthesizeSpeech/);
+  const reg = readSrc("src/lib/tvc/registry.ts");
+  assert.match(reg, /key: "interactive"/);
+  assert.match(reg, /key: "audio"/);
+});
+
+test("AC-51.5: pack simple chi tra de + dap an, full moi co du phong + bien ban", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  // docDB/docBBPB/docDADB chi sinh khi pack === "full"
+  assert.match(route, /pack === "full"[\s\S]{0,400}docDB/);
+  assert.match(route, /pack === "full"[\s\S]{0,800}docBBPB/);
+  // response cho pack simple: docDB/docDADB/docBBPB khoi tao null,
+  // chi duoc gan trong nhanh pack === "full" (da assert o tren)
+  const resp = route.slice(route.indexOf("docDB,"));
+  assert.ok(resp.startsWith("docDB,"), "response thieu docDB");
+});
+
+test("AC-52.4: DC-06 TTS ton trong route budget - skip khi het han", () => {
+  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
+  // CR-052 audio block: kiem tra budget truoc moi section
+  const dc06 = route.slice(route.indexOf('code === "DC-06" && doc?.sections'));
+  assert.match(dc06, /budget < 15_000\) break/);
+  assert.match(dc06, /ROUTE_BUDGET_MS - \(Date\.now\(\) - routeStartedAt\)/);
+  // khong key/quota -> bo am thanh, van tra doc
+  assert.match(dc06, /quotaOk/);
+});

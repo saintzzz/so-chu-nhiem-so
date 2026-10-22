@@ -207,4 +207,8 @@ export interface DocContent {
   meta?: [string, string][];
   sections: DocSection[];
   appendix?: DocSection[];
+  // CR-018 P3: theme key cho xuat pptx (navy|emerald|plum|light).
+  theme?: string;
+  // CR-052: xuat pptx tuong tac - dap an an, reveal khi click.
+  interactive?: boolean;
 }

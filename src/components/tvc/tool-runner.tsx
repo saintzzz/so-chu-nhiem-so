@@ -80,6 +80,7 @@ export function ToolRunner({
   const [doc, setDoc] = useState<DocContent | null>(null);
   const [docTabs, setDocTabs] = useState<{ label: string; doc: DocContent }[] | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [packExamId, setPackExamId] = useState<string | null>(null);
   const [matrixPayload, setMatrixPayload] = useState<MatrixPayload | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [missing, setMissing] = useState(0);
@@ -219,12 +220,18 @@ export function ToolRunner({
         return;
       }
       setDoc(data.doc);
-      // Exam-pack (CR-023): DC-03 full tra them de du phong + bien ban phan bien
-      if (data.docDB || data.docBBPB) {
+      setPackExamId(data.examId ?? null);
+      // Exam-pack (CR-023/050/051): DC-03 tra nhieu van ban - ma de,
+      // dap an rieng, de du phong, bien ban phan bien.
+      if (data.docB || data.docDA || data.docDB || data.docBBPB) {
         const tabs: { label: string; doc: DocContent }[] = [
-          { label: "Đề chính thức", doc: data.doc },
+          { label: data.docB ? "Mã đề 1" : "Đề chính thức", doc: data.doc },
         ];
+        if (data.docB) tabs.push({ label: "Mã đề 2", doc: data.docB });
+        if (data.docDA) tabs.push({ label: data.docB ? "Đáp án mã 1" : "Đáp án - HD chấm", doc: data.docDA });
+        if (data.docDAB) tabs.push({ label: "Đáp án mã 2", doc: data.docDAB });
         if (data.docDB) tabs.push({ label: "Đề dự phòng", doc: data.docDB });
+        if (data.docDADB) tabs.push({ label: "Đáp án dự phòng", doc: data.docDADB });
         if (data.docBBPB) tabs.push({ label: "Biên bản phản biện", doc: data.docBBPB });
         setDocTabs(tabs);
         setActiveTab(0);
@@ -250,31 +257,57 @@ export function ToolRunner({
   const save = async () => {
     if (!doc) return;
     setSaving(true);
-    const res = await saveMaterial({
-      title: doc.title,
-      type: tool.materialType,
-      toolCode: tool.code,
-      subjectCode: values.subject ?? null,
-      grade: values.grade ? Number(values.grade) : null,
-      standardIds: selectedStd,
-      content: doc,
-      aiUsage: provider === "rule-based" || provider === "question-bank" ? "none" : "full",
-      matrix: matrixPayload
-        ? {
-            cells: matrixPayload.cells,
-            spec: matrixPayload.spec,
-            durationMin: matrixPayload.durationMin,
-            totalPoints: matrixPayload.totalPoints,
-          }
-        : undefined,
-    });
-    setSaving(false);
-    if (res.error) {
-      setError(res.error);
-      return;
+    // CR-051: co pack thi luu toan bo van ban cua bo ho so, moi van ban
+    // 1 material (export docx rieng), origin_note=pack:<examId> lien ket.
+    const docsToSave = docTabs
+      ? docTabs.map((t) => ({ title: t.doc.title, content: t.doc }))
+      : [{ title: doc.title, content: doc }];
+    const packId = packExamId ?? crypto.randomUUID();
+    let firstId: string | null = null;
+    let savedMatrixId: string | null = null;
+    for (let i = 0; i < docsToSave.length; i++) {
+      const d = docsToSave[i];
+      const res = await saveMaterial({
+        title: d.title,
+        type: tool.materialType,
+        toolCode: tool.code,
+        subjectCode: values.subject ?? null,
+        grade: values.grade ? Number(values.grade) : null,
+        standardIds: selectedStd,
+        content: d.content,
+        aiUsage:
+          provider === "rule-based" || provider === "question-bank"
+            ? "none"
+            : "full",
+        originNote: `pack:${packId}`,
+        matrix:
+          i === 0 && matrixPayload
+            ? {
+                cells: matrixPayload.cells,
+                spec: matrixPayload.spec,
+                durationMin: matrixPayload.durationMin,
+                totalPoints: matrixPayload.totalPoints,
+              }
+            : undefined,
+      });
+      if (res.error) {
+        setSaving(false);
+        setError(
+          i > 0
+            ? `Đã lưu ${i}/${docsToSave.length} văn bản - lỗi ở "${d.title}": ${res.error}`
+            : res.error,
+        );
+        if (firstId) setSavedId(firstId);
+        return;
+      }
+      if (i === 0) {
+        firstId = res.id!;
+        savedMatrixId = res.matrixId ?? null;
+      }
     }
-    setSavedId(res.id!);
-    if (res.matrixId) setSavedMatrixId(res.matrixId);
+    setSaving(false);
+    setSavedId(firstId!);
+    if (savedMatrixId) setSavedMatrixId(savedMatrixId);
   };
 
   const fieldEl = (f: ToolField) => {
@@ -595,7 +628,11 @@ export function ToolRunner({
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border bg-background py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
-                {saving ? "Đang lưu..." : "Lưu học liệu"}
+                {saving
+                  ? "Đang lưu..."
+                  : docTabs && docTabs.length > 1
+                    ? `Lưu bộ hồ sơ (${docTabs.length} văn bản)`
+                    : "Lưu học liệu"}
               </button>
             )}
             {stdCount > 0 && (

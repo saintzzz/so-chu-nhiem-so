@@ -136,7 +136,13 @@ export function QuestionBank({
   const [aiScope, setAiScope] = useState({ subject: "", grade: "" });
   const [aiStandards, setAiStandards] = useState<CurriculumStandard[]>([]);
   // CR-041: sinh cau hoi bang AI theo chu de - cung pipeline aiRows -> YCCD -> import
-  const [genOpen, setGenOpen] = useState(false);
+  // CR-041: ?gen=1 tu trang ky thi -> mo san panel sinh AI (lazy init,
+  // khong can effect - client component nen doc URL luc render dau).
+  const [genOpen, setGenOpen] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("gen") === "1",
+  );
   const [genBusy, setGenBusy] = useState(false);
   // aiRows den tu "sinh theo chu de" thi luu source=generated (import file = imported)
   const [aiFromGen, setAiFromGen] = useState(false);
@@ -382,13 +388,6 @@ export function QuestionBank({
       );
     })();
   };
-
-  /** CR-041: ?gen=1 tu trang ky thi -> mo san panel sinh AI. */
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("gen") === "1") {
-      setGenOpen(true);
-    }
-  }, []);
 
   /** Sinh cau hoi theo chu de -> do vao aiRows de preview + gan YCCD + import. */
   const runGen = () => {

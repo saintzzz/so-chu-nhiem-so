@@ -69,6 +69,10 @@ export function ConductEvaluationEditor({
   const [pending, startTransition] = useTransition();
   const [aiBusy, setAiBusy] = useState<string | "all" | null>(null);
   const aiJob = useAiJob();
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function applyComments(
     comments: Record<string, string>,
@@ -90,22 +94,22 @@ export function ConductEvaluationEditor({
     setSaved(false);
   }
 
-  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs
+  // Kết quả Devin (fallback khi LLM hết quota) về sau qua ai_jobs.
+  // Defer sang microtask - khong setState dong bo trong effect.
   useEffect(() => {
-    if (!aiJob.done || !aiJob.result) return;
-    const obj = aiJob.result as Record<string, unknown>;
-    const comments: Record<string, string> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      if (typeof v === "string" && v.trim()) comments[k] = v.trim();
-    }
-    applyComments(comments, students);
-    aiJob.reset();
+    const done = aiJob.done, result = aiJob.result;
+    queueMicrotask(() => {
+      if (!done || !result) return;
+      const obj = result as Record<string, unknown>;
+      const comments: Record<string, string> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === "string" && v.trim()) comments[k] = v.trim();
+      }
+      applyComments(comments, students);
+      aiJob.reset();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiJob.done, aiJob.result]);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [importMsg, setImportMsg] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const RATING_LABEL = Object.fromEntries(RATINGS.map((r) => [r.value, r.label]));
 

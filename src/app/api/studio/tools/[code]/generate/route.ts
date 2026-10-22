@@ -19,6 +19,7 @@ import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
 import { renderFigure } from "@/lib/tvc/figures";
+import { shufflePicked } from "@/lib/tvc/exam-shuffle";
 import type { ToolContext } from "@/lib/tvc/types";
 import type { CurriculumStandard, DocContent, Question, Subject } from "@/types/tvc";
 import type { Role } from "@/types";
@@ -117,7 +118,7 @@ function buildExamDoc(
     total_points: number | null;
   },
   opts: { variantLabel?: string; tfScore?: string; subjectName?: string },
-): DocContent {
+): { doc: DocContent; answerDoc: DocContent } {
   const partOf = new Map<string, Picked[]>();
   for (const p of picked) {
     const k = p.q.qtype;
@@ -232,8 +233,16 @@ function buildExamDoc(
       (p.q.review_state ?? "unreviewed") !== "approved",
   );
 
-  return {
-    title: `${th ? "KIỂM TRA ĐỊNH KÌ" : "ĐỀ KIỂM TRA"}${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${(matrix.title || `${opts.subjectName ?? "MÔN"}${matrix.grade ? ` LỚP ${matrix.grade}` : ""}`)
+  const examTitle = `${th ? "KIỂM TRA ĐỊNH KÌ" : "ĐỀ KIỂM TRA"}${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${(matrix.title || `${opts.subjectName ?? "MÔN"}${matrix.grade ? ` LỚP ${matrix.grade}` : ""}`)
+    .toUpperCase()
+    .replace(/^MA TRẬN ĐỀ KIỂM TRA\s*/, "")
+    .replace(/^[-\s]+/, "")
+    .replace(/^MA TRẬN\s*-\s*/, "")}`;
+
+  // CR-051: dap an la van ban rieng (phong thi in tach), khong nhung
+  // vao de - truoc day appendix cuoi de lo dap an tren ban in hoc sinh.
+  const answerDoc: DocContent = {
+    title: `ĐÁP ÁN - HƯỚNG DẪN CHẤM${opts.variantLabel ? ` ${opts.variantLabel}` : ""} - ${(matrix.title || "")
       .toUpperCase()
       .replace(/^MA TRẬN ĐỀ KIỂM TRA\s*/, "")
       .replace(/^[-\s]+/, "")
@@ -241,25 +250,9 @@ function buildExamDoc(
     meta: [
       ["Môn học", opts.subjectName ?? matrix.subject_code ?? "-"],
       ["Khối lớp", matrix.grade ? `Lớp ${matrix.grade}` : "-"],
-      [
-        "Thời gian",
-        `${matrix.duration_min} phút (không kể thời gian phát đề)`,
-      ],
-      ["Tổng điểm", String(matrix.total_points)],
-      ["Số câu", String(picked.length)],
-      ...(th
-        ? ([
-            ["Họ và tên học sinh", "................................................"],
-            ["Lớp", "..........  Mã phách: .........."],
-            [
-              "Điểm - Nhận xét",
-              "(Theo TT 22/2021: thang 10, không cho điểm 0 và điểm thập phân ở điểm tổng bài)",
-            ],
-          ] as [string, string][])
-        : []),
+      ["Đề kiểm tra", examTitle],
     ],
-    sections,
-    appendix: [
+    sections: [
       {
         title: "HƯỚNG DẪN CHẤM - ĐÁP ÁN",
         blocks: [
@@ -309,6 +302,34 @@ function buildExamDoc(
         ],
       },
     ],
+  };
+
+  return {
+    doc: {
+      title: examTitle,
+      meta: [
+        ["Môn học", opts.subjectName ?? matrix.subject_code ?? "-"],
+        ["Khối lớp", matrix.grade ? `Lớp ${matrix.grade}` : "-"],
+        [
+          "Thời gian",
+          `${matrix.duration_min} phút (không kể thời gian phát đề)`,
+        ],
+        ["Tổng điểm", String(matrix.total_points)],
+        ["Số câu", String(picked.length)],
+        ...(th
+          ? ([
+              ["Họ và tên học sinh", "................................................"],
+              ["Lớp", "..........  Mã phách: .........."],
+              [
+                "Điểm - Nhận xét",
+                "(Theo TT 22/2021: thang 10, không cho điểm 0 và điểm thập phân ở điểm tổng bài)",
+              ],
+            ] as [string, string][])
+          : []),
+      ],
+      sections,
+    },
+    answerDoc,
   };
 }
 
@@ -408,6 +429,8 @@ export async function POST(
   // duoc pha vao timeout 120s (r3 finding 7).
   const routeStartedAt = Date.now();
   const ROUTE_BUDGET_MS = 115_000;
+  // CR-052: khong doc TTS dong dap an - de click-reveal trong PPT.
+  const ANSWER_SKIP = /(đáp\s*án|answer|trả\s*lời|key)\s*[::]/i;
 
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
@@ -779,6 +802,11 @@ export async function POST(
     // Đề chính thức + đề dự phòng (pack=full)
     const pickedCT = await buildPicked(new Set(), new Set());
     const realCT = pickedCT.filter((p) => !p.q.id.startsWith("missing-"));
+    // CR-050: ma de 2 = cung tap cau, hoan vi thu tu trong tung phan
+    // (cum context giu nguyen). Luu thanh exam rieng cung pack.
+    const doShuffle = input.shuffle === "yes";
+    const pickedB = doShuffle ? shufflePicked(pickedCT) : [];
+    const realB = pickedB.filter((p) => !p.q.id.startsWith("missing-"));
     let pickedDB: Picked[] = [];
     let realDB: Picked[] = [];
     if (pack === "full") {
@@ -822,6 +850,18 @@ export async function POST(
             },
             questions: mkQs(realCT),
           },
+          ...(doShuffle
+            ? [
+                {
+                  title: `${matrix.title} - MÃ ĐỀ 2`,
+                  subject_code: matrix.subject_code,
+                  grade: matrix.grade,
+                  total_points: matrix.total_points,
+                  config: { code: "B", pack, tf_score: tfScore },
+                  questions: mkQs(realB),
+                },
+              ]
+            : []),
           ...(pack === "full"
             ? [
                 {
@@ -847,22 +887,38 @@ export async function POST(
     }
 
     const subjectName = subject?.name ?? matrix.subject_code ?? "-";
-    const docCT = buildExamDoc(
+    // CR-051: buildExamDoc tra {doc, answerDoc} - de sach dap an,
+    // HD cham la van ban rieng cho phong thi.
+    const { doc: docCT, answerDoc: ansCT } = buildExamDoc(
       pickedCT,
       { ...matrix, title: matrix.title },
-      { tfScore, subjectName },
+      { variantLabel: doShuffle ? "MÃ ĐỀ 1" : undefined, tfScore, subjectName },
     );
+    // Ma de 2 render sau docCT - buildExamDoc ghi lai dispStem/dispCorrect
+    // tren cung doi tuong Picked nen docB nhan hoan vi phuong an rieng.
+    const shuffledB = doShuffle
+      ? buildExamDoc(
+          pickedB,
+          { ...matrix, title: matrix.title },
+          { variantLabel: "MÃ ĐỀ 2", tfScore, subjectName },
+        )
+      : null;
+    const docB = shuffledB?.doc ?? null;
+    const ansB = shuffledB?.answerDoc ?? null;
 
     // Đề dự phòng + biên bản phản biện (pack=full) - da luu cung
     // transaction voi de chinh o tren.
     let docDB: DocContent | null = null;
+    let ansDB: DocContent | null = null;
     let docBBPB: DocContent | null = null;
     if (pack === "full") {
-      docDB = buildExamDoc(
+      const db = buildExamDoc(
         pickedDB,
         { ...matrix, title: matrix.title },
         { variantLabel: "DỰ PHÒNG", tfScore, subjectName },
       );
+      docDB = db.doc;
+      ansDB = db.answerDoc;
       docBBPB = buildReviewDoc(matrix.title, (matrix.grade ?? 6) <= 5);
     }
 
@@ -884,7 +940,11 @@ export async function POST(
 
     return NextResponse.json({
       doc: docCT,
+      docB,
+      docDA: ansCT,
+      docDAB: ansB,
       docDB,
+      docDADB: ansDB,
       docBBPB,
       examId,
       missing: pickedCT.filter((p) => p.q.id.startsWith("missing-")).length,
@@ -1036,6 +1096,49 @@ export async function POST(
   const aiDoc = aiDocRaw ? deanonymizeDeep(aiDocRaw, usedNames) : aiDocRaw;
   const doc = aiDoc ?? tool.fallback(input, ctx);
   const provider = aiDoc ? ai.provider : "rule-based";
+  // CR-018 P3: theme DC-06 di theo doc -> docToPptx doc khi xuat.
+  if (doc && typeof input?.theme === "string" && input.theme)
+    doc.theme = input.theme;
+  // CR-052: interactive flag di theo doc -> export pptx bat reveal.
+  if (code === "DC-06" && doc && input.interactive === "yes")
+    doc.interactive = true;
+
+  // CR-052: DC-06 audio=yes -> TTS narration cho cau hoi/tu vung Tieng Anh
+  // trong slide; audio luu tvc-media + chen audio block (export nhung mp3
+  // that vao deck qua addMedia). Khong key/quota -> bo am thanh, giu doc.
+  if (code === "DC-06" && doc?.sections?.length && input.audio === "yes" && quotaOk) {
+    try {
+      const { synthesizeSpeech, uploadTtsAudio } = await import("@/lib/tvc/tts");
+      const sid = (profile as { school_id?: string | null }).school_id ?? null;
+      // Chi doc doan Tieng Anh (narration GV doc cho HS nghe mau).
+      const englishLine = /[a-zA-Z]{4,}/;
+      let budget = Math.max(0, ROUTE_BUDGET_MS - (Date.now() - routeStartedAt) - 15_000);
+      for (const sec of doc.sections) {
+        if (budget < 15_000) break;
+        const text = (sec.blocks ?? [])
+          .flatMap((b) =>
+            b.kind === "list" ? (b.items ?? []) : "text" in b && typeof b.text === "string" ? [b.text] : [],
+          )
+          .filter((t) => englishLine.test(t) && !ANSWER_SKIP.test(t))
+          .slice(0, 3)
+          .join(" ");
+        if (text.trim().length < 12) continue;
+        const audio = await synthesizeSpeech(text.trim().slice(0, 800), budget);
+        if (!audio) break;
+        budget = Math.max(0, ROUTE_BUDGET_MS - (Date.now() - routeStartedAt) - 15_000);
+        if (budget < 8_000) break;
+        const p = await uploadTtsAudio(sid, audio);
+        if (p) {
+          sec.blocks = [
+            { kind: "audio", path: p, caption: "Nghe mẫu đọc" },
+            ...(sec.blocks ?? []),
+          ];
+        }
+      }
+    } catch (e) {
+      console.error("[dc06-tts] skipped:", e instanceof Error ? e.message : e);
+    }
+  }
 
   // A-03: TTS that cho hoi thoai - tach lượt "Name: line", tong hop 2 giong,
   // upload bucket tvc-media, chen block audio vao dau section hoi thoai.
@@ -1079,6 +1182,81 @@ export async function POST(
       }
     } catch (e) {
       console.error("[a03-tts] skipped:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // CR-018 P1/P2: narration 1 giong cho A-01 (bai doc), A-02 (tu vung),
+  // V-02 (van ban Tieng Viet). Cung chinh sach: loi/thieu key -> bo qua.
+  const narrationPlan: Record<string, () => { text: string; voice?: string; lang?: "en" | "vi"; caption: string } | null> = {
+    // A-01: doc bai reading chinh - lay section co nhieu text nhat.
+    "A-01": () => {
+      const sec = [...(doc?.sections ?? [])].sort(
+        (a, b) =>
+          (b.blocks ?? []).filter((x) => x.kind === "para")
+            .map((x) => x.text?.length ?? 0).reduce((s, n) => s + n, 0) -
+          (a.blocks ?? []).filter((x) => x.kind === "para")
+            .map((x) => x.text?.length ?? 0).reduce((s, n) => s + n, 0),
+      )[0];
+      const text = (sec?.blocks ?? [])
+        .filter((b) => b.kind === "para")
+        .map((b) => b.text ?? "")
+        .join(" ")
+        .trim();
+      return text.length >= 40
+        ? { text, caption: "Audio bài đọc - nghe và đọc theo" }
+        : null;
+    },
+    // A-02: doc tung tu vung de HS nghe-lap lai.
+    "A-02": () => {
+      const words = String(input?.words ?? "")
+        .split(/\r?\n/).map((w) => w.trim()).filter(Boolean).slice(0, 24);
+      if (!words.length) return null;
+      return {
+        text: words.map((w) => `${w}.`).join(" "),
+        caption: `Audio từ vựng - ${words.length} từ, nghe và lặp lại`,
+      };
+    },
+    // V-02: doc van ban nguon bang giong Tieng Viet.
+    "V-02": () => {
+      const text = String(input?.text ?? "").trim();
+      return text.length >= 40
+        ? {
+            text,
+            voice: process.env.TTS_VOICE_VI ?? "nova",
+            lang: "vi" as const,
+            caption: "Audio văn bản - giọng đọc tiếng Việt",
+          }
+        : null;
+    },
+  };
+  const plan = narrationPlan[code]?.();
+  if (plan && doc?.sections?.length && quotaOk) {
+    try {
+      const { synthesizeSpeech, uploadTtsAudio } = await import("@/lib/tvc/tts");
+      const routeLeft = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
+      if (routeLeft >= 25_000) {
+        const audio = await synthesizeSpeech(
+          plan.text,
+          routeLeft - 15_000,
+          plan.voice,
+          plan.lang,
+        );
+        const leftAfter = ROUTE_BUDGET_MS - (Date.now() - routeStartedAt);
+        if (audio && leftAfter > 8_000) {
+          const p = await uploadTtsAudio(
+            (profile as { school_id?: string | null }).school_id ?? null,
+            audio,
+          );
+          if (p) {
+            doc.sections[0].blocks = [
+              { kind: "audio", path: p, caption: plan.caption },
+              ...(doc.sections[0].blocks ?? []),
+            ];
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[tts-narration] skipped:", e instanceof Error ? e.message : e);
     }
   }
 

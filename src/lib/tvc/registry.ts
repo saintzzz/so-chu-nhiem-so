@@ -141,6 +141,23 @@ export const TOOLS: ToolDef[] = [
         { value: "12", label: "12 slide" },
         { value: "16", label: "16 slide" },
       ]},
+      // CR-018 P3: chon theme mau cho file .pptx xuat ra.
+      { key: "theme", label: "Giao diện slide", type: "select", default: "navy", options: [
+        { value: "navy", label: "Xanh navy - trang trọng" },
+        { value: "emerald", label: "Xanh lá - thân thiện" },
+        { value: "plum", label: "Tím - nổi bật" },
+        { value: "light", label: "Sáng - tối giản" },
+      ]},
+      // CR-052: deck tuong tac - dap an an, click vao cau hoi de hien.
+      { key: "interactive", label: "Tương tác", type: "select", default: "no", options: [
+        { value: "no", label: "Không (slide tĩnh)" },
+        { value: "yes", label: "Có - đáp án hiện khi click câu hỏi" },
+      ]},
+      // CR-052: narration TTS - mp3 nhung vao slide (can TTS key).
+      { key: "audio", label: "Âm thanh đọc", type: "select", default: "no", options: [
+        { value: "no", label: "Không" },
+        { value: "yes", label: "Có - đọc nội dung slide (TTS)" },
+      ]},
       { key: "material_id", label: "Bám sát giáo án đã lưu", type: "select", help: "Chọn KHBD đã soạn - slide sẽ dùng lại nguyên câu hỏi/bài tập và đúng tiến trình của giáo án." },
     ],
     buildPrompt: PROMPTS["DC-06"],

@@ -51,6 +51,23 @@ export default async function StudioMaterialPage({
         material.standard_ids).then((r) => ({ data: mustRows(r).rows }))
     : { data: [] };
 
+  // CR-051: bo ho so de thi - cac van ban cung pack:<id> trong origin_note.
+  const packKey = material.origin_note?.startsWith("pack:")
+    ? material.origin_note
+    : null;
+  const { data: packMates } = packKey
+    ? await must(
+        supabase
+          .from("tvc_materials")
+          .select("id, title, status")
+          .eq("origin_note", packKey)
+          .neq("id", material.id)
+          .order("created_at")
+          .limit(10),
+        "tvc_materials pack",
+      )
+    : { data: [] as { id: string; title: string; status: string }[] };
+
   return (
     <div className="mx-auto max-w-6xl">
       <Link
@@ -84,6 +101,25 @@ export default async function StudioMaterialPage({
               {s.code}
             </span>
           ))}
+        </div>
+      )}
+      {packMates && packMates.length > 0 && (
+        <div className="mb-4 rounded-lg border bg-card p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">
+            Cùng bộ hồ sơ đề thi ({packMates.length + 1} văn bản)
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {packMates.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/studio/library/${p.id}`}
+                  className="inline-block rounded-full border px-3 py-1 text-sm hover:bg-muted"
+                >
+                  {p.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       <MaterialActions

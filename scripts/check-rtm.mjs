@@ -61,10 +61,23 @@ function walk(dir, filter, out = []) {
   return out;
 }
 
+// Locked/unreadable files (sync clients, OneDrive placeholders) must not
+// crash the gate - skip them with a warning instead.
+const unreadable = [];
+const tryRead = (f) => {
+  try {
+    return readFileSync(f, 'utf8');
+  } catch {
+    unreadable.push(f);
+    return null;
+  }
+};
+
 function collectIds(files) {
   const ids = new Map(); // id -> first file seen in
   for (const f of files) {
-    const text = readFileSync(f, 'utf8');
+    const text = tryRead(f);
+    if (text === null) continue;
     for (const m of text.matchAll(AC_RE)) if (!ids.has(m[0])) ids.set(m[0], f);
   }
   return ids;
@@ -72,7 +85,10 @@ function collectIds(files) {
 
 // Declared ACs: AC-x.y ids in requirements docs under --docs.
 const docFiles = DOC_DIRS.flatMap((d) => walk(d, (p) => extname(p) === '.md'))
-  .filter((f) => isReqDoc(f, readFileSync(f, 'utf8')));
+  .filter((f) => {
+    const t = tryRead(f);
+    return t !== null && isReqDoc(f, t);
+  });
 const declared = collectIds(docFiles);
 
 // Covered ACs: ids in test dirs + any *.test.* / *.spec.* file repo-wide.
@@ -81,6 +97,8 @@ const testFiles = [
   ...walk('.', (p) => TEST_FILE_RE.test(p)),
 ];
 const covered = collectIds(testFiles);
+if (unreadable.length)
+  console.log(`rtm: ${unreadable.length} unreadable file(s) skipped: ${unreadable.slice(0, 5).join(', ')}`);
 
 if (declared.size === 0) {
   console.log('rtm: no AC-x.y declarations found under docs/ - skipping (pre-BA project)');

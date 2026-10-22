@@ -10,6 +10,16 @@ import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+// The scanner parses TS with the project's own typescript package. On repos
+// without TS (static sites, deps not installed) the scanner skips - so must
+// this test, else it fails forever on an inapplicable repo.
+let tsOk = false;
+try {
+  await import("typescript");
+  tsOk = true;
+} catch {}
+const T = tsOk ? test : test.skip;
+
 function runScanner() {
   try {
     const out = execFileSync("node", ["scripts/check-reliability.mjs"], {
@@ -23,7 +33,7 @@ function runScanner() {
   }
 }
 
-test("reliability scanner flags every known-bad fixture pattern", () => {
+T("reliability scanner flags every known-bad fixture pattern", () => {
   const out = runScanner();
   const expectations = [
     /NO-ERR-BIND/, // dynamic .from(e.table), fetchAllRows khong error-bind
@@ -43,7 +53,7 @@ test("reliability scanner flags every known-bad fixture pattern", () => {
     assert.match(out, re, `scanner phai flag pattern ${re}`);
 });
 
-test("reliability scanner produces zero hits on safe fixture", () => {
+T("reliability scanner produces zero hits on safe fixture", () => {
   const out = runScanner();
   assert.equal(
     /good\.ts:\d+/.test(out),
@@ -52,7 +62,7 @@ test("reliability scanner produces zero hits on safe fixture", () => {
   );
 });
 
-test("reliability gate passes on real src", () => {
+T("reliability gate passes on real src", () => {
   const out = execFileSync("node", ["scripts/check-reliability.mjs"], {
     cwd: ROOT,
     encoding: "utf8",

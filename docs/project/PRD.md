@@ -29,7 +29,7 @@ GVCN tại trường THCS VN phải quản lý thủ công nhiều loại sổ s
 - Shell: sidebar accordion (13 sections), header (breadcrumb, Ctrl+K search, notifications, role badge, logout), mobile hamburger
 
 ### M1 — Dashboard GVCN (P0)
-- Greeting + lớp chủ nhiệm + quick actions (Điểm danh, Ghi nhận tuyên dương)
+- Greeting + lớp chủ nhiệm + các thao tác nhanh (Điểm danh, Ghi nhận tuyên dương)
 - 10 KPI cards: vắng hôm nay, đi muộn, tỷ lệ chuyên cần, nguy cơ học lực, nguy cơ vi phạm, cần tư vấn, TB chưa đọc, việc sắp hạn, hạng thi đua, hồ sơ chưa xong — mỗi card link tới module tương ứng
 - "Việc cần làm hôm nay" list
 - Chart: điểm TB lớp theo tháng (SVG + toggle bảng dữ liệu)

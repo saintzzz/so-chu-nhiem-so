@@ -68,7 +68,19 @@ export function StudentRecordEditor({
   return (
     <>
       {trigger ? (
-        <span onClick={() => setOpen(true)}>{trigger}</span>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setOpen(true);
+            }
+          }}
+        >
+          {trigger}
+        </span>
       ) : (
         <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
           <Pencil /> Sửa hồ sơ

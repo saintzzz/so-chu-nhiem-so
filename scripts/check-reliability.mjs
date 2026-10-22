@@ -17,8 +17,7 @@
 //      on the transition column + .select() -> stale clients overwrite
 //      newer states. (heuristic: flags updates touching status-ish fields
 //      lacking a conditional predicate)
-import ts from "typescript";
-import { readdirSync, readFileSync } from "fs";
+import { readdirSync, readFileSync, existsSync, writeFileSync } from "fs";
 import { join, relative, resolve, dirname } from "path";
 import { fileURLToPath } from "node:url";
 
@@ -27,6 +26,22 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = process.env.SCAN_SRC
   ? resolve(process.env.SCAN_SRC)
   : join(ROOT, "src");
+
+// The scanner parses TS with the project's own typescript. Skip (not fail)
+// when there is nothing to scan: no src/ tree, or typescript is not
+// resolvable (static repos, or deps not installed yet - typecheck catches
+// the latter elsewhere).
+let ts = null;
+if (!existsSync(SRC)) {
+  console.log("check-reliability: no src/ tree - skipped");
+  process.exit(0);
+}
+try {
+  ts = (await import("typescript")).default;
+} catch {
+  console.log("check-reliability: typescript not resolvable - skipped");
+  process.exit(0);
+}
 
 const files = [];
 (function walk(d) {
@@ -593,6 +608,40 @@ for (const f of files) {
       hits.unchecked.push(`${relative(SRC, f)}:${v.line} NO-ERR-USE ${v.name}`);
   }
 }
+
+// Ratchet baseline: .reliability-baseline.json at repo root fingerprints known
+// violations as "file|pattern detail" (line numbers stripped so unrelated
+// edits don't invalidate them). Baselined hits never fail; only NEW
+// violations do. After paying down debt, regenerate with --write-baseline.
+const BASELINE_FILE = join(ROOT, ".reliability-baseline.json");
+const fp = (h) => h.replace(/\\/g, "/").replace(/:\d+/, "").trim();
+if (process.argv.includes("--write-baseline")) {
+  const all = [...hits.unchecked, ...hits.unbounded, ...hits.action, ...hits.cas]
+    .map(fp)
+    .sort();
+  writeFileSync(BASELINE_FILE, JSON.stringify(all, null, 2) + "\n");
+  console.log(`baseline written: ${all.length} entr(ies) -> .reliability-baseline.json`);
+  process.exit(0);
+}
+const baseline = new Map();
+if (existsSync(BASELINE_FILE))
+  for (const s of JSON.parse(readFileSync(BASELINE_FILE, "utf8")))
+    baseline.set(fp(s), (baseline.get(fp(s)) ?? 0) + 1);
+let baselined = 0;
+for (const k of Object.keys(hits)) {
+  const before = hits[k].length;
+  hits[k] = hits[k].filter((h) => {
+    const key = fp(h);
+    const n = baseline.get(key) ?? 0;
+    if (n > 0) {
+      baseline.set(key, n - 1);
+      return false;
+    }
+    return true;
+  });
+  baselined += before - hits[k].length;
+}
+if (baselined) console.log(`(${baselined} known violation(s) covered by baseline)`);
 
 const failures = [];
 const check = (name, list) => {

@@ -128,7 +128,7 @@ export default async function SchoolJournalsPage({
           type="date"
           name="date"
           defaultValue={dateParam ?? ""}
-          className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none"
+          className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
         />
         <button type="submit" className="h-8 rounded-lg border border-border px-3 text-sm hover:bg-muted">
           Xem

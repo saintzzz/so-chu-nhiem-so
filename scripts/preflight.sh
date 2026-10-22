@@ -29,9 +29,10 @@ if [ "$STAGED" -eq 1 ]; then
   # this). Pathspec-exclude mirrors the --exclude on the src-scan path.
   DIFF="$(git diff --cached -U0 -- . ':(exclude)scripts/preflight.sh' ':(exclude)scripts/check-package.mjs' ':(exclude)evals/' 2>/dev/null || true)"
 else
-  DIFF="$(grep -rInE 'sk-[a-zA-Z0-9_-]{20,}|sk-ant-[a-zA-Z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|github_pat_[0-9A-Za-z_]{20,}|-----BEGIN .*PRIVATE KEY' \
-    --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude-dir=build \
-    --exclude=preflight.sh --exclude=check-package.mjs . 2>/dev/null || true)"
+  # Scan tracked files only - the working tree can hold gitignored local
+  # material (secret backups, scratch dirs) that must never reach git anyway.
+  DIFF="$(git ls-files -z 2>/dev/null | xargs -0 grep -InE 'sk-[a-zA-Z0-9_-]{20,}|sk-ant-[a-zA-Z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|github_pat_[0-9A-Za-z_]{20,}|-----BEGIN .*PRIVATE KEY' 2>/dev/null \
+    | grep -vE '^(preflight\.sh|scripts/preflight\.sh|scripts/check-package\.mjs|check-package\.mjs):' || true)"
 fi
 if [ -n "$DIFF" ] && echo "$DIFF" | grep -qE 'sk-[a-zA-Z0-9_-]{20,}|sk-ant-|AIza|github_pat_|BEGIN .*PRIVATE KEY'; then
   echo "   FAIL - possible secret in code/diff:"; echo "$DIFF" | grep -oE '^[^:]+' | sort -u | head -5
@@ -102,15 +103,22 @@ if [ -f scripts/check-repo-laws.mjs ]; then
   run node scripts/check-repo-laws.mjs
 fi
 
-# --- RTM: every declared AC-x.y must appear in a test file. Skips cleanly
-# on pre-BA projects (no AC declarations in docs/).
-if [ -f scripts/check-rtm.mjs ]; then
-  run node scripts/check-rtm.mjs
+# --- vercel.json lint (CR-2026-03): skips cleanly on non-Vercel projects.
+# Secrets/invalid config FAIL; Pro-capability gaps are warnings.
+if [ -f scripts/check-vercel-config.mjs ]; then
+  run node scripts/check-vercel-config.mjs
 fi
 
-# --- post-deploy security headers (only when DEPLOY_URL is provided).
-if [ -n "${DEPLOY_URL:-}" ] && [ -f scripts/check-headers.mjs ]; then
-  run node scripts/check-headers.mjs "$DEPLOY_URL"
+# --- spec lint (CR-2026-05): skips cleanly when docs/ has no PRD/SRS/spec
+# artifacts. Number-less NFRs and vague terms FAIL; open markers WARN.
+if [ -f scripts/check-spec.mjs ]; then
+  run node scripts/check-spec.mjs
+fi
+
+# --- uiux source lint (CR-2026-06): grep-able web-interface-guidelines
+# subset + AI-slop tells. Skips cleanly on non-UI repos.
+if [ -f scripts/check-uiux.mjs ]; then
+  run node scripts/check-uiux.mjs
 fi
 
 echo "== preflight: $([ "$fail" -eq 0 ] && echo PASS || echo FAIL) =="

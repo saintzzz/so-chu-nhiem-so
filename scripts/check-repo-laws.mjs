@@ -77,7 +77,7 @@ const KEY_PATTERN = new RegExp(
 );
 const strict = cfg.keyMode === 'strict';
 for (const f of [...files('.', ['.ts', '.tsx', '.mjs', '.js', '.py'])]) {
-  const rel = relative(root, f);
+  const rel = relative(root, f).replace(/\\/g, '/');
   const src = readFileSync(f, 'utf8');
   const isClient = /^\s*['"]use client['"]/m.test(src) || CLIENT_PATH.test(rel);
   if (strict ? KEY_ALLOWED.some((r) => r.test(rel)) : !isClient) continue;

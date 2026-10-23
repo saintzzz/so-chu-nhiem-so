@@ -12,9 +12,8 @@ import type {
   School,
 } from "@/types";
 import { currentPeriodVN, currentSemesterVN, isoDateVN, todayVN } from "@/lib/utils";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { hasRole } from "@/lib/roles";
-import { must, mustRows } from "@/lib/supabase/must";
+import { must } from "@/lib/supabase/must";
 
 const KPI_SUBMITTED = new Set(["submitted", "approved", "locked", "done"]);
 
@@ -76,7 +75,7 @@ export default async function SchoolDashboardPage() {
   const weekStart = addDays(anchor, -6);
   const monthStart = addDays(anchor, -29);
 
-  const [incidentWeekRes, incidentsRes, emulationRes, kpiRes, attRes] = await Promise.all([
+  const [incidentWeekRes, incidentsRes, emulationRes, kpiRes, attCounts] = await Promise.all([
     classIds.length
       ? must(
           supabase
@@ -119,16 +118,32 @@ export default async function SchoolDashboardPage() {
         )
       : Promise.resolve({ data: [] }),
     classIds.length
-      ? fetchAllRows<{ status: string }>((f, t) =>
-          supabase
-            .from("attendance_records")
-            .select("status,students!inner(class_id)")
-            .in("students.class_id", classIds)
-            .gte("date", monthStart)
-            .order("id")
-            .range(f, t),
-        ).then((r) => ({ data: mustRows(r, "attendance_records").rows }))
-      : Promise.resolve({ data: [] }),
+      ? Promise.all([
+          must(
+            supabase
+              .from("attendance_records")
+              .select("status,students!inner(class_id)", {
+                count: "exact",
+                head: true,
+              })
+              .in("students.class_id", classIds)
+              .gte("date", monthStart),
+            "attendance_records",
+          ),
+          must(
+            supabase
+              .from("attendance_records")
+              .select("status,students!inner(class_id)", {
+                count: "exact",
+                head: true,
+              })
+              .in("students.class_id", classIds)
+              .gte("date", monthStart)
+              .in("status", ["present", "late"]),
+            "attendance_records",
+          ),
+        ])
+      : Promise.resolve([{ count: 0 }, { count: 0 }]),
   ]);
 
   const incidentsThisWeek = incidentWeekRes.count ?? 0;
@@ -158,12 +173,13 @@ export default async function SchoolDashboardPage() {
     (c) => !submittedClassIds.has(c.id),
   ).length;
 
-  const attRows = (attRes.data ?? []) as Pick<AttendanceRecord, "status">[];
-  const attended = attRows.filter(
-    (r) => r.status === "present" || r.status === "late",
-  ).length;
-  const attRate = attRows.length
-    ? ((attended / attRows.length) * 100).toFixed(1) + "%"
+  // Chi can ti le - dung 2 count thay vi tai toan bo rows (query OFFSET
+  // tren ~10k rows + join students tung timeout tren prod, crash trang).
+  const [attTotalRes, attPresentRes] = attCounts;
+  const attTotal = attTotalRes.count ?? 0;
+  const attended = attPresentRes.count ?? 0;
+  const attRate = attTotal
+    ? ((attended / attTotal) * 100).toFixed(1) + "%"
     : "-";
 
   const recentIncidents = incidents;

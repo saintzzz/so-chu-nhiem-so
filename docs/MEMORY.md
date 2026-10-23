@@ -59,3 +59,17 @@ trước khi làm việc; cập nhật cùng commit với artifact của phase.
 - Supabase micro compute throttle khi chuỗi QA nặng - cân nhắc Pro+Small trước
   khi scale trường thật (đã ghi trong HANDOVER-2026-10-09).
 - `ke_toan` đọc được tên HS qua `students_staff_read` - discrepancy chờ chốt.
+
+## 2026-12-23 - CR-053 review loop dong (r33->r34)
+
+- r33 (nemotron qua lead-review-cr053.mjs) bat 6 majors: server tin client
+  computedSnapshot; chip dau tien xoa 3 field con lai; rejected->draft bi
+  trigger chan; BGH sua duoc decided_by/at; stale-check thieu
+  danhHieu+absentTotal; export fallback computed khi da co quyet dinh;
+  Promise.all voi await ben trong = chay tuan tu.
+- Fix commit d483ba0 + triage r34 commit 4dd999e. Migration
+  20261223_cr053_yed_guard_attribution applied prod - BGH path khong
+  rewrite duoc decided_by/decided_at nua.
+- Regression asserts: tests/r2-regression.test.mjs r33-1..r33-7.
+- Lead reviewer cho repo nay: scripts/lead-review-cr053.mjs (OpenRouter
+  nemotron-3-ultra:free, doc .env.local). Khong phai Codex Cloud.

@@ -709,10 +709,17 @@ test("R6-04: report page kiem error/truncated truoc khi render stats", () => {
     "con .then() nuot error/truncated cua fetchAllRows");
   assert.match(page, /error: classErr/,
     "classQuery error van bi bo qua");
-  for (const src of ["stuRes", "attRes", "gradesRes", "violRes"]) {
+  // r31: attendance/conduct da chuyen sang aggregate RPC (khong co
+  // truncated) - van phai kiem error. fetchAllRows sources giu day du.
+  for (const src of ["stuRes", "gradesRes"]) {
     assert.ok(
       new RegExp(`${src}\\.error \\|\\| ${src}\\.truncated`).test(page),
       `${src} chua kiem error/truncated`);
+  }
+  for (const src of ["attRes", "violRes"]) {
+    assert.ok(
+      new RegExp(`${src}\\.error`).test(page),
+      `${src} chua kiem error`);
   }
   assert.match(page, /errors\.length > 0/,
     "nguon loi phai hien notice thay vi stats + narrative 'Chua ghi nhan vi pham'");
@@ -3373,8 +3380,11 @@ test("r30: inline split khong an van thuong 'trả lời:' + NOTE_TAIL_CUT khong
 test("r30: save/gen state guards + TTS doc ban alias (aiDocRaw)", () => {
   const runner = readSrc("src/components/tvc/tool-runner.tsx");
   // generate khong chay khi dang save; save khong chay khi dang sinh/luu
-  assert.match(runner, /const generate = \(\) => \{\s*if \(saving\) return/);
-  assert.match(runner, /if \(!doc \|\| saving \|\| pending\) return/);
+  // r31: guards mo rong them aiJob.job - async poll cung la "dang sinh".
+  assert.match(runner, /if \(saving \|\| aiJob\.job\) return/);
+  assert.match(runner, /if \(!doc \|\| saving \|\| pending \|\| aiJob\.job\) return/);
+  assert.match(runner, /disabled=\{pending \|\| saving \|\| !!aiJob\.job\}/);
+  assert.match(runner, /disabled=\{saving \|\| pending \|\| !!aiJob\.job\}/);
   // pack state chi reset khi chap nhan ket qua moi
   assert.match(runner, /resetPackState\(\);[\s\S]{0,80}setDoc\(data\.doc\)/);
   const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");

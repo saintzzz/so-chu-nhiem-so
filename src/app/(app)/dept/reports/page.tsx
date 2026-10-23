@@ -98,26 +98,16 @@ export default async function DeptReportsPage() {
     todayVN();
   const windowStart = addDays(anchor, -29);
 
-  // Loc theo class_id cua hoc sinh qua embedded filter thay vi .in(student_id)
-  // voi hang nghin UUID - trainh URL PostgREST phinh to muc khong gui duoc.
-  const { rows: attRows, truncated: attTruncated, error: attError } = classIds.length
-    ? await fetchAllRows<{
-        student_id: string;
-        status: string;
-        students: { class_id: string } | { class_id: string }[] | null;
-      }>((f, t) =>
-        supabase
-          .from("attendance_records")
-          .select("student_id,status,students!inner(class_id)")
-          .gte("date", windowStart)
-          .in("students.class_id", classIds)
-          .order("id")
-          .range(f, t),
-      )
-    : { rows: [] as { student_id: string; status: string; students: { class_id: string } | { class_id: string }[] | null }[], truncated: false, error: null };
-  // Loi trang nguon -> khong tinh bao cao tren du lieu thieu. truncated van
-  // hien canh bao nhu truoc (du lieu day du den moc canh bao).
-  if (attError) throw new Error(`Không tải được dữ liệu nguồn (attendance).`);
+  // r31: aggregate server-side thay vi tai toan bo attendance rows -
+  // fetchAllRows OFFSET-page tren nhieu truong bi statement timeout
+  // (da crash /school/dashboard tren prod). RPC loc theo date o server
+  // de index (student_id,date) hoat dong; loc lop qua array param.
+  const { data: attAgg } = classIds.length
+    ? await must(supabase.rpc("scn_attendance_by_class_window", {
+        p_class_ids: classIds,
+        p_from: windowStart,
+      }), "attendance")
+    : { data: [] as { class_id: string; total: number; present: number }[] };
 
   // Gom số liệu theo trường
   const per = new Map<
@@ -134,15 +124,12 @@ export default async function DeptReportsPage() {
   for (const t of (teacherRows ?? []) as { id: string; school_id: string }[]) {
     if (per.has(t.school_id)) per.get(t.school_id)!.teachers++;
   }
-  for (const a of attRows) {
-    // PostgREST tra to-one embed la object (khong phai array).
-    const emb = a.students;
-    const cid = Array.isArray(emb) ? emb[0]?.class_id : emb?.class_id;
-    const sid = cid ? classSchool.get(cid) : undefined;
+  for (const a of attAgg ?? []) {
+    const sid = classSchool.get(a.class_id);
     if (!sid) continue;
     const row = per.get(sid)!;
-    row.total++;
-    if (a.status === "present" || a.status === "late") row.present++;
+    row.total += Number(a.total);
+    row.present += Number(a.present);
   }
 
   const totalStudents = students.length;
@@ -156,11 +143,6 @@ export default async function DeptReportsPage() {
         title="Báo cáo tổng hợp các trường"
         description={`Quy mô, nhân sự và chuyên cần 30 ngày gần nhất (đến ${anchor.split("-").reverse().join("/")}).`}
       />
-      {attTruncated && (
-        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-          Dữ liệu chuyên cần vượt giới hạn xử lý - số liệu bên dưới có thể chưa đầy đủ.
-        </div>
-      )}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Trường" value={scopedSchools.length} />
         <StatCard label="Lớp" value={classes.length} />

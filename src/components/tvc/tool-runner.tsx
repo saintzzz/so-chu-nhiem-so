@@ -175,7 +175,8 @@ export function ToolRunner({
   };
 
   const generate = () => {
-    if (saving) return;
+    // r31: chan khi job async dang chay - onDone co the thay doc mid-save.
+    if (saving || aiJob.job) return;
     const err = validate();
     if (err) {
       setError(err);
@@ -274,7 +275,7 @@ export function ToolRunner({
   const save = async () => {
     // r30 H: cam save khi dang sinh (doc cu se ghi trung vao pack id moi)
     // va cam save kep khi mot luot luu dang chay.
-    if (!doc || saving || pending) return;
+    if (!doc || saving || pending || aiJob.job) return;
     setSaving(true);
     // CR-051: co pack thi luu toan bo van ban cua bo ho so, moi van ban
     // 1 material (export docx rieng), origin_note=pack:<examId> lien ket.
@@ -588,7 +589,7 @@ export function ToolRunner({
           )}
           <button
             onClick={generate}
-            disabled={pending}
+            disabled={pending || saving || !!aiJob.job}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
             {pending ? (
@@ -649,7 +650,7 @@ export function ToolRunner({
             ) : (
               <button
                 onClick={save}
-                disabled={saving || pending}
+                disabled={saving || pending || !!aiJob.job}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border bg-background py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />

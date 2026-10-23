@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { must } from "@/lib/supabase/must";
 import type {
-  AttendanceStatus,
   ClassRoom,
   Student,
   StudentGroup,
@@ -130,19 +129,19 @@ export default async function RecordsStudentsPage({
             .order("id")
             .range(f, t),
         ),
-        fetchAllRows<{ student_id: string; status: AttendanceStatus }>((f, t) =>
-          supabase
-            .from("attendance_records")
-            .select("student_id,status")
-            .in("student_id", ids)
-            .order("id")
-            .range(f, t),
-        ),
+        // r31: aggregate server-side - fetchAllRows toan lich su attendance
+        // se timeout khi bang lon (da crash /school/dashboard tren prod).
+        must(
+          supabase.rpc("scn_attendance_by_student_window", {
+            p_student_ids: ids,
+          }),
+          "attendance",
+        ).then((r) => ({ rows: r.data ?? [] })),
       ])
     : [
         { rows: [] },
         { rows: [] },
-        { rows: [] as { student_id: string; status: AttendanceStatus }[] },
+        { rows: [] as { student_id: string; total: number; attended: number }[] },
       ];
   const attRows = attRes.rows;
 
@@ -157,11 +156,15 @@ export default async function RecordsStudentsPage({
   );
 
   const attCount = new Map<string, { attended: number; total: number }>();
-  for (const a of attRows) {
-    const cur = attCount.get(a.student_id) ?? { attended: 0, total: 0 };
-    cur.total += 1;
-    if (a.status === "present" || a.status === "late") cur.attended += 1;
-    attCount.set(a.student_id, cur);
+  for (const a of attRows as {
+    student_id: string;
+    total: number;
+    attended: number;
+  }[]) {
+    attCount.set(a.student_id, {
+      attended: Number(a.attended),
+      total: Number(a.total),
+    });
   }
 
   const conductByStudent = new Map(

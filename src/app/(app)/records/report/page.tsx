@@ -1,6 +1,6 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import type { AttendanceStatus, ClassRoom, Student } from "@/types";
+import type { ClassRoom, Student } from "@/types";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
@@ -9,7 +9,7 @@ import { ChartCard, BarChart } from "@/components/charts";
 import { AiInsightCard } from "@/components/ai/ai-insight-card";
 import { Sparkles } from "lucide-react";
 import { averageByStudent } from "@/lib/tt22";
-import { fetchAllRows } from "@/lib/supabase/fetch-all";
+import { fetchAllRows, fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 import { gradeInYear } from "@/lib/grades-year";
 import { hasRole } from "@/lib/roles";
 
@@ -66,57 +66,62 @@ export default async function RecordsReportPage() {
   const allIds = students.map((s) => s.id);
   const classOf = new Map(students.map((s) => [s.id, s.class_id]));
   const emptyRows = { rows: [], error: null, truncated: false };
-  const [attRes, gradesRes, violRes] = allIds.length
+  // r31: attendance/conduct dung aggregate RPC - .in(student_id, ~360 ids)
+  // lam URL >8KB (PostgREST fail, trang da hien banner loi tren prod),
+  // con fetchAllRows toan lich su se timeout khi bang lon. grades can
+  // giu rows cho averageByStudent nhung chunk ids + scope nam hoc.
+  const classYears = [
+    ...new Set(
+      (classes as { academic_year_id?: string | null }[])
+        .map((c) => c.academic_year_id)
+        .filter((y): y is string => !!y),
+    ),
+  ];
+  const yearScope = classYears.length
+    ? `academic_year_id.is.null,academic_year_id.in.(${classYears.join(",")})`
+    : "academic_year_id.is.null";
+  const [attRes, gradesRes, violRes] = classIds.length
     ? await Promise.all([
-        fetchAllRows<{ student_id: string; status: string }>((f, t) =>
-          supabase
-            .from("attendance_records")
-            .select("student_id,status")
-            .in("student_id", allIds)
-            .order("id")
-            .range(f, t),
-        ),
-        fetchAllRows<{
+        supabase.rpc("scn_attendance_by_class_window", {
+          p_class_ids: classIds,
+        }),
+        fetchAllRowsIn<{
           student_id: string;
           subject_id: string;
           term: string;
           assessment_type: string;
           score: number | null;
           academic_year_id: string | null;
-        }>((f, t) =>
-          supabase
-            .from("grades")
-            .select("student_id,subject_id,term,assessment_type,score,academic_year_id")
-            .in("student_id", allIds)
-            .order("id")
-            .range(f, t),
+        }>(
+          (chunk, f, t) =>
+            supabase
+              .from("grades")
+              .select("student_id,subject_id,term,assessment_type,score,academic_year_id")
+              .in("student_id", chunk)
+              .or(yearScope)
+              .order("id")
+              .range(f, t),
+          allIds,
         ),
-        fetchAllRows<{ student_id: string }>((f, t) =>
-          supabase
-            .from("conduct_records")
-            .select("student_id")
-            .in("student_id", allIds)
-            .eq("type", "vi_pham")
-            .order("id")
-            .range(f, t),
-        ),
+        supabase.rpc("scn_class_conduct_counts", {
+          p_class_ids: classIds,
+        }),
       ])
-    : [emptyRows, emptyRows, emptyRows];
-  if (attRes.error || attRes.truncated) errors.push("attendance");
+    : [{ data: [] }, emptyRows, { data: [] }];
+  if (attRes.error) errors.push("attendance");
   if (gradesRes.error || gradesRes.truncated) errors.push("grades");
-  if (violRes.error || violRes.truncated) errors.push("conduct");
+  if (violRes.error) errors.push("conduct");
 
   const attByClass = new Map<string, { total: number; absent: number }>();
-  for (const r of attRes.rows as {
-    student_id: string;
-    status: AttendanceStatus;
+  for (const r of (attRes.data ?? []) as {
+    class_id: string;
+    total: number;
+    absent: number;
   }[]) {
-    const cid = classOf.get(r.student_id);
-    if (!cid) continue;
-    const a = attByClass.get(cid) ?? { total: 0, absent: 0 };
-    a.total += 1;
-    if (r.status === "excused" || r.status === "unexcused") a.absent += 1;
-    attByClass.set(cid, a);
+    attByClass.set(r.class_id, {
+      total: Number(r.total),
+      absent: Number(r.absent),
+    });
   }
 
   // CR-049 r9 M8: chi tinh diem dung nam hoc cua lop HS (NULL-legacy
@@ -147,10 +152,11 @@ export default async function RecordsReportPage() {
   }
 
   const violByClass = new Map<string, number>();
-  for (const r of violRes.rows as { student_id: string }[]) {
-    const cid = classOf.get(r.student_id);
-    if (!cid) continue;
-    violByClass.set(cid, (violByClass.get(cid) ?? 0) + 1);
+  for (const r of (violRes.data ?? []) as {
+    class_id: string;
+    violations: number;
+  }[]) {
+    violByClass.set(r.class_id, Number(r.violations));
   }
 
   const stats: ClassStats[] = classes.map((c) => {

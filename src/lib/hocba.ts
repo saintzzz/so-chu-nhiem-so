@@ -333,8 +333,10 @@ function bundleFor(
   shared: Awaited<ReturnType<typeof loadBundleShared>>,
 ): YearEndBundle {
   const sid = student.id;
-  // Thu tu nghiep vu: initial -> after_summer -> after_retest (KHONG
-  // alphabet - 'initial' dung cuoi theo alpha).
+  // Thu tu sort deterministic cho 3 stage (doc lap lo trinh, khong the
+  // cung ton tai hop le: after_retest can kiem_tra_danh_gia_lai,
+  // after_summer can ren_luyen_he). KHONG dung alphabet - 'initial'
+  // dung cuoi theo alpha.
   const STAGE_ORDER: Record<string, number> = {
     initial: 0,
     after_summer: 1,
@@ -372,7 +374,9 @@ function bundleFor(
   const absentUnexcused = att.filter((a) => a.status === "unexcused").length;
   const absentTotal = absentExcused + absentUnexcused;
   const hasPriorRetest = decisions.some(
-    (d) => d.stage === "after_retest" && d.status !== "rejected",
+    (d) =>
+      d.stage === "after_retest" &&
+      (d.status === "approved" || d.status === "locked"),
   );
 
   return {

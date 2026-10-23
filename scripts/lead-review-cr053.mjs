@@ -12,9 +12,12 @@ const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 const read = (p) => { try { return readFileSync(p, "utf8"); } catch { return "(missing)"; } };
 const files = {
   "migration.sql": read("supabase/migrations/20261214_cr053_year_end_decisions.sql"),
+  "migration-attribution.sql": read("supabase/migrations/20261223_cr053_yed_guard_attribution.sql"),
   "actions.ts": read("src/app/(app)/records/hoc-ba/actions.ts"),
   "page.tsx": read("src/app/(app)/records/hoc-ba/page.tsx"),
+  "hoc-ba-explorer.tsx": read("src/components/records/hoc-ba-explorer.tsx"),
   "hocba.ts": read("src/lib/hocba.ts"),
+  "hocba-docx.ts (result model)": read("src/lib/hocba-docx.ts").split("\n").slice(0, 130).join("\n"),
   "tt22.ts (year-end fns)": read("src/lib/tt22.ts").split("\n").slice(-260).join("\n"),
   "export/route.ts": read("src/app/api/records/hoc-ba/export/route.ts"),
   "portal page.tsx": read("src/app/portal/student/hoc-ba/page.tsx"),
@@ -23,6 +26,14 @@ const files = {
 const prompt = `You are an independent DEV LEAD reviewing CR-053 "Hoc ba so" (digital transcript) for a multi-tenant Next.js 16 + Supabase school app (Vietnamese K-12, TT22/2021 regulations).
 
 Feature: GVCN (homeroom teacher) drafts year-end decisions per student (kqht/kqrl/danh_hieu/promotion + legal-ground override), submits to BGH (principal) who approves/rejects (rejection >=10 chars reason, resubmission bumps revision). Stages: initial -> after_retest (needs approved initial w/ promotion=kiem_tra_danh_gia_lai) -> after_summer (needs ren_luyen_he). Lock linkage: register_signoffs type=so_hoc_ba status->locked locks all approved decisions of that class+year. Roles: gvcn write own class, bgh approve, pht campus-scoped read, so_gd/ubnd dept read-only. Export DOCX/PDF (gvcn own class + bgh only). Shared buildSubjectRows feeds staff + student portal.
+
+ROUND 2 CONTEXT: a prior review round forced these fixes - verify them AND hunt regressions:
+(a) saveYearEndDecision now recomputes kqht/kqrl/danhHieu/promotion server-side via getStudentYearEndBundle; deviations need override_legal_ground+note; computed_snapshot column now stores the SERVER comp (no longer client input).
+(b) pickField seeds all 4 form fields from effective decision/computed values on first chip touch; submit requires kqht+kqrl+promotion non-null.
+(c) Staleness checks (list + detail) now include danhHieu + absentTotal.
+(d) Migration 20261223 adds decided_by/decided_at to the BGH immutable-field guard.
+(e) buildHocBaModel: existing decision -> stored values verbatim (null danh_hieu renders "Khong"); computed only as "(goi y)" pre-decision.
+(f) loadBundleShared: awaits hoisted out of Promise.all array for real concurrency.
 
 Review the ACTUAL code for:
 1. Security/RBAC: RLS leakage, missing role checks, tenant isolation, privilege escalation via crafted input.

@@ -26,6 +26,7 @@ const TYPE_LABELS: Record<string, string> = {
   message: "Tin nhắn",
   incident: "Sự cố",
   announcement: "Thông báo",
+  hoc_ba: "Học bạ số",
 };
 
 export function NotificationsClient({

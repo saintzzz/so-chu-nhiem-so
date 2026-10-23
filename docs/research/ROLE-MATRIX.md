@@ -122,6 +122,7 @@ Nguồn pháp lý:
 | `attendance/daily-report` | gvcn |
 | `attendance/*` (còn lại) | gvcn, bgh |
 | `records/*` | gvcn, bgh |
+| `records/hoc-ba` | gvcn (ghi, lớp mình), bgh (duyệt), pht (read - campus scope), so_gd, ubnd (read - org scope) - CR-053 override: mở rộng read cho pht/dept phục vụ nghiệm thu học bạ số; pht read bị giới hạn campus bởi `scn_student_in_school` |
 | `academics/grades`, `academics/exams` | gvcn, gvbm, to_truong, bgh |
 | `academics/lesson-plans` | gvcn, gvbm |
 | `academics/analysis`, `support`, `plans` | gvcn, bgh |

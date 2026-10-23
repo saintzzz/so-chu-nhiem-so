@@ -87,6 +87,7 @@ export const ITEM_ICONS: Record<string, LucideIcon> = {
   "Tiếp nhận lớp": Inbox,
   "Upload danh sách học sinh": Upload,
   "Chi tiết hồ sơ học sinh": Contact,
+  "Học bạ số": BookOpen,
   "Lịch sử cập nhật hồ sơ": History,
   "Báo cáo tổng hợp (AI)": Sparkles,
   // Chuyên cần

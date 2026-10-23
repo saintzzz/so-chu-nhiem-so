@@ -39,6 +39,7 @@ export const MATRIX = {
   "/parents/cmhs": ["gvcn", "bgh"],
   "/parents/portal": ["gvcn", "bgh"],
   "/records/students": ["gvcn", "bgh"],
+  "/records/hoc-ba": ["gvcn", "bgh", "pht", "so_gd", "ubnd"],
   "/records/upload": ["gvcn", "bgh"],
   "/records/intake": ["gvcn", "bgh"],
   "/records/report": ["gvcn", "bgh"],

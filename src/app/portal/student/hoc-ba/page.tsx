@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
-import { semesterAssessment, yearAverage, requiredTxCount } from "@/lib/tt22";
+import { buildSubjectRows } from "@/lib/hocba";
 import { fmtDateVN } from "@/lib/utils";
 import type { AttendanceRecord, ClassRoom, Student } from "@/types";
 import { must } from "@/lib/supabase/must";
@@ -57,7 +57,7 @@ export default async function StudentTranscriptPage() {
     ? await Promise.all([
         must(supabase
           .from("grades")
-          .select("id,subject_id,term,assessment_type,subtype,seq,score,result")
+          .select("id,student_id,subject_id,term,assessment_type,subtype,seq,score,result")
           .eq("student_id", student.id)
           // CR-049 r10 M: chi diem cua nam hoc lop hien tai (enrollment
           // year); rows legacy chua gan year van hien. Lop CHUA gan
@@ -95,9 +95,9 @@ export default async function StudentTranscriptPage() {
     assessment_method: string | null;
     weekly_periods: number | null;
   }[];
-  const subjectOf = new Map(subjects.map((s) => [s.id, s]));
   const gradeRows = (gradeRes.data ?? []) as {
     id: string;
+    student_id: string;
     subject_id: string;
     term: string;
     assessment_type: string;
@@ -122,34 +122,14 @@ export default async function StudentTranscriptPage() {
   }
 
   const terms = ["hk1", "hk2"] as const;
-  const subjectRows = [...bySubject.entries()]
-    .map(([subjectId, rows]) => {
-      const sub = subjectOf.get(subjectId);
-      // CR-049: so DDGtx toi thieu theo TT22 D9.2 (2/3/4 tuy tiet/tuan).
-      const req = { requiredTx: requiredTxCount(sub?.weekly_periods) };
-      const a1 = semesterAssessment(rows.filter((r) => r.term === "hk1"), req);
-      const a2 = semesterAssessment(rows.filter((r) => r.term === "hk2"), req);
-      const resultHk1 = rows.find((r) => r.term === "hk1" && r.result != null)?.result ?? null;
-      const resultHk2 = rows.find((r) => r.term === "hk2" && r.result != null)?.result ?? null;
-      return {
-        subjectId,
-        name: sub?.name ?? "Môn học",
-        method: sub?.assessment_method ?? "diem",
-        hk1: a1.avg,
-        hk1Final: a1.isFinal,
-        hk2: a2.avg,
-        hk2Final: a2.isFinal,
-        // Ca nam chi chot khi CA 2 hoc ky deu du cot diem bat buoc.
-        year: yearAverage(a1.avg, a2.avg),
-        yearFinal: a1.isFinal && a2.isFinal,
-        resultHk1,
-        resultHk2,
-        // Ket qua ca nam chi tu HK2 - HK1 khong duoc hien thi nhu ket qua nam.
-        resultYear: resultHk2,
-        rows,
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  // CR-053: share buildSubjectRows voi /records/hoc-ba - lap TAT CA mon
+  // trong danh muc truong (mon chua cham van hien), method='comment' la
+  // gia tri DB that (truoc day check 'nhan_xet' khong bao gio khop).
+  const subjectRows = buildSubjectRows(subjects, gradeRows).map((r) => ({
+    ...r,
+    year: r.cn,
+    rows: bySubject.get(r.subjectId) ?? [],
+  }));
 
   const attCount = { present: 0, late: 0, excused: 0, unexcused: 0 };
   for (const a of attRows) {
@@ -209,7 +189,7 @@ export default async function StudentTranscriptPage() {
             {subjectRows.map((s) => (
               <tr key={s.subjectId}>
                 <td className="font-medium">{s.name}</td>
-                {s.method === "nhan_xet" || s.resultHk1 != null || s.resultHk2 != null ? (
+                {s.isComment ? (
                   <>
                     <td>{s.resultHk1 === "dat" ? "Đạt" : s.resultHk1 === "chua_dat" ? "Chưa đạt" : "-"}</td>
                     <td>{s.resultHk2 === "dat" ? "Đạt" : s.resultHk2 === "chua_dat" ? "Chưa đạt" : "-"}</td>
@@ -257,12 +237,12 @@ export default async function StudentTranscriptPage() {
           )}
         </div>
 
-        {subjectRows.some((s) => s.rows.length > 0 && s.method !== "nhan_xet") && (
+        {subjectRows.some((s) => s.rows.length > 0 && !s.isComment) && (
           <div>
             <h2 className="mb-3 text-base font-semibold">Chi tiết điểm thành phần</h2>
             <DataTable columns={["Môn", "Học kỳ", "Điểm thành phần"]}>
               {subjectRows
-                .filter((s) => s.method !== "nhan_xet" && s.rows.length > 0)
+                .filter((s) => !s.isComment && s.rows.length > 0)
                 .map((s) =>
                   terms.map((t) => {
                     const rows = s.rows

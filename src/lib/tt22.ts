@@ -166,3 +166,177 @@ export function averageScoreBand(avg: number | null): {
   if (avg >= 5) return { label: "5,0 - 6,4", tone: "warning" };
   return { label: "< 5,0", tone: "error" };
 }
+
+// ============================================================
+// CR-053: Xếp loại cả năm theo TT22/2021 (Đ.8, Đ.9, Đ.10-14, Đ.15)
+// ============================================================
+
+export type YearRating = "tot" | "kha" | "dat" | "chua_dat";
+export type YearStage = "initial" | "after_retest" | "after_summer";
+export type Promotion =
+  | "len_lop"
+  | "kiem_tra_danh_gia_lai"
+  | "ren_luyen_he"
+  | "o_lai";
+export type Missing = "thieu_mon" | "thieu_diem" | "thieu_hanh_kiem" | null;
+
+export interface ScoredSubjectYear {
+  subjectId: string;
+  /** ĐTBm cả năm - null khi chưa đủ cột bắt buộc. */
+  dtmCn: number | null;
+  /** true khi CẢ 2 học kỳ đủ cột điểm bắt buộc (semesterAssessment.isFinal). */
+  yearFinal: boolean;
+}
+export type CommentYearResult = "dat" | "chua_dat" | "missing";
+
+const RATING_RANK: Record<YearRating, number> = {
+  chua_dat: 0,
+  dat: 1,
+  kha: 2,
+  tot: 3,
+};
+
+/**
+ * Đ.9 - Kết quả học tập cả năm.
+ *   Tốt: mọi môn nhận xét Đạt; mọi ĐTBmcn >=6.5; >=6 môn >=8.0
+ *   Khá: mọi môn nhận xét Đạt; mọi ĐTBmcn >=5.0; >=6 môn >=6.5
+ *   Đạt: tối đa 1 môn nhận xét Chưa đạt; >=6 môn >=5.0; không môn <3.5
+ *   Chưa đạt: còn lại.
+ * Đ.9.3 bump: nếu kết quả bị kéo xuống >=2 mức chỉ do ĐÚNG 1 môn (tính
+ * điểm hoặc nhận xét), các môn còn lại thỏa ngưỡng mức trên -> nâng 1 bậc.
+ * Check thiếu dữ liệu TRƯỚC xếp loại: <6 môn tính điểm -> 'thieu_mon';
+ * môn chưa chốt / nhận xét thiếu -> 'thieu_diem'.
+ */
+export function hocLucYear(
+  scored: ScoredSubjectYear[],
+  comments: CommentYearResult[],
+): { value: YearRating | null; missing: Missing } {
+  if (scored.length < 6) return { value: null, missing: "thieu_mon" };
+  if (
+    scored.some((s) => !s.yearFinal || s.dtmCn == null) ||
+    comments.some((c) => c === "missing")
+  ) {
+    return { value: null, missing: "thieu_diem" };
+  }
+  const scores = scored.map((s) => s.dtmCn as number);
+  const cdComments = comments.filter((c) => c === "chua_dat").length;
+
+  const base: YearRating =
+    cdComments === 0 &&
+    scores.every((x) => x >= 6.5) &&
+    scores.filter((x) => x >= 8).length >= 6
+      ? "tot"
+      : cdComments === 0 &&
+          scores.every((x) => x >= 5) &&
+          scores.filter((x) => x >= 6.5).length >= 6
+        ? "kha"
+        : cdComments <= 1 &&
+            scores.filter((x) => x >= 5).length >= 6 &&
+            scores.every((x) => x >= 3.5)
+          ? "dat"
+          : "chua_dat";
+
+  if (base === "tot") return { value: base, missing: null };
+
+  // Đ.9.3: base bi keo xuong >=2 muc so voi Tốt/Khá do ĐÚNG 1 môn (tính điểm
+  // hoặc nhận xét) - loại môn đó thì phần còn lại đạt mức cao -> nâng base
+  // lên đúng 1 bậc.
+  const satisfies = (
+    target: "tot" | "kha",
+    ss: number[],
+    cd: number,
+  ): boolean =>
+    target === "tot"
+      ? cd === 0 &&
+        ss.every((x) => x >= 6.5) &&
+        ss.filter((x) => x >= 8).length >= 6
+      : cd === 0 &&
+        ss.every((x) => x >= 5) &&
+        ss.filter((x) => x >= 6.5).length >= 6;
+
+  // base 'tot' da return som; 'kha' khong bao gio vao loop (diff < 2)
+  // -> thuc te chi con 'dat' | 'chua_dat'.
+  const levelUp = (r: YearRating): YearRating =>
+    r === "chua_dat" ? "dat" : "kha";
+
+  let v: YearRating = base;
+  for (const target of ["tot", "kha"] as const) {
+    if (RATING_RANK[target] - RATING_RANK[base] < 2) continue;
+    const viaScore = scores.some((_, i) =>
+      satisfies(target, scores.filter((_, j) => j !== i), cdComments),
+    );
+    const viaComment =
+      cdComments === 1 && satisfies(target, scores, cdComments - 1);
+    if (viaScore || viaComment) {
+      v = levelUp(base);
+      break;
+    }
+  }
+  return { value: v, missing: null };
+}
+
+/** Đ.8 - Kết quả rèn luyện cả năm từ HK1/HK2 (bảng 16 cặp). */
+export function renLuyenYear(
+  hk1: YearRating | null,
+  hk2: YearRating | null,
+): { value: YearRating | null; missing: Missing } {
+  if (!hk1 || !hk2) return { value: null, missing: "thieu_hanh_kiem" };
+  const T: Record<YearRating, Record<YearRating, YearRating>> = {
+    // hk2 -> hk1
+    tot: { tot: "tot", kha: "tot", dat: "kha", chua_dat: "kha" },
+    kha: { tot: "kha", kha: "kha", dat: "kha", chua_dat: "dat" },
+    dat: { tot: "kha", kha: "dat", dat: "dat", chua_dat: "dat" },
+    chua_dat: { tot: "chua_dat", kha: "chua_dat", dat: "chua_dat", chua_dat: "chua_dat" },
+  };
+  return { value: T[hk2][hk1], missing: null };
+}
+
+/**
+ * Đ.15 - Danh hiệu: Xuất sắc = KQRL Tốt + KQHT Tốt + >=6 môn ĐTBmcn >=9.0;
+ * Giỏi = KQRL Tốt + KQHT Tốt. Giấy khen thủ công - không tính ở đây.
+ */
+export function danhHieu(
+  kqht: YearRating | null,
+  kqrl: YearRating | null,
+  scored: ScoredSubjectYear[],
+): "xuat_sac" | "gioi" | null {
+  if (kqht !== "tot" || kqrl !== "tot") return null;
+  const n9 = scored.filter((s) => s.dtmCn != null && s.dtmCn >= 9).length;
+  return n9 >= 6 ? "xuat_sac" : "gioi";
+}
+
+/**
+ * Đ.10-14 - Gợi ý xét lên lớp. Thứ tự cố định, không chồng nhánh:
+ * >45 buổi vắng -> o_lai (mọi stage, không đánh giá lại/rèn hè nữa).
+ * Mỗi phương án rèn luyện tối đa 1 lần.
+ */
+export function xetLenLop(i: {
+  stage: YearStage;
+  kqht: YearRating | null;
+  kqrl: YearRating | null;
+  absentSessions: number;
+  hasPriorRetest: boolean;
+}): { value: Promotion | null; missing: Missing } {
+  if (i.kqht == null) return { value: null, missing: "thieu_diem" };
+  if (i.kqrl == null) return { value: null, missing: "thieu_hanh_kiem" };
+  if (i.absentSessions > 45) return { value: "o_lai", missing: null };
+
+  if (i.stage === "initial") {
+    if (i.kqrl === "chua_dat") return { value: "ren_luyen_he", missing: null };
+    if (i.kqht === "chua_dat")
+      return { value: "kiem_tra_danh_gia_lai", missing: null };
+  } else if (i.stage === "after_summer") {
+    if (i.kqrl === "chua_dat") return { value: "o_lai", missing: null };
+    if (i.kqht === "chua_dat") {
+      return {
+        value: i.hasPriorRetest ? "o_lai" : "kiem_tra_danh_gia_lai",
+        missing: null,
+      };
+    }
+  } else {
+    // after_retest
+    if (i.kqrl === "chua_dat" || i.kqht === "chua_dat")
+      return { value: "o_lai", missing: null };
+  }
+  return { value: "len_lop", missing: null };
+}

@@ -1,6 +1,6 @@
 # Mô tả chức năng - Sổ Chủ Nhiệm Số & Studio TVC360
 
-Phiên bản: 2.0 · Ngày: 09/10/2026 · Môi trường: https://sochunhiem.vieschool.com
+Phiên bản: 2.1 · Ngày: 23/10/2026 · Môi trường: https://sochunhiem.vieschool.com
 
 ## 1. Tổng quan
 
@@ -144,7 +144,8 @@ Kế hoạch (GVCN lập: tên, ngày, địa điểm, nội dung) → gửi BGH
 | Kế hoạch tháng / sơ kết tuần | Checklist việc tháng + sơ kết tuần |
 | Đăng ký chỉ tiêu (KPI) | Đăng ký chỉ tiêu hiệu suất lớp |
 | Ký duyệt sổ | BGH ký xác nhận sổ chủ nhiệm từng lớp theo đợt |
-| Duyệt & khóa sổ học bạ | Tạo đợt duyệt toàn trường → khóa sổ từng lớp |
+| Học bạ số (`/records/hoc-ba`) | Học bạ điện tử thay sổ giấy: bảng điểm HK1/HK2/CN từng môn (kể cả môn nhận xét), hạnh kiểm, NLPC, chuyên cần buổi; quyết định cuối năm theo **TT22/2021** (KQ học tập, KQ rèn luyện, danh hiệu, lên lớp - gợi ý tự động, override bắt buộc căn cứ Điều 9.3). Workflow: GVCN lưu nháp/trình → BGH duyệt/trả lại kèm lý do → khóa qua đợt duyệt sổ. Stages: đầu năm → sau đánh giá lại / sau rèn luyện hè. Xuất **DOCX/PDF** từng HS hoặc cả lớp, watermark "BẢN NHÁP - CHƯA DUYỆT" khi chưa duyệt |
+| Duyệt & khóa sổ học bạ | Tạo đợt duyệt toàn trường → GVCN nộp → BGH khóa sổ từng lớp (khóa luôn quyết định cuối năm đã duyệt) |
 | Xuất sổ | Export CSV toàn bộ dữ liệu sổ chủ nhiệm |
 | Nhật ký thao tác | Audit log đầy đủ: actor/action/entity/payload |
 
@@ -219,6 +220,7 @@ Soạn học liệu theo CTGDPT 2018 tại `/studio` - vai trò: GVBM, GVCN, t�
 4. **Kỳ thi**: GVCN/BGH tạo kỳ thi + buổi thi (thủ công/Excel) → công bố → GV/PH/HS xem lịch → câu hỏi đề thi soạn tại Ngân hàng Studio (AI sinh → gắn YCCĐ → duyệt → DC-03 rút đề).
 5. **Sự cố an toàn**: GVCN ghi nhận (AI viết lại) → xử lý + ghi chú → mức Cao báo BGH → lưu trữ tra cứu.
 6. **Cảnh báo sớm**: hệ thống chấm điểm rủi ro từ chuyên cần/điểm/sự cố → BGH radar → AI đề xuất → tiếp nhận → đóng.
+7. **Học bạ cuối năm**: điểm + hạnh kiểm + NLPC + chuyên cần tổng hợp → hệ thống gợi ý xếp loại TT22 → GVCN trình → BGH duyệt/trả lại → đợt duyệt khóa sổ → xuất học bạ DOCX/PDF; HS xem học bạ bản thân trên portal.
 
 ## 5. Trí tuệ nhân tạo (AI)
 

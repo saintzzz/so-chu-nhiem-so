@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số & Studio TVC360
 
-Phiên bản: 2.0 · Ngày: 09/10/2026
+Phiên bản: 2.1 · Ngày: 23/10/2026
 Địa chỉ hệ thống: https://sochunhiem.vieschool.com
 
 Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
@@ -171,6 +171,35 @@ Menu **Sổ chủ nhiệm → Ký duyệt sổ**. Cuối kỳ, BGH mở "đợt 
 
 Mọi chuyển trạng thái đều gửi thông báo cho bên kia và ghi audit log.
 
+### 2.13 Học bạ số - xếp loại cuối năm (TT22/2021)
+
+Menu **Hồ sơ lớp học → Học bạ số** (`/records/hoc-ba`). Học bạ thay thế sổ học bạ giấy: tổng hợp điểm HK1/HK2/cả năm từng môn, hạnh kiểm, năng lực phẩm chất, chuyên cần (buổi) và quyết định cuối năm - duyệt điện tử, khóa sau khi BGH ký.
+
+**Bước 1 - GVCN ra quyết định** (đăng nhập `anhptl@nd.scn` - GVCN lớp 8A2):
+
+1. Chọn lớp → danh sách HS kèm gợi ý hệ thống (KQ học tập, KQ rèn luyện, danh hiệu, lên lớp tính theo TT22).
+2. Bấm tên HS → màn hình chi tiết: bảng điểm từng môn (HK1/HK2/CN, môn nhận xét hiển thị Đạt/Chưa đạt), hạnh kiểm, NLPC, chuyên cần buổi.
+3. Chọn **Kết quả học tập**, **Kết quả rèn luyện**, **Danh hiệu**, **Quyết định lên lớp**. Nếu khác gợi ý hệ thống, phải chọn **Căn cứ pháp lý** (Điều 9.3 TT22 / sau đánh giá lại / HS khuyết tật / miễn môn) + ghi chú - nút Lưu mới mở.
+4. **Lưu nháp** (riêng lưu sau) hoặc **Trình Ban Giám Hiệu duyệt** ngay - BGH nhận thông báo.
+
+**Bước 2 - BGH duyệt** (đăng nhập `hainv@nd.scn` - Hiệu trưởng):
+
+1. Vào **Học bạ số** → chọn lớp → HS có quyết định "Chờ duyệt".
+2. **Duyệt** (có thể kèm nội dung giấy khen) hoặc **Trả lại** - bắt buộc lý do ≥ 10 ký tự, GVCN nhận thông báo kèm lý do.
+3. Bị trả lại: GVCN sửa → **Trình lại** (hệ thống ghi "lần trình 2").
+
+**Bước 3 - Khóa sổ học bạ** (BGH `hainv@nd.scn` → GVCN `anhptl@nd.scn` → BGH):
+
+1. BGH vào **Duyệt & khóa sổ học bạ** (`/register/lock-records`) → **Tạo đợt duyệt** cho các lớp.
+2. GVCN `anhptl@nd.scn` → cùng màn hình → **Nộp sổ** lớp mình.
+3. BGH → **Duyệt & khóa** → toàn bộ quyết định đã duyệt của lớp chuyển "Đã khóa", không ai sửa được nữa.
+
+**Xuất học bạ**: nút **Xuất DOCX / Xuất PDF** trên chi tiết HS (GVCN lớp mình, BGH - BGH xuất được cả lớp 1 file). Học bạ chưa duyệt in watermark "BẢN NHÁP - CHƯA DUYỆT".
+
+**Giai đoạn sau** (khi quyết định đầu năm là Kiểm tra lại / Rèn luyện hè): sau khi duyệt xuất hiện nút **Tạo quyết định sau đánh giá lại** / **sau rèn luyện hè** - lặp lại quy trình trình-duyệt như trên.
+
+**Quyền xem khác**: PHT chỉ thấy học bạ lớp thuộc cơ sở mình phụ trách (đăng nhập `duclm@nd.scn` - chỉ các lớp A3); Sở GD (`sovqt@demo.scn`) và UBND (`daonvl@demo.scn`) xem toàn bộ trường thuộc phạm vi nhưng **chỉ đọc** - không có nút lưu/trình/duyệt/xuất.
+
 ---
 
 ## 3. Giáo viên bộ môn (GVBM)
@@ -210,7 +239,8 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Phân công năm học** (`school/assignments`): chỉ BGH/admin phân công GVCN và lớp + môn dạy của GV.
 - **Tài khoản giáo viên** (`school/users`): tạo/sửa tài khoản cán bộ - họ tên, email, mật khẩu, vai trò chính, **vai trò kiêm nhiệm** (GVCN kiêm GVBM/tổ trưởng...), mã nhân viên, loại hợp đồng, cơ sở, tổ chuyên môn; khối "Tổ chuyên môn - môn học" gán môn phụ trách cho từng tổ và trưởng tổ. Chỉ BGH/admin.
 - **Cơ sở** (`school/campuses`): khai báo cơ sở chính/phân hiệu - quyết định phạm vi của PHT.
-- **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ**, **Sự cố toàn trường** (đánh dấu đã báo cáo).
+- **Học bạ số** (`/records/hoc-ba`): xem học bạ mọi lớp, duyệt/trả lại quyết định cuối năm của GVCN, xuất học bạ DOCX/PDF theo lớp hoặc từng HS (chi tiết quy trình: mục 2.13).
+- **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ** (`/register/lock-records` - khóa luôn quyết định cuối năm đã duyệt), **Sự cố toàn trường** (đánh dấu đã báo cáo).
 
 > Khởi tạo trường mới từ đầu (tài khoản, cơ sở, tổ, lớp, HS, PH, TKB): xem `KHOI-TAO-TRUONG-MOI.md` kèm file Excel `docs/templates/khoi-tao-truong.xlsx`.
 
@@ -264,7 +294,7 @@ Mọi thao tác (đặt hẹn, nhắn tin, đăng ký) chỉ áp dụng cho con 
 
 ## 8. Học sinh
 
-Portal học sinh xem dữ liệu bản thân: thời khóa biểu, điểm các môn, hạnh kiểm, thông báo lớp, lịch thi.
+Portal học sinh xem dữ liệu bản thân: thời khóa biểu, điểm các môn, hạnh kiểm, thông báo lớp, lịch thi. Mục **Học bạ** (`/portal/student/hoc-ba`) hiển thị học bạ cá nhân: điểm HK1/HK2/cả năm từng môn, hạnh kiểm, chuyên cần - cùng dữ liệu GVCN/BGH dùng để ra quyết định cuối năm.
 
 ![Portal học sinh](images/31-student-portal.png)
 

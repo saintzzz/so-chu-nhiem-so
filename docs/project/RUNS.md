@@ -6,3 +6,4 @@ phases, số lần lead-review reject, defect bắt được vs thoát, thời g
 | ID | Track | Phases | Lead rejects | Defects caught | Escaped | Ghi chú |
 |---|---|---|---|---|---|---|
 | CR-053 | CR | BA→Design→TL→Dev→Test→Deploy | BA×3, Design×1, TL×2 | 3 (stage-insert P0001, classParam silent fallback, nav children rỗng) | 0 | Học bạ số; RTM 26/26; E2E workflow+deny+lock verified; ext review no blocker |
+| DOC-2026-10-23 | docs | Cập nhật user guide + deck giới thiệu | - | - | - | v2.1→v2.2: thêm §2.13 Học bạ số (usecase + login từng bước), MO-TA-CHUC-NANG, slide mới; regen USER-GUIDE-vieschool.pptx |

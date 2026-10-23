@@ -87,7 +87,7 @@ function featureSlide(section, title, items, img, caption) {
     x: 0.8, y: 3.15, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4",
   });
   s.addText([
-    { text: "Phiên bản: v2.1 - demo 15/10/2026 (một deck duy nhất: hướng dẫn + giới thiệu)", options: { breakLine: true } },
+    { text: "Phiên bản: v2.2 - 23/10/2026 (một deck duy nhất: hướng dẫn + giới thiệu; bổ sung Học bạ số)", options: { breakLine: true } },
     { text: "URL: https://sochunhiem.vieschool.com", options: { breakLine: true } },
     { text: "Phạm vi: CTGDPT 2018, TT 22/2021, TT 27/2025, CV 5512; bảo mật theo Luật 91/2025", options: { breakLine: true } },
     { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng câu hỏi đã dọn trùng", options: {} },
@@ -136,6 +136,15 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "BGH - điều hành trường", [
   { t: "Ký sổ chủ nhiệm: tạo đợt ký - duyệt/từ chối kèm lý do - ký hàng loạt; GVCN không tự ký" },
   { t: "Chỉ BGH phân công GVCN & lớp năm học; trợ lý AI điều hành hỏi-đáp trên dữ liệu thật" },
 ], "23-bgh-radar.png", "Radar cảnh báo sớm toàn trường");
+
+featureSlide("CHỨC NĂNG NỔI BẬT", "Học bạ số - quyết định cuối năm TT22", [
+  { t: "Học bạ điện tử thay sổ giấy: điểm HK1/HK2/cả năm từng môn, hạnh kiểm, NLPC, chuyên cần buổi", b: 1 },
+  { t: "Hệ thống gợi ý xếp loại theo TT22/2021 - override bắt buộc căn cứ pháp lý (Điều 9.3 / sau đánh giá lại / HS khuyết tật / miễn môn)" },
+  { t: "Workflow 3 bước: GVCN lưu nháp/trình (anhptl@nd.scn) → BGH duyệt/trả lại kèm lý do (hainv@nd.scn) → khóa qua đợt duyệt sổ" },
+  { t: "Stages: quyết định đầu năm → sau đánh giá lại / sau rèn luyện hè (theo kết quả lên lớp)" },
+  { t: "Xuất DOCX/PDF từng HS hoặc cả lớp - watermark 'BẢN NHÁP - CHƯA DUYỆT' khi chưa duyệt" },
+  { t: "Phân quyền: GVCN chỉ lớp mình; PHT chỉ cơ sở mình; Sở GD/UBND xem chỉ đọc; HS xem học bạ bản thân trên portal" },
+]);
 
 featureSlide("CHỨC NĂNG NỔI BẬT", "Phụ huynh & Học sinh - cổng hai chiều", [
   { t: "PH chỉ thấy con mình (nhiều con: bộ chọn trên đầu portal, dữ liệu tách theo từng em)", b: 1 },
@@ -217,6 +226,7 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     ["Điểm danh, hạnh kiểm, SLĐ lớp", "-", "Lớp CN mình", "Xem", "Cơ sở mình", "Có"],
     ["Nhập điểm môn dạy", "Lớp mình dạy", "Có", "Lớp mình dạy", "Lớp mình dạy", "Có"],
     ["Hồ sơ HS toàn trường", "-", "Lớp CN", "Xem", "-", "Có"],
+    ["Học bạ số - quyết định cuối năm", "-", "Trình (lớp CN)", "Xem", "Xem cơ sở", "Duyệt + xuất"],
     ["Quản trị user/quyền/ACL", "-", "-", "-", "-", "Có"],
   ], { rowH: 0.36 });
   bullets(s, [
@@ -224,7 +234,7 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     { t: "PHT giới hạn theo cơ sở (campus); không tiếp cận hồ sơ chi tiết HS (ẩn national_id)" },
     { t: "Phân quyền 3 lớp: mặc định theo vai trò → cấu hình theo trường → ghi đè từng cán bộ (/school/users)" },
   ], { y: 5.35, fontSize: 12 });
-  note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 7.05);
+  note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường + xem học bạ chỉ đọc, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 7.05);
 }
 
 // ---------- S7 Workflow GVCN ----------
@@ -385,6 +395,7 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     { t: "PHÂN QUYỀN: PHT chỉ thấy Cơ sở 2; PH chỉ thấy con mình; UBND chỉ đọc; trường A không thấy trường B", b: 1 },
     { t: "ONBOARDING: bootstrap workbook lên trường scratch → verify counts → cleanup về 0", b: 1 },
     { t: "EDGE CASES: câu 'như hình' không hình bị chặn; import sai format báo rõ; câu trùng stem cảnh báo", b: 1 },
+    { t: "HỌC BẠ SỐ: anhptl@nd.scn trình quyết định → hainv@nd.scn trả lại/duyệt → khóa qua /register/lock-records; GVCN lớp khác (huynq@nd.scn) mở chi tiết/xuất bị chặn", b: 1 },
   ]);
 }
 

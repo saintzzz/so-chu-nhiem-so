@@ -60,3 +60,15 @@ khong kha dung). Static read-only review.
 
 r31 la round 2 sau lo CR-050/051/052. Round tiep (r32) chay tren
 artifact fix nay sau khi redeploy + prod re-verify 3 trang.
+
+## r32 (confirm round) - APPROVE_WITH_CHANGES -> 1 Medium fixed
+
+Pham vi: `f71b37f..b6da372` (7 files - aggregate refactor).
+
+| # | Sev | Finding | Trang thai |
+|---|-----|---------|------------|
+| 1 | M | `use-tvc-ai-job` timeout 15p stop poll nhung khong clear `job` -> voi guard `aiJob.job` moi, UI khoa vinh vien (khong sinh/luu duoc den khi remount) | FIXED - cap timeout goi `finish(onFail)`; regression test assert pattern |
+
+Loop ket thuc: r30 (4 findings) -> r31 (3 mediums) -> r32 (1 medium) -
+tat ca fixed, 0 Critical/High con lai. Gates: preflight PASS, 264 tests
+(1 skip), prod Playwright verified dashboard + records/report.

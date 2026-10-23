@@ -81,9 +81,10 @@ export function useTvcAiJob() {
     };
     timer = setTimeout(poll, delay);
 
+    // r32: timeout phai la terminal - khong clear job se khoa UI
+    // (guards chan generate/save khi job con ton tai).
     const cap = setTimeout(() => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
+      finish(() => handlers.current.onFail?.());
     }, 15 * 60 * 1000);
 
     return () => {

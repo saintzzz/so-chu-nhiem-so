@@ -3392,3 +3392,11 @@ test("r30: save/gen state guards + TTS doc ban alias (aiDocRaw)", () => {
   assert.match(route, /const ttsDoc = aiDocRaw \?\? doc/);
   assert.match(route, /ttsDoc\.sections\?\.\[i\]/);
 });
+
+test("r32: poll timeout la terminal - finish(onFail) chu khong stop im lang", () => {
+  const hook = read("src/hooks/use-tvc-ai-job.ts");
+  // timeout 15p phai goi finish de clear job + onFail - stop im lang se
+  // khoa UI vi guards chan generate/save khi aiJob.job con ton tai.
+  const cap = hook.slice(hook.indexOf("const cap"));
+  assert.match(cap, /finish\(\(\) => handlers\.current\.onFail/);
+});

@@ -1,4 +1,4 @@
-# CR-054 - Anti-scraping / anti-AI-crawler defense plan (status: PROPOSAL - implement later)
+# CR-054 - Anti-scraping / anti-AI-crawler defense plan (status: PROPOSAL - lop 1 robots.txt + X-Robots-Tag da deploy; phan con lai cho keys/WAF)
 
 Yeu cau cua PO: viet phuong an truoc, implement sau. So Chu Nhiem So la
 app **full-authenticated** (khong co public content surface ngoai

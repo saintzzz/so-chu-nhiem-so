@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { getStudentYearEndBundle } from "@/lib/hocba";
 
 import { logAudit } from "@/lib/audit";
 
@@ -103,6 +104,41 @@ export async function saveYearEndDecision(
   if (own.error) return { error: own.error };
 
   const supabase = await createClient();
+
+  // r33-1: xep loai la du lieu PHAP LY - server tinh lai tu nguon, khong
+  // tin gia tri client gui len. Bat ky lech nao so voi goi y he thong
+  // bat buoc can cu phap ly + ghi chu (theo dung luat UI da ep).
+  const bundle = await getStudentYearEndBundle(input.studentId, input.academicYearId);
+  if (!bundle) return { error: "Không tải được dữ liệu nguồn để kiểm tra." };
+  const comp = bundle.computed;
+  const schoolSubjectIds = new Set(bundle.subjectRows.map((s) => s.subjectId));
+  const exempt = input.exemptSubjectIds.filter((id) => schoolSubjectIds.has(id));
+
+  // Quyet dinh hien tai cung stage (neu co) - de so sanh tap mien mon va
+  // giu nguyen status khi luu nhap (rejected->draft bi trigger chan, r33-3).
+  const { data: cur, error: curErr } = await supabase
+    .from("year_end_decisions")
+    .select("id,status,exempt_subject_ids")
+    .eq("student_id", input.studentId)
+    .eq("academic_year_id", input.academicYearId)
+    .eq("stage", input.stage)
+    .maybeSingle();
+  if (curErr) return { error: "Không tải được quyết định hiện tại." };
+
+  const priorExempt = (cur?.exempt_subject_ids ?? []) as string[];
+  const exemptChanged =
+    exempt.length !== priorExempt.length ||
+    exempt.some((id) => !priorExempt.includes(id));
+  const deviates =
+    input.kqht !== comp.kqht.value ||
+    input.kqrl !== comp.kqrl.value ||
+    input.danhHieu !== comp.danhHieu ||
+    input.promotion !== comp.promotion.value;
+  if ((deviates || exemptChanged) && (!input.overrideLegalGround || !input.overrideNote?.trim()))
+    return {
+      error: "Kết quả khác gợi ý của hệ thống hoặc thay đổi miễn môn - bắt buộc căn cứ pháp lý và ghi chú.",
+    };
+
   const payload = {
     student_id: input.studentId,
     school_id: profile.school_id,
@@ -114,8 +150,17 @@ export async function saveYearEndDecision(
     promotion: input.promotion,
     override_legal_ground: input.overrideLegalGround,
     override_note: input.overrideNote?.trim() || null,
-    exempt_subject_ids: input.exemptSubjectIds,
-    computed_snapshot: submit ? input.computedSnapshot : null,
+    exempt_subject_ids: exempt,
+    // r33-1: snapshot ghi tu tinh toan SERVER - client chi mang goi y.
+    computed_snapshot: submit
+      ? {
+          kqht: comp.kqht.value,
+          kqrl: comp.kqrl.value,
+          danhHieu: comp.danhHieu,
+          promotion: comp.promotion.value,
+          absentTotal: bundle.absentTotal,
+        }
+      : null,
     status: submit ? "submitted" : "draft",
   };
 
@@ -134,7 +179,10 @@ export async function saveYearEndDecision(
         override_note: payload.override_note,
         exempt_subject_ids: payload.exempt_subject_ids,
         computed_snapshot: payload.computed_snapshot,
-        status: payload.status,
+        // r33-3: khong doi status khi chi luu nhap - row 'rejected' phai
+        // giu 'rejected' (trigger chan rejected->draft), submit moi
+        // chuyen sang 'submitted'.
+        ...(submit ? { status: payload.status } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("student_id", input.studentId)

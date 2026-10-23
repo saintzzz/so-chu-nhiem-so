@@ -215,43 +215,37 @@ async function loadBundleShared(opts: {
   const supabase = await createClient();
   const { studentIds, schoolId, academicYearId, yearStart, yearEnd } = opts;
 
+  // r33-7: KHONG await ben trong mang - cac fetch phai chay song song.
   const [grades, subjects, conduct, nlpcE, nlpcC, att, dec] = await Promise.all([
-    mustRows(
-      await fetchAllRowsIn<GradeRow>(
-        (chunk, f, t) =>
-          supabase
-            .from("grades")
-            .select("student_id,subject_id,term,assessment_type,subtype,seq,score,result")
-            .in("student_id", chunk)
-            .or(gradeYearOr(academicYearId))
-            .order("student_id")
-            .order("subject_id")
-            .order("term")
-            .order("assessment_type")
-            .order("seq")
-            .range(f, t),
-        studentIds,
-      ),
-      "hocba/grades",
-    ),
-    mustRows(
-      await fetchAllRows<SubjectDef>((f, t) =>
+    fetchAllRowsIn<GradeRow>(
+      (chunk, f, t) =>
         supabase
-          .from("subjects")
-          .select("id,name,assessment_method,weekly_periods")
-          .eq("school_id", schoolId)
-          .order("id")
+          .from("grades")
+          .select("student_id,subject_id,term,assessment_type,subtype,seq,score,result")
+          .in("student_id", chunk)
+          .or(gradeYearOr(academicYearId))
+          .order("student_id")
+          .order("subject_id")
+          .order("term")
+          .order("assessment_type")
+          .order("seq")
           .range(f, t),
-      ),
-      "hocba/subjects",
-    ),
-    mustRows(
-      await fetchAllRowsIn<{
-        student_id: string;
-        term: string;
-        rating: string;
-        comment: string | null;
-      }>(
+      studentIds,
+    ).then((r) => mustRows(r, "hocba/grades")),
+    fetchAllRows<SubjectDef>((f, t) =>
+      supabase
+        .from("subjects")
+        .select("id,name,assessment_method,weekly_periods")
+        .eq("school_id", schoolId)
+        .order("id")
+        .range(f, t),
+    ).then((r) => mustRows(r, "hocba/subjects")),
+    fetchAllRowsIn<{
+      student_id: string;
+      term: string;
+      rating: string;
+      comment: string | null;
+    }>(
         (chunk, f, t) =>
           supabase
             .from("conduct_evaluations")
@@ -261,16 +255,13 @@ async function loadBundleShared(opts: {
             .order("term")
             .range(f, t),
         studentIds,
-      ),
-      "hocba/conduct",
-    ),
-    mustRows(
-      await fetchAllRowsIn<{
-        student_id: string;
-        attribute_code: string;
-        level: string;
-        term: string;
-      }>(
+    ).then((r) => mustRows(r, "hocba/conduct")),
+    fetchAllRowsIn<{
+      student_id: string;
+      attribute_code: string;
+      level: string;
+      term: string;
+    }>(
         (chunk, f, t) =>
           supabase
             .from("competency_evaluations")
@@ -281,16 +272,13 @@ async function loadBundleShared(opts: {
             .order("attribute_code")
             .range(f, t),
         studentIds,
-      ),
-      "hocba/nlpc_evals",
-    ),
-    mustRows(
-      await fetchAllRowsIn<{
-        student_id: string;
-        grp: string;
-        comment: string;
-        term: string;
-      }>(
+    ).then((r) => mustRows(r, "hocba/nlpc_evals")),
+    fetchAllRowsIn<{
+      student_id: string;
+      grp: string;
+      comment: string;
+      term: string;
+    }>(
         (chunk, f, t) =>
           supabase
             .from("nlpc_comments")
@@ -301,11 +289,8 @@ async function loadBundleShared(opts: {
             .order("grp")
             .range(f, t),
         studentIds,
-      ),
-      "hocba/nlpc_comments",
-    ),
-    mustRows(
-      await fetchAllRowsIn<{ student_id: string; status: string }>(
+    ).then((r) => mustRows(r, "hocba/nlpc_comments")),
+    fetchAllRowsIn<{ student_id: string; status: string }>(
         (chunk, f, t) =>
           supabase
             .from("attendance_records")
@@ -317,11 +302,8 @@ async function loadBundleShared(opts: {
             .order("date")
             .range(f, t),
         studentIds,
-      ),
-      "hocba/attendance",
-    ),
-    mustRows(
-      await fetchAllRowsIn<YearEndDecision>(
+    ).then((r) => mustRows(r, "hocba/attendance")),
+    fetchAllRowsIn<YearEndDecision>(
         (chunk, f, t) =>
           supabase
             .from("year_end_decisions")
@@ -332,9 +314,7 @@ async function loadBundleShared(opts: {
             .order("stage")
             .range(f, t),
         studentIds,
-      ),
-      "hocba/decisions",
-    ),
+    ).then((r) => mustRows(r, "hocba/decisions")),
   ]);
 
   return {

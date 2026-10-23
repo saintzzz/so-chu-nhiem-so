@@ -3400,3 +3400,62 @@ test("r32: poll timeout la terminal - finish(onFail) chu khong stop im lang", ()
   const cap = hook.slice(hook.indexOf("const cap"));
   assert.match(cap, /finish\(\(\) => handlers\.current\.onFail/);
 });
+
+test("r33-1: saveYearEndDecision tai tinh server-side - client snapshot bi bo qua", () => {
+  const a = read("src/app/(app)/records/hoc-ba/actions.ts");
+  // gia tri client chi la goi y: server goi getStudentYearEndBundle va
+  // so sanh input voi comp.* - lech thi bat buoc can cu + ghi chu.
+  assert.match(a, /getStudentYearEndBundle\(input\.studentId, input\.academicYearId\)/);
+  assert.match(a, /input\.kqht !== comp\.kqht\.value/);
+  assert.match(a, /input\.promotion !== comp\.promotion\.value/);
+  // snapshot ghi tu comp.* server, KHONG tu input.computedSnapshot
+  assert.doesNotMatch(a, /computed_snapshot: submit \? input\.computedSnapshot/);
+  // mien mon loc theo danh muc truong + doi mien mon cung can can cu
+  assert.match(a, /schoolSubjectIds\.has\(id\)/);
+  assert.match(a, /exemptChanged/);
+});
+
+test("r33-3: luu nhap tren row rejected giu nguyen status (trigger chan rejected->draft)", () => {
+  const a = read("src/app/(app)/records/hoc-ba/actions.ts");
+  assert.match(a, /\.\.\.\(submit \? \{ status: payload\.status \} : \{\}\)/);
+});
+
+test("r33-4: BGH path chan sua decided_by/decided_at (attribution bat bien)", () => {
+  const m = read("supabase/migrations/20261223_cr053_yed_guard_attribution.sql");
+  assert.match(m, /new\.decided_by is distinct from old\.decided_by/);
+  assert.match(m, /new\.decided_at is distinct from old\.decided_at/);
+});
+
+test("r33-2: hoc-ba explorer - touch dau tien seed du 4 truong effective", () => {
+  const e = read("src/components/records/hoc-ba-explorer.tsx");
+  assert.match(e, /const pickField = \(patch: Partial<typeof form>\)/);
+  // pickField chua touched phai khoi tao tu dec/computed, khong phai null
+  const fn = e.slice(e.indexOf("const pickField"), e.indexOf("const effKqht"));
+  assert.match(fn, /kqht: dec\?\.kqht \?\? bundle\.computed\.kqht\.value/);
+  assert.match(fn, /promotion: dec\?\.promotion \?\? bundle\.computed\.promotion\.value/);
+  // submit can du 3 truong cot loi
+  assert.match(e, /submitReady =\s*!!formValid && !!effKqht && !!effKqrl && !!effPromo/);
+});
+
+test("r33-5: staleness check so sanh danhHieu + absentTotal (list + detail)", () => {
+  const e = read("src/components/records/hoc-ba-explorer.tsx");
+  const hits = e.match(/s\.absentTotal !== b\.absentTotal|computed_snapshot\.absentTotal !== bundle\.absentTotal/g);
+  assert.ok(hits && hits.length >= 2, `expected >=2 absentTotal stale checks, got ${hits?.length}`);
+  assert.match(e, /s\.danhHieu !== b\.computed\.danhHieu/);
+  assert.match(e, /computed_snapshot\.danhHieu !== bundle\.computed\.danhHieu/);
+});
+
+test("r33-6: export dung gia tri DA LUU khi co quyet dinh - khong fallback computed", () => {
+  const d = read("src/lib/hocba-docx.ts");
+  assert.match(d, /dec \? dec\.kqht : bundle\.computed\.kqht\.value/);
+  // danh_hieu: dec!=null -> stored value (null -> "Khong"), computed chi la goi y
+  assert.match(d, /danhHieu: dec\s*\?\s*dec\.danh_hieu \? TITLE_VN\[dec\.danh_hieu\] : "Không"/);
+  assert.doesNotMatch(d, /danhHieu:\s*dec\?\.danh_hieu\s*\?/);
+});
+
+test("r33-7: loadBundleShared Promise.all song song that - khong await trong mang", () => {
+  const h = read("src/lib/hocba.ts");
+  const block = h.slice(h.indexOf("await Promise.all"), h.indexOf("];", h.indexOf("await Promise.all")) + 2);
+  assert.doesNotMatch(block, /mustRows\(\s*await /);
+  assert.match(block, /\.then\(\(r\) => mustRows\(r, "hocba\/grades"\)\)/);
+});

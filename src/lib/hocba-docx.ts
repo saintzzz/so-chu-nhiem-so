@@ -65,7 +65,7 @@ export function buildHocBaModel(
     conduct: {
       hk1: rat(bundle.conductHk1, "-"),
       hk2: rat(bundle.conductHk2, "-"),
-      cn: rat(dec?.kqrl ?? bundle.computed.kqrl.value, "Chưa đủ dữ liệu"),
+      cn: rat(dec ? dec.kqrl : bundle.computed.kqrl.value, "Chưa đủ dữ liệu"),
       comment: bundle.conductComment ?? "-",
     },
     nlpc: [
@@ -77,14 +77,17 @@ export function buildHocBaModel(
       unexcused: bundle.absentUnexcused,
       total: bundle.absentTotal,
     },
+    // r33: khi DA co quyet dinh, tai lieu chinh thuc dung gia tri da
+    // luu nguyen trang - ke ca null co chu y (BGH duyet "Khong" danh
+    // hieu). Fallback computed chi dung khi chua co quyet dinh nao.
     result: {
-      kqht: rat(dec?.kqht ?? bundle.computed.kqht.value, "Chưa đủ dữ liệu"),
-      kqrl: rat(dec?.kqrl ?? bundle.computed.kqrl.value, "Chưa đủ dữ liệu"),
-      danhHieu: dec?.danh_hieu
-        ? TITLE_VN[dec.danh_hieu]
+      kqht: rat(dec ? dec.kqht : bundle.computed.kqht.value, "Chưa đủ dữ liệu"),
+      kqrl: rat(dec ? dec.kqrl : bundle.computed.kqrl.value, "Chưa đủ dữ liệu"),
+      danhHieu: dec
+        ? dec.danh_hieu ? TITLE_VN[dec.danh_hieu] : "Không"
         : bundle.computed.danhHieu ? `${TITLE_VN[bundle.computed.danhHieu]} (gợi ý)` : "-",
-      promotion: dec?.promotion
-        ? PROMO_VN[dec.promotion]
+      promotion: dec
+        ? dec.promotion ? PROMO_VN[dec.promotion] : "Chưa đủ dữ liệu"
         : bundle.computed.promotion.value
           ? `${PROMO_VN[bundle.computed.promotion.value]} (gợi ý)`
           : "Chưa đủ dữ liệu",

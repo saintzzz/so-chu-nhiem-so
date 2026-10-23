@@ -103,7 +103,9 @@ export function HocBaClassList({
     return (
       s.kqht !== b.computed.kqht.value ||
       s.kqrl !== b.computed.kqrl.value ||
-      s.promotion !== b.computed.promotion.value
+      s.danhHieu !== b.computed.danhHieu ||
+      s.promotion !== b.computed.promotion.value ||
+      s.absentTotal !== b.absentTotal
     );
   }).length;
 
@@ -323,6 +325,25 @@ export function HocBaDetail({
   const editable = canWrite && (!dec || ["draft", "rejected"].includes(dec.status));
   const approvable = canApprove && dec?.status === "submitted";
 
+  // r33: first touch must seed EVERY field from the current effective
+  // values - initializing one chip while the rest start null would
+  // silently clear the other ratings and submit nulls.
+  const pickField = (patch: Partial<typeof form>) =>
+    setForm(
+      form.touched
+        ? { ...form, ...patch }
+        : {
+            kqht: dec?.kqht ?? bundle.computed.kqht.value,
+            kqrl: dec?.kqrl ?? bundle.computed.kqrl.value,
+            danhHieu: dec?.danh_hieu ?? bundle.computed.danhHieu,
+            promotion: dec?.promotion ?? bundle.computed.promotion.value,
+            ground: dec?.override_legal_ground ?? null,
+            note: dec?.override_note ?? "",
+            touched: true,
+            ...patch,
+          },
+    );
+
   const effKqht = form.touched ? form.kqht : (dec?.kqht ?? bundle.computed.kqht.value);
   const effKqrl = form.touched ? form.kqrl : (dec?.kqrl ?? bundle.computed.kqrl.value);
   const effPromo = form.touched ? form.promotion : (dec?.promotion ?? bundle.computed.promotion.value);
@@ -335,12 +356,18 @@ export function HocBaDetail({
     effDanhHieu !== bundle.computed.danhHieu;
   const needsGround = overridden;
   const formValid = !needsGround || (form.ground && form.note.trim().length > 0);
+  // r33: a year-end decision needs all three core fields - a partial
+  // submit would store a meaningless classification.
+  const submitReady =
+    !!formValid && !!effKqht && !!effKqrl && !!effPromo;
 
   const snapshotMismatch =
     dec?.computed_snapshot &&
     (dec.computed_snapshot.kqht !== bundle.computed.kqht.value ||
       dec.computed_snapshot.kqrl !== bundle.computed.kqrl.value ||
-      dec.computed_snapshot.promotion !== bundle.computed.promotion.value);
+      dec.computed_snapshot.danhHieu !== bundle.computed.danhHieu ||
+      dec.computed_snapshot.promotion !== bundle.computed.promotion.value ||
+      dec.computed_snapshot.absentTotal !== bundle.absentTotal);
 
   const payload = (submit: boolean): DecisionInput => ({
     studentId: bundle.student.id,
@@ -611,7 +638,7 @@ export function HocBaDetail({
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Kết quả học tập">
                     {(["tot", "kha", "dat", "chua_dat"] as const).map((r) =>
                       chip(r, effKqht, RATING_LABEL[r], (v) =>
-                        setForm({ ...form, touched: true, kqht: v as YearRating }),
+                        pickField({ kqht: v as YearRating }),
                       ),
                     )}
                   </div>
@@ -621,7 +648,7 @@ export function HocBaDetail({
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Kết quả rèn luyện">
                     {(["tot", "kha", "dat", "chua_dat"] as const).map((r) =>
                       chip(r, effKqrl, RATING_LABEL[r], (v) =>
-                        setForm({ ...form, touched: true, kqrl: v as YearRating }),
+                        pickField({ kqrl: v as YearRating }),
                       ),
                     )}
                   </div>
@@ -629,9 +656,9 @@ export function HocBaDetail({
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Danh hiệu</p>
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Danh hiệu">
-                    {chip(null, effDanhHieu, "Không", (v) => setForm({ ...form, touched: true, danhHieu: v as null }))}
-                    {chip("xuat_sac", effDanhHieu, "Học sinh Xuất sắc", (v) => setForm({ ...form, touched: true, danhHieu: v as "xuat_sac" }))}
-                    {chip("gioi", effDanhHieu, "Học sinh Giỏi", (v) => setForm({ ...form, touched: true, danhHieu: v as "gioi" }))}
+                    {chip(null, effDanhHieu, "Không", (v) => pickField({ danhHieu: v as null }))}
+                    {chip("xuat_sac", effDanhHieu, "Học sinh Xuất sắc", (v) => pickField({ danhHieu: v as "xuat_sac" }))}
+                    {chip("gioi", effDanhHieu, "Học sinh Giỏi", (v) => pickField({ danhHieu: v as "gioi" }))}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -639,7 +666,7 @@ export function HocBaDetail({
                   <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Quyết định lên lớp">
                     {(["len_lop", "kiem_tra_danh_gia_lai", "ren_luyen_he", "o_lai"] as const).map((p) =>
                       chip(p, effPromo, PROMO_LABEL[p], (v) =>
-                        setForm({ ...form, touched: true, promotion: v as Promotion }),
+                        pickField({ promotion: v as Promotion }),
                       ),
                     )}
                   </div>
@@ -652,12 +679,12 @@ export function HocBaDetail({
                     </p>
                     <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Căn cứ pháp lý">
                       {Object.entries(GROUND_LABEL).map(([k, l]) =>
-                        chip(k, form.ground, l, (v) => setForm({ ...form, ground: v })),
+                        chip(k, form.ground, l, (v) => pickField({ ground: v })),
                       )}
                     </div>
                     <AutoGrowTextarea
                       value={form.note}
-                      onChange={(e) => setForm({ ...form, note: e.target.value })}
+                      onChange={(e) => pickField({ note: e.target.value })}
                       placeholder="Ghi chú căn cứ (bắt buộc)"
                       className="w-full"
                     />
@@ -678,7 +705,7 @@ export function HocBaDetail({
                   </button>
                   <button
                     type="button"
-                    disabled={!!busy || !formValid}
+                    disabled={!!busy || !submitReady}
                     onClick={() => run("submit", () => saveYearEndDecision(payload(true), true))}
                     className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >

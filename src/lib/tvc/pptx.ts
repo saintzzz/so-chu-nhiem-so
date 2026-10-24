@@ -76,7 +76,9 @@ async function imageToPng64(
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${b.path}`;
       const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
       if (!r.ok) return null;
-      const buf = await sharp(Buffer.from(await r.arrayBuffer()))
+      const raw = await readCapped(r, AUDIO_MAX_BYTES);
+      if (!raw) return null;
+      const buf = await sharp(raw)
         .resize({ width: 480, withoutEnlargement: true })
         .png()
         .toBuffer();
@@ -93,6 +95,30 @@ async function imageToPng64(
 // deck phai duoi 150MB, chua cho XML/anh).
 const AUDIO_MAX_BYTES = 15 * 1024 * 1024;
 const MEDIA_BUDGET = 120 * 1024 * 1024;
+// Doc stream theo chunk va cancel ngay khi vuot cap - arrayBuffer() doc het
+// body vao RAM truoc khi check size, response khong Content-Length co the
+// lam serverless het bo nho (external review).
+async function readCapped(r: Response, max: number): Promise<Buffer | null> {
+  const reader = r.body?.getReader();
+  if (!reader) return null;
+  const chunks: Buffer[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > max) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
 // budget dem theo tung lan docToPptx - khong de module-level vi request
 // concurrent se dung chung bo dem.
 async function audioToB64(
@@ -105,9 +131,11 @@ async function audioToB64(
     if (!r.ok || !r.body) return null;
     const len = Number(r.headers.get("content-length") ?? 0);
     if (len > AUDIO_MAX_BYTES || budget.used + len > MEDIA_BUDGET) return null;
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (!buf.length || buf.length > AUDIO_MAX_BYTES) return null;
-    if (budget.used + buf.length > MEDIA_BUDGET) return null;
+    const buf = await readCapped(
+      r,
+      Math.min(AUDIO_MAX_BYTES, MEDIA_BUDGET - budget.used),
+    );
+    if (!buf || !buf.length) return null;
     budget.used += buf.length;
     // Gemini TTS luu .wav (PCM + header), openai/edge luu .mp3.
     const mime = path.endsWith(".wav") ? "audio/wav" : "audio/mpeg";

@@ -80,3 +80,73 @@ test("AC-56.6: A-03 dialogue dung synthesizeDialogue, narration dung synthesizeS
   assert.match(AUDIO, /pseudonymizeNames/);
   assert.match(AUDIO, /roster\.error/);
 });
+
+// ---------- External review round: dialogue extractor + budget reserve
+// + capped media download (findings tu Codex web review) ----------
+
+// Import tts.ts that: stub 2 alias import (@/lib/*) bang no-op de node doc
+// truc tiep .ts (type stripping) ma khong can bundler.
+const ttsTmp = join(ROOT, "tests/.tmp-tts.ts");
+{
+  const src = read("src/lib/tvc/tts.ts")
+    .replace(
+      /import \{ createAdminClient \} from "@\/lib\/supabase\/admin";/,
+      "const createAdminClient = () => null;",
+    )
+    .replace(
+      /import \{ expandKeys, aiProviderAllowed, aiEndpointAllowed \} from "@\/lib\/ai";/,
+      "const expandKeys = () => []; const aiProviderAllowed = () => false; const aiEndpointAllowed = () => false;",
+    );
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(ttsTmp, src);
+}
+const { extractDialogueTurns } = await import(ttsTmp);
+
+test("REV-1: section Hoi thoai cho phep nhan vat A:/B: (dang SGK)", () => {
+  const doc = {
+    sections: [{
+      title: "Hội thoại",
+      blocks: [{ kind: "list", items: ["A: Xin chào bạn.", "B: Chào bạn, khỏe không?"] }],
+    }],
+  };
+  const turns = extractDialogueTurns(doc);
+  assert.equal(turns.length, 2);
+  assert.equal(turns[0].speaker, "A");
+  assert.equal(turns[1].speaker, "B");
+});
+
+test("REV-1b: ngoai section dialogue thi A:/B: van bi chan (lua chon MCQ)", () => {
+  const doc = {
+    sections: [{
+      title: "Bài tập",
+      blocks: [{ kind: "list", items: ["A: dap an 1", "B: dap an 2", "C: dap an 3"] }],
+    }],
+  };
+  assert.equal(extractDialogueTurns(doc).length, 0);
+});
+
+test("REV-2: hai nhan vat noi cung mot cau khong bi mat luot", () => {
+  const doc = {
+    sections: [{
+      title: "Dialogue",
+      blocks: [{ kind: "list", items: ["Alice: Hello.", "Bob: Hello.", "Alice: How are you?"] }],
+    }],
+  };
+  const turns = extractDialogueTurns(doc);
+  assert.equal(turns.length, 3);
+  assert.equal(turns[1].speaker, "Bob");
+});
+
+test("REV-3: pass mp3 chung 30s cho gemini fallback (ca 2 ham)", () => {
+  const src = read("src/lib/tvc/tts.ts");
+  const count = (src.match(/mp3DeadlineAt = useGemini \? deadlineAt - 30_000/g) ?? []).length;
+  assert.equal(count, 2, "synthesizeDialogue + synthesizeSpeech deu phai reserve");
+});
+
+test("REV-4: media download cap bang stream, khong doc arrayBuffer het", () => {
+  const src = read("src/lib/tvc/pptx.ts");
+  assert.match(src, /async function readCapped/);
+  const uses = (src.match(/await readCapped\(/g) ?? []).length;
+  assert.ok(uses >= 2, "audio + image deu phai qua readCapped");
+  assert.doesNotMatch(src, /await r\.arrayBuffer\(\)/);
+});

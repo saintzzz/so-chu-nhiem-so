@@ -146,11 +146,15 @@ const NON_DIALOGUE = new Set([
   "mc", "mcq", "tf", "true", "false", "fill", "exercise", "question", "q",
   "a", "b", "c", "d", "answer", "key", "note", "task", "activity",
 ]);
+// Nhan "A:"/"B:" trong section tua Dialogue/Hoi thoai la TEN NHAN VAT
+// (dang sach giao khoa), khong phai lua chon MCQ - chi chan o quet fallback.
+const LETTER_SPEAKERS = new Set(["a", "b", "c", "d"]);
 
 function collectTurns(
   sections: { title?: string; blocks?: { kind: string; text?: string; items?: string[] }[] }[],
   turns: Turn[],
   seen: Set<string>,
+  letterSpeakers = false,
 ) {
   for (const sec of sections) {
     for (const b of sec.blocks ?? []) {
@@ -159,9 +163,15 @@ function collectTurns(
       for (const t of texts) {
         const m = /^\s*([A-Z][A-Za-z' ]{0,20})\s*[:：]\s*(.+)$/.exec(t.trim());
         if (!m) continue;
-        if (NON_DIALOGUE.has(m[1].trim().toLowerCase())) continue;
+        const speaker = m[1].trim().toLowerCase();
+        if (
+          NON_DIALOGUE.has(speaker) &&
+          !(letterSpeakers && LETTER_SPEAKERS.has(speaker))
+        ) continue;
         const line = m[2].trim();
-        const k = line.toLowerCase();
+        // Dedup theo cap speaker|line: hai nhan vat noi cung mot cau van la
+        // hai luot ("Alice: Hello." -> "Bob: Hello." khong mat luot Bob).
+        const k = `${speaker}|${line.toLowerCase()}`;
         if (!line || seen.has(k)) continue;
         seen.add(k);
         turns.push({ speaker: m[1].trim(), line });
@@ -181,9 +191,11 @@ export function extractDialogueTurns(doc: {
   const dialogueSecs = (doc.sections ?? []).filter((s) =>
     /dialogue|hội thoại|conversation|hoi thoai/i.test(s.title ?? ""),
   );
-  collectTurns(dialogueSecs, turns, seen);
+  collectTurns(dialogueSecs, turns, seen, true);
   if (turns.length < 2) {
-    collectTurns(doc.sections ?? [], turns, seen);
+    // Quet phan con lai (khong quet lai section dialogue da doc).
+    const rest = (doc.sections ?? []).filter((s) => !dialogueSecs.includes(s));
+    collectTurns(rest, turns, seen);
   }
   return turns;
 }
@@ -267,17 +279,20 @@ export async function synthesizeDialogue(
       );
     }
   }
-  // Pass 1: openai -> edge (mp3 frame concat hop le).
+  // Pass 1: openai -> edge (mp3 frame concat hop le). Khi co gemini fallback
+  // thi chung 30s cuoi cho pass 2 - n key openai timeout noi tiep khong duoc
+  // an sach budget khien gemini (can >=8s) khong bao gio duoc chay.
+  const mp3DeadlineAt = useGemini ? deadlineAt - 30_000 : deadlineAt;
   if (useOpenai || useEdge) {
     const parts: Buffer[] = [];
     let ok = true;
     // Gioi han 4 song song de khong doi qua lau.
     for (let i = 0; i < turns.length; i += 4) {
-      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      if (mp3DeadlineAt - Date.now() < 8_000) { ok = false; break; }
       const segs = await Promise.all(
         turns.slice(i, i + 4).map((t) => {
           const v = speakers.get(t.speaker) ?? { openai: voiceA, edge: EDGE_VOICE.en_a, gemini: GEMINI_VOICE.a };
-          return ttsSegment(t.line, v.openai, keys, url, deadlineAt, v.edge);
+          return ttsSegment(t.line, v.openai, keys, url, mp3DeadlineAt, v.edge);
         }),
       );
       if (segs.some((s) => !s)) { ok = false; break; }
@@ -344,16 +359,17 @@ export async function synthesizeSpeech(
   }
   if (rest) chunks.push(rest.slice(0, 3900));
 
-  // Pass 1: openai -> edge (mp3).
+  // Pass 1: openai -> edge (mp3). Chung 30s cho pass gemini nhu tren.
+  const mp3DeadlineAt = useGemini ? deadlineAt - 30_000 : deadlineAt;
   if (useOpenai || useEdge) {
     const parts: Buffer[] = [];
     let ok = true;
     for (let i = 0; i < chunks.length; i += 2) {
-      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      if (mp3DeadlineAt - Date.now() < 8_000) { ok = false; break; }
       const segs = await Promise.all(
         chunks
           .slice(i, i + 2)
-          .map((c) => ttsSegment(c, v, keys, url, deadlineAt, edgeV)),
+          .map((c) => ttsSegment(c, v, keys, url, mp3DeadlineAt, edgeV)),
       );
       if (segs.some((s) => !s)) { ok = false; break; }
       parts.push(...(segs as Buffer[]));

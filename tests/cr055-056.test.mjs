@@ -174,3 +174,22 @@ test("REV-5: image cung charge vao media budget chung (r2)", () => {
   const charges = (src.match(/return charge\(buf\)/g) ?? []).length;
   assert.equal(charges, 2);
 });
+
+test("REV-6: para block nhieu dong van tach duoc luot hoi thoai (r3)", () => {
+  const doc = {
+    sections: [{
+      title: "Dialogue",
+      blocks: [{ kind: "para", text: "Alice: Hello.\nBob: Good morning.\nAlice: How are you?" }],
+    }],
+  };
+  const turns = extractDialogueTurns(doc);
+  assert.equal(turns.length, 3);
+  assert.equal(turns[1].speaker, "Bob");
+});
+
+test("REV-7: A-01 insert audio vao section co bai doc, khong mac dinh 0 (r3)", () => {
+  const src = AUDIO;
+  // Plan phai mang index section goc va insert phai dung no.
+  assert.match(src, /section: best\?\.i \?\? 0/);
+  assert.match(src, /section: plan\.section \?\? 0/);
+});

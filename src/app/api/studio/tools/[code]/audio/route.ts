@@ -142,23 +142,28 @@ export async function POST(
       }
     } else {
       // Narration 1 giong: A-01 bai doc, A-02 tu vung, V-02 van ban tieng Viet.
-      const plan: { text: string; voice?: string; lang?: "en" | "vi"; caption: string } | null =
+      const plan: { text: string; voice?: string; lang?: "en" | "vi"; caption: string; section?: number } | null =
         code === "A-01"
           ? (() => {
-              const sec = [...doc.sections].sort(
-                (a, b) =>
-                  (b.blocks ?? []).filter((x) => x.kind === "para")
-                    .map((x) => x.text?.length ?? 0).reduce((s, n) => s + n, 0) -
-                  (a.blocks ?? []).filter((x) => x.kind === "para")
-                    .map((x) => x.text?.length ?? 0).reduce((s, n) => s + n, 0),
-              )[0];
+              // Giu index goc - sort clone mat vi tri, insert phai dung
+              // section chua bai doc (external review r3).
+              const best = doc.sections
+                .map((s, i) => ({
+                  i,
+                  len: (s.blocks ?? [])
+                    .filter((x) => x.kind === "para")
+                    .map((x) => x.text?.length ?? 0)
+                    .reduce((a, n) => a + n, 0),
+                }))
+                .sort((a, b) => b.len - a.len)[0];
+              const sec = best ? doc.sections[best.i] : undefined;
               const text = (sec?.blocks ?? [])
                 .filter((b) => b.kind === "para")
                 .map((b) => b.text ?? "")
                 .join(" ")
                 .trim();
               return text.length >= 40
-                ? { text, caption: "Audio bài đọc - nghe và đọc theo" }
+                ? { text, section: best?.i ?? 0, caption: "Audio bài đọc - nghe và đọc theo" }
                 : null;
             })()
           : code === "A-02"
@@ -194,7 +199,7 @@ export async function POST(
         );
         if (audio) {
           const p = await uploadTtsAudio(sid, audio);
-          if (p) inserts.push({ section: 0, block: { kind: "audio", path: p, caption: plan.caption } });
+          if (p) inserts.push({ section: plan.section ?? 0, block: { kind: "audio", path: p, caption: plan.caption } });
         }
       }
     }

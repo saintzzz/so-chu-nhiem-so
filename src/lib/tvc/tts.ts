@@ -159,8 +159,12 @@ function collectTurns(
     for (const b of sec.blocks ?? []) {
       const texts: string[] =
         b.kind === "list" ? (b.items ?? []) : b.text ? [b.text] : [];
+      // Tach tung dong truoc khi match - block para co the chua ca doan
+      // hoi thoai nhieu dong ("Alice: ...\nBob: ...") ma regex khong qua \n
+      // duoc (external review r3).
       for (const t of texts) {
-        const m = /^\s*([A-Z][A-Za-z' ]{0,20})\s*[:：]\s*(.+)$/.exec(t.trim());
+      for (const ln of t.split(/\r?\n/)) {
+        const m = /^\s*([A-Z][A-Za-z' ]{0,20})\s*[:：]\s*(.+)$/.exec(ln.trim());
         if (!m) continue;
         const speaker = m[1].trim().toLowerCase();
         if (
@@ -174,6 +178,7 @@ function collectTurns(
         if (!line) continue;
         turns.push({ speaker: m[1].trim(), line });
         if (turns.length >= MAX_TURNS) return;
+      }
       }
     }
   }

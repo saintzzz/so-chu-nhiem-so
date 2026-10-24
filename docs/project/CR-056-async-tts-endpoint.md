@@ -35,12 +35,26 @@ truoc khi luu. Neu audio fail -> doc van dung duoc (fail-soft giu nguyen).
 - Risk: trung binh - la luong chinh cua studio audio, can test lai
   4 tool tren production.
 
-## Fix bo sung trong luc verify (edge-tts v2)
+## Fix bo sung trong luc verify (edge-tts v2 + gemini provider)
 
 Sau khi tach endpoint, edge-tts chet hoan toan: `msedge-tts@2.1.0`
 gui Sec-MS-GEC v1, MS tu 10/2026 chi chap nhan v2 -> WS handshake
 tra 200 thay vi 101 (xem rany2/edge-tts#490). Da doi sang fork
 `@andresaya/edge-tts@1.9.1` (port thuat toan GEC v2 tu PR #492) -
-cung API nen chi thay `edgeSegment` trong `src/lib/tvc/tts.ts`.
-Verify local: A-02 audio endpoint tra insert + mp3 36KB public
-download duoc tren tvc-media.
+local chay duoc nhung tren Vercel van fail: MS chan WS upgrade tu
+IP datacenter, chi IP residential di qua duoc. Runtime logs xac
+nhan `Unexpected server response: 200` tren deployment moi.
+
+Do vay them provider thu 3 **Gemini TTS** (`gemini-2.5-flash-preview-tts`,
+generateContent + responseModalities AUDIO -> PCM 24kHz -> WAV) -
+production co san 7 GEMINI keys. Chain bay gio: openai -> edge ->
+gemini, chay o function level de file output dong nhat format.
+`uploadTtsAudio` detect RIFF magic -> `.wav`/`audio/wav`; pptx mime
+theo extension.
+
+Verify production (sochunhiem.vieschool.com, deploy 267eae3):
+- A-02 audio endpoint -> wav 202KB public; export pptx 361KB chua
+  `ppt/media/media-2-1.wav` + rels audio dung OOXML.
+- A-03 dialogue 4 luot -> wav 476KB (Kore + Charon 2 giong).
+- V-02 tieng Viet -> wav (giong Gemini tu nhan dien ngon ngu).
+- edge-tts giu lai cho local/self-host (IP residential van chay duoc).

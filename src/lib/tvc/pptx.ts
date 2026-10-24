@@ -59,30 +59,41 @@ function blockToLines(b: DocBlock): { text: string; bullet: boolean }[] {
   }
 }
 
-// CR-031: media -> PNG base64 cho pptx.addImage
+// CR-031: media -> PNG base64 cho pptx.addImage. Charge retained PNG bytes
+// vao budget chung cua deck - anh cung la media nen phai tinh vao cap 120MB
+// (external review r2: truoc chi cap/file, khong tru aggregate).
 async function imageToPng64(
   b: { svg?: string; path?: string },
+  budget: { used: number },
 ): Promise<string | null> {
   try {
     const sharp = (await import("sharp")).default;
+    const charge = (buf: Buffer): string | null => {
+      if (budget.used + buf.length > MEDIA_BUDGET) return null;
+      budget.used += buf.length;
+      return `image/png;base64,${buf.toString("base64")}`;
+    };
     if (b.svg) {
       const buf = await sharp(Buffer.from(b.svg), { density: 150 })
         .resize({ width: 480, withoutEnlargement: true })
         .png()
         .toBuffer();
-      return `image/png;base64,${buf.toString("base64")}`;
+      return charge(buf);
     }
     if (b.path) {
       const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tvc-media/${b.path}`;
       const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
       if (!r.ok) return null;
-      const raw = await readCapped(r, AUDIO_MAX_BYTES);
+      const raw = await readCapped(
+        r,
+        Math.min(AUDIO_MAX_BYTES, MEDIA_BUDGET - budget.used),
+      );
       if (!raw) return null;
       const buf = await sharp(raw)
         .resize({ width: 480, withoutEnlargement: true })
         .png()
         .toBuffer();
-      return `image/png;base64,${buf.toString("base64")}`;
+      return charge(buf);
     }
   } catch {
     return null;
@@ -277,7 +288,7 @@ export async function docToPptx(
     // CR-031: image blocks trong slide
     const imgBlocks = (sec.blocks ?? []).filter((b) => b.kind === "image");
     for (let i = 0; i < Math.min(imgBlocks.length, 2); i++) {
-      const b64 = await imageToPng64(imgBlocks[i]);
+      const b64 = await imageToPng64(imgBlocks[i], mediaBudget);
       if (b64)
         s.addImage({
           data: b64,

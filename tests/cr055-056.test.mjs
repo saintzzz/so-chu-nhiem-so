@@ -137,10 +137,26 @@ test("REV-2: hai nhan vat noi cung mot cau khong bi mat luot", () => {
   assert.equal(turns[1].speaker, "Bob");
 });
 
-test("REV-3: pass mp3 chung 30s cho gemini fallback (ca 2 ham)", () => {
+test("REV-2b: cung nhan vat lap lai cung cau van duoc giu (r2)", () => {
+  const doc = {
+    sections: [{
+      title: "Dialogue",
+      blocks: [{ kind: "list", items: ["Alice: Yes.", "Bob: Really?", "Alice: Yes."] }],
+    }],
+  };
+  const turns = extractDialogueTurns(doc);
+  assert.equal(turns.length, 3);
+  assert.equal(turns[2].speaker, "Alice");
+});
+
+test("REV-3: pass mp3 chi reserve khi gemini usable (key+endpoint), cap deadlineMs/2", () => {
   const src = read("src/lib/tvc/tts.ts");
-  const count = (src.match(/mp3DeadlineAt = useGemini \? deadlineAt - 30_000/g) ?? []).length;
-  assert.equal(count, 2, "synthesizeDialogue + synthesizeSpeech deu phai reserve");
+  const reserves = (src.match(/const reserve = geminiOk \? Math\.min\(30_000, deadlineMs \/ 2\) : 0;/g) ?? []).length;
+  assert.equal(reserves, 2, "synthesizeDialogue + synthesizeSpeech deu reserve dieu kien");
+  const okChecks = (src.match(/const geminiOk = gkeys\.length > 0 && aiEndpointAllowed\(geminiUrl\)/g) ?? []).length;
+  assert.equal(okChecks, 2, "reserve phu thuoc key + endpoint that, khong chi flag");
+  const deadlines = (src.match(/const mp3DeadlineAt = deadlineAt - reserve;/g) ?? []).length;
+  assert.equal(deadlines, 2);
 });
 
 test("REV-4: media download cap bang stream, khong doc arrayBuffer het", () => {
@@ -149,4 +165,12 @@ test("REV-4: media download cap bang stream, khong doc arrayBuffer het", () => {
   const uses = (src.match(/await readCapped\(/g) ?? []).length;
   assert.ok(uses >= 2, "audio + image deu phai qua readCapped");
   assert.doesNotMatch(src, /await r\.arrayBuffer\(\)/);
+});
+
+test("REV-5: image cung charge vao media budget chung (r2)", () => {
+  const src = read("src/lib/tvc/pptx.ts");
+  assert.match(src, /imageToPng64\(imgBlocks\[i\], mediaBudget\)/);
+  // Ca 2 nhanh (svg + path download) deu charge retained bytes.
+  const charges = (src.match(/return charge\(buf\)/g) ?? []).length;
+  assert.equal(charges, 2);
 });

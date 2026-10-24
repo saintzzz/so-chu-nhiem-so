@@ -153,7 +153,6 @@ const LETTER_SPEAKERS = new Set(["a", "b", "c", "d"]);
 function collectTurns(
   sections: { title?: string; blocks?: { kind: string; text?: string; items?: string[] }[] }[],
   turns: Turn[],
-  seen: Set<string>,
   letterSpeakers = false,
 ) {
   for (const sec of sections) {
@@ -169,11 +168,10 @@ function collectTurns(
           !(letterSpeakers && LETTER_SPEAKERS.has(speaker))
         ) continue;
         const line = m[2].trim();
-        // Dedup theo cap speaker|line: hai nhan vat noi cung mot cau van la
-        // hai luot ("Alice: Hello." -> "Bob: Hello." khong mat luot Bob).
-        const k = `${speaker}|${line.toLowerCase()}`;
-        if (!line || seen.has(k)) continue;
-        seen.add(k);
+        // Khong dedup: cung 1 cau noi lap lai van la luot hop le
+        // ("Alice: Yes." -> ... -> "Alice: Yes."). Fallback chi quet rest
+        // nen khong co rui ro dem trung section.
+        if (!line) continue;
         turns.push({ speaker: m[1].trim(), line });
         if (turns.length >= MAX_TURNS) return;
       }
@@ -187,15 +185,14 @@ export function extractDialogueTurns(doc: {
   sections?: { title?: string; blocks?: { kind: string; text?: string; items?: string[] }[] }[];
 }): Turn[] {
   const turns: Turn[] = [];
-  const seen = new Set<string>();
   const dialogueSecs = (doc.sections ?? []).filter((s) =>
     /dialogue|hội thoại|conversation|hoi thoai/i.test(s.title ?? ""),
   );
-  collectTurns(dialogueSecs, turns, seen, true);
+  collectTurns(dialogueSecs, turns, true);
   if (turns.length < 2) {
     // Quet phan con lai (khong quet lai section dialogue da doc).
     const rest = (doc.sections ?? []).filter((s) => !dialogueSecs.includes(s));
-    collectTurns(rest, turns, seen);
+    collectTurns(rest, turns);
   }
   return turns;
 }
@@ -279,10 +276,16 @@ export async function synthesizeDialogue(
       );
     }
   }
-  // Pass 1: openai -> edge (mp3 frame concat hop le). Khi co gemini fallback
-  // thi chung 30s cuoi cho pass 2 - n key openai timeout noi tiep khong duoc
-  // an sach budget khien gemini (can >=8s) khong bao gio duoc chay.
-  const mp3DeadlineAt = useGemini ? deadlineAt - 30_000 : deadlineAt;
+  // Pass 1: openai -> edge (mp3 frame concat hop le). Khi gemini fallback
+  // THUC SU usable (co key + endpoint allowed) thi chung 1 phan budget cho
+  // pass 2 - n key openai timeout noi tiep khong duoc an sach budget khien
+  // gemini (can >=8s) khong bao gio duoc chay. Reserve cap o deadlineMs/2
+  // de budget ngan van cho mp3 providers co hoi (review r2).
+  const gkeys = useGemini ? expandKeys("gemini") : [];
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${process.env.TTS_GEMINI_MODEL ?? "gemini-2.5-flash-preview-tts"}:generateContent`;
+  const geminiOk = gkeys.length > 0 && aiEndpointAllowed(geminiUrl);
+  const reserve = geminiOk ? Math.min(30_000, deadlineMs / 2) : 0;
+  const mp3DeadlineAt = deadlineAt - reserve;
   if (useOpenai || useEdge) {
     const parts: Buffer[] = [];
     let ok = true;
@@ -303,7 +306,6 @@ export async function synthesizeDialogue(
   // Pass 2: gemini - PCM concat -> WAV. Chay o function level de file output
   // dong nhat format (khong tron mp3+pcm trong 1 stream).
   if (useGemini) {
-    const gkeys = expandKeys("gemini");
     const pcmParts: Buffer[] = [];
     let ok = true;
     for (let i = 0; i < turns.length; i += 4) {
@@ -359,8 +361,13 @@ export async function synthesizeSpeech(
   }
   if (rest) chunks.push(rest.slice(0, 3900));
 
-  // Pass 1: openai -> edge (mp3). Chung 30s cho pass gemini nhu tren.
-  const mp3DeadlineAt = useGemini ? deadlineAt - 30_000 : deadlineAt;
+  // Pass 1: openai -> edge (mp3). Reserve cho pass gemini chi khi gemini
+  // usable that (key + endpoint), cap deadlineMs/2 cho budget ngan.
+  const gkeys = useGemini ? expandKeys("gemini") : [];
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${process.env.TTS_GEMINI_MODEL ?? "gemini-2.5-flash-preview-tts"}:generateContent`;
+  const geminiOk = gkeys.length > 0 && aiEndpointAllowed(geminiUrl);
+  const reserve = geminiOk ? Math.min(30_000, deadlineMs / 2) : 0;
+  const mp3DeadlineAt = deadlineAt - reserve;
   if (useOpenai || useEdge) {
     const parts: Buffer[] = [];
     let ok = true;
@@ -378,7 +385,6 @@ export async function synthesizeSpeech(
   }
   // Pass 2: gemini PCM -> WAV (dong nhat format ca file).
   if (useGemini) {
-    const gkeys = expandKeys("gemini");
     const pcmParts: Buffer[] = [];
     let ok = true;
     for (let i = 0; i < chunks.length; i += 2) {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ToolClientDef, ToolField } from "@/lib/tvc/types";
-import type { CurriculumStandard, DocContent, Subject } from "@/types/tvc";
+import type { CurriculumStandard, DocBlock, DocContent, Subject } from "@/types/tvc";
 import { DocEditor } from "./doc-editor";
 import { DocRender } from "./doc-render";
 import { saveMaterial } from "@/lib/tvc/actions";
@@ -92,6 +92,8 @@ export function ToolRunner({
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
+  const [audioPending, setAudioPending] = useState(false);
+  const [audioNote, setAudioNote] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [savedCount, setSavedCount] = useState(0);
   const [firstSavedId, setFirstSavedId] = useState<string | null>(null);
@@ -183,6 +185,8 @@ export function ToolRunner({
       return;
     }
     setError("");
+    setAudioPending(false);
+    setAudioNote(null);
     // r30 H: khong reset pack state luc bat dau generate - neu regen loi,
     // doc cu + trang thai luu cu phai con nguyen de retry, khong bi save
     // trung vao pack id moi. Reset chi khi ket qua moi duoc chap nhan.
@@ -192,11 +196,51 @@ export function ToolRunner({
       setFirstSavedId(null);
       setPackExamId(null);
     };
+    // CR-056: TTS chay tren endpoint rieng sau generate - audio co budget
+    // 120s day du nen gan nhu luon thanh cong. Doc hien ngay, audio merge
+    // vao sau (loading "Dang tao am thanh").
+    const AUDIO_CODES = new Set(["A-01", "A-02", "A-03", "V-02"]);
     const input = {
       ...values,
       ...coValues,
       standard_ids: selectedStd.join(","),
       ...(fromMaterial ? { material_id: fromMaterial.id } : {}),
+    };
+    const wantsAudio =
+      AUDIO_CODES.has(tool.code) ||
+      (tool.code === "DC-06" && values.audio === "yes");
+    const fetchAudio = async (d: DocContent) => {
+      setAudioPending(true);
+      setAudioNote(null);
+      try {
+        const r = await fetch(`/api/studio/tools/${tool.code}/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doc: d, input }),
+        });
+        const j = await r.json().catch(() => ({}));
+        const ins = (j.inserts ?? []) as {
+          section: number;
+          block: DocBlock;
+        }[];
+        if (r.ok && ins.length) {
+          const sections = d.sections.map((s, i) => {
+            const blocks = ins
+              .filter((x) => x.section === i)
+              .map((x) => x.block);
+            return blocks.length
+              ? { ...s, blocks: [...blocks, ...(s.blocks ?? [])] }
+              : s;
+          });
+          setDoc({ ...d, sections });
+        } else {
+          setAudioNote("Không tạo được âm thanh - học liệu vẫn dùng được.");
+        }
+      } catch {
+        setAudioNote("Không tạo được âm thanh - học liệu vẫn dùng được.");
+      } finally {
+        setAudioPending(false);
+      }
     };
     start(async () => {
       const res = await fetch(`/api/studio/tools/${tool.code}/generate`, {
@@ -228,6 +272,7 @@ export function ToolRunner({
               setDoc(clean);
               setDocTabs(null);
               setProvider("fallback-engine");
+              if (wantsAudio) void fetchAudio(clean);
             } else {
               setError("AI trả về dữ liệu không đúng định dạng - thử lại sau.");
             }
@@ -238,6 +283,7 @@ export function ToolRunner({
       }
       resetPackState();
       setDoc(data.doc);
+      if (wantsAudio && data.doc) void fetchAudio(data.doc);
       setPackExamId(data.examId ?? null);
       // Exam-pack (CR-023/050/051): DC-03 tra nhieu van ban - ma de,
       // dap an rieng, de du phong, bien ban phan bien.
@@ -626,6 +672,16 @@ export function ToolRunner({
                 Nguồn sinh: {provider === "question-bank" ? "Ngân hàng câu hỏi" : provider === "fallback-engine" ? "AI (máy chủ dự phòng)" : "AI"}
                 {missing > 0 && ` - còn thiếu ${missing} câu hỏi trong ngân hàng`}
                 {review > 0 && ` - ${review} câu được thay bằng câu gần đúng (khác mức/dạng), cần rà soát`}
+              </p>
+            )}
+            {audioPending && (
+              <p className="mt-1 text-xs text-muted-foreground animate-pulse">
+                Đang tạo âm thanh...
+              </p>
+            )}
+            {audioNote && !audioPending && (
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                {audioNote}
               </p>
             )}
             {savedId ? (

@@ -1,4 +1,4 @@
-# CR-054 - Anti-scraping / anti-AI-crawler defense plan (status: PROPOSAL - lop 1 robots.txt + X-Robots-Tag da deploy; phan con lai cho keys/WAF)
+# CR-054 - Anti-scraping / anti-AI-crawler defense plan (status: LOP 1 DEPLOYED - robots.txt + noai + noindex-authed + export cap 20/h/uid + login captchaToken; con lai: WAF toggle + Supabase Auth captcha enable)
 
 Yeu cau cua PO: viet phuong an truoc, implement sau. So Chu Nhiem So la
 app **full-authenticated** (khong co public content surface ngoai
@@ -93,3 +93,25 @@ du lieu hoc sinh (nhay cam, PDPK) va cong cu AI, khong phai content bank.
 - Chan AI crawler tren trang login/landing bang JavaScript challenge -
   khong can, noindex du cho SEO hop phap.
 - MFA bat buoc - de xuat rieng, khong thuoc pham vi nay.
+
+## Implement log (lop 1 + auth captcha plumbing)
+
+- `public/robots.txt` chan 23 AI crawler + `X-Robots-Tag: noai,
+  noimageai` global qua vercel.json - da deploy.
+- `src/proxy.ts`: route authed (co session) them `X-Robots-Tag:
+  noindex, nofollow` - login page van index duoc.
+- `src/lib/export-guard.ts`: moi export (hoc-ba DOCX/PDF, register
+  audit CSV, studio material) ghi `audit_logs action="export"` va cap
+  20 file/gio truot/uid - vuot nguong -> 429 + `export_throttled`.
+  Fail-open khi count loi, khong dut nghiep vu.
+- `src/lib/turnstile.ts` + `login-form.tsx`: signIn gui `captchaToken`
+  (invisible challenge). An toan khi Supabase Auth captcha CHUA bat -
+  token bi bo qua. Khi PO bat captcha trong dashboard, login bot buoc
+  phai qua challenge. Luu y: widget Turnstile can them hostname
+  `slideforge.vieschool.com` + `localhost` cho dev.
+- Con lai (can quyen dashboard): Vercel managed rule `ai_bots -> deny`
+  tren project; Supabase Auth -> Bot and Abuse Protection -> Turnstile
+  + secret (1 toggle chung cho ca 4 app dung chung project
+  `cxjpgfhqchjoernfmcra` - client 4 app da san sang).
+- Chua lam: per-uid read cap (lop 2, can migration RPC), watermark
+  request-id (lop 3), honeypot (lop 3).

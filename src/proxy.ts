@@ -64,6 +64,11 @@ export async function proxy(request: NextRequest) {
     url.pathname = "/";
     return redirectWithCookies(url);
   }
+  // CR-054: route authed khong cho indexer (crawler hop phap deu mat
+  // session ngay, nhung noindex ngan data leak qua search cache/preview).
+  if (user) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noai, noimageai");
+  }
   return response;
 }
 

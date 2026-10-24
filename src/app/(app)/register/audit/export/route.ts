@@ -5,6 +5,7 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { todayVN, sanitizeOrTerm } from "@/lib/utils";
 import { sanitizeSpreadsheetCell } from "@/lib/excel";
 import { hasRole, hasAnyRole } from "@/lib/roles";
+import { guardExport, exportThrottledBody } from "@/lib/export-guard";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LIMIT = 5000;
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
   const actor = sp.get("actor");
   const q = sp.get("q")?.trim() || undefined;
   const supabase = await createClient();
+
+  const cap = await guardExport(supabase, { entity: `audit_${type}` });
+  if (!cap.ok) {
+    return NextResponse.json(exportThrottledBody(), { status: 429 });
+  }
 
   // R11-03: moi nguon loi hoac bi cat ngam (cap LIMIT) deu tra 422 thay vi
   // CSV thieu du lieu nhu thanh cong - nguoi dung phai thu hep bo loc.

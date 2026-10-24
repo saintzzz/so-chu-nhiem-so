@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getTurnstileToken } from "@/lib/turnstile";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
@@ -17,9 +18,11 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+    const captchaToken = await getTurnstileToken();
     const { error: err } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     });
     if (err) {
       setError("Đăng nhập thất bại. Kiểm tra lại tên đăng nhập và mật khẩu.");

@@ -10,6 +10,7 @@ import {
 import { buildHocBaModel, hocBaDocx } from "@/lib/hocba-docx";
 import { hocBaPdf } from "@/lib/hocba-pdf";
 import { sortByVietnameseName } from "@/lib/utils";
+import { guardExport, exportThrottledBody } from "@/lib/export-guard";
 
 /**
  * GET /api/records/hoc-ba/export?format=docx|pdf&student=<id>
@@ -38,6 +39,14 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = await createClient();
+
+  const cap = await guardExport(supabase, {
+    entity: "hoc_ba",
+    entityId: classId ?? studentId,
+  });
+  if (!cap.ok) {
+    return NextResponse.json(exportThrottledBody(), { status: 429 });
+  }
 
   try {
     if (classId) {

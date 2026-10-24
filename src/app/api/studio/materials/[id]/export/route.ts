@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasFeature } from "@/lib/permissions";
+import { guardExport, exportThrottledBody } from "@/lib/export-guard";
 import { docToDocx } from "@/lib/tvc/docx";
 import { docToPptx } from "@/lib/tvc/pptx";
 import type { DocContent, Material } from "@/types/tvc";
@@ -68,6 +69,10 @@ export async function GET(
   // CR-034: xuat file chiu feature studio.export
   if (!(await hasFeature("studio.export")))
     return NextResponse.json({ error: "Tính năng xuất file đã bị quản trị tắt." }, { status: 403 });
+
+  const cap = await guardExport(supabase, { entity: "material", entityId: id });
+  if (!cap.ok)
+    return NextResponse.json(exportThrottledBody(), { status: 429 });
 
   // r16 L: loi lookup tac gia khong duoc bien thanh attribution "giao
   // vien" - export file voi ten sai la integrity failure.

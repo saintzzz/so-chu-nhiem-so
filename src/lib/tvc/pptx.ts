@@ -109,7 +109,9 @@ async function audioToB64(
     if (!buf.length || buf.length > AUDIO_MAX_BYTES) return null;
     if (budget.used + buf.length > MEDIA_BUDGET) return null;
     budget.used += buf.length;
-    return `audio/mpeg;base64,${buf.toString("base64")}`;
+    // Gemini TTS luu .wav (PCM + header), openai/edge luu .mp3.
+    const mime = path.endsWith(".wav") ? "audio/wav" : "audio/mpeg";
+    return `${mime};base64,${buf.toString("base64")}`;
   } catch {
     return null;
   }

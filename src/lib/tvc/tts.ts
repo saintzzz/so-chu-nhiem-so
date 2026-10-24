@@ -1,11 +1,15 @@
-// TTS cho cac tool can audio. Provider chain env-driven (CR-018):
-//   TTS_PROVIDER - 'openai' | 'edge' | 'auto' (default auto = openai -> edge)
+// TTS cho cac tool can audio. Provider chain env-driven (CR-018/056):
+//   TTS_PROVIDER - 'auto' (default = openai -> edge -> gemini) | mot provider
 //   TTS_MODEL    - default 'gpt-4o-mini-tts' (chat luong tot, re)
 //   TTS_VOICE_A / TTS_VOICE_B - giong OpenAI 2 nhan vat (alloy / nova)
 //   TTS_EDGE_VOICE_* - giong edge-tts neural (mien phi, khong can key)
-// Ho tro nhieu key (OPENAI_API_KEY="k1,k2", OPENAI_API_KEY_2...) qua
-// expandKeys - key loi/quota thi thu key tiep, roi edge-tts. Het provider
-// -> null, route bo qua audio (khong chan generate).
+//   TTS_GEMINI_VOICE_A/B - giong Gemini TTS (Kore / Charon)
+//   TTS_GEMINI_MODEL - default 'gemini-2.5-flash-preview-tts'
+// Ho tro nhieu key (*_API_KEY="k1,k2", *_API_KEY_2...) qua expandKeys - key
+// loi/quota thi thu key tiep, roi provider tiep. Het provider -> null, route
+// bo qua audio (khong chan generate).
+// Luu y: edge-tts bi MS chan WS tu IP datacenter (Vercel) nen gemini la
+// provider quyet dinh tren production; edge van huu ich cho local/self-host.
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { expandKeys, aiProviderAllowed, aiEndpointAllowed } from "@/lib/ai";
@@ -22,6 +26,87 @@ const EDGE_VOICE = {
   en_b: process.env.TTS_EDGE_VOICE_B ?? "en-US-AvaNeural",
   vi: process.env.TTS_EDGE_VOICE_VI ?? "vi-VN-HoaiMyNeural",
 };
+
+// Giong Gemini TTS (prebuilt names, tu nhan dien ngon ngu) - provider quan
+// trong tren serverless vi MS chan WS upgrade tu IP datacenter (edge-tts
+// chi chay duoc o moi truong co IP residential).
+const GEMINI_VOICE = {
+  a: process.env.TTS_GEMINI_VOICE_A ?? "Kore",
+  b: process.env.TTS_GEMINI_VOICE_B ?? "Charon",
+};
+
+// Provider flag theo TTS_PROVIDER: auto = tat ca; con lai = chi provider do.
+function ttsProviders() {
+  const provider = process.env.TTS_PROVIDER ?? "auto";
+  const want = (p: string) => provider === "auto" || provider === p;
+  return {
+    openai: want("openai") && aiProviderAllowed("openai"),
+    edge: want("edge") && aiProviderAllowed("edge"),
+    gemini: want("gemini") && aiProviderAllowed("gemini"),
+  };
+}
+
+// Gemini TTS tra raw PCM 24kHz s16 mono -> goi WAV header de thanh file hop
+// le (pptx addMedia + <audio> deu ho tro wav).
+function pcmToWav(pcm: Buffer, sampleRate = 24_000): Buffer {
+  const h = Buffer.alloc(44);
+  h.write("RIFF", 0);
+  h.writeUInt32LE(36 + pcm.length, 4);
+  h.write("WAVEfmt ", 8);
+  h.writeUInt32LE(16, 16);
+  h.writeUInt16LE(1, 20); // PCM
+  h.writeUInt16LE(1, 22); // mono
+  h.writeUInt32LE(sampleRate, 24);
+  h.writeUInt32LE(sampleRate * 2, 28);
+  h.writeUInt16LE(2, 32);
+  h.writeUInt16LE(16, 34);
+  h.write("data", 36);
+  h.writeUInt32LE(pcm.length, 40);
+  return Buffer.concat([h, pcm]);
+}
+
+// Gemini TTS qua generateContent - responseModalities AUDIO, tra base64 PCM.
+// Thu tung key trong expandKeys("gemini"); quota/5xx skip key tiep.
+async function geminiSegment(
+  text: string,
+  voiceName: string,
+  keys: string[],
+  deadlineAt: number,
+): Promise<Buffer | null> {
+  const model = process.env.TTS_GEMINI_MODEL ?? "gemini-2.5-flash-preview-tts";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  if (!aiEndpointAllowed(url)) return null;
+  for (const key of keys) {
+    const left = deadlineAt - Date.now();
+    if (left < 1_000) break;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        redirect: "error",
+        headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: text.slice(0, 4000) }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+            },
+          },
+        }),
+        signal: AbortSignal.timeout(Math.min(30_000, left)),
+      });
+      if (!res.ok) continue;
+      const j = (await res.json()) as {
+        candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[];
+      };
+      const b64 = j.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (b64) return Buffer.from(b64, "base64");
+    } catch {
+      // Timeout/network - thu key tiep.
+    }
+  }
+  return null;
+}
 
 // edge-tts: endpoint doc to cua Microsoft, mien phi - provider fallback cuoi.
 // TTS_PROVIDER=edge de ep dung rieng; =openai de tat edge.
@@ -112,8 +197,9 @@ async function ttsSegment(
   edgeVoice?: string,
 ): Promise<Buffer | null> {
   const model = process.env.TTS_MODEL ?? "gpt-4o-mini-tts";
+  const use = ttsProviders();
   // Provider 1: OpenAI-compatible /audio/speech (het key thi sang edge).
-  if (keys.length && (process.env.TTS_PROVIDER ?? "auto") !== "edge") {
+  if (keys.length && use.openai) {
     for (const key of keys) {
       // R4: budget tinh lai TRUOC MOI KEY - truoc day moi key nhan lai
       // timeout day du nen 30s budget chay toi 90s khi key loi.
@@ -135,8 +221,8 @@ async function ttsSegment(
       }
     }
   }
-  // Provider 2: edge-tts mien phi (bo qua khi TTS_PROVIDER=openai).
-  if ((process.env.TTS_PROVIDER ?? "auto") !== "openai") {
+  // Provider 2: edge-tts mien phi (bo qua khi TTS_PROVIDER=openai/gemini).
+  if (use.edge) {
     return edgeSegment(text, edgeVoice ?? EDGE_VOICE.en_a, deadlineAt);
   }
   return null;
@@ -150,12 +236,11 @@ export async function synthesizeDialogue(
   deadlineMs = 90_000,
 ): Promise<Buffer | null> {
   if (!turns.length) return null;
-  const provider = process.env.TTS_PROVIDER ?? "auto";
   // R16: TTS cung la external AI processor - phai tuan theo
   // AI_ALLOWED_PROVIDERS giong text providers.
-  const useOpenai = provider !== "edge" && aiProviderAllowed("openai");
-  const useEdge = provider !== "openai" && aiProviderAllowed("edge");
-  if (!useOpenai && !useEdge) return null;
+  const use = ttsProviders();
+  if (!use.openai && !use.edge && !use.gemini) return null;
+  const useOpenai = use.openai, useEdge = use.edge, useGemini = use.gemini;
   // R3: destination thuc te cung phai nam trong AI_ALLOWED_ENDPOINTS - text
   // providers qua openaiBaseUrl() da fail-closed, TTS khong duoc la lo thoat.
   const url = `${TTS_BASE_URL}/audio/speech`;
@@ -170,32 +255,56 @@ export async function synthesizeDialogue(
   const deadlineAt = Date.now() + deadlineMs;
   const voiceA = process.env.TTS_VOICE_A ?? "alloy";
   const voiceB = process.env.TTS_VOICE_B ?? "nova";
-  // OpenAI: 2 giong alloy/nova. Edge: 2 giong neural tieng Anh.
-  const speakers = new Map<string, { openai: string; edge: string }>();
+  // Moi nhan vat map 1 giong tren tung provider.
+  const speakers = new Map<string, { openai: string; edge: string; gemini: string }>();
   for (const t of turns) {
     if (!speakers.has(t.speaker)) {
       speakers.set(
         t.speaker,
         speakers.size === 0
-          ? { openai: voiceA, edge: EDGE_VOICE.en_a }
-          : { openai: voiceB, edge: EDGE_VOICE.en_b },
+          ? { openai: voiceA, edge: EDGE_VOICE.en_a, gemini: GEMINI_VOICE.a }
+          : { openai: voiceB, edge: EDGE_VOICE.en_b, gemini: GEMINI_VOICE.b },
       );
     }
   }
-  const parts: Buffer[] = [];
-  // Gioi han 4 song song de khong doi qua lau.
-  for (let i = 0; i < turns.length; i += 4) {
-    if (deadlineAt - Date.now() < 8_000) return null; // het budget - bo audio, giu doc.
-    const segs = await Promise.all(
-      turns.slice(i, i + 4).map((t) => {
-        const v = speakers.get(t.speaker) ?? { openai: voiceA, edge: EDGE_VOICE.en_a };
-        return ttsSegment(t.line, v.openai, keys, url, deadlineAt, v.edge);
-      }),
-    );
-    if (segs.some((s) => !s)) return null;
-    parts.push(...(segs as Buffer[]));
+  // Pass 1: openai -> edge (mp3 frame concat hop le).
+  if (useOpenai || useEdge) {
+    const parts: Buffer[] = [];
+    let ok = true;
+    // Gioi han 4 song song de khong doi qua lau.
+    for (let i = 0; i < turns.length; i += 4) {
+      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      const segs = await Promise.all(
+        turns.slice(i, i + 4).map((t) => {
+          const v = speakers.get(t.speaker) ?? { openai: voiceA, edge: EDGE_VOICE.en_a, gemini: GEMINI_VOICE.a };
+          return ttsSegment(t.line, v.openai, keys, url, deadlineAt, v.edge);
+        }),
+      );
+      if (segs.some((s) => !s)) { ok = false; break; }
+      parts.push(...(segs as Buffer[]));
+    }
+    if (ok && parts.length) return Buffer.concat(parts);
   }
-  return Buffer.concat(parts);
+  // Pass 2: gemini - PCM concat -> WAV. Chay o function level de file output
+  // dong nhat format (khong tron mp3+pcm trong 1 stream).
+  if (useGemini) {
+    const gkeys = expandKeys("gemini");
+    const pcmParts: Buffer[] = [];
+    let ok = true;
+    for (let i = 0; i < turns.length; i += 4) {
+      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      const segs = await Promise.all(
+        turns.slice(i, i + 4).map((t) => {
+          const v = speakers.get(t.speaker) ?? { openai: voiceA, edge: EDGE_VOICE.en_a, gemini: GEMINI_VOICE.a };
+          return geminiSegment(t.line, v.gemini, gkeys, deadlineAt);
+        }),
+      );
+      if (segs.some((s) => !s)) { ok = false; break; }
+      pcmParts.push(...(segs as Buffer[]));
+    }
+    if (ok && pcmParts.length) return pcmToWav(Buffer.concat(pcmParts));
+  }
+  return null;
 }
 
 // CR-018 P1/P2: narration 1 giong cho bai doc (A-01), tu vung (A-02) va
@@ -207,10 +316,9 @@ export async function synthesizeSpeech(
   lang: "en" | "vi" = "en",
 ): Promise<Buffer | null> {
   if (!text.trim()) return null;
-  const provider = process.env.TTS_PROVIDER ?? "auto";
-  const useOpenai = provider !== "edge" && aiProviderAllowed("openai");
-  const useEdge = provider !== "openai" && aiProviderAllowed("edge");
-  if (!useOpenai && !useEdge) return null;
+  const use = ttsProviders();
+  if (!use.openai && !use.edge && !use.gemini) return null;
+  const useOpenai = use.openai, useEdge = use.edge, useGemini = use.gemini;
   const url = `${TTS_BASE_URL}/audio/speech`;
   const keys =
     useOpenai && aiEndpointAllowed(url)
@@ -221,7 +329,7 @@ export async function synthesizeSpeech(
           ? (process.env.TTS_API_KEY ?? "").split(",").map((s) => s.trim()).filter(Boolean)
           : expandKeys("openai"))
       : [];
-  if (!keys.length && !useEdge) return null;
+  if (!keys.length && !useEdge && !useGemini) return null;
 
   const deadlineAt = Date.now() + deadlineMs;
   const v = voice ?? process.env.TTS_VOICE_A ?? "alloy";
@@ -236,30 +344,58 @@ export async function synthesizeSpeech(
   }
   if (rest) chunks.push(rest.slice(0, 3900));
 
-  const parts: Buffer[] = [];
-  for (let i = 0; i < chunks.length; i += 2) {
-    if (deadlineAt - Date.now() < 8_000) return null;
-    const segs = await Promise.all(
-      chunks
-        .slice(i, i + 2)
-        .map((c) => ttsSegment(c, v, keys, url, deadlineAt, edgeV)),
-    );
-    if (segs.some((s) => !s)) return null;
-    parts.push(...(segs as Buffer[]));
+  // Pass 1: openai -> edge (mp3).
+  if (useOpenai || useEdge) {
+    const parts: Buffer[] = [];
+    let ok = true;
+    for (let i = 0; i < chunks.length; i += 2) {
+      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      const segs = await Promise.all(
+        chunks
+          .slice(i, i + 2)
+          .map((c) => ttsSegment(c, v, keys, url, deadlineAt, edgeV)),
+      );
+      if (segs.some((s) => !s)) { ok = false; break; }
+      parts.push(...(segs as Buffer[]));
+    }
+    if (ok && parts.length) return Buffer.concat(parts);
   }
-  return Buffer.concat(parts);
+  // Pass 2: gemini PCM -> WAV (dong nhat format ca file).
+  if (useGemini) {
+    const gkeys = expandKeys("gemini");
+    const pcmParts: Buffer[] = [];
+    let ok = true;
+    for (let i = 0; i < chunks.length; i += 2) {
+      if (deadlineAt - Date.now() < 8_000) { ok = false; break; }
+      const segs = await Promise.all(
+        chunks
+          .slice(i, i + 2)
+          .map((c) => geminiSegment(c, GEMINI_VOICE.a, gkeys, deadlineAt)),
+      );
+      if (segs.some((s) => !s)) { ok = false; break; }
+      pcmParts.push(...(segs as Buffer[]));
+    }
+    if (ok && pcmParts.length) return pcmToWav(Buffer.concat(pcmParts));
+  }
+  return null;
 }
 
-// Upload mp3 len bucket public tvc-media; tra path tuong doi cho doc block.
+// Upload mp3/wav len bucket public tvc-media; tra path tuong doi cho doc
+// block. Gemini TTS tra PCM -> pcmToWav, nen detect RIFF magic de dung
+// extension + content-type (pptx addMedia va <audio> deu doc wav duoc).
 export async function uploadTtsAudio(
   schoolId: string | null,
   buffer: Buffer,
 ): Promise<string | null> {
+  const isWav = buffer.length > 12 && buffer.toString("latin1", 0, 4) === "RIFF";
   const supabase = createAdminClient();
-  const path = `${schoolId ?? "shared"}/a03/${crypto.randomUUID()}.mp3`;
+  const path = `${schoolId ?? "shared"}/a03/${crypto.randomUUID()}.${isWav ? "wav" : "mp3"}`;
   const { error } = await supabase.storage
     .from("tvc-media")
-    .upload(path, buffer, { contentType: "audio/mpeg", upsert: false });
+    .upload(path, buffer, {
+      contentType: isWav ? "audio/wav" : "audio/mpeg",
+      upsert: false,
+    });
   if (error) {
     console.error("[tts] upload failed:", error.message);
     return null;

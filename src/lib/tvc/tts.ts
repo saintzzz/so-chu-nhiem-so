@@ -25,6 +25,8 @@ const EDGE_VOICE = {
 
 // edge-tts: endpoint doc to cua Microsoft, mien phi - provider fallback cuoi.
 // TTS_PROVIDER=edge de ep dung rieng; =openai de tat edge.
+// CR-056: msedge-tts 2.1.0 chet tu 10/2026 (MS chi chap nhan Sec-MS-GEC v2)
+// -> doi sang fork @andresaya/edge-tts da port thuat toan v2.
 async function edgeSegment(
   text: string,
   voice: string,
@@ -32,29 +34,23 @@ async function edgeSegment(
 ): Promise<Buffer | null> {
   if (!aiProviderAllowed("edge")) return null;
   // R3: endpoint thuc te cua edge-tts cung qua AI_ALLOWED_ENDPOINTS.
-  if (!aiEndpointAllowed("https://speech.platform.bing.com")) return null;
-  // Deadline cover ca setMetadata (mo WebSocket) lan stream - fallback het
-  // budget thi bo qua thay vi lech khoi budget route.
+  if (!aiEndpointAllowed("https://api.msedgeservices.com")) return null;
+  // Deadline cover ca mo WebSocket lan stream - fallback het budget thi bo
+  // qua thay vi lech khoi budget route. AbortSignal truyen thang vao options.
   const left = deadlineAt - Date.now();
   if (left < 2_000) return null;
-  const { MsEdgeTTS, OUTPUT_FORMAT } = await import("msedge-tts");
-  const tts = new MsEdgeTTS();
-  const timeout = setTimeout(() => tts.close(), Math.min(25_000, left));
+  const { EdgeTTS } = await import("@andresaya/edge-tts");
+  const tts = new EdgeTTS();
   try {
-    await tts.setMetadata(
-      voice,
-      OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3,
-    );
-    const { audioStream } = tts.toStream(text.slice(0, 4000));
     const chunks: Buffer[] = [];
-    for await (const c of audioStream as AsyncIterable<Buffer>) chunks.push(c);
+    for await (const c of tts.synthesizeStream(text.slice(0, 4000), voice, {
+      outputFormat: "audio-24khz-96kbitrate-mono-mp3",
+      signal: AbortSignal.timeout(Math.min(25_000, left)),
+    })) chunks.push(Buffer.from(c));
     return chunks.length ? Buffer.concat(chunks) : null;
   } catch (e) {
     console.error("[tts-edge] failed:", e instanceof Error ? e.message : e);
     return null;
-  } finally {
-    clearTimeout(timeout);
-    tts.close();
   }
 }
 

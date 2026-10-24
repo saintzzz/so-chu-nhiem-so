@@ -46,7 +46,7 @@ slideforge chưa?" -> xác nhận "có làm" cho nâng cấp theo kịch bản s
 `OPENAI_API_KEY` local la key OpenRouter -> `api.openai.com/audio/speech` 401
 -> TTS khong bao gio chay duoc o moi truong nay. Can provider mien phi
 khong key de: (a) verify e2e duoc, (b) giam chi phi production. Da them
-**edge-tts** (`msedge-tts@2.1.0`, giong slideforge) lam provider fallback:
+**edge-tts** (`@andresaya/edge-tts@1.9.1`) lam provider fallback:
 
 - `TTS_PROVIDER`: `auto` (default = openai -> edge) | `openai` | `edge`.
 - Giong edge: `TTS_EDGE_VOICE_A` (en-US-AndrewNeural),
@@ -55,7 +55,10 @@ khong key de: (a) verify e2e duoc, (b) giam chi phi production. Da them
 - `synthesizeDialogue` (A-03) va `synthesizeSpeech` (A-01/A-02/V-02/DC-06)
   cung qua `ttsSegment` -> het key OpenAI thi roi xuong edge tu dong.
 - edge di qua `aiProviderAllowed("edge")` +
-  `aiEndpointAllowed(speech.platform.bing.com)` - ton trong allowlist.
+  `aiEndpointAllowed(api.msedgeservices.com)` - ton trong allowlist.
+- 10/2026 MS chi chap nhan Sec-MS-GEC v2 -> `msedge-tts@2.1.0` chet
+  (WS handshake 200 thay 101); doi sang fork da port thuat toan v2
+  (xem rany2/edge-tts#490, #492).
 
 ## Ngoài phạm vi
 

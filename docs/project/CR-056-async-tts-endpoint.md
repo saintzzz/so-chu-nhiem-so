@@ -34,3 +34,13 @@ truoc khi luu. Neu audio fail -> doc van dung duoc (fail-soft giu nguyen).
 - UI: tool-runner them buoc audio sau generate.
 - Risk: trung binh - la luong chinh cua studio audio, can test lai
   4 tool tren production.
+
+## Fix bo sung trong luc verify (edge-tts v2)
+
+Sau khi tach endpoint, edge-tts chet hoan toan: `msedge-tts@2.1.0`
+gui Sec-MS-GEC v1, MS tu 10/2026 chi chap nhan v2 -> WS handshake
+tra 200 thay vi 101 (xem rany2/edge-tts#490). Da doi sang fork
+`@andresaya/edge-tts@1.9.1` (port thuat toan GEC v2 tu PR #492) -
+cung API nen chi thay `edgeSegment` trong `src/lib/tvc/tts.ts`.
+Verify local: A-02 audio endpoint tra insert + mp3 36KB public
+download duoc tren tvc-media.

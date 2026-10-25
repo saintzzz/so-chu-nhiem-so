@@ -35,7 +35,8 @@ dung dong thoi. Audit live DB (2026-10-25) cho thay:
 - AC-57.2: migration file trong `supabase/migrations/` tai tao duoc
   cung trang thai policy.
 - AC-57.3: EXPLAIN (ANALYZE) tren query pattern attendance/grades cho
-  thay index scan + mean time giam so voi baseline 806ms/675ms.
+  thay index scan + InitPlan; mean-time improvement theo doi sau
+  1 tuan traffic (baseline 806ms/675ms da ghi).
 - AC-57.4: khong policy nao doi nguf nghia - regression test: app
   Playwright smoke (login 3 role, man hinh chinh load) sau apply.
 - AC-57.5: advisors report khong co finding critical moi.
@@ -89,9 +90,17 @@ dung dong thoi. Audit live DB (2026-10-25) cho thay:
     **48.7ms**, Bitmap Index Scan tren `idx_grades_year` ca 2 nhanh
     (NULL va uuid) - khong seq scan.
 - Baseline cu (pg_stat_statements mean): attendance 806ms, grades
-  673-2343ms. Mean moi se reflect improvement trong vai ngay toi khi
-  stats tich luy lai; plan-level evidence o tren xac nhan ca index
-  usage lan InitPlan. **AC-57.3 PASS.**
+  673-2343ms.
+- **AC-57.3 PARTIAL** (external review r2 adjudication): plan-level
+  evidence PASS - ca 2 patterns dung index (PK scan / Bitmap Index
+  Scan idx_grades_year) + InitPlan, measured 323ms/48.7ms duoi RLS
+  path. Phan "mean time giam so voi baseline" khong do lai duoc
+  retroactively (stats cu da tron lan voi trang thai pre-fix) ->
+  pending: so sanh pg_stat_statements mean sau ~1 tuan traffic that.
+  Baseline da ghi lai o tren de doi chieu.
+- External review r1+r2: 1 High (migration replay order - fixed bang
+  rename 20261224/25), 3 Medium (evidence, rollback part-2, test
+  strength - fixed). Residual: F2 mean-comparison tracking.
 
 ### F - Advisors pass: DONE
 

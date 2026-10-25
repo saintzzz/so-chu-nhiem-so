@@ -58,7 +58,8 @@ trước khi làm việc; cập nhật cùng commit với artifact của phase.
 
 - Supabase micro compute throttle khi chuỗi QA nặng - cân nhắc Pro+Small trước
   khi scale trường thật (đã ghi trong HANDOVER-2026-10-09).
-- `ke_toan` đọc được tên HS qua `students_staff_read` - discrepancy chờ chốt.
+- `ke_toan` đọc được danh sách HS qua `students_staff_read` -
+  **Ruling 2026-10-25: GIỮ** - kế toán cần danh sách HS để thu học phí.
 
 ## 2026-12-23 - CR-053 review loop dong (r33->r34)
 

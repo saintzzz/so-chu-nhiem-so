@@ -37,6 +37,29 @@ khi can**.
    `so-chu-nhiem/src` + check edge_logs cho PostgREST calls toi
    `/rest/v1/` tren bang practice tu authenticated users.
 
+### Phase 0 results (done 2026-10-25)
+
+- **SCN khong phu thuoc practice.***: 0 references trong src/, chi co
+  `scripts/seed-real-demo.mjs` (comment) + migration cr057.
+- EA client (`student-self-practice-web`) dung `db.schema='practice'`
+  + Supabase Auth -> can migrate auth users.
+- Inventory that tren live DB:
+  - practice schema: **33 tables, 73 functions, 42 policies,
+    3 triggers**. Lon nhat: qb_questions ~356MB, qb_question_assets.
+  - Extensions can co o project moi: pg_trgm (da install o public cu,
+    reinstall vao extensions schema).
+  - Auth: ~**51 users** EA (`*@students.ioe-practice.example`) trong
+    auth.users - phai export/qua Management API hoac re-seed (account
+    demo? verify truoc cutover).
+  - Storage: bucket **`ea-audio` (121MB, public)** thuoc EA -> copy
+    qua S3 API. Cac bucket khac: lesson-plans(SCN), sf-*
+    (slideforge ~126MB), tvc-* (SCN).
+  - RLS policies practice: 42 -> can recreate; grants cho
+    anon/authenticated/service_role.
+- **Luu y pham vi**: DB con chua `sf` schema (slideforge) + sf-*
+  buckets ~126MB - cung la noisy neighbor nhung OUT OF SCOPE cho CR
+  nay; tach rieng neu can.
+
 ### Phase 1 - Data migration (maintenance window ~15-30 phut)
 
 4. Freeze writes EA: maintenance page hoac chi dinh khung gio thap diem

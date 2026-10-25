@@ -1,0 +1,4214 @@
+[
+ {
+  "schemaname": "cron",
+  "tablename": "job",
+  "policyname": "cron_job_policy",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(username = CURRENT_USER)",
+  "with_check": null
+ },
+ {
+  "schemaname": "cron",
+  "tablename": "job_run_details",
+  "policyname": "cron_job_run_details_policy",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(username = CURRENT_USER)",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "accounts",
+  "policyname": "accounts_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "accounts",
+  "policyname": "accounts_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "accounts",
+  "policyname": "accounts_teacher_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.teaches_student(id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "audit_log",
+  "policyname": "audit_log_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "class_grade_scopes",
+  "policyname": "scopes_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "class_grade_scopes",
+  "policyname": "scopes_student_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM practice.enrollments e\n  WHERE ((e.class_id = class_grade_scopes.class_id) AND (e.student_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "class_grade_scopes",
+  "policyname": "scopes_teacher_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "practice.owns_class(class_id)",
+  "with_check": "practice.owns_class(class_id)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_student_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM practice.enrollments e\n  WHERE ((e.class_id = classes.id) AND (e.student_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_teacher_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "practice.owns_class(id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_teacher_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(practice.is_teacher() AND (created_by = ( SELECT auth.uid() AS uid)))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_teacher_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.owns_class(id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "classes",
+  "policyname": "classes_teacher_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "practice.owns_class(id)",
+  "with_check": "practice.owns_class(id)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "engagement_state",
+  "policyname": "engagement_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "engagement_state",
+  "policyname": "engagement_self_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "engagement_state",
+  "policyname": "engagement_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "engagement_state",
+  "policyname": "engagement_self_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "enrollments",
+  "policyname": "enrollments_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "enrollments",
+  "policyname": "enrollments_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "enrollments",
+  "policyname": "enrollments_teacher_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "practice.owns_class(class_id)",
+  "with_check": "practice.owns_class(class_id)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_contacts",
+  "policyname": "parent_contacts_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_contacts",
+  "policyname": "parent_contacts_self_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_contacts",
+  "policyname": "parent_contacts_self_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_contacts",
+  "policyname": "parent_contacts_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_contacts",
+  "policyname": "parent_contacts_self_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "parent_report_sends",
+  "policyname": "parent_report_sends_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_adaptive_decisions",
+  "policyname": "qb_adaptive_decisions_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_assets",
+  "policyname": "qb_assets_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_attempt_events",
+  "policyname": "qb_attempt_events_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_attempt_events",
+  "policyname": "qb_attempt_events_self_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(learner_id = ( SELECT auth.uid() AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_audio_assets",
+  "policyname": "qb_audio_assets_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_exam_blueprints",
+  "policyname": "qb_exam_blueprints_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_exam_forms",
+  "policyname": "qb_exam_forms_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_question_assets",
+  "policyname": "qb_question_assets_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_question_audio",
+  "policyname": "qb_question_audio_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "true",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_questions",
+  "policyname": "qb_questions_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_review_events",
+  "policyname": "qb_review_events_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "qb_review_queue",
+  "policyname": "qb_review_queue_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "results",
+  "policyname": "results_admin_all",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "( SELECT practice.is_admin() AS is_admin)",
+  "with_check": "( SELECT practice.is_admin() AS is_admin)"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "results",
+  "policyname": "results_self_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))"
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "results",
+  "policyname": "results_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(account_id = ( SELECT ( SELECT auth.uid() AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "practice",
+  "tablename": "results",
+  "policyname": "results_teacher_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "practice.teaches_student(account_id)",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "academic_years",
+  "policyname": "years_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "academic_years",
+  "policyname": "years_read_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) OR (school_id = ( SELECT ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id) AS my_school_id))) AND (( SELECT ( SELECT (scn_is_dept() AND (academic_years.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activities",
+  "policyname": "act_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND scn_class_in_school(class_id)) OR ((my_role() = 'gvcn'::text) AND scn_is_my_homeroom_class(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activities",
+  "policyname": "act_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(class_id IN ( SELECT students.class_id\n   FROM students\n  WHERE (students.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activities",
+  "policyname": "act_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND scn_class_in_school(class_id)) OR ((my_role() = 'gvcn'::text) AND scn_is_my_homeroom_class(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activities",
+  "policyname": "act_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (activities.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activities",
+  "policyname": "act_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND scn_class_in_school(class_id)) OR ((my_role() = 'gvcn'::text) AND scn_is_my_homeroom_class(class_id)))",
+  "with_check": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND scn_class_in_school(class_id)) OR ((my_role() = 'gvcn'::text) AND scn_is_my_homeroom_class(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_announcements",
+  "policyname": "aa_staff_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(is_staff() AND (school_id = ( SELECT my_school_id() AS my_school_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((my_role() = 'gvcn'::text) AND scn_student_in_my_homeroom(student_id)) OR ((my_role() = 'bgh'::text) AND scn_student_in_school(student_id)) OR (my_role() = 'admin'::text))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_family_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_family_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_family_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(scn_attendance_pair_ok(activity_id, student_id) AND (((my_role() = 'gvcn'::text) AND scn_student_in_my_homeroom(student_id)) OR ((my_role() = 'bgh'::text) AND scn_student_in_school(student_id)) OR (my_role() = 'admin'::text)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (activity_attendance.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "activity_attendance",
+  "policyname": "aa_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((my_role() = 'gvcn'::text) AND scn_student_in_my_homeroom(student_id)) OR ((my_role() = 'bgh'::text) AND scn_student_in_school(student_id)) OR (my_role() = 'admin'::text))",
+  "with_check": "(scn_attendance_pair_ok(activity_id, student_id) AND (((my_role() = 'gvcn'::text) AND scn_student_in_my_homeroom(student_id)) OR ((my_role() = 'bgh'::text) AND scn_student_in_school(student_id)) OR (my_role() = 'admin'::text)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_budgets",
+  "policyname": "ai_budgets_admin_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT my_role() AS my_role) = 'admin'::text)",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_budgets",
+  "policyname": "ai_budgets_admin_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(( SELECT my_role() AS my_role) = 'admin'::text)",
+  "with_check": "(( SELECT my_role() AS my_role) = 'admin'::text)"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_jobs",
+  "policyname": "ai_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((created_by = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_jobs",
+  "policyname": "ai_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(is_school_staff() AND (created_by = ( SELECT auth.uid() AS uid)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_jobs",
+  "policyname": "ai_jobs_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((created_by = ( SELECT auth.uid() AS uid)) OR ( SELECT ( SELECT (scn_is_dept() AND (ai_jobs.created_by IN ( SELECT scn_my_scope_profile_ids() AS scn_my_scope_profile_ids))) AS scn_is_dept) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND (created_by IN ( SELECT ( SELECT my_school_profile_ids() AS my_school_profile_ids) AS my_school_profile_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_jobs",
+  "policyname": "ai_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((created_by = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "((created_by = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_usage",
+  "policyname": "ai_usage_self_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(created_by = ( SELECT auth.uid() AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "ai_usage",
+  "policyname": "ai_usage_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT is_staff() AS is_staff) AND ((scn_is_dept() AND (school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcement_reads",
+  "policyname": "ar_self",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcement_reads",
+  "policyname": "ar_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_ann_in_scope(announcement_reads.announcement_id)) AS scn_is_dept) AS scn_is_dept) OR scn_ann_in_school(announcement_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcements",
+  "policyname": "ann_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcements",
+  "policyname": "ann_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids)) OR ((student_id IS NULL) AND (class_id IS NOT NULL) AND (class_id IN ( SELECT s.class_id\n   FROM students s\n  WHERE (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))) OR ((student_id IS NULL) AND (class_id IS NULL) AND (school_id IS NOT NULL) AND (school_id IN ( SELECT c.school_id\n   FROM (students s\n     JOIN classes c ON ((c.id = s.class_id)))\n  WHERE (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcements",
+  "policyname": "ann_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((sender_id = auth.uid()) AND ((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND ((class_id IS NULL) OR scn_class_in_school(class_id)) AND ((student_id IS NULL) OR scn_student_in_school(student_id))) OR ((my_role() = 'gvcn'::text) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND (class_id IS NOT NULL) AND scn_is_my_homeroom_class(class_id) AND ((student_id IS NULL) OR scn_student_in_my_homeroom(student_id)))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcements",
+  "policyname": "ann_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND\n                CASE\n                    WHEN (announcements.class_id IS NOT NULL) THEN scn_class_in_scope(announcements.class_id)\n                    WHEN (announcements.student_id IS NOT NULL) THEN scn_student_in_scope(announcements.student_id)\n                    ELSE scn_profile_in_scope(announcements.sender_id)\n                END) AS scn_is_dept) AS scn_is_dept) OR\nCASE\n    WHEN (class_id IS NOT NULL) THEN scn_class_in_school(class_id)\n    WHEN (student_id IS NOT NULL) THEN scn_student_in_school(student_id)\n    ELSE scn_profile_in_school(sender_id)\nEND))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "announcements",
+  "policyname": "ann_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text, 'gvcn'::text])) AND (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((my_role() = 'admin'::text) OR ((my_role() = ANY (ARRAY['bgh'::text, 'pht'::text])) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND ((class_id IS NULL) OR scn_class_in_school(class_id)) AND ((student_id IS NULL) OR scn_student_in_school(student_id))) OR ((my_role() = 'gvcn'::text) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND (class_id IS NOT NULL) AND scn_is_my_homeroom_class(class_id) AND ((student_id IS NULL) OR scn_student_in_my_homeroom(student_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_parent",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(parent_id IN ( SELECT parents.id\n   FROM parents\n  WHERE (parents.profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_parent_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((parent_id IN ( SELECT parents.id\n   FROM parents\n  WHERE (parents.profile_id = ( SELECT auth.uid() AS uid)))) AND (student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_parent_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(parent_id IN ( SELECT parents.id\n   FROM parents\n  WHERE (parents.profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_s_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_parent_in_school(parent_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (teacher_id = auth.uid()) AND scn_parent_in_school(parent_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_s_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_parent_in_school(parent_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_s_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_parent_in_school(parent_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (teacher_id = auth.uid()) AND scn_parent_in_school(parent_id)))",
+  "with_check": "(scn_parent_in_school(parent_id) AND ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) OR (teacher_id = auth.uid())))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "appointments",
+  "policyname": "appt_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (appointments.parent_id IN ( SELECT scn_my_scope_parent_ids() AS scn_my_scope_parent_ids))) AS scn_is_dept) AS scn_is_dept) OR (parent_id IN ( SELECT my_school_parent_ids() AS my_school_parent_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "assessment_evidence",
+  "policyname": "ae_del2",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(EXISTS ( SELECT 1\n   FROM teacher_assessments ta\n  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_school(ta.teacher_id) AND ((ta.teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "assessment_evidence",
+  "policyname": "ae_ins2",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(EXISTS ( SELECT 1\n   FROM teacher_assessments ta\n  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_school(ta.teacher_id) AND ((ta.teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "assessment_evidence",
+  "policyname": "ae_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (EXISTS ( SELECT 1\n                   FROM teacher_assessments ta\n                  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_scope(ta.teacher_id))))) AS scn_is_dept) AS scn_is_dept) OR (EXISTS ( SELECT 1\n   FROM teacher_assessments ta\n  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_school(ta.teacher_id))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "assessment_evidence",
+  "policyname": "ae_upd2",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(EXISTS ( SELECT 1\n   FROM teacher_assessments ta\n  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_school(ta.teacher_id) AND ((ta.teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))))",
+  "with_check": "(EXISTS ( SELECT 1\n   FROM teacher_assessments ta\n  WHERE ((ta.id = assessment_evidence.assessment_id) AND scn_profile_in_school(ta.teacher_id) AND ((ta.teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (attendance_records.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text, 'so_gd'::text, 'ubnd'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "attendance_records",
+  "policyname": "att_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "audit_logs",
+  "policyname": "audit_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid) IS NOT NULL)"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "audit_logs",
+  "policyname": "audit_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT (scn_is_dept() AND scn_profile_in_scope(audit_logs.actor_id)) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'pht'::text, 'admin'::text]) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = audit_logs.actor_id) AND (p.school_id = ( SELECT my_school_id() AS my_school_id)))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "campuses",
+  "policyname": "camp_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "campuses",
+  "policyname": "camp_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "campuses",
+  "policyname": "camp_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "campuses",
+  "policyname": "campus_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (campuses.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "class_roles",
+  "policyname": "class_roles_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "class_roles",
+  "policyname": "class_roles_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (class_roles.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "class_roles",
+  "policyname": "cr2_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "class_roles",
+  "policyname": "cr2_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "class_roles",
+  "policyname": "cr2_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_parent_student",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM students s\n  WHERE ((s.class_id = classes.id) AND (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (classes.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_write_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_write_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "classes",
+  "policyname": "classes_write_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "cmhs_members",
+  "policyname": "cmhs_family_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(class_id IN ( SELECT s.class_id\n   FROM students s\n  WHERE (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "cmhs_members",
+  "policyname": "cmhs_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (cmhs_members.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "cmhs_members",
+  "policyname": "cmhs_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text])",
+  "with_check": "(( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text])"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((evaluated_by = ( SELECT auth.uid() AS uid)) AND (((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND scn_student_in_my_teaching(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text])))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND (competency_evaluations.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "competency_evaluations",
+  "policyname": "nlpc_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND (conduct_evaluations.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_evaluations",
+  "policyname": "ce_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_records",
+  "policyname": "cr_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND (recorded_by = auth.uid()) AND scn_student_in_school(student_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_records",
+  "policyname": "cr_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_records",
+  "policyname": "cr_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND (recorded_by = ( SELECT auth.uid() AS uid)) AND scn_student_in_my_teaching(student_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_records",
+  "policyname": "cr_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND (conduct_records.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "conduct_records",
+  "policyname": "cr_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND (recorded_by = auth.uid()) AND scn_student_in_school(student_id)))",
+  "with_check": "(scn_student_in_school(student_id) AND ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND (recorded_by = auth.uid()) AND scn_student_in_my_teaching(student_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "counseling_cases",
+  "policyname": "cc_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "counseling_cases",
+  "policyname": "cc_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "counseling_cases",
+  "policyname": "cc_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "counseling_cases",
+  "policyname": "cc_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT (scn_is_dept() AND scn_student_in_scope(counseling_cases.student_id)) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND scn_student_in_school(student_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "counseling_cases",
+  "policyname": "cc_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "daily_reports",
+  "policyname": "dr_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (daily_reports.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "departments",
+  "policyname": "dept_read_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (departments.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "dept_meetings",
+  "policyname": "dm_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(scn_is_dept_head(department_id) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_dept_in_school(department_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "dept_meetings",
+  "policyname": "dm_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(scn_is_dept_head(department_id) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_dept_in_school(department_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "dept_meetings",
+  "policyname": "dm_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (dept_meetings.department_id IN ( SELECT scn_my_scope_dept_ids() AS scn_my_scope_dept_ids))) AS scn_is_dept) AS scn_is_dept) OR (department_id IN ( SELECT my_school_dept_ids() AS my_school_dept_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "dept_meetings",
+  "policyname": "dm_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(scn_is_dept_head(department_id) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_dept_in_school(department_id)))",
+  "with_check": "(scn_is_dept_head(department_id) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_dept_in_school(department_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "digest_deliveries",
+  "policyname": "digest_deliveries_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND (parent_id IN ( SELECT my_school_parent_ids() AS my_school_parent_ids))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (EXISTS ( SELECT 1\n   FROM ((parent_students ps\n     JOIN students s ON ((s.id = ps.student_id)))\n     JOIN classes c ON ((c.id = s.class_id)))\n  WHERE ((ps.parent_id = digest_deliveries.parent_id) AND (c.gvcn_id = auth.uid()) AND (c.school_id = ( SELECT my_school_id() AS my_school_id)))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "early_warnings",
+  "policyname": "ew_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (scn_student_in_my_homeroom(student_id) OR scn_is_my_homeroom_class(class_id))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "early_warnings",
+  "policyname": "ew_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (scn_student_in_my_homeroom(student_id) OR scn_is_my_homeroom_class(class_id))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "early_warnings",
+  "policyname": "ew_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT (scn_is_dept() AND scn_student_in_scope(early_warnings.student_id)) AS scn_is_dept) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (scn_student_in_my_homeroom(student_id) OR scn_is_my_homeroom_class(class_id))) OR ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "early_warnings",
+  "policyname": "ew_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (scn_student_in_my_homeroom(student_id) OR scn_is_my_homeroom_class(class_id))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (scn_student_in_my_homeroom(student_id) OR scn_is_my_homeroom_class(class_id))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_criteria",
+  "policyname": "ec_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_criteria",
+  "policyname": "ec_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_criteria",
+  "policyname": "ec_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (emulation_criteria.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_criteria",
+  "policyname": "ec_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_scores",
+  "policyname": "es_staff_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_scores",
+  "policyname": "es_staff_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_scores",
+  "policyname": "es_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (emulation_scores.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "emulation_scores",
+  "policyname": "es_staff_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))",
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "equipment",
+  "policyname": "equipment_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (( SELECT (scn_is_dept() AND (equipment.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) OR (p.school_id = equipment.school_id))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "equipment",
+  "policyname": "equipment_staff_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'ke_toan'::text, 'admin'::text]) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.school_id = equipment.school_id)))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'ke_toan'::text, 'admin'::text]) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.school_id = equipment.school_id)))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exam_sessions",
+  "policyname": "exam_sessions_family_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(class_id IN ( SELECT s.class_id\n   FROM students s\n  WHERE (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exam_sessions",
+  "policyname": "exam_sessions_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(exam_sessions.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exam_sessions",
+  "policyname": "exam_sessions_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exams",
+  "policyname": "exams_family_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((status <> 'draft'::text) AND (( SELECT auth.role() AS role) = 'authenticated'::text) AND (school_id IN ( SELECT scn_my_school_ids() AS scn_my_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exams",
+  "policyname": "exams_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (exams.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "exams",
+  "policyname": "exams_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "feature_grants",
+  "policyname": "fg_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "feature_grants",
+  "policyname": "fg_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]))",
+  "with_check": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "grade_book_state",
+  "policyname": "grade_book_state_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (is_staff() AND scn_class_in_school((split_part(scope_key, '|'::text, 4))::uuid)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "grades",
+  "policyname": "grades_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "grades",
+  "policyname": "grades_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT ( SELECT (scn_is_dept() AND (grades.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'giam_thi'::text, 'admin'::text, 'so_gd'::text, 'ubnd'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "incidents",
+  "policyname": "inc_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND\nCASE\n    WHEN (class_id IS NOT NULL) THEN scn_class_in_school(class_id)\n    WHEN (student_id IS NOT NULL) THEN scn_student_in_school(student_id)\n    ELSE scn_profile_in_school(recorded_by)\nEND) OR ((recorded_by = auth.uid()) AND ((class_id IS NULL) OR scn_class_in_school(class_id)) AND ((student_id IS NULL) OR scn_student_in_school(student_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "incidents",
+  "policyname": "inc_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text]) AND (recorded_by = auth.uid()) AND ((class_id IS NULL) OR scn_class_in_school(class_id)) AND ((student_id IS NULL) OR scn_student_in_school(student_id)) AND ((class_id IS NULL) OR (student_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM students s\n  WHERE ((s.id = incidents.student_id) AND (s.class_id = incidents.class_id))))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "incidents",
+  "policyname": "inc_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT (scn_is_dept() AND\n        CASE\n            WHEN (incidents.class_id IS NOT NULL) THEN scn_class_in_scope(incidents.class_id)\n            WHEN (incidents.student_id IS NOT NULL) THEN scn_student_in_scope(incidents.student_id)\n            ELSE scn_profile_in_scope(incidents.recorded_by)\n        END) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'y_te'::text, 'admin'::text]) AND\nCASE\n    WHEN (class_id IS NOT NULL) THEN scn_class_in_school(class_id)\n    WHEN (student_id IS NOT NULL) THEN scn_student_in_school(student_id)\n    ELSE scn_profile_in_school(recorded_by)\nEND))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "incidents",
+  "policyname": "inc_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text]) AND\nCASE\n    WHEN (class_id IS NOT NULL) THEN scn_class_in_school(class_id)\n    WHEN (student_id IS NOT NULL) THEN scn_student_in_school(student_id)\n    ELSE scn_profile_in_school(recorded_by)\nEND) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)))",
+  "with_check": "(((class_id IS NULL) OR scn_class_in_school(class_id)) AND ((student_id IS NULL) OR scn_student_in_school(student_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "item_acl",
+  "policyname": "acl_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "item_acl",
+  "policyname": "acl_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((school_id = my_school_id()) AND (my_role() = ANY (ARRAY['bgh'::text, 'admin'::text])) AND scn_profile_in_school(user_id))",
+  "with_check": "((school_id = my_school_id()) AND (my_role() = ANY (ARRAY['bgh'::text, 'admin'::text])) AND scn_profile_in_school(user_id))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "kpis",
+  "policyname": "kpi_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "kpis",
+  "policyname": "kpi_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "kpis",
+  "policyname": "kpi_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(kpis.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "kpis",
+  "policyname": "kpi_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "lesson_plans",
+  "policyname": "lp_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((teacher_id = auth.uid()) AND ((school_id = my_school_id()) OR scn_class_in_school(class_id))) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND ((school_id = my_school_id()) OR scn_class_in_school(class_id))) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "lesson_plans",
+  "policyname": "lp_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text]) AND (teacher_id = ( SELECT auth.uid() AS uid)) AND scn_class_in_school(class_id))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "lesson_plans",
+  "policyname": "lp_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (lesson_plans.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "lesson_plans",
+  "policyname": "lp_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(scn_class_in_school(class_id) AND ((teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])))",
+  "with_check": "(scn_class_in_school(class_id) AND ((teacher_id = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "messages",
+  "policyname": "msg_own",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((sender_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid)) OR (recipient_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "messages",
+  "policyname": "msg_read_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(recipient_id = ( SELECT auth.uid() AS uid))",
+  "with_check": "(recipient_id = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "messages",
+  "policyname": "msg_send",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((sender_id = ( SELECT auth.uid() AS uid)) AND scn_can_message(recipient_id, student_id))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND scn_student_in_scope(student_id))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((evaluated_by = ( SELECT auth.uid() AS uid)) AND (((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) && ARRAY['gvbm'::text, 'to_truong'::text]) AND scn_student_in_my_teaching(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text])))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND scn_student_in_scope(nlpc_comments.student_id)) AS scn_is_dept) OR scn_student_in_school(student_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "nlpc_comments",
+  "policyname": "nlpc_cmt_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((evaluated_by = auth.uid()) AND scn_student_in_school(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "notifications",
+  "policyname": "notif_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(scn_profile_in_school(profile_id) AND ((link IS NULL) OR ((link ~ '^/[a-zA-Z0-9_/?=&%#.~:+-]*$'::text) AND (link !~ '^//'::text))) AND (is_school_staff() OR ((my_role() = ANY (ARRAY['phu_huynh'::text, 'hoc_sinh'::text])) AND (type = ANY (ARRAY['appointment'::text, 'message'::text])))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "notifications",
+  "policyname": "notif_own",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "notifications",
+  "policyname": "notif_own_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "org_units",
+  "policyname": "ou_staff_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'admin'::text])",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "org_units",
+  "policyname": "ou_staff_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'phong_gd'::text, 'ubnd'::text, 'admin'::text])"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "org_units",
+  "policyname": "ou_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT (scn_is_dept() AND scn_org_in_scope(org_units.id)) AS scn_is_dept) AS scn_is_dept) OR (id = ( SELECT profiles.org_unit_id\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "org_units",
+  "policyname": "ou_staff_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'phong_gd'::text, 'ubnd'::text, 'admin'::text])",
+  "with_check": "(( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'phong_gd'::text, 'ubnd'::text, 'admin'::text])"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parent_students",
+  "policyname": "ps_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parent_students",
+  "policyname": "ps_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids)) OR (parent_id IN ( SELECT parents.id\n   FROM parents\n  WHERE (parents.profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parent_students",
+  "policyname": "ps_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parent_students",
+  "policyname": "ps_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (parent_students.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parent_students",
+  "policyname": "ps_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "par_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_parent_in_school(id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "par_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text])"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "par_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_parent_in_school(id)))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_parent_in_school(id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "parents_cmhs_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM (cmhs_members mine\n     JOIN cmhs_members theirs ON ((theirs.class_id = mine.class_id)))\n  WHERE ((mine.parent_id = my_parent_id()) AND (theirs.parent_id = parents.id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "parents_self",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "parents_self_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(profile_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "parents",
+  "policyname": "parents_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT ( SELECT (scn_is_dept() AND (parents.id IN ( SELECT scn_my_scope_parent_ids() AS scn_my_scope_parent_ids))) AS scn_is_dept) AS scn_is_dept) OR (id IN ( SELECT my_school_parent_ids() AS my_school_parent_ids))) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'van_thu'::text, 'admin'::text, 'so_gd'::text, 'ubnd'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_absences",
+  "policyname": "pa_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_absences",
+  "policyname": "pa_owner_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(EXISTS ( SELECT 1\n   FROM period_logs pl\n  WHERE ((pl.id = period_absences.period_log_id) AND (scn_is_my_ttentry(pl.timetable_entry_id) OR scn_is_sub_ttentry_date(pl.timetable_entry_id, pl.date) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_absences",
+  "policyname": "pa_owner_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(EXISTS ( SELECT 1\n   FROM ((period_logs pl\n     JOIN timetable_entries te ON ((te.id = pl.timetable_entry_id)))\n     JOIN students s ON (((s.id = period_absences.student_id) AND (s.class_id = te.class_id))))\n  WHERE ((pl.id = period_absences.period_log_id) AND (scn_is_my_ttentry(pl.timetable_entry_id) OR scn_is_sub_ttentry_date(pl.timetable_entry_id, pl.date) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_absences",
+  "policyname": "pa_owner_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(EXISTS ( SELECT 1\n   FROM period_logs pl\n  WHERE ((pl.id = period_absences.period_log_id) AND (scn_is_my_ttentry(pl.timetable_entry_id) OR scn_is_sub_ttentry_date(pl.timetable_entry_id, pl.date) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])))))",
+  "with_check": "(EXISTS ( SELECT 1\n   FROM ((period_logs pl\n     JOIN timetable_entries te ON ((te.id = pl.timetable_entry_id)))\n     JOIN students s ON (((s.id = period_absences.student_id) AND (s.class_id = te.class_id))))\n  WHERE ((pl.id = period_absences.period_log_id) AND (scn_is_my_ttentry(pl.timetable_entry_id) OR scn_is_sub_ttentry_date(pl.timetable_entry_id, pl.date) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_absences",
+  "policyname": "pa_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND (period_absences.student_id IN ( SELECT scn_my_scope_student_ids() AS scn_my_scope_student_ids))) AS scn_is_dept) OR (student_id IN ( SELECT my_school_student_ids() AS my_school_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_logs",
+  "policyname": "pl_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(timetable_entry_id IN ( SELECT timetable_entries.id\n   FROM timetable_entries\n  WHERE (timetable_entries.class_id IN ( SELECT students.class_id\n           FROM students\n          WHERE (students.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_logs",
+  "policyname": "pl_owner_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(scn_is_my_ttentry(timetable_entry_id) OR scn_is_sub_ttentry_date(timetable_entry_id, date) OR ((( SELECT my_role() AS my_role) = 'bgh'::text) AND scn_ttentry_in_school(timetable_entry_id)) OR (( SELECT my_role() AS my_role) = 'admin'::text))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_logs",
+  "policyname": "pl_owner_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((logged_by = ( SELECT auth.uid() AS uid)) AND (scn_is_my_ttentry(timetable_entry_id) OR scn_is_sub_ttentry_date(timetable_entry_id, date)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_logs",
+  "policyname": "pl_owner_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(scn_is_my_ttentry(timetable_entry_id) OR scn_is_sub_ttentry_date(timetable_entry_id, date) OR ((( SELECT my_role() AS my_role) = 'bgh'::text) AND scn_ttentry_in_school(timetable_entry_id)) OR (( SELECT my_role() AS my_role) = 'admin'::text))",
+  "with_check": "(scn_is_my_ttentry(timetable_entry_id) OR scn_is_sub_ttentry_date(timetable_entry_id, date) OR ((( SELECT my_role() AS my_role) = 'bgh'::text) AND scn_ttentry_in_school(timetable_entry_id)) OR (( SELECT my_role() AS my_role) = 'admin'::text))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "period_logs",
+  "policyname": "pl_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (period_logs.timetable_entry_id IN ( SELECT scn_my_scope_ttentry_ids() AS scn_my_scope_ttentry_ids))) AS scn_is_dept) AS scn_is_dept) OR (timetable_entry_id IN ( SELECT my_school_ttentry_ids() AS my_school_ttentry_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "profiles",
+  "policyname": "profiles_family_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "\nCASE\n    WHEN (( SELECT my_role() AS my_role) = ANY (ARRAY['hoc_sinh'::text, 'phu_huynh'::text])) THEN (EXISTS ( SELECT 1\n       FROM (students s\n         JOIN classes c ON ((c.id = s.class_id)))\n      WHERE (((s.profile_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n               FROM (parent_students ps\n                 JOIN parents pa ON ((pa.id = ps.parent_id)))\n              WHERE ((ps.student_id = s.id) AND (pa.profile_id = ( SELECT auth.uid() AS uid)))))) AND ((c.gvcn_id = profiles.id) OR (EXISTS ( SELECT 1\n               FROM timetable_entries t\n              WHERE ((t.class_id = c.id) AND (t.teacher_id = profiles.id))))))))\n    ELSE false\nEND",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "profiles",
+  "policyname": "profiles_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((id = ( SELECT auth.uid() AS uid)) OR ( SELECT (scn_is_dept() AND scn_profile_in_scope(profiles.id)) AS scn_is_dept) OR (( SELECT is_staff() AS is_staff) AND (scn_profile_visible(id) OR\nCASE\n    WHEN (( SELECT my_role() AS my_role) = ANY (ARRAY['hoc_sinh'::text, 'phu_huynh'::text])) THEN (EXISTS ( SELECT 1\n       FROM (students s\n         JOIN classes c ON ((c.id = s.class_id)))\n      WHERE (((s.profile_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n               FROM (parent_students ps\n                 JOIN parents pa ON ((pa.id = ps.parent_id)))\n              WHERE ((ps.student_id = s.id) AND (pa.profile_id = ( SELECT auth.uid() AS uid)))))) AND ((c.gvcn_id = profiles.id) OR (EXISTS ( SELECT 1\n               FROM timetable_entries t\n              WHERE ((t.class_id = c.id) AND (t.teacher_id = profiles.id))))))))\n    ELSE false\nEND)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "profiles",
+  "policyname": "profiles_self_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "profiles",
+  "policyname": "profiles_staff_mgmt_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (school_id IS NOT NULL) AND (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "register_signoffs",
+  "policyname": "signoff_bgh_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "register_signoffs",
+  "policyname": "signoff_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "register_signoffs",
+  "policyname": "signoff_gvcn_submit",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id) AND (status = ANY (ARRAY['pending'::text, 'rejected'::text])))",
+  "with_check": "((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id) AND (status = 'submitted'::text))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "register_signoffs",
+  "policyname": "signoff_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND (status = 'pending'::text) AND (EXISTS ( SELECT 1\n   FROM classes c\n  WHERE ((c.id = register_signoffs.class_id) AND (c.gvcn_id = auth.uid()) AND (c.school_id = ( SELECT my_school_id() AS my_school_id)))))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "register_signoffs",
+  "policyname": "signoff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(register_signoffs.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_kpis",
+  "policyname": "skpi_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (( SELECT (scn_is_dept() AND (school_kpis.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) OR (p.school_id = school_kpis.school_id))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_kpis",
+  "policyname": "skpi_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_year_events",
+  "policyname": "sye_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_year_events",
+  "policyname": "sye_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_year_events",
+  "policyname": "sye_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (school_year_events.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "school_year_events",
+  "policyname": "sye_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "schools",
+  "policyname": "org_read_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT (scn_is_dept() AND (schools.id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "seating_charts",
+  "policyname": "seat_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "seating_charts",
+  "policyname": "seat_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "seating_charts",
+  "policyname": "seat_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(seating_charts.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "seating_charts",
+  "policyname": "seat_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_groups",
+  "policyname": "sg_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_groups",
+  "policyname": "sg_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_groups",
+  "policyname": "sg_read_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM students s\n  WHERE ((s.group_id = student_groups.id) AND (s.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_groups",
+  "policyname": "sg_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(student_groups.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_groups",
+  "policyname": "sg_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_record_history",
+  "policyname": "srh_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_record_history",
+  "policyname": "srh_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "student_record_history",
+  "policyname": "srh_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND (( SELECT (scn_is_dept() AND scn_student_in_scope(student_record_history.student_id)) AS scn_is_dept) OR scn_student_in_school(student_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_staff_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_staff_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (students.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "students",
+  "policyname": "students_staff_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))",
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subj_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subj_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subj_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subjects_authenticated_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT auth.role() AS role) = 'authenticated'::text) AND (school_id IN ( SELECT scn_my_school_ids() AS scn_my_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subjects_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "subjects",
+  "policyname": "subjects_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (subjects.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "substitute_requests",
+  "policyname": "sub_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (substitute_requests.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "substitute_requests",
+  "policyname": "subr_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "substitute_requests",
+  "policyname": "subr_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))) AND scn_subr_refs_in_school(school_id, class_id, subject_id, absent_teacher_id, substitute_teacher_id) AND (status = 'pending'::text) AND ((requested_by = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "substitute_requests",
+  "policyname": "subr_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))) AND ((requested_by = ( SELECT auth.uid() AS uid)) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text])))",
+  "with_check": "(is_school_staff() AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT my_school_id() AS my_school_id))) AND scn_subr_refs_in_school(school_id, class_id, subject_id, absent_teacher_id, substitute_teacher_id) AND ((status = 'pending'::text) OR (( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_plans",
+  "policyname": "sp_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_plans",
+  "policyname": "sp_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(student_id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_plans",
+  "policyname": "sp_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_plans",
+  "policyname": "sp_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT (scn_is_dept() AND scn_student_in_scope(support_plans.student_id)) AS scn_is_dept) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND scn_student_in_school(student_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_plans",
+  "policyname": "sp_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_student_in_school(student_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_staff",
+  "policyname": "ss_staff_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_staff",
+  "policyname": "ss_staff_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_staff",
+  "policyname": "ss_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (support_staff.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "support_staff",
+  "policyname": "ss_staff_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tasks",
+  "policyname": "task_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((created_by = auth.uid()) AND scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tasks",
+  "policyname": "task_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tasks",
+  "policyname": "task_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((created_by = auth.uid()) AND scn_class_in_school(class_id)))",
+  "with_check": "(((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_is_my_homeroom_class(class_id)) OR ((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND scn_class_in_school(class_id)) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR ((created_by = auth.uid()) AND scn_class_in_school(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tasks",
+  "policyname": "tasks_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_class_in_scope(tasks.class_id)) AS scn_is_dept) AS scn_is_dept) OR scn_class_in_school(class_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "teacher_assessments",
+  "policyname": "ta_self",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(teacher_id = ( SELECT ( SELECT ( SELECT auth.uid() AS uid) AS uid) AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "teacher_assessments",
+  "policyname": "ta_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'so_gd'::text, 'admin'::text]) AND (( SELECT ( SELECT (scn_is_dept() AND scn_profile_in_scope(teacher_assessments.teacher_id)) AS scn_is_dept) AS scn_is_dept) OR (( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_profile_in_school(teacher_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "teacher_subjects",
+  "policyname": "teacher_subjects_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND scn_profile_in_scope(teacher_subjects.teacher_id)) AS scn_is_dept) AS scn_is_dept) OR scn_profile_in_school(teacher_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "teacher_subjects",
+  "policyname": "teacher_subjects_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])",
+  "with_check": "(( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'admin'::text])"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "timetable_entries",
+  "policyname": "tt_family",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(class_id IN ( SELECT students.class_id\n   FROM students\n  WHERE (students.id IN ( SELECT ( SELECT my_student_ids() AS my_student_ids) AS my_student_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "timetable_entries",
+  "policyname": "tt_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (timetable_entries.class_id IN ( SELECT scn_my_scope_class_ids() AS scn_my_scope_class_ids))) AS scn_is_dept) AS scn_is_dept) OR (class_id IN ( SELECT my_school_class_ids() AS my_school_class_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "timetable_entries",
+  "policyname": "tt_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))",
+  "with_check": "((( SELECT my_roles() AS my_roles) && ARRAY['bgh'::text, 'pht'::text, 'admin'::text]) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR scn_class_in_school(class_id)))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tt15_evaluations",
+  "policyname": "tt15_staff_del",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tt15_evaluations",
+  "policyname": "tt15_staff_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tt15_evaluations",
+  "policyname": "tt15_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT is_staff() AS is_staff) AS is_staff) AND (( SELECT ( SELECT (scn_is_dept() AND (tt15_evaluations.school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids))) AS scn_is_dept) AS scn_is_dept) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "tt15_evaluations",
+  "policyname": "tt15_staff_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))",
+  "with_check": "(( SELECT is_school_staff() AS is_school_staff) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))) AND ((( SELECT my_roles() AS my_roles) @> ARRAY['admin'::text]) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_bgh_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND (school_id = ( SELECT my_school_id() AS my_school_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_bgh_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['bgh'::text]) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND (status = ANY (ARRAY['submitted'::text, 'approved'::text])))",
+  "with_check": "(status = ANY (ARRAY['approved'::text, 'rejected'::text, 'locked'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_dept_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) && ARRAY['so_gd'::text, 'ubnd'::text]) AND (school_id IN ( SELECT scn_my_scope_school_ids() AS scn_my_scope_school_ids)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_gvcn_ins",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id) AND (school_id = ( SELECT my_school_id() AS my_school_id)) AND (status = ANY (ARRAY['draft'::text, 'submitted'::text])) AND (approved_by IS NULL) AND (approved_at IS NULL) AND (reject_reason IS NULL) AND (giay_khen_note IS NULL))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_gvcn_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id))",
+  "with_check": null
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_gvcn_upd",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['gvcn'::text]) AND scn_student_in_my_homeroom(student_id) AND (status = ANY (ARRAY['draft'::text, 'rejected'::text])))",
+  "with_check": "(status = ANY (ARRAY['draft'::text, 'rejected'::text, 'submitted'::text]))"
+ },
+ {
+  "schemaname": "public",
+  "tablename": "year_end_decisions",
+  "policyname": "yed_pht_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT my_roles() AS my_roles) @> ARRAY['pht'::text]) AND scn_student_in_school(student_id))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "assets",
+  "policyname": "assets_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((EXISTS ( SELECT 1\n   FROM sf.jobs j\n  WHERE ((j.id = assets.job_id) AND ((j.owner_id = auth.uid()) OR sf.is_admin())))) OR (job_id = ( SELECT l.published_build_id\n   FROM sf.lessons l\n  WHERE ((l.id = assets.lesson_id) AND (l.status = 'ready'::text) AND (l.deleted_at IS NULL))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "audit_logs",
+  "policyname": "audit_admin_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "sf.is_admin()",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "coursebook_families",
+  "policyname": "catalog_select_families",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "sf.is_active_member()",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "coursebooks",
+  "policyname": "catalog_select_books",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "sf.is_active_member()",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "job_events",
+  "policyname": "job_events_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND (EXISTS ( SELECT 1\n   FROM sf.jobs j\n  WHERE ((j.id = job_events.job_id) AND ((j.owner_id = auth.uid()) OR sf.is_admin())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "jobs",
+  "policyname": "jobs_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((owner_id = auth.uid()) OR sf.is_admin()))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "lessons",
+  "policyname": "lessons_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((owner_id = auth.uid()) OR sf.is_admin() OR ((status = 'ready'::text) AND (deleted_at IS NULL))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "narrations",
+  "policyname": "narrations_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND (EXISTS ( SELECT 1\n   FROM sf.jobs j\n  WHERE ((j.id = narrations.job_id) AND ((j.owner_id = auth.uid()) OR sf.is_admin())))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "pages",
+  "policyname": "pages_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((EXISTS ( SELECT 1\n   FROM sf.jobs j\n  WHERE ((j.id = pages.job_id) AND ((j.owner_id = auth.uid()) OR sf.is_admin())))) OR (job_id = ( SELECT l.published_build_id\n   FROM sf.lessons l\n  WHERE ((l.id = pages.lesson_id) AND (l.status = 'ready'::text) AND (l.deleted_at IS NULL))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "profiles",
+  "policyname": "profiles_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((id = auth.uid()) OR sf.is_admin()))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "segments",
+  "policyname": "segments_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(sf.is_active_member() AND ((EXISTS ( SELECT 1\n   FROM sf.jobs j\n  WHERE ((j.id = segments.job_id) AND ((j.owner_id = auth.uid()) OR sf.is_admin())))) OR (job_id = ( SELECT l.published_build_id\n   FROM sf.lessons l\n  WHERE ((l.id = segments.lesson_id) AND (l.status = 'ready'::text) AND (l.deleted_at IS NULL))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "themes",
+  "policyname": "catalog_select_themes",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "sf.is_active_member()",
+  "with_check": null
+ },
+ {
+  "schemaname": "sf",
+  "tablename": "units",
+  "policyname": "catalog_select_units",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "sf.is_active_member()",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lesson_plans_files_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'lesson-plans'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY['gvcn'::text, 'gvbm'::text, 'bgh'::text])) AND (split_part(objects.name, '/'::text, 1) = (p.school_id)::text)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lesson_plans_files_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'lesson-plans'::text) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = ANY (ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])) OR (p.concurrent_roles && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])) AND (split_part(objects.name, '/'::text, 1) = (p.school_id)::text)))))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lesson_plans_files_select",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'lesson-plans'::text) AND (split_part(name, '/'::text, 1) = ( SELECT (p.school_id)::text AS school_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = ANY (ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])) OR (p.concurrent_roles && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text]))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lp_files_delete_same_school",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'lesson-plans'::text) AND ((storage.foldername(name))[1] = ( SELECT (profiles.school_id)::text AS school_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid()))) AND (owner_id = (auth.uid())::text) AND (NOT (EXISTS ( SELECT 1\n   FROM lesson_plans lp\n  WHERE (lp.file_path = objects.name)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lp_files_insert_same_school",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'lesson-plans'::text) AND ((storage.foldername(name))[1] = ( SELECT (p.school_id)::text AS school_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = ANY (ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])) OR (p.concurrent_roles && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text]))))))"
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "lp_files_read_same_school",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((bucket_id = 'lesson-plans'::text) AND ((storage.foldername(name))[1] = ( SELECT (p.school_id)::text AS school_id\n   FROM profiles p\n  WHERE (p.id = auth.uid()))) AND (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND ((p.role = ANY (ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text])) OR (p.concurrent_roles && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text]))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "media_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "((bucket_id = 'tvc-media'::text) AND ((storage.foldername(name))[1] = (my_school_id())::text) AND (my_roles() && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "storage",
+  "tablename": "objects",
+  "policyname": "media_upload",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((bucket_id = 'tvc-media'::text) AND ((storage.foldername(name))[1] = (my_school_id())::text) AND (my_roles() && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "ai_jobs",
+  "policyname": "ai_jobs_insert_own",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(created_by = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "ai_jobs",
+  "policyname": "ai_jobs_select_own",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(created_by = ( SELECT auth.uid() AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "audit_logs",
+  "policyname": "tvc_audit_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "(actor_id = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "audit_logs",
+  "policyname": "tvc_audit_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT tvc.my_role() AS my_role) = 'admin'::text)",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "curriculum_standards",
+  "policyname": "tvc_std_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((( SELECT auth.uid() AS uid) IS NOT NULL) AND ((school_id IS NULL) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "curriculum_standards",
+  "policyname": "tvc_std_school_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "curriculum_standards",
+  "policyname": "tvc_std_school_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "curriculum_standards",
+  "policyname": "tvc_std_school_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))",
+  "with_check": "((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT profiles.role\n   FROM profiles\n  WHERE (profiles.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "exam_questions",
+  "policyname": "tvc_exq_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(EXISTS ( SELECT 1\n   FROM tvc.exams e\n  WHERE ((e.id = exam_questions.exam_id) AND (e.owner_id = ( SELECT auth.uid() AS uid)))))",
+  "with_check": "(EXISTS ( SELECT 1\n   FROM tvc.exams e\n  WHERE ((e.id = exam_questions.exam_id) AND (e.owner_id = ( SELECT auth.uid() AS uid)))))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "exam_sessions",
+  "policyname": "tvc_exs_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "exam_submissions",
+  "policyname": "tvc_exsub_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "ALL",
+  "qual": "(EXISTS ( SELECT 1\n   FROM tvc.exam_sessions s\n  WHERE ((s.id = exam_submissions.session_id) AND (s.owner_id = ( SELECT auth.uid() AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "exams",
+  "policyname": "tvc_ex_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+  "with_check": "(owner_id = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "generations",
+  "policyname": "tvc_gen_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+  "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "khbd_templates",
+  "policyname": "tvc_tpl_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "((school_id IS NULL) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "khbd_templates",
+  "policyname": "tvc_tpl_school_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "DELETE",
+  "qual": "((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "khbd_templates",
+  "policyname": "tvc_tpl_school_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "khbd_templates",
+  "policyname": "tvc_tpl_school_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))",
+  "with_check": "((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "literature_texts",
+  "policyname": "tvc_texts_admin_write",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(( SELECT tvc.my_role() AS my_role) = 'admin'::text)",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "literature_texts",
+  "policyname": "tvc_texts_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT auth.uid() AS uid) IS NOT NULL)",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "materials",
+  "policyname": "tvc_mat_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((author_id = ( SELECT auth.uid() AS uid)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND ((school_id IS NULL) OR (school_id = ( SELECT my_school_id() AS my_school_id))))",
+  "with_check": "((author_id = ( SELECT auth.uid() AS uid)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff) AND ((school_id IS NULL) OR (school_id = ( SELECT my_school_id() AS my_school_id))))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "materials",
+  "policyname": "tvc_mat_published_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "((status = 'published'::text) AND ((EXISTS ( SELECT 1\n   FROM tvc.profiles tp\n  WHERE (tp.id = ( SELECT auth.uid() AS uid)))) OR ((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'pht'::text, 'admin'::text, 'so_gd'::text, 'ubnd'::text]) AND (NOT (id IN ( SELECT scn_denied_item_ids('materials'::text) AS scn_denied_item_ids))))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "materials",
+  "policyname": "tvc_mat_school_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "((school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'admin'::text]) AND (NOT (id IN ( SELECT scn_denied_item_ids('materials'::text) AS scn_denied_item_ids))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "materials",
+  "policyname": "tvc_mat_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT ( SELECT tvc.my_role() AS my_role) AS my_role) = ANY (ARRAY['kiem_duyet'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "materials",
+  "policyname": "tvc_mat_staff_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(( SELECT ( SELECT tvc.my_role() AS my_role) AS my_role) = ANY (ARRAY['kiem_duyet'::text, 'admin'::text]))",
+  "with_check": "(( SELECT ( SELECT tvc.my_role() AS my_role) AS my_role) = ANY (ARRAY['kiem_duyet'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "matrices",
+  "policyname": "tvc_mx_owner",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+  "with_check": "(owner_id = ( SELECT auth.uid() AS uid))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "profiles",
+  "policyname": "tvc_profiles_admin_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(( SELECT tvc.my_role() AS my_role) = 'admin'::text)",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "profiles",
+  "policyname": "tvc_profiles_self",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(id = ( SELECT auth.uid() AS uid))",
+  "with_check": "((id = ( SELECT auth.uid() AS uid)) AND (role = 'giao_vien'::text))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "profiles",
+  "policyname": "tvc_profiles_staff_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT tvc.my_role() AS my_role) = ANY (ARRAY['kiem_duyet'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "questions",
+  "policyname": "tvc_q_delete",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "DELETE",
+  "qual": "(((owner_id = ( SELECT auth.uid() AS uid)) AND ((school_id IS NULL) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff)))) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "questions",
+  "policyname": "tvc_q_insert",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "authenticated"
+  ],
+  "cmd": "INSERT",
+  "qual": null,
+  "with_check": "((owner_id = ( SELECT auth.uid() AS uid)) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'admin'::text]) AND ((school_id IS NULL) OR (school_id = ( SELECT ( SELECT my_school_id() AS my_school_id) AS my_school_id))))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "questions",
+  "policyname": "tvc_q_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "((NOT (id IN ( SELECT scn_denied_item_ids('questions'::text) AS scn_denied_item_ids))) AND (((owner_id = ( SELECT auth.uid() AS uid)) AND ((school_id IS NULL) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff)))) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['gvcn'::text, 'gvbm'::text, 'to_truong'::text, 'bgh'::text, 'admin'::text]))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "questions",
+  "policyname": "tvc_q_update",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "UPDATE",
+  "qual": "(((owner_id = ( SELECT auth.uid() AS uid)) AND ((school_id IS NULL) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff)))) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))",
+  "with_check": "(((owner_id = ( SELECT auth.uid() AS uid)) AND ((school_id IS NULL) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND ( SELECT scn_is_edu_staff() AS scn_is_edu_staff)))) OR ((school_id = ( SELECT my_school_id() AS my_school_id)) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text])))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "reviews",
+  "policyname": "tvc_rev_author_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(EXISTS ( SELECT 1\n   FROM tvc.materials m\n  WHERE ((m.id = reviews.material_id) AND (m.author_id = ( SELECT auth.uid() AS uid)))))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "reviews",
+  "policyname": "tvc_rev_school",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "((EXISTS ( SELECT 1\n   FROM tvc.materials m\n  WHERE ((m.id = reviews.material_id) AND (m.school_id = ( SELECT my_school_id() AS my_school_id))))) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))",
+  "with_check": "((EXISTS ( SELECT 1\n   FROM tvc.materials m\n  WHERE ((m.id = reviews.material_id) AND (m.school_id = ( SELECT my_school_id() AS my_school_id))))) AND (( SELECT my_roles() AS my_roles) && ARRAY['to_truong'::text, 'bgh'::text, 'admin'::text]))"
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "reviews",
+  "policyname": "tvc_rev_staff",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "ALL",
+  "qual": "(( SELECT tvc.my_role() AS my_role) = ANY (ARRAY['kiem_duyet'::text, 'admin'::text]))",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "subjects",
+  "policyname": "tvc_subjects_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT auth.uid() AS uid) IS NOT NULL)",
+  "with_check": null
+ },
+ {
+  "schemaname": "tvc",
+  "tablename": "textbook_lessons",
+  "policyname": "tvc_lessons_read",
+  "permissive": "PERMISSIVE",
+  "roles": [
+   "public"
+  ],
+  "cmd": "SELECT",
+  "qual": "(( SELECT auth.uid() AS uid) IS NOT NULL)",
+  "with_check": null
+ }
+]

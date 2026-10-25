@@ -1,5 +1,5 @@
 -- CR-057: scalability hardening part 2 (applied 2026-10-25).
--- Part 1 (RLS auth.uid() wrap) lives in 20261025_cr057_rls_auth_uid_wrap.sql.
+-- Part 1 (RLS auth.uid() wrap) lives in 20261224_cr057_rls_auth_uid_wrap.sql.
 -- Rationale: docs/project/CR-057-scalability-hardening.md
 
 -- Part 2: missing FK covering indexes (lint 0001)

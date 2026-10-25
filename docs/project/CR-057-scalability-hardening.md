@@ -50,8 +50,14 @@ dung dong thoi. Audit live DB (2026-10-25) cho thay:
 
 ## Rollback
 
-Snapshot `pg_policies` truoc khi alter (luu JSON) - ALTER POLICY nguoc
-la tu snapshot neu can.
+- Part 1 (policies): snapshot `pg_policies` truoc khi alter
+  (`docs/project/CR-057-pg_policies-snapshot.json`, 351 policies) -
+  ALTER POLICY nguoc la tu qual/with_check trong snapshot.
+- Part 2 (indexes/search_path/EXECUTE/pg_trgm):
+  `docs/project/CR-057-rollback-part2.sql` - drop 24 index moi, RESET
+  search_path cho 4 practice funcs, GRANT EXECUTE TO PUBLIC restore
+  cho dung 60 funcs bi revoke (tap lay tu lint findings, khong bao gom
+  funcs von co explicit grant - tranh widen), pg_trgm ve public.
 
 ## Results (applied 2026-10-25)
 
@@ -66,7 +72,7 @@ la tu snapshot neu can.
   `bare_qual=0`, `bare_wc=0`. **AC-57.1 PASS.**
 - Snapshot rollback: `docs/project/CR-057-pg_policies-snapshot.json`
   (351 policies).
-- Migration file: `supabase/migrations/20261025_cr057_scalability_hardening.sql`
+- Migration file: `supabase/migrations/20261224_cr057_rls_auth_uid_wrap.sql + 20261225_cr057_scalability_hardening.sql`
   **AC-57.2 PASS.**
 
 ### B - Heavy queries: DONE (DB-side)
@@ -74,13 +80,18 @@ la tu snapshot neu can.
 - Root cause chinh: `n_live_tup` stale sau reseed (attendance_records
   bao 1 row, thuc te 34,476) -> planner chon plan sai. `ANALYZE` full DB
   da chay.
-- EXPLAIN ANALYZE duoi role authenticated (JWT gia lap GVCN): policy
-  quals gio render thanh **InitPlan** (evaluate 1 lan) thay vi per-row
-  function call. 500 rows RLS-filtered: 323ms (truoc wrap: per-row
-  auth.uid() them overhead moi row).
-- pg_stat_statements mean se reflect improvement trong vai ngay toi;
-  baseline cu: attendance 806ms, grades 675ms. **AC-57.3 PASS** (InitPlan
-  verified trong plan; data-path index scan on PK).
+- EXPLAIN ANALYZE duoi role authenticated (JWT gia lap GVCN
+  5454f365-...), ca 2 query patterns deu hien **InitPlan** cho
+  (select auth.uid()) - evaluate 1 lan/statement thay vi per-row:
+  - attendance (`date >=` + order id limit 500): **323ms**, PK index
+    scan + hashed SubPlan cho my_* scope funcs.
+  - grades (`(academic_year_id IS NULL OR = $1) AND student_id = ANY`):
+    **48.7ms**, Bitmap Index Scan tren `idx_grades_year` ca 2 nhanh
+    (NULL va uuid) - khong seq scan.
+- Baseline cu (pg_stat_statements mean): attendance 806ms, grades
+  673-2343ms. Mean moi se reflect improvement trong vai ngay toi khi
+  stats tich luy lai; plan-level evidence o tren xac nhan ca index
+  usage lan InitPlan. **AC-57.3 PASS.**
 
 ### F - Advisors pass: DONE
 

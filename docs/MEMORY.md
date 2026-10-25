@@ -73,3 +73,29 @@ trước khi làm việc; cập nhật cùng commit với artifact của phase.
 - Regression asserts: tests/r2-regression.test.mjs r33-1..r33-7.
 - Lead reviewer cho repo nay: scripts/lead-review-cr053.mjs (OpenRouter
   nemotron-3-ultra:free, doc .env.local). Khong phai Codex Cloud.
+
+## 2026-10-25 - CR-057 scalability hardening + CR-058 plan
+
+- **RLS auth.uid() wrap**: 30 ALTER POLICY tu live pg_policies (file
+  docs/project/CR-057-alter-policies.sql, snapshot 351 policies). Bare
+  auth.uid() -> 0. Luon generate tu pg_policies, KHONG viet tay - mot
+  lan go tay da suyt apply policy cu voi function da bi drop
+  (scn_incident_in_my_homeroom khong con ton tai tren live).
+- **Stale stats la silent killer**: attendance_records bao n_live_tup=1
+  nhung thuc te 34,476 rows sau reseed -> planner chon plan sai. Chay
+  ANALYZE sau moi dot reseed lon.
+- **Advisors fixes applied**: 24 FK indexes (public+practice+sf),
+  search_path='' cho 4 practice funcs, revoke PUBLIC+anon EXECUTE tren
+  60 security-definer funcs (re-grant authenticated+service_role,
+  tru sf_login_*), pg_trgm -> extensions schema. pg_net KHONG di
+  chuyen duoc (khong ho tro SET SCHEMA).
+- **Console error pre-existing**: CSP chan Cloudflare Turnstile
+  (script-src 'self' thieu challenges.cloudflare.com) - chua fix, can
+  CR rieng neu turnstile can dung.
+- **Rulings**: compute giu Micro (user xem dashboard tu quyet);
+  PITR khong bat (daily backup du); practice split approved ->
+  docs/project/CR-058-practice-schema-split.md (giu fdw option,
+  khong tao tru khi co use case that).
+- Demo GVCN them: anhhd@cva.scn (1A1 Chu Van An, gvcn+gvbm).
+- Reviewer fallback repo nay: reviewer-gpt subagent (Codex Cloud web
+  khong co san; scripts/lead-review-*.mjs la per-CR one-off).

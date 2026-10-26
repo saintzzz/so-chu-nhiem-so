@@ -349,14 +349,17 @@ function bundleFor(
   const activeStage = decisions.length
     ? decisions[decisions.length - 1].stage
     : "initial";
+  // r-hb3 F2r: tap mien tinh toan phai theo QUYET DINH DANG ACTIVE
+  // (stage cuoi) truoc - roi moi fallback ve approved/locked gan nhat.
+  // Neu uu tien approved cu thi stage sau (after_retest/after_summer)
+  // mang tap mien B se bi tinh lai theo tap A -> drift gia.
   const exempt =
     exemptOverride ??
     decisions
       .slice()
       .reverse()
-      .find((d) => d.status === "approved" || d.status === "locked")
+      .find((d) => d.exempt_subject_ids?.length)
       ?.exempt_subject_ids ??
-    decisions[decisions.length - 1]?.exempt_subject_ids ??
     [];
 
   const subjectRows = buildSubjectRows(

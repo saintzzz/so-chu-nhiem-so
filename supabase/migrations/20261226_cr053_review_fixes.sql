@@ -52,6 +52,44 @@ begin
     raise exception 'submitted decision with exempt subjects requires legal ground and note'
       using errcode = 'P0001';
   end if;
+
+  -- r-hb3: duyet truc tiep qua PostgREST bo qua recompute cua action.
+  -- Tai tang DB, snapshot la "ket qua he thong tinh luc trinh" - row lech
+  -- snapshot ma khong co can cu phap ly thi khong duoc approved, ke ca
+  -- khi BGH update status truc tiep. Residual con lai: gia mao snapshot
+  -- = fields (he thong khong the recompute trong DB) - duoc ghi nhan
+  -- trong EXTERNAL-REVIEW-hocba.md, kem audit row ben duoi.
+  if tg_op = 'UPDATE' and old.status = 'submitted' and new.status = 'approved' then
+    if new.kqht is null or new.kqrl is null or new.promotion is null then
+      raise exception 'approved decision requires complete results'
+        using errcode = 'P0001';
+    end if;
+    if (new.override_legal_ground is null
+        or new.override_note is null
+        or btrim(new.override_note) = '')
+       and (new.computed_snapshot is null
+            or (new.computed_snapshot ->> 'kqht') is distinct from new.kqht
+            or (new.computed_snapshot ->> 'kqrl') is distinct from new.kqrl
+            or (new.computed_snapshot ->> 'promotion') is distinct from new.promotion
+            or coalesce(array_length(new.exempt_subject_ids, 1), 0) > 0) then
+      raise exception 'approved decision deviating from snapshot or exempting subjects requires legal ground and note'
+        using errcode = 'P0001';
+    end if;
+    -- Audit ngay trong DB: bat ky approve nao (UI hay direct) deu de lai
+    -- vet trang thai row tai thoi diem duyet.
+    insert into public.audit_logs (actor_id, action, entity, entity_id, payload)
+    values (
+      auth.uid(), 'hoc_ba.approve', 'year_end_decisions', new.id::text,
+      jsonb_build_object(
+        'student_id', new.student_id,
+        'stage', new.stage,
+        'kqht', new.kqht, 'kqrl', new.kqrl,
+        'promotion', new.promotion, 'danh_hieu', new.danh_hieu,
+        'snapshot', new.computed_snapshot,
+        'override_legal_ground', new.override_legal_ground
+      )
+    );
+  end if;
   return new;
 end
 $$;

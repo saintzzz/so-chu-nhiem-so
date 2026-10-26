@@ -70,6 +70,21 @@ test("r-hb2 F2: snapshot tinh theo tap mien incoming khong phai persisted", () =
   assert.match(hocba, /exemptOverride \?\?/);
 });
 
+test("r-hb3: trigger chan approve lech snapshot khong can cu + ghi audit", () => {
+  assert.match(mig, /tg_op = 'UPDATE' and old\.status = 'submitted' and new\.status = 'approved'/);
+  assert.match(mig, /deviating from snapshot or exempting subjects requires legal ground/);
+  assert.match(mig, /insert into public\.audit_logs/);
+  assert.match(mig, /'hoc_ba\.approve'/);
+});
+
+test("r-hb3 F2r: exempt resolution uu tien quyet dinh stage active", () => {
+  const hocba = read("src/lib/hocba.ts");
+  const exemptBlock = hocba.match(/const exempt =\s*\n?\s*exemptOverride \?\?[\s\S]*?\[\];/);
+  assert.ok(exemptBlock, "phai co khoi exempt resolution trong bundleFor");
+  // phai tim decision cuoi co exempt non-empty, khong uu tien approved cu
+  assert.match(exemptBlock[0], /find\(\(d\) => d\.exempt_subject_ids\?\.length\)/);
+});
+
 test("F3: form co exemption editor va bat can cu khi doi tap mien", () => {
   assert.match(explorer, /Môn miễn đánh giá/);
   assert.match(explorer, /exemptChanged/);

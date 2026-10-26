@@ -48,6 +48,19 @@ Scope: tính toán xếp loại cuối năm, workflow GVCN→BGH, locking, expor
 - `bundleFor`: exempt resolution đổi sang "decision cuối có exempt non-empty thắng" — đúng ngữ cảnh stage active.
 - Live DB attack test: `deviate_no_ground` approve = **BLOCKED**; `forged_consistent` = ALLOWED (residual); `ground_override` = ALLOWED; audit_rows=2.
 
+## Round r-hb4 — REJECT (2 residuals)
+
+| # | Sev | Finding | Triệu chứng |
+|---|-----|---------|-------------|
+| F1h | High | Approve-guard bỏ sót `danh_hieu` | forged `danh_hieu='gioi'` với snapshot `danhHieu=null` vẫn approve được qua direct write |
+| F2r | Medium | Exempt rỗng ở stage active vẫn fallback tập cũ | `createNextStage` tạo draft exempt=[] nhưng display tính theo tập cũ → display ≠ action |
+
+### Fix + verify r-hb4 (commit `c772190`)
+
+- Approve-guard thêm `(snapshot->>'danhHieu') is distinct from new.danh_hieu` — live DB: `danhhieu_forged`=BLOCKED, `danhhieu_match`=ALLOWED.
+- `bundleFor`: exempt = mảng của decision active as-is (kể cả []); `createNextStage` kế thừa `exempt_subject_ids` từ quyết định trước — miễn theo HS không theo stage, [] chỉ còn nghĩa "đã xóa chủ động".
+- Dedupe audit: trigger ghi `hoc_ba.approve` → bỏ `logAudit` trùng trong action.
+
 ### Residual risk (documented, accepted)
 
 - GVCN kiên quyết vẫn ghi được quyết định tùy ý kèm ground+note **giả mạo** qua PostgREST (draft→update). Không thể chặn ở DB vì DB không recompute TT22; biện pháp: approve recompute + audit trail bắt buộc (ground+note hiển thị minh bạch cho BGH). Đây là process control có audit, không phải silent forgery.

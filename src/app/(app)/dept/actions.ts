@@ -241,12 +241,14 @@ export async function setSchoolModule(
     return { error: "Module không hợp lệ." };
 
   const supabase = await createClient();
+  const me = await getProfile();
   const { error } = await supabase.from("school_features").upsert(
     {
       school_id: schoolId,
       module,
       enabled,
       updated_at: new Date().toISOString(),
+      updated_by: me?.id ?? null,
     },
     { onConflict: "school_id,module" },
   );

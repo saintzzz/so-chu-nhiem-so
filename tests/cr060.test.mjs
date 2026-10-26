@@ -15,11 +15,16 @@ const MIG = read("supabase/migrations/20261227_cr060_school_features.sql");
 const APP = read("src/app/(app)/layout.tsx");
 const ROUTE = read("src/app/api/studio/tools/[code]/generate/route.ts");
 
-test("AC-60.1: school_features co PK + RLS read own-school / write admin+so_gd", () => {
+test("AC-60.1 (static): school_features co PK + RLS overlap && + grants", () => {
   assert.match(MIG, /primary key \(school_id, module\)/);
   assert.match(MIG, /enable row level security/);
   assert.match(MIG, /sf_read[\s\S]*my_school_id\(\)/);
-  assert.match(MIG, /sf_write[\s\S]*'admin','so_gd'/);
+  // overlap && - KHONG phai @> (containment): nobody co ca 2 role
+  assert.match(MIG, /sf_read[\s\S]*&& array\['admin','so_gd'\]/);
+  assert.match(MIG, /sf_write[\s\S]*&& array\['admin','so_gd'\]/);
+  assert.doesNotMatch(MIG, /@> array\['admin','so_gd'\]/);
+  assert.match(MIG, /grant select on public\.school_features to authenticated/);
+  assert.match(MIG, /grant all on public\.school_features to service_role/);
   assert.match(MIG, /revoke all on public\.school_features from anon/);
 });
 
@@ -54,8 +59,28 @@ test("AC-60.4: layout truyen disabled xuong nav + moi cay module co guard", () =
   assert.match(read("src/app/api/records/hoc-ba/export/route.ts"), /assertModule\("hoc_ba"\)/);
 });
 
-test("AC-60.5: route DC-03 chan theo module flag + trang quan tri ton tai", () => {
+test("AC-60.5 (static): guard tren tat ca studio API + hoc-ba entry + admin page", () => {
   assert.match(ROUTE, /assertModule\("studio"\)/);
+  assert.match(
+    read("src/app/api/studio/tools/[code]/audio/route.ts"),
+    /assertModule\("studio"\)/,
+  );
+  assert.match(
+    read("src/app/api/studio/questions/extract/route.ts"),
+    /assertModule\("studio"\)/,
+  );
+  assert.match(
+    read("src/app/api/studio/materials/[id]/export/route.ts"),
+    /assertModule\("studio"\)/,
+  );
+  assert.match(
+    read("src/app/(app)/register/lock-records/page.tsx"),
+    /requireModule\("hoc_ba"\)/,
+  );
+  assert.match(
+    read("src/app/(app)/safety/actions.ts"),
+    /assertModule\("tu_van_an_toan"\)/,
+  );
   const page = read("src/app/(app)/dept/modules/page.tsx");
   assert.match(page, /requireRoles\(\["so_gd", "admin"\]\)/);
   const act = read("src/app/(app)/dept/actions.ts");

@@ -5,6 +5,7 @@ import { takeAiQuota } from "@/lib/ai-quota";
 import { pseudonymizeNames } from "@/lib/ai-privacy";
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { hasFeature } from "@/lib/permissions";
+import { assertModule } from "@/lib/modules";
 import { hasAnyRole } from "@/lib/roles";
 import type { DocContent } from "@/types/tvc";
 import type { Role } from "@/types";
@@ -60,6 +61,8 @@ export async function POST(
   if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio"))) {
     return NextResponse.json({ error: "Tính năng đã bị quản trị tắt." }, { status: 403 });
   }
+  const modErr = await assertModule("studio");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as {
     doc?: DocContent;

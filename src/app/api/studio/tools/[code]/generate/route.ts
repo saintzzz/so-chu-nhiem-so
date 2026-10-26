@@ -713,21 +713,31 @@ export async function POST(
         limit: POOL_LIMIT,
       })),
     ];
+    // CR-061 r-h0601: fetch 2 nguon RIENG - system (school_id null) va
+    // truong (school_id = truong minh), moi nguon cap rieng. Tach sau 1
+    // fetch chung khien bank he thong lon an het slot -> ty le 100% truong
+    // van ra de 0 cau truong.
+    const mySchool =
+      (profile as { school_id?: string | null }).school_id ?? null;
     const rawBank: Question[] = [];
     let bankFailed = false;
     for (let i = 0; i < jobs.length; i += CHUNK) {
       const batch = await Promise.all(
-        jobs.slice(i, i + CHUNK).map((j) => {
-          let q = supabase
-            .from("tvc_questions")
-            .select("*")
-            .overlaps("standard_ids", [j.sid])
-            .limit(j.limit);
-          if (j.qt) q = q.eq("qtype", j.qt);
-          if (j.lv) q = q.eq("level", j.lv);
-          if (approvedOnly) q = q.eq("review_state", "approved");
-          else q = q.neq("review_state", "flagged");
-          return q;
+        jobs.slice(i, i + CHUNK).flatMap((j) => {
+          const mk = () => {
+            let q = supabase
+              .from("tvc_questions")
+              .select("*")
+              .overlaps("standard_ids", [j.sid])
+              .limit(j.limit);
+            if (j.qt) q = q.eq("qtype", j.qt);
+            if (j.lv) q = q.eq("level", j.lv);
+            if (approvedOnly) q = q.eq("review_state", "approved");
+            else q = q.neq("review_state", "flagged");
+            return q;
+          };
+          const sys = mk().is("school_id", null);
+          return mySchool ? [sys, mk().eq("school_id", mySchool)] : [sys];
         }),
       );
       for (const r of batch) {
@@ -755,8 +765,6 @@ export async function POST(
     // he thong (school_id null). Ti le do GV chon qua input.bank_ratio
     // (% cau tu bank truong, mac dinh 50). Row school_id cua truong khac
     // khong nen thoat RLS - loai khoi pool cho chac.
-    const mySchool =
-      (profile as { school_id?: string | null }).school_id ?? null;
     const rawPct = Number(input.bank_ratio);
     const schoolPct = [0, 25, 50, 75, 100].includes(rawPct) ? rawPct : 50;
     const bankSchool = bank.filter(
@@ -823,8 +831,13 @@ export async function POST(
           );
           return [...fresh, ...rest];
         };
-        const schoolPool = tierPool(bankSchool);
-        const sysPool = tierPool(bankSystem);
+        // r-h0601: loc cau da dung TRUOC khi cat quota - cau truong bi
+        // cell truoc an mat neu tinh slice tren pool chua loc, he thong
+        // bu vao du bank truong con cau chua dung.
+        const notTaken = (x: Question) =>
+          !used.has(x.id) && !usedStems.has(stemKey(x.stem));
+        const schoolPool = tierPool(bankSchool).filter(notTaken);
+        const sysPool = tierPool(bankSystem).filter(notTaken);
         // Luot rut: truong toi da wantSchool -> he thong bu phan con lai
         // -> truong bu lai neu he thong thieu (va nguoc lai ngam).
         const plan: Question[][] = [

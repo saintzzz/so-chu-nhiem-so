@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { hasFeature } from "@/lib/permissions";
+import { assertModule } from "@/lib/modules";
 import { getAiConfig, generateTextDetailed } from "@/lib/ai";
 import { takeAiQuota, recordAiUsage } from "@/lib/ai-quota";
 import {
@@ -56,6 +57,8 @@ export async function POST(req: Request) {
   if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio.questions"))) {
     return NextResponse.json({ error: "Tính năng đã bị quản trị tắt." }, { status: 403 });
   }
+  const modErr = await assertModule("studio");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
 
   const cfg = getAiConfig();
   if (!cfg) {

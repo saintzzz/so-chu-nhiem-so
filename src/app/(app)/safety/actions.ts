@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { assertModule } from "@/lib/modules";
 
 export async function createIncident(input: {
   studentId: string | null;
@@ -14,6 +15,8 @@ export async function createIncident(input: {
 }): Promise<{ error?: string; committed?: boolean; incidentId?: string }> {
   const deny = await checkActionRole(["gvcn", "gvbm", "to_truong", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("tu_van_an_toan");
+  if (modErr) return { error: modErr };
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
@@ -164,6 +167,8 @@ export async function toggleReportedToBgh(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("tu_van_an_toan");
+  if (modErr) return { error: modErr };
   if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
   const { error } = await supabase
@@ -188,6 +193,8 @@ export async function followupIncident(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("tu_van_an_toan");
+  if (modErr) return { error: modErr };
   if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
 

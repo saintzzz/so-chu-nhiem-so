@@ -22,7 +22,11 @@ test("AC-61.x: DC-03 co field bank_ratio voi 5 tuy chon ti le", () => {
   assert.match(dc03, /default: "50"/);
 });
 
-test("AC-61.1 AC-61.2: route tach 2 nguon theo school_id", () => {
+test("AC-61.1 AC-61.2: route tach 2 nguon theo school_id, fetch cap rieng", () => {
+  // r-h0601: 2 fetch rieng tren DB - bank he thong khong the an slot
+  // cua bank truong
+  assert.match(ROUTE, /\.is\("school_id", null\)/);
+  assert.match(ROUTE, /\.eq\("school_id", mySchool\)/);
   assert.match(ROUTE, /bankSchool = bank\.filter\(/);
   assert.match(ROUTE, /x\.school_id && x\.school_id === mySchool/);
   assert.match(ROUTE, /bankSystem = bank\.filter\(\s*\(x\) => x\.school_id == null/);

@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { requireModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { LockRecordsClient } from "@/components/register/lock-records-client";
@@ -11,6 +12,8 @@ import { hasRole } from "@/lib/roles";
 
 export default async function LockRecordsPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
+  // CR-060: truong tat hoc_ba -> chan ca nop/khoa so hoc ba
+  await requireModule("hoc_ba");
   const supabase = await createClient();
 
   // Chi lop chu nhiem moi duoc nop so - lop dang day khong nam trong pham vi.

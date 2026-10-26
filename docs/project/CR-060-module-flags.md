@@ -27,3 +27,16 @@ Nguon: CR-059 item F (dot 1). Muc tieu: truong mua goi module nao thi menu + rou
 - AC-60.3: Truong A tat khong anh huong truong B.
 - AC-60.4: Default (truong moi) = module mac dinh he thong.
 - AC-60.5: admin/so_gd sua duoc; GVCN khong.
+
+## Rulings & implementation notes (r-h0601)
+
+Doi so voi scope ban dau - ghi nhan co chu dich:
+
+1. **4 module ship dot nay**: `studio`, `hoc_ba`, `tu_van_an_toan` (gom safety + counseling), `thi_dua` (gom emulation + competency). Cac key con lai (`attendance`, `conduct`, `parents_portal`, `exams`, `substitutes`, `dept_report`) la core nghiep vu - bat module cho chung can tach menu thanh tung nhom nho hon, de CR tiep theo khi co nhu cau ban that.
+2. **`school_id NOT NULL`, khong co system-default row**: absence-of-row = mac dinh BAT. Trang thai false hien dien = tat. Don gian hon va khong can seed.
+3. **Admin UI la `/dept/modules`** (admin + so_gd), khong phai `/school/modules` - khop AC-60.5: truong khong tu bat module chua mua (day la co che ban hang, vendor-side control).
+4. **Guard layer**: nested layout.tsx cho studio/safety/counseling/emulation/competency (bao phu 21 page + sub-route); hoc_ba guard truc tiep trong page + export API + lock-records page (layout 2-segment `/records/hoc-ba` lam xung dot global `LayoutProps` giua `.next/types` cu va `.next/dev/types` moi - generated-types quirk cua Next 16.4.2).
+5. **API coverage**: studio generate + audio + questions/extract + materials export deu `assertModule("studio")`; safety actions `assertModule("tu_van_an_toan")`; hoc-ba export `assertModule("hoc_ba")`.
+6. **Nav fail-open, route fail-closed**: layout bat loi `disabledModules()` -> nav hien day du (khong vo toan bo app khi bang chua migrate); `requireModule` van throw -> chan route. Grants explicit (`authenticated` select, `service_role` all).
+7. **E2E evidence (local, anhhd@cva.scn)**: insert `studio=false` cho TH-CVA -> nav mat section "Cong cu soan hoc lieu" + `/studio` redirect `/dashboard`; `/safety/report` van vao duoc; xoa flag -> `/studio` hoat dong lai.
+8. Residual: cac action chung khac (counseling/emulation/competency khong co actions.ts rieng - chung dung shared actions chua gan module) va studio sub-actions ngoai 4 API da chan; khi ban module that se tiep tuc mo rong guard vao action-level tung nhom.

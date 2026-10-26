@@ -12,16 +12,20 @@ create table if not exists public.school_features (
 
 alter table public.school_features enable row level security;
 
--- doc: moi user cua truong (can cho nav) + admin/so_gd doc toan bo
+-- doc: moi user cua truong (can cho nav) + admin/so_gd doc toan bo.
+-- dung && (overlap) - my_roles() la mang, @> doi hoi chua CA 2 role
+-- (bat kha thi), && = co it nhat 1 role khop.
 create policy sf_read on public.school_features for select to authenticated
   using (
     school_id = (select my_school_id())
-    or (select my_roles()) @> array['admin','so_gd']::text[]
+    or (select my_roles()) && array['admin','so_gd']::text[]
   );
 
 -- ghi: chi admin/so_gd (truong khong tu bat module chua mua)
 create policy sf_write on public.school_features for all to authenticated
-  using ((select my_roles()) @> array['admin','so_gd']::text[])
-  with check ((select my_roles()) @> array['admin','so_gd']::text[]);
+  using ((select my_roles()) && array['admin','so_gd']::text[])
+  with check ((select my_roles()) && array['admin','so_gd']::text[]);
 
 revoke all on public.school_features from anon;
+grant select on public.school_features to authenticated;
+grant all on public.school_features to service_role;

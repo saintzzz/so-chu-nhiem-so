@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasFeature } from "@/lib/permissions";
+import { assertModule } from "@/lib/modules";
 import { guardExport, exportThrottledBody } from "@/lib/export-guard";
 import { docToDocx } from "@/lib/tvc/docx";
 import { docToPptx } from "@/lib/tvc/pptx";
@@ -69,6 +70,8 @@ export async function GET(
   // CR-034: xuat file chiu feature studio.export
   if (!(await hasFeature("studio.export")))
     return NextResponse.json({ error: "Tính năng xuất file đã bị quản trị tắt." }, { status: 403 });
+  const modErr = await assertModule("studio");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
 
   const cap = await guardExport(supabase, { entity: "material", entityId: id });
   if (!cap.ok)

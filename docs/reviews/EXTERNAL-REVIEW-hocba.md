@@ -35,9 +35,23 @@ Scope: tính toán xếp loại cuối năm, workflow GVCN→BGH, locking, expor
 - `getStudentYearEndBundle(studentId, yearId, exemptOverride?)`; `saveYearEndDecision` truyền `input.exemptSubjectIds` → comp/snapshot theo tập miễn incoming.
 - Live DB attack: draft+exempt → submit không ground = BLOCKED; exempt+ground+note = ALLOWED.
 
+## Round r-hb3 — REJECT (1 High + 1 Medium residual)
+
+| # | Sev | Finding | Triệu chứng |
+|---|-----|---------|-------------|
+| F1h | High | Direct DB approve bypass justification | BGH update `submitted→approved` qua PostgREST không qua action → recompute/deviation check không chạy; transition trigger cho phép |
+| F2r | Medium | Exempt resolution sai precedence | `bundleFor` ưu tiên exempt của approved/locked cũ hơn stage đang active → stage sau mang tập B bị tính theo tập A → drift giả |
+
+### Fix + verify r-hb3 (commit `0402cf2`)
+
+- Trigger `scn_yed_submit_guard` thêm nhánh approve-guard (`tg_op='UPDATE' and old='submitted' and new='approved'`): fields phải đủ VÀ (fields khớp `computed_snapshot` HOẶC có ground+note) — chặn approve quyết định lệch không căn cứ kể cả direct write. Mọi approve ghi `audit_logs` (actor, snapshot, ground) ngay trong DB.
+- `bundleFor`: exempt resolution đổi sang "decision cuối có exempt non-empty thắng" — đúng ngữ cảnh stage active.
+- Live DB attack test: `deviate_no_ground` approve = **BLOCKED**; `forged_consistent` = ALLOWED (residual); `ground_override` = ALLOWED; audit_rows=2.
+
 ### Residual risk (documented, accepted)
 
 - GVCN kiên quyết vẫn ghi được quyết định tùy ý kèm ground+note **giả mạo** qua PostgREST (draft→update). Không thể chặn ở DB vì DB không recompute TT22; biện pháp: approve recompute + audit trail bắt buộc (ground+note hiển thị minh bạch cho BGH). Đây là process control có audit, không phải silent forgery.
+- r-hb3: forger có thể gia tạo `computed_snapshot` = fields (claim "không lệch") để qua approve-guard khi approve trực tiếp. Điều kiện: insider ở mức BGH (quyền cao nhất trường, đã là final authority của quy trình) + cố ý bypass UI. Đóng hoàn toàn cần recompute TT22 trong DB (plpgsql) - chi phí/rủi ro duplicate logic lớn, defer. Giảm thiểu: mọi approve giờ ghi `audit_logs` ngay DB với snapshot trạng thái row - vet tamper-evident cho kiểm tra sau.
 - `service_role` bypass trigger là cố ý (seed/admin); service key không lộ cho client.
 
 ## Test suite

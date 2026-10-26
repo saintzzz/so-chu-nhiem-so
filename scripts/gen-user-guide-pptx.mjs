@@ -6,7 +6,8 @@
  * MO-TA-CHUC-NANG.md, KHOI-TAO-TRUONG-MOI.md, anh man hinh docs/user-guide/images/.
  */
 import PptxGenJS from "pptxgenjs";
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import JSZip from "jszip";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const p = new PptxGenJS();
 p.defineLayout({ name: "W", width: 13.33, height: 7.5 });
@@ -15,15 +16,37 @@ p.layout = "W";
 const C = {
   ink: "0f172a", muted: "475569", accent: "0f766e", accentL: "ccfbf1",
   amber: "b45309", white: "ffffff", bg: "f8fafc", line: "e2e8f0",
-  code: "1e293b",
+  code: "1e293b", teal2: "14b8a6",
 };
 const FONT = "Segoe UI";
+const SHADOW = { type: "outer", blur: 7, offset: 2, angle: 90, opacity: 0.3 };
+
+let pageNo = 0;
+
+function footer(s) {
+  pageNo += 1;
+  s.addText("VieSchool - Sổ Chủ Nhiệm Số", { x: 0.55, y: 7.14, w: 5, h: 0.3, fontFace: FONT, fontSize: 9, color: "94a3b8" });
+  s.addText(`${pageNo}`, { x: 12.4, y: 7.14, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 9, color: "94a3b8", align: "right" });
+}
 
 function slideTitle(s, section, title, desc) {
+  s.addShape(p.shapes.RECTANGLE, { x: 0, y: 0, w: 0.14, h: 1.8, fill: { color: C.accent } });
   s.addText(section, { x: 0.55, y: 0.28, w: 12, h: 0.3, fontFace: FONT, fontSize: 11, color: C.accent, bold: true });
   s.addText(title, { x: 0.55, y: 0.55, w: 12.2, h: 0.7, fontFace: FONT, fontSize: 26, bold: true, color: C.ink });
   if (desc) s.addText(desc, { x: 0.55, y: 1.28, w: 12.2, h: 0.45, fontFace: FONT, fontSize: 12.5, color: C.muted });
   s.addShape(p.shapes.LINE, { x: 0.55, y: 1.72, w: 12.2, h: 0, line: { color: C.line, width: 1 } });
+  footer(s);
+}
+
+function divider(part, title, desc) {
+  const s = p.addSlide();
+  s.background = { color: C.code };
+  s.addShape(p.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.12, fill: { color: C.teal2 } });
+  s.addShape(p.shapes.RECTANGLE, { x: 10.4, y: 5.6, w: 2.93, h: 1.9, fill: { color: "134e4a" } });
+  s.addText(part, { x: 0.8, y: 1.9, w: 4, h: 0.5, fontFace: FONT, fontSize: 15, color: C.teal2, bold: true });
+  s.addText(title, { x: 0.8, y: 2.5, w: 11.7, h: 1.6, fontFace: FONT, fontSize: 40, bold: true, color: C.white });
+  if (desc) s.addText(desc, { x: 0.8, y: 4.25, w: 10.5, h: 1, fontFace: FONT, fontSize: 14, color: "94a3b8" });
+  return s;
 }
 
 function bullets(s, items, { x = 0.7, y = 1.95, w = 12, h = 5, fontSize = 13.5, gap = 8 } = {}) {
@@ -63,6 +86,24 @@ function note(s, txt, y = 6.85) {
   s.addText(txt, { x: 0.7, y, w: 12, h: 0.5, fontFace: FONT, fontSize: 10.5, italic: true, color: C.accent });
 }
 
+// Doc kich thuoc PNG (IHDR) / JPEG (SOF) de khung anh vua khit ti le that
+function imgSize(path) {
+  const b = readFileSync(path);
+  if (b.length > 24 && b.readUInt32BE(0) === 0x89504e47) {
+    return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+  }
+  let off = 2;
+  while (off + 9 < b.length) {
+    if (b[off] !== 0xff) break;
+    const marker = b[off + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { h: b.readUInt16BE(off + 5), w: b.readUInt16BE(off + 7) };
+    }
+    off += 2 + b.readUInt16BE(off + 2);
+  }
+  return { w: 16, h: 9 };
+}
+
 // Slide co anh man hinh: bullets trai + screenshot phai
 function featureSlide(section, title, items, img, caption) {
   const s = p.addSlide();
@@ -71,8 +112,12 @@ function featureSlide(section, title, items, img, caption) {
   const hasImg = img && existsSync(imgPath);
   bullets(s, items, { w: hasImg ? 6.2 : 12, fontSize: 12.5 });
   if (hasImg) {
-    s.addImage({ path: imgPath, x: 7.15, y: 1.95, w: 5.6 });
-    if (caption) s.addText(caption, { x: 7.15, y: 6.2, w: 5.6, h: 0.4, fontFace: FONT, fontSize: 10, italic: true, color: C.muted });
+    const { w: iw, h: ih } = imgSize(imgPath);
+    const imgW = 5.6, imgH = Math.min(imgW * (ih / iw), 4.5);
+    const fy = 1.8, pad = 0.15;
+    s.addShape(p.shapes.ROUNDED_RECTANGLE, { x: 7.0, y: fy, w: imgW + pad * 2, h: imgH + pad * 2, rectRadius: 0.08, fill: { color: C.white }, line: { color: C.line, width: 1 }, shadow: SHADOW });
+    s.addImage({ path: imgPath, x: 7.0 + pad, y: fy + pad, w: imgW, h: imgH });
+    if (caption) s.addText(caption, { x: 7.0, y: fy + imgH + pad * 2 + 0.06, w: 5.9, h: 0.4, fontFace: FONT, fontSize: 10, italic: true, color: C.muted });
   }
 }
 
@@ -80,18 +125,22 @@ function featureSlide(section, title, items, img, caption) {
 {
   const s = p.addSlide();
   s.background = { color: C.code };
+  s.addShape(p.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.14, fill: { color: C.teal2 } });
+  s.addShape(p.shapes.RECTANGLE, { x: 9.6, y: 0.14, w: 3.73, h: 7.36, fill: { color: "134e4a" } });
+  s.addShape(p.shapes.RECTANGLE, { x: 10.4, y: 0.14, w: 2.93, h: 7.36, fill: { color: "115e59" } });
+  s.addText("SỔ CHỦ NHIỆM SỐ", { x: 10.6, y: 3.0, w: 2.5, h: 1.4, fontFace: FONT, fontSize: 26, bold: true, color: "5eead4", rotate: 0 });
   s.addText("VieSchool - Sổ Chủ Nhiệm Số & Công cụ số Giáo viên", {
-    x: 0.8, y: 2.0, w: 11.7, h: 1.1, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
+    x: 0.8, y: 2.0, w: 8.6, h: 1.1, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
   });
   s.addText("HƯỚNG DẪN SỬ DỤNG & GIỚI THIỆU CHỨC NĂNG", {
-    x: 0.8, y: 3.15, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4",
+    x: 0.8, y: 3.15, w: 8.6, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4", bold: true,
   });
   s.addText([
-    { text: "Phiên bản: v2.2 - 23/10/2026 (một deck duy nhất: hướng dẫn + giới thiệu; bổ sung Học bạ số)", options: { breakLine: true } },
+    { text: "Phiên bản: v3.0 - 26/10/2026 (đầy đủ hướng dẫn theo 10 vai trò + hiệu ứng chuyển cảnh)", options: { breakLine: true } },
     { text: "URL: https://sochunhiem.vieschool.com", options: { breakLine: true } },
     { text: "Phạm vi: CTGDPT 2018, TT 22/2021, TT 27/2025, CV 5512; bảo mật theo Luật 91/2025", options: { breakLine: true } },
     { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng câu hỏi đã dọn trùng", options: {} },
-  ], { x: 0.8, y: 3.95, w: 11.7, h: 1.6, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
+  ], { x: 0.8, y: 3.95, w: 8.6, h: 1.6, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
 }
 
 // ---------- S2 Tong quan ----------
@@ -196,7 +245,7 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     ["daonvl@demo.scn", "Ngô Văn Lãnh Đạo", "ubnd", "Dashboard địa bàn - chỉ đọc"],
     ["admin@demo.scn", "Quản trị hệ thống", "admin", "Toàn hệ thống"],
   ], { rowH: 0.34 });
-  note(s, "Trường khác: phuongttm / oanhdtk / lienttb / havt @cva.scn và longhd / ngaltt / anhdn @kd.scn. GV còn lại: tenvt@{nd|cva|kd}.scn (ten + viet tat ho dem).", 7.0);
+  note(s, "Trường khác: phuongttm / oanhdtk / lienttb / havt @cva.scn và longhd / ngaltt / anhdn @kd.scn. GV còn lại: tenvt@{nd|cva|kd}.scn (ten + viet tat ho dem).", 6.82);
 }
 
 // ---------- S5 Multi-role ----------
@@ -233,8 +282,8 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     { t: "Kiêm nhiệm: quyền = hợp vai trò - GVCN kiêm tổ trưởng được cả 2 cột" },
     { t: "PHT giới hạn theo cơ sở (campus); không tiếp cận hồ sơ chi tiết HS (ẩn national_id)" },
     { t: "Phân quyền 3 lớp: mặc định theo vai trò → cấu hình theo trường → ghi đè từng cán bộ (/school/users)" },
-  ], { y: 5.35, fontSize: 12 });
-  note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường + xem học bạ chỉ đọc, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 7.05);
+  ], { y: 5.82, fontSize: 11.5 });
+  note(s, "Sở GD&ĐT/UBND: giám sát + tạo trường + xem học bạ chỉ đọc, không vào nghiệp vụ lớp. Kiểm chứng tự động: node scripts/check-nav-access.mjs (158 hrefs).", 6.82);
 }
 
 // ---------- S7 Workflow GVCN ----------
@@ -370,6 +419,87 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
   ]);
 }
 
+// ================= PHAN 2 - HUONG DAN THEO VAI TRO =================
+divider("PHẦN II", "Hướng dẫn theo vai trò", "Thao tác chi tiết từng chức năng - đúng thực tế trường Việt Nam. Ảnh chụp trực tiếp từ hệ thống.");
+
+featureSlide("GVCN - HỒ SƠ LỚP", "Sơ đồ lớp & danh sách học sinh", [
+  { t: "Sơ đồ lớp: kéo-thả HS vào ô ghế; +/− Hàng, +/− Cột đổi lưới mà giữ nguyên vị trí đã xếp", b: 1 },
+  { t: "Lưu sơ đồ tạo phiên bản mới - xem lại 'Lịch sử phiên bản sơ đồ'" },
+  { t: "Danh sách HS & Tổ: Thêm tổ → Chia đều tổ tự động; gán Ban cán sự bằng dropdown từng dòng" },
+  { t: "Khu vực Liên kết phụ huynh: tạo tài khoản PH gắn đúng HS" },
+], "11-seating.png", "Sơ đồ chỗ ngồi kéo-thả");
+
+featureSlide("GVCN - RÈN LUYỆN", "Nhận xét & vi phạm / khen thưởng", [
+  { t: "Chọn HS → loại (Nhận xét / Khen thưởng / Vi phạm) → ngày, điểm +/−, nội dung → Ghi nhận", b: 1 },
+  { t: "Menu Đánh giá & xếp loại: xếp loại hạnh kiểm học kỳ cho cả lớp (HK1/HK2/CN tách biệt theo TT22)" },
+  { t: "Cộng/trừ điểm rèn luyện cũng ghi được ngay trong sổ đầu bài tiết học" },
+], "13-conduct.png", "Sổ rèn luyện - nhận xét và điểm +/−");
+
+featureSlide("GVCN - PHỤ HUYNH", "Liên lạc & Ban đại diện CMHS", [
+  { t: "Soạn & gửi thông báo: phạm vi cả lớp / PH từng em - PH nhận in-app + email", b: 1 },
+  { t: "Hộp thư phản hồi: đọc/trả lời tin nhắn PH trong cùng hội thoại" },
+  { t: "Lịch hẹn trao đổi: xác nhận/từ chối lịch PH đề xuất" },
+  { t: "Ban đại diện CMHS: thêm thành viên + vai trò Trưởng/Phó/Ủy viên" },
+], "14-parents-compose.png", "Soạn thông báo gửi phụ huynh");
+
+featureSlide("GVCN - AN TOÀN & TƯ VẤN", "Tư vấn học sinh & sự cố an toàn", [
+  { t: "Tư vấn: Tiếp nhận ca → Đánh giá mức độ (AI gợi ý) → ca Cao chuyển tuyến chuyên gia", b: 1 },
+  { t: "Sự cố: ghi nhận loại + mức độ - AI viết lại mô tả → theo dõi xử lý → lưu trữ" },
+  { t: "Sự cố toàn trường BGH đánh dấu đã báo cáo - một luồng khép kín" },
+], "15-safety.png", "Ghi nhận và xử lý sự cố");
+
+featureSlide("GVCN - KỲ THI & KẾ HOẠCH", "Kỳ thi, thi đua, kế hoạch tháng, xuất sổ", [
+  { t: "Kỳ thi: tạo kỳ → thêm buổi thi (tay/Import Excel) → công bố; 'Mở ngân hàng câu hỏi' nhảy sang Studio rút câu vào đề", b: 1 },
+  { t: "Thi đua: chấm điểm tiêu chí lớp mình; bảng xếp hạng toàn trường" },
+  { t: "Kế hoạch tháng / sơ kết tuần: checklist + 'AI gợi ý công việc' đọc lịch năm học" },
+  { t: "Xuất sổ: CSV toàn bộ dữ liệu sổ chủ nhiệm" },
+], "19-plans.png", "Kế hoạch tháng với AI gợi ý");
+
+featureSlide("GVCN - KÝ DUYỆT SỔ", "Nộp sổ chủ nhiệm cho BGH ký duyệt", [
+  { t: "BGH mở 'đợt ký' → sổ lớp mình chuyển 'Chờ GVCN nộp' → Nộp sổ (hoặc Nộp tất cả)", b: 1 },
+  { t: "BGH từ chối (bắt buộc lý do) → sổ về 'Bị từ chối' → sửa rồi Nộp lại - có thông báo 2 chiều" },
+  { t: "BGH ký xong → 'Đã ký' - sổ khóa, chỉ BGH mở lại; mọi chuyển trạng thái ghi audit log" },
+]);
+
+divider("VAI TRÒ KHÁC", "GVBM - Tổ trưởng - BGH - Kế toán - Sở - PH - HS", "Mỗi vai trò một màn hình riêng, quyền tính trên server - không lách qua UI");
+
+featureSlide("GIÁO VIÊN BỘ MÔN", "Ngày làm việc của GVBM (minhtv@nd.scn)", [
+  { t: "Lịch cá nhân: TKB mặc định hiện toàn bộ tiết mình dạy", b: 1 },
+  { t: "Sổ điểm: chỉ nhập lớp/môn được phân công trong TKB - không ghi được lớp người khác" },
+  { t: "Sổ đầu bài: chỉ mở form ghi ở tiết mình dạy, tiết GV khác chỉ đọc" },
+  { t: "Giáo án: soạn → nộp tổ trưởng; bị trả về → sửa theo nhận xét → nộp lại" },
+  { t: "Chat với GVCN gắn học sinh cụ thể; xem lịch coi thi/thi lớp mình dạy" },
+], "09-period-log.png", "Sổ đầu bài - chỉ tiết mình dạy mới ghi được");
+
+featureSlide("TỔ TRƯỞNG CHUYÊN MÔN", "Duyệt giáo án & sinh hoạt chuyên môn", [
+  { t: "Duyệt giáo án: queue GV trong tổ nộp → 'AI gợi ý nhận xét' → Duyệt / Trả về kèm nhận xét", b: 1 },
+  { t: "Duyệt đánh giá năng lực: xét đánh giá tự chấm của GV trong tổ" },
+  { t: "Sinh hoạt chuyên môn: tạo buổi (chủ đề, ngày, ghi chú) → AI soạn biên bản từ ghi chú nhanh" },
+  { t: "Ngân hàng câu hỏi: filter 'Môn của tổ tôi' - duyệt lớp 1 trước BGH" },
+], "26-team-lesson-plans.png", "Hàng chờ duyệt giáo án của tổ");
+
+featureSlide("BAN GIÁM HIỆU / PHT", "Điều hành trường - phạm vi và quyền", [
+  { t: "Dashboard cấp trường + Trung tâm phê duyệt + Báo cáo ngày các lớp + Radar cảnh báo sớm (AI đề xuất can thiệp)", b: 1 },
+  { t: "Trợ lý điều hành AI: chat hỏi-đáp trên số liệu thật của trường" },
+  { t: "TKB toàn trường + Import Excel hàng loạt (ô 'Môn|GV|Phòng'); điều động dạy thay" },
+  { t: "Chỉ BGH: ký duyệt sổ CN, phân công năm học, quản trị tài khoản - PHT KHÔNG có 3 quyền này" },
+  { t: "PHT giới hạn theo cơ sở (duclm@nd.scn chỉ thấy Cơ sở 2)" },
+], "23-bgh-radar.png", "Radar cảnh báo sớm toàn trường");
+
+featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - giám sát", [
+  { t: "Kế toán: nhân sự, cơ sở vật chất, thiết bị, báo cáo tài chính NQ37 - KHÔNG thấy hồ sơ học tập HS", b: 1 },
+  { t: "Sở GD: dashboard các trường + AI bản tin; tạo trường mới (tự năm học, tổ, môn, tài khoản BGH)", b: 1 },
+  { t: "Quản trị dữ liệu: kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/PH, liên kết mồ côi" },
+  { t: "UBND xã: dashboard địa bàn chỉ đọc (theo mô hình chính quyền 2 cấp)" },
+], "28-dept-dashboard.png", "Dashboard Sở GD&ĐT");
+
+featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
+  { t: "PH nhiều con: bộ chọn con trên đầu portal - dữ liệu tách đúng từng em", b: 1 },
+  { t: "Tin nhắn 2 chiều với GVCN; đặt lịch hẹn chờ xác nhận; đăng ký hoạt động / báo vắng" },
+  { t: "HS: TKB, điểm HK1/HK2/CN, hạnh kiểm, học bạ cá nhân (/portal/student/hoc-ba) - chỉ đọc, server kiểm quyền sở hữu" },
+  { t: "Mẹo: Ctrl+K tìm nhanh chức năng/HS; URL chứa ngày - bookmark được; mọi Import có 'Tải template'" },
+], "30-parent-portal.png", "Portal phụ huynh");
+
 // ---------- S16 Highlights ----------
 {
   const s = p.addSlide();
@@ -410,16 +540,36 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
     ["khoi-tao-truong.xlsx", "Workbook mẫu 8 sheet để khởi tạo trường"],
     ["KICH-BAN-DEMO.md / .pptx", "Kịch bản demo 15/10 theo luồng vai trò - tài khoản, đường đi, kết quả kỳ vọng"],
     ["MO-TA-CHUC-NANG.md", "Mô tả chi tiết module, ma trận vai trò, luồng nghiệp vụ"],
-    ["SO-CHU-NHIEM-SO-TAI-LIEU.docx", "Bản Word gộp mô tả + hướng dẫn - dùng in/phát hành nội bộ"],
+    ["SO-CHU-NHIEM-SO-TAI-LIEU.docx", "Bản Word gộp - in/phát hành nội bộ"],
   ]);
   bullets(s, [
     { t: "Deck này là bản duy nhất gộp hướng dẫn + giới thiệu (thay thế SO-CHU-NHIEM-SO-GIOI-THIEU.pptx cũ)" },
     { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs; workbook mẫu: gen-init-template.mjs; kịch bản demo: gen-demo-pptx.mjs" },
-  ], { y: 4.6, fontSize: 12.5 });
+  ], { y: 5.0, fontSize: 12.5 });
 }
 
 mkdirSync("docs/user-guide", { recursive: true });
 mkdirSync("docs/handover", { recursive: true });
-await p.writeFile({ fileName: "docs/user-guide/USER-GUIDE-vieschool.pptx" });
-copyFileSync("docs/user-guide/USER-GUIDE-vieschool.pptx", "docs/handover/USER-GUIDE-vieschool.pptx");
+const OUT = "docs/user-guide/USER-GUIDE-vieschool.pptx";
+await p.writeFile({ fileName: OUT });
+
+// ---------- Inject slide transitions vao XML ----------
+// Slide nen toi (cover + divider, mau 1E293B): push; con lai: fade.
+{
+  const zip = await JSZip.loadAsync(readFileSync(OUT));
+  const slideNames = Object.keys(zip.files)
+    .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a, b) => parseInt(a.match(/slide(\d+)/)[1]) - parseInt(b.match(/slide(\d+)/)[1]));
+  for (const name of slideNames) {
+    let xml = await zip.file(name).async("string");
+    const dark = xml.includes('val="1E293B"');
+    const tr = `<p:transition spd="fast" advClick="1" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">${dark ? '<p:push dir="l"/>' : "<p:fade/>"}</p:transition>`;
+    xml = xml.replace("</p:sld>", `${tr}</p:sld>`);
+    zip.file(name, xml);
+  }
+  writeFileSync(OUT, await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
+  console.log(`Transitions injected on ${slideNames.length} slides (dark=push, light=fade)`);
+}
+
+copyFileSync(OUT, "docs/handover/USER-GUIDE-vieschool.pptx");
 console.log("Written docs/user-guide/USER-GUIDE-vieschool.pptx (+ copy docs/handover/)");

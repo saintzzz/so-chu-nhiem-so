@@ -155,6 +155,22 @@ function arrow(s, x, y, w = 0.55) {
   ], { rowH: 0.52 });
 }
 
+// 5 - Bao mat 3 lop
+{
+  const s = p.addSlide();
+  slideTitle(s, "BẢO MẬT", "Phân quyền 3 lớp - default-deny");
+  box(s, { x: 0.7, y: 1.95, w: 3.7, h: 1.9, title: "Lớp 1 - proxy.ts", sub: "Redirect lạc quan:\nchưa login - /login\nđã login - role home\nCHỈ là UX, không phải authz", fill: "dbeafe", line: "2563eb" });
+  box(s, { x: 4.8, y: 1.95, w: 3.7, h: 1.9, title: "Lớp 2 - Server checks", sub: "requireRole([...]) đầu page\ncheckActionRole trong actions\ngetProfile() React cache()\ndefault-deny nếu role lạ", fill: "d1fae5", line: "059669" });
+  box(s, { x: 8.9, y: 1.95, w: 3.7, h: 1.9, title: "Lớp 3 - Postgres RLS", sub: "Policy theo vai trò mọi bảng\nmy_role(), my_school_id(),\nmy_class_ids()...\nseed mới dùng service_role", fill: "fef3c7", line: C.amber });
+  bullets(s, [
+    { t: "Vai trò vào route của người khác - redirect về home của chính họ, không bao giờ leak data" },
+    { t: "WAF Vercel: rate limit /api + /login, bypass-health cho uptime monitor; headers CSP/HSTS/nosniff/X-Frame đầy đủ" },
+    { t: "Anti-scraping lớp 1 (CR-054, đã deploy): robots.txt chặn AI crawler, noindex route authed, export cap 20/h/uid, Turnstile login" },
+    { t: "252 RLS policies đã wrap (select auth.uid()) - evaluate 1 lần/statement thay vì per-row (CR-057)" },
+    { t: "Secrets chỉ ở env/dashboard - không commit; audit_logs ghi mọi thao tác nhạy cảm" },
+  ], { y: 4.1, fontSize: 11.5 });
+}
+
 divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KHÔNG phải microservices");
 
 // 6 - Monolith la gi o day
@@ -334,6 +350,21 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
     ["Team lớn hơn", "Monolith conflict", "Tách module nóng ra service - route group boundaries đã là bounded context sẵn"],
   ], { rowH: 0.72 });
   note(s, "Nguyên tắc kiến trúc: mọi seam tách (ai_jobs, RLS school_id, route groups) đã được đặt sẵn - scale = đổi bên trong seam, không phải viết lại.");
+}
+
+// 19b - Limitations hien tai + do kho xu ly
+{
+  const s = p.addSlide();
+  slideTitle(s, "ĐÁNH GIÁ", "Limitation đang có - xử lý ra sao, dễ hay khó");
+  table(s, [
+    ["Limitation", "Cách xử lý", "Độ khó / Trạng thái"],
+    ["Edge-TTS bị MS chặn IP datacenter Vercel - audio TTS lỗi trên prod", "Fork @andresaya/edge-tts (Sec-MS-GEC v2) + Gemini TTS provider fallback (CR-056)", "Xong - độ khó trung bình; chuỗi fallback provider đã có sẵn"],
+    ["Chung Supabase project với app nội bộ - noisy neighbor đụng IO budget", "CR-058: tách schema app kia sang project riêng; phase 0 inventory xong, không downtime", "Trung bình - cần Pro project mới + cutover; không phải viết lại code"],
+    ["252 RLS policy bare auth.uid() - evaluate lại mỗi row", "CR-057: wrap (select auth.uid()) toàn bộ - 1 lần/statement; advisors sạch", "Xong - dễ về kỹ thuật, rườm về khối lượng"],
+    ["Authed bulk scrape (user hợp lệ script cào)", "Lớp 1 đã deploy (export cap 20/h + captcha); lớp 2: port check_rate_limit per-uid sang public schema", "Dễ-trung bình - pattern có sẵn, migration nhỏ"],
+    ["AI jobs poll-based (không queue thật)", "Thêm pgmq/SQS khi throughput đòi hỏi - seam ai_jobs + callback đã đặt", "Trung bình - đổi bên trong seam, giữ API"],
+    ["SPOF: 1 deployable + 1 Supabase project", "Chấp nhận một phần: Vercel sin1 + static shell; Supabase backup managed", "Khó khắc phục hoàn toàn ở budget này - multi-region là quyết định chi phí"],
+  ], { rowH: 0.72 });
 }
 
 // 20 - Phu hop

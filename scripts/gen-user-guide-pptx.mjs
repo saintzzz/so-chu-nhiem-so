@@ -230,7 +230,8 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
 // ---------- S4 Accounts ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập https://sochunhiem.vieschool.com/login - mật khẩu chung: demo1234");
+  slideTitle(s, "TÀI KHOẢN DEMO", "Đăng nhập https://sochunhiem.vieschool.com/login - mật khẩu chung: demo1234",
+    "Đăng nhập có Turnstile chống bot (ẩn - không cần thao tác thêm); giới hạn xuất file tối đa 20 lần/giờ/tài khoản");
   table(s, [
     ["Tài khoản", "Nhân sự", "Vai trò", "Dùng để test"],
     ["hainv@nd.scn", "Nguyễn Văn Hải - HT Nguyễn Du", "bgh + gvbm", "Quản trị trường, duyệt cuối, Studio"],
@@ -452,7 +453,7 @@ featureSlide("GVCN - KỲ THI & KẾ HOẠCH", "Kỳ thi, thi đua, kế hoạch
   { t: "Kỳ thi: tạo kỳ → thêm buổi thi (tay/Import Excel) → công bố; 'Mở ngân hàng câu hỏi' nhảy sang Studio rút câu vào đề", b: 1 },
   { t: "Thi đua: chấm điểm tiêu chí lớp mình; bảng xếp hạng toàn trường" },
   { t: "Kế hoạch tháng / sơ kết tuần: checklist + 'AI gợi ý công việc' đọc lịch năm học" },
-  { t: "Xuất sổ: CSV toàn bộ dữ liệu sổ chủ nhiệm" },
+  { t: "Xuất sổ: CSV toàn bộ dữ liệu sổ chủ nhiệm", sub: ["Giới hạn chống lạm dụng: tối đa 20 lần xuất/giờ/tài khoản - vượt quá bị tạm khóa + ghi audit"] },
 ], "19-plans.png", "Kế hoạch tháng với AI gợi ý");
 
 featureSlide("GVCN - KÝ DUYỆT SỔ", "Nộp sổ chủ nhiệm cho BGH ký duyệt", [

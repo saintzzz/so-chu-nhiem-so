@@ -113,7 +113,13 @@ export async function saveYearEndDecision(
   // r33-1: xep loai la du lieu PHAP LY - server tinh lai tu nguon, khong
   // tin gia tri client gui len. Bat ky lech nao so voi goi y he thong
   // bat buoc can cu phap ly + ghi chu (theo dung luat UI da ep).
-  const bundle = await getStudentYearEndBundle(input.studentId, input.academicYearId);
+  // r-hb2 F2: tinh comp theo tap mien INCOMING - khong theo tap mien da
+  // luu cua quyet dinh truoc, neu khong snapshot lech voi gia tri UI/gui.
+  const bundle = await getStudentYearEndBundle(
+    input.studentId,
+    input.academicYearId,
+    input.exemptSubjectIds,
+  );
   if (!bundle) return { error: "Không tải được dữ liệu nguồn để kiểm tra." };
   const comp = bundle.computed;
   const schoolSubjectIds = new Set(bundle.subjectRows.map((s) => s.subjectId));
@@ -267,7 +273,7 @@ export async function approveYearEnd(input: {
 
   const { data: cur, error: curErr } = await supabase
     .from("year_end_decisions")
-    .select("id,status,decided_by,student_id,academic_year_id,kqht,kqrl,danh_hieu,promotion,override_legal_ground,override_note,students(full_name,class_id)")
+    .select("id,status,decided_by,student_id,academic_year_id,kqht,kqrl,danh_hieu,promotion,override_legal_ground,override_note,exempt_subject_ids,students(full_name,class_id)")
     .eq("id", input.decisionId)
     .eq("school_id", profile.school_id)
     .maybeSingle();
@@ -285,7 +291,19 @@ export async function approveYearEnd(input: {
   if (!cur.kqht || !cur.kqrl || !cur.promotion) {
     return { error: "Quyết định thiếu kết quả bắt buộc - trả lại để GVCN trình lại." };
   }
-  const bundle = await getStudentYearEndBundle(cur.student_id, cur.academic_year_id);
+  // r-hb2 F1: mien mon luon can can cu phap ly - ngay ca khi quyet dinh
+  // duoc ghi truc tiep, khong cho tap mien "im lang" di qua duyet.
+  if (
+    cur.exempt_subject_ids?.length &&
+    (!cur.override_legal_ground || !cur.override_note?.trim())
+  ) {
+    return { error: "Quyết định có môn miễn đánh giá nhưng thiếu căn cứ pháp lý - trả lại để GVCN bổ sung." };
+  }
+  const bundle = await getStudentYearEndBundle(
+    cur.student_id,
+    cur.academic_year_id,
+    cur.exempt_subject_ids ?? undefined,
+  );
   if (bundle) {
     const comp = bundle.computed;
     const deviates =

@@ -41,6 +41,17 @@ begin
     raise exception 'override requires a non-empty override_note'
       using errcode = 'P0001';
   end if;
+  -- r-hb2 F1: quyet dinh submitted co mon mien luon phai kem can cu phap
+  -- ly + ghi chu - chan ca lo trinh ghi truc tiep: insert draft mang
+  -- exempt roi update status, hoac update exempt trong draft san co.
+  if new.status = 'submitted'
+     and coalesce(array_length(new.exempt_subject_ids, 1), 0) > 0
+     and (new.override_legal_ground is null
+          or new.override_note is null
+          or btrim(new.override_note) = '') then
+    raise exception 'submitted decision with exempt subjects requires legal ground and note'
+      using errcode = 'P0001';
+  end if;
   return new;
 end
 $$;

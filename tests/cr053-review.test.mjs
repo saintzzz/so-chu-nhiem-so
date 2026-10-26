@@ -52,6 +52,24 @@ test("F4: pdf pageBreak tren phan tu dau block, khong dat truoc nhan nhap", () =
   assert.doesNotMatch(pdf, /pageBreak: "before" as const \} : \{\}/);
 });
 
+test("r-hb2 F1: trigger bat can cu phap ly cho submitted co mon mien", () => {
+  assert.match(mig, /array_length\(new\.exempt_subject_ids/);
+  assert.match(mig, /exempt subjects requires legal ground and note/);
+});
+
+test("r-hb2 F1: approve chan doc lap quyet dinh co mien khong can cu", () => {
+  const start = actions.indexOf("export async function approveYearEnd");
+  const approve = actions.slice(start, actions.indexOf("\nexport ", start + 1));
+  assert.match(approve, /cur\.exempt_subject_ids\?\.length/);
+});
+
+test("r-hb2 F2: snapshot tinh theo tap mien incoming khong phai persisted", () => {
+  assert.match(actions, /input\.exemptSubjectIds,\s*\n?\s*\)/);
+  const hocba = read("src/lib/hocba.ts");
+  assert.match(hocba, /exemptOverride\?: string\[\]/);
+  assert.match(hocba, /exemptOverride \?\?/);
+});
+
 test("F3: form co exemption editor va bat can cu khi doi tap mien", () => {
   assert.match(explorer, /Môn miễn đánh giá/);
   assert.match(explorer, /exemptChanged/);

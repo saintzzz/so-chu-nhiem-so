@@ -331,6 +331,7 @@ async function loadBundleShared(opts: {
 function bundleFor(
   student: YearEndBundle["student"],
   shared: Awaited<ReturnType<typeof loadBundleShared>>,
+  exemptOverride?: string[],
 ): YearEndBundle {
   const sid = student.id;
   // Thu tu sort deterministic cho 3 stage (doc lap lo trinh, khong the
@@ -349,6 +350,7 @@ function bundleFor(
     ? decisions[decisions.length - 1].stage
     : "initial";
   const exempt =
+    exemptOverride ??
     decisions
       .slice()
       .reverse()
@@ -413,6 +415,7 @@ function bundleFor(
 export async function getStudentYearEndBundle(
   studentId: string,
   academicYearId: string,
+  exemptOverride?: string[],
 ): Promise<YearEndBundle | null> {
   const supabase = await createClient();
   const { data: stu } = await must(
@@ -440,7 +443,7 @@ export async function getStudentYearEndBundle(
     yearStart: yr.start_date,
     yearEnd: yr.end_date,
   });
-  return bundleFor(stu, shared);
+  return bundleFor(stu, shared, exemptOverride);
 }
 
 /** Bundle cả lớp - list screen + export cả lớp (1 query/bảng). */

@@ -134,8 +134,8 @@ function arrow(s, x, y, w = 0.55) {
   box(s, { x: 10.8, y: 2.1, w: 2.0, h: 1.7, title: "Ngoài", sub: "Resend\nAI providers\nTurnstile", fill: "fef3c7", line: C.amber });
   bullets(s, [
     { t: "Đây là MODULAR MONOLITH, không phải microservices - một codebase, một deploy, một DB", b: true },
-    { t: "Async có nhưng không có broker: Vercel cron + ai_jobs table + webhook callback (Resend) + Devin async fallback" },
-    { t: "Supabase project chung với sản phẩm khác (tvc360) - tách biệt bằng RLS, không phải DB riêng" },
+    { t: "Async có nhưng không có broker: Vercel cron + ai_jobs table + webhook callback (Resend) + async fallback" },
+    { t: "Supabase project chung với một sản phẩm nội bộ khác - tách biệt bằng RLS, không phải DB riêng" },
   ], { y: 4.5, fontSize: 12.5 });
 }
 
@@ -207,17 +207,17 @@ divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KH
 // 9 - Repo topology
 {
   const s = p.addSlide();
-  slideTitle(s, "PHÂN TÍCH", "Repo topology: polyrepo + shared harness, không phải monorepo");
+  slideTitle(s, "PHÂN TÍCH", "Repo topology: một repo một sản phẩm, không phải monorepo");
   table(s, [
-    ["Tiêu chí", "Polyrepo hiện tại (đã chọn)", "Monorepo (turborepo/Nx)"],
-    ["Thực tế", "Mỗi sản phẩm 1 repo: scn, tvc360, slideforge, ssp, aal-site... deploy độc lập", "Một repo chứa tất cả apps + packages chung"],
+    ["Tiêu chí", "Repo riêng hiện tại (đã chọn)", "Monorepo (turborepo/Nx)"],
+    ["Thực tế", "SCN là 1 repo độc lập, single-package (không workspaces), push master - deploy đúng project", "Một repo chứa nhiều apps + packages chung"],
     ["Deploy boundary", "Push master repo nào - deploy đúng project đó, đơn giản tuyệt đối", "Cần affected-graph để không deploy lại cả ứng dụng khi sửa shared lib"],
-    ["Code chia sẻ", "Chia sẻ qua SDLC harness (scripts/skills vendored vào từng repo) - không phải packages", "Shared packages import trực tiếp - tiện nhưng couple phiên bản"],
+    ["Code chia sẻ", "Chia sẻ qua harness scripts/skills vendored vào repo - không phải packages", "Shared packages import trực tiếp - tiện nhưng couple phiên bản"],
     ["Blast radius", "Lỗi/secret/bug giới hạn trong 1 repo", "Một commit xấu có thể phá nhiều app cùng lúc"],
     ["Quyền truy cập", "Repo-level - dễ cấp quyền từng sản phẩm", "Cần CODEOWNERS phức tạp để chặn chéo"],
-    ["Phù hợp bài toán", "Các sản phẩm ĐỘC LẬP khách hàng/lifecycle - không share domain model", "Chỉ đúng nếu các app chia sẻ domain model chung - SCN không có nhu cầu đó"],
+    ["Phù hợp bài toán", "SCN độc lập lifecycle/khách hàng - không share domain model với ai", "Chỉ đúng nếu nhiều app chia sẻ domain model chung - SCN không có nhu cầu đó"],
   ], { rowH: 0.62 });
-  note(s, "Thay cho monorepo: SDLC là 'meta-repo' phân phối conventions/gates/skills xuống từng product repo qua bootstrap-harness.sh.");
+  note(s, "SCN là bounded context hoàn chỉnh - repo riêng phản ánh đúng ranh giới deploy và ranh giới domain.");
 }
 
 divider("PHẦN III", "Kiến trúc dữ liệu", "1 Postgres - multi-tenant bằng RLS - schema-per-app bằng naming");
@@ -228,7 +228,7 @@ divider("PHẦN III", "Kiến trúc dữ liệu", "1 Postgres - multi-tenant b�
   slideTitle(s, "PHÂN TÍCH", "Topology dữ liệu - 3 cấp độ chia sẻ");
   table(s, [
     ["Cấp", "Thực tế SCN", "Phương án thay thế", "Đánh giá"],
-    ["Giữa các sản phẩm", "Chung 1 Supabase project (cxjpgfhqchjoernfmcra) - SCN bảng thường, tvc360 bảng tvc_*", "DB riêng mỗi sản phẩm", "Chung = rẻ + ít ops; rủi ro: nhiễu resource, tách bằng naming + RLS chứ không mạnh bằng DB riêng"],
+    ["Giữa các sản phẩm", "Chung 1 Supabase project với một app nội bộ khác - tách bằng table naming + RLS", "DB riêng cho SCN", "Chung = rẻ + ít ops; rủi ro: nhiễu resource, tách bằng naming + RLS chứ không mạnh bằng DB riêng"],
     ["Giữa các trường (tenant)", "Shared tables + school_id + RLS policy", "Schema-per-school / DB-per-school", "Shared+RLS = query/migration đơn giản, onboard trường mới = insert rows; schema-per-school chỉ đúng khi compliance bắt buộc cô lập cứng"],
     ["Bên trong 1 app", "~30 bảng quan hệ chặt + views + RPC", "Nhiều schema/DB theo bounded context", "Join chéo là yêu cầu cốt lõi (attendance_daily gộp 2 nguồn) - 1 DB là điều kiện cần"],
   ], { rowH: 0.85 });
@@ -313,7 +313,7 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   table(s, [
     ["Nhược điểm / rủi ro", "Mức độ", "Giảm thiểu / đường thoát"],
     ["Single point of failure: 1 app chết - cả hệ thống chết", "Cao về mặt lý thuyết", "Vercel multi-region sin1 + static shell vẫn serve khi function lỗi; blast radius nhỏ vì CRUD"],
-    ["Chung Supabase project với tvc360 - nhiễu resource", "Trung bình", "Tách project khi một bên tăng trưởng; naming + RLS đã chuẩn bị sẵn cho việc tách"],
+    ["Chung Supabase project với app nội bộ khác - nhiễu resource", "Trung bình", "Tách project khi một bên tăng trưởng; naming + RLS đã chuẩn bị sẵn cho việc tách"],
     ["RLS khó test + ~30 bảng phức tạp", "Cao - complexity thật", "Convention: test policy từng vai trò bằng execute_sql trước khi wire UI; complexity này có ở mọi phương án"],
     ["Không có broker - async quy mô lớn sẽ kẹt", "Thấp ở quy mô hiện tại", "ai_jobs pattern đã có; thêm queue khi throughput đòi hỏi"],
     ["Vendor lock-in nhẹ", "Trung bình", "Postgres chuẩn + code tách lib/supabase/* - migrate được"],
@@ -328,7 +328,7 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   table(s, [
     ["Quy mô", "Điểm gãy đầu tiên", "Đường xử lý (đã chuẩn bị trong thiết kế)"],
     ["100-500 trường", "Dashboard aggregate chậm", "Materialized views + index; pattern sẵn - đổi cách đọc không đổi kiến trúc"],
-    ["1.000-5.000 trường", "Connection pool + write hotspot attendance", "Supabase pooler + partition attendance_records theo academic_year; tách Supabase project theo sản phẩm"],
+    ["1.000-5.000 trường", "Connection pool + write hotspot attendance", "Supabase pooler + partition attendance_records theo academic_year; tách Supabase project riêng cho SCN"],
     ["AI throughput cao", "ai_jobs poll-based kẹt", "Thay bằng queue thật (Supabase pgmq / SQS) - seam đã có sẵn ở useAiJob + callback"],
     ["Nhiều tenant lớn (Sở toàn tỉnh)", "RLS evaluation cost trên bảng lớn", "Partition theo school_id hoặc schema-per-dept - RLS đã có school_id sẵn"],
     ["Team lớn hơn", "Monolith conflict", "Tách module nóng ra service - route group boundaries đã là bounded context sẵn"],
@@ -361,7 +361,7 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   s.addText("Modular monolith serverless - đúng bài toán, đúng quy mô", { x: 0.9, y: 2.1, w: 11.5, h: 1.1, fontFace: FONT, fontSize: 34, bold: true, color: C.white });
   bullets(s, [
     { t: "Microservices cho bài toán này = trả giá distributed systems cho lợi ích không cần: dữ liệu liên kết chặt chống tách, đội nhỏ chống ops nặng", c: C.white },
-    { t: "Polyrepo + shared SDLC harness thay monorepo: sản phẩm độc lập lifecycle, conventions vẫn thống nhất", c: C.white },
+    { t: "Repo riêng single-package thay monorepo: SCN là bounded context hoàn chỉnh, deploy boundary = domain boundary", c: C.white },
     { t: "RLS biến yêu cầu khó nhất (phân quyền đa vai trò) thành thế mạnh; 1 Postgres giữ nhất quán mà không cần saga", c: C.white },
     { t: "Không broker/Redis vì chưa có số đo đòi hỏi - seams (ai_jobs, cron, route groups) đã đặt sẵn để thêm khi scale chứng minh cần", c: C.white },
     { t: "Đánh đổi lớn nhất chấp nhận: SPOF 1 deployable + shared Supabase - cả hai đều có đường thoát rõ khi quy mô đòi hỏi", c: C.white },

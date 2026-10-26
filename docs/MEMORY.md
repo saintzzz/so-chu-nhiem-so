@@ -100,3 +100,28 @@ trước khi làm việc; cập nhật cùng commit với artifact của phase.
 - Demo GVCN them: anhhd@cva.scn (1A1 Chu Van An, gvcn+gvbm).
 - Reviewer fallback repo nay: reviewer-gpt subagent (Codex Cloud web
   khong co san; scripts/lead-review-*.mjs la per-CR one-off).
+
+## 2026-10-26 - CR-060 module flags + CR-061 bank ratio + hoc ba loop dong
+
+- **CR-060 shipped**: `school_features` + MODULES registry 4 key
+  (studio/hoc_ba/tu_van_an_toan/thi_dua). Nav fail-open, route
+  fail-closed. Admin UI `/dept/modules` (admin/so_gd). Nested
+  layout.tsx guard cho 5 module dir; hoc_ba guard tai page + export
+  + lock-records (layout 2-segment bi Next 16.4.2 type-gen quirk:
+  .next/types cu xung dot global LayoutProps voi .next/dev/types).
+- **CR-061 shipped**: bank_ratio 0/25/50/75/100 trong DC-03; 2 query
+  theo nguon cap rieng (bank system khong an slot truong); cot
+  Nguon trong dap an + bankStats; cross-fill khi 1 nguon het.
+- **Review r-h0601 REJECT -> r-h0602 APPROVE_WITH_CHANGES**: Critical
+  `@>` phai la `&&` trong my_roles() check - khong ai co 2 role nen
+  policy dead. Verify E2E that: so_gd toggle -> persist; GVCN KD
+  mat menu hoc_ba + redirect.
+- **Debt**: lock-records ghi truc tiep anon client (RLS gate = CR
+  rieng); latency DC-03 fan-out x2 chua do production.
+- **Hoc ba loop dong**: r-hb5 APPROVE_WITH_CHANGES; residual insider
+  forge-snapshot ghi nhan, audit trail da tamper-evident.
+- CR-058 DEFERRED: voi it truong khong can tach practice schema;
+  trigger mo lai: >10-15 truong, IO/CPU lai cham nguong, can SLA
+  rieng, hoac luc upgrade compute.
+- User-guide deck v3.0: 38 slides + transitions (push/fade), da
+  verify render + sach overlap; commit cb69a96.

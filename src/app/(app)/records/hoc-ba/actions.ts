@@ -99,6 +99,11 @@ export async function saveYearEndDecision(
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const invalid = validateDecision(input);
   if (invalid) return { error: invalid };
+  // r-hb1 F2: trinh duyet bat buoc du 3 truong phap ly - UI chan bang
+  // submitReady nhung action phai tu enforce (trigger DB chan tiep).
+  if (submit && (!input.kqht || !input.kqrl || !input.promotion)) {
+    return { error: "Chưa đủ dữ liệu xếp loại để trình duyệt." };
+  }
 
   const own = await verifyGvcnOwns(input.studentId);
   if (own.error) return { error: own.error };
@@ -161,7 +166,9 @@ export async function saveYearEndDecision(
           absentTotal: bundle.absentTotal,
         }
       : null,
-    status: submit ? "submitted" : "draft",
+    // r-hb1 F1: insert luon la 'draft' - RLS chi cho insert draft; submit
+    // di qua UPDATE (casUpdate) de trigger submit-guard kiem tra.
+    status: "draft",
   };
 
   // Stage != initial: row draft da duoc createNextStage tao san -> update truc
@@ -182,7 +189,7 @@ export async function saveYearEndDecision(
         // r33-3: khong doi status khi chi luu nhap - row 'rejected' phai
         // giu 'rejected' (trigger chan rejected->draft), submit moi
         // chuyen sang 'submitted'.
-        ...(submit ? { status: payload.status } : {}),
+        ...(submit ? { status: "submitted" } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("student_id", input.studentId)
@@ -204,7 +211,13 @@ export async function saveYearEndDecision(
       .from("year_end_decisions")
       .insert(payload);
 
-    if (insErr && insErr.code === "23505") {
+    if (insErr && insErr.code !== "23505") {
+      console.error("[hocba] insert:", insErr.message);
+      return { error: insErr.code === "42501" || insErr.message.includes("policy") ? "Bạn không có quyền ghi quyết định này." : "Lỗi hệ thống. Vui lòng thử lại." };
+    }
+    // Insert OK (draft moi) hoac 23505 (da ton tai) -> submit qua UPDATE.
+    // Luu nhap sau insert thanh cong thi xong luon, khong can update.
+    if (insErr?.code === "23505" || submit) {
       const { data: upd, error: updErr } = await casUpdate();
       if (updErr) {
         console.error("[hocba] cas update:", updErr.message);
@@ -212,9 +225,6 @@ export async function saveYearEndDecision(
       }
       if (!upd?.length)
         return { error: "Quyết định đã được trình/duyệt bởi phiên khác - tải lại trang." };
-    } else if (insErr) {
-      console.error("[hocba] insert:", insErr.message);
-      return { error: insErr.code === "42501" || insErr.message.includes("policy") ? "Bạn không có quyền ghi quyết định này." : "Lỗi hệ thống. Vui lòng thử lại." };
     }
   }
 
@@ -257,7 +267,7 @@ export async function approveYearEnd(input: {
 
   const { data: cur, error: curErr } = await supabase
     .from("year_end_decisions")
-    .select("id,status,decided_by,student_id,students(full_name,class_id)")
+    .select("id,status,decided_by,student_id,academic_year_id,kqht,kqrl,danh_hieu,promotion,override_legal_ground,override_note,students(full_name,class_id)")
     .eq("id", input.decisionId)
     .eq("school_id", profile.school_id)
     .maybeSingle();
@@ -268,6 +278,25 @@ export async function approveYearEnd(input: {
   if (!cur) return { error: "Không tìm thấy quyết định trong trường bạn." };
   if (cur.status !== "submitted")
     return { error: "Quyết định không ở trạng thái chờ duyệt." };
+
+  // r-hb1: duyet la diem kiem soat cuoi - tinh lai tu nguon. Quyet dinh
+  // lech goi y ma khong co can cu phap ly + ghi chu (ke ca row duoc ghi
+  // truc tiep qua PostgREST bo qua validation cua action) thi khong duyet.
+  if (!cur.kqht || !cur.kqrl || !cur.promotion) {
+    return { error: "Quyết định thiếu kết quả bắt buộc - trả lại để GVCN trình lại." };
+  }
+  const bundle = await getStudentYearEndBundle(cur.student_id, cur.academic_year_id);
+  if (bundle) {
+    const comp = bundle.computed;
+    const deviates =
+      cur.kqht !== comp.kqht.value ||
+      cur.kqrl !== comp.kqrl.value ||
+      cur.danh_hieu !== comp.danhHieu ||
+      cur.promotion !== comp.promotion.value;
+    if (deviates && (!cur.override_legal_ground || !cur.override_note?.trim())) {
+      return { error: "Quyết định lệch gợi ý hệ thống nhưng thiếu căn cứ pháp lý - trả lại để GVCN bổ sung." };
+    }
+  }
 
   const patch: Record<string, unknown> = { status: "approved" };
   if (input.giayKhenNote != null) patch.giay_khen_note = input.giayKhenNote.trim() || null;

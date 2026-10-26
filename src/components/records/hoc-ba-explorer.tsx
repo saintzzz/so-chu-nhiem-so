@@ -304,6 +304,7 @@ export function HocBaDetail({
     promotion: null as Promotion | null,
     ground: null as string | null,
     note: "",
+    exempt: [] as string[],
     touched: false,
   });
 
@@ -337,6 +338,7 @@ export function HocBaDetail({
             kqrl: dec?.kqrl ?? bundle.computed.kqrl.value,
             danhHieu: dec?.danh_hieu ?? bundle.computed.danhHieu,
             promotion: dec?.promotion ?? bundle.computed.promotion.value,
+            exempt: dec?.exempt_subject_ids ?? [],
             ground: dec?.override_legal_ground ?? null,
             note: dec?.override_note ?? "",
             touched: true,
@@ -348,13 +350,20 @@ export function HocBaDetail({
   const effKqrl = form.touched ? form.kqrl : (dec?.kqrl ?? bundle.computed.kqrl.value);
   const effPromo = form.touched ? form.promotion : (dec?.promotion ?? bundle.computed.promotion.value);
   const effDanhHieu = form.touched ? form.danhHieu : (dec?.danh_hieu ?? bundle.computed.danhHieu);
+  const effExempt = form.touched ? form.exempt : (dec?.exempt_subject_ids ?? []);
 
   const overridden =
     effKqht !== bundle.computed.kqht.value ||
     effKqrl !== bundle.computed.kqrl.value ||
     effPromo !== bundle.computed.promotion.value ||
     effDanhHieu !== bundle.computed.danhHieu;
-  const needsGround = overridden;
+  // Thay doi tap mon mien cung la hanh dong can can cu phap ly (server
+  // kiem exemptChanged tuong tu) - UI phai bat ground cho khop.
+  const priorExempt = dec?.exempt_subject_ids ?? [];
+  const exemptChanged =
+    effExempt.length !== priorExempt.length ||
+    effExempt.some((id) => !priorExempt.includes(id));
+  const needsGround = overridden || exemptChanged;
   const formValid = !needsGround || (form.ground && form.note.trim().length > 0);
   // r33: a year-end decision needs all three core fields - a partial
   // submit would store a meaningless classification.
@@ -379,7 +388,7 @@ export function HocBaDetail({
     promotion: effPromo,
     overrideLegalGround: needsGround ? form.ground : (dec?.override_legal_ground ?? null),
     overrideNote: needsGround ? form.note : (dec?.override_note ?? null),
-    exemptSubjectIds: dec?.exempt_subject_ids ?? [],
+    exemptSubjectIds: effExempt,
     giayKhenNote: dec?.giay_khen_note ?? null,
     computedSnapshot: submit
       ? {
@@ -669,6 +678,41 @@ export function HocBaDetail({
                         pickField({ promotion: v as Promotion }),
                       ),
                     )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Môn miễn đánh giá{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (HS khuyết tật / đặc biệt - loại khỏi xếp loại)
+                    </span>
+                  </p>
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="Môn miễn đánh giá">
+                    {bundle.subjectRows.map((s) => {
+                      const on = effExempt.includes(s.subjectId);
+                      return (
+                        <button
+                          key={s.subjectId}
+                          type="button"
+                          disabled={!editable}
+                          onClick={() =>
+                            pickField({
+                              exempt: on
+                                ? effExempt.filter((id) => id !== s.subjectId)
+                                : [...effExempt, s.subjectId],
+                            })
+                          }
+                          className={
+                            on
+                              ? "rounded-full bg-primary px-3 py-1 text-sm font-medium text-primary-foreground"
+                              : "rounded-full border border-border bg-card px-3 py-1 text-sm hover:bg-muted disabled:opacity-50"
+                          }
+                        >
+                          {s.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

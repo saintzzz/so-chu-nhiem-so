@@ -19,12 +19,14 @@ export async function hocBaPdf(models: HocBaModel[]): Promise<Buffer> {
 
   const content: unknown[] = [];
   models.forEach((m, i) => {
-    const pageBreak = i > 0 ? { pageBreak: "before" as const } : {};
-    content.push(
+    // r-hb1 F4: pageBreak phai nam tren phan tu DAU cua block - neu nhan
+    // "BAN NHAP" dung truoc phan tu mang pageBreak thi no dinh vao cuoi
+    // trang cua HS truoc do.
+    const block: Record<string, unknown>[] = [
       ...(m.result.approved
         ? []
         : [{ text: "BẢN NHÁP - CHƯA DUYỆT", bold: true, alignment: "center", color: "#B45309", fontSize: 13, margin: [0, 0, 0, 8] }]),
-      { text: m.schoolName.toUpperCase(), bold: true, alignment: "center", ...pageBreak },
+      { text: m.schoolName.toUpperCase(), bold: true, alignment: "center" },
       { text: "HỌC BẠ SỐ - TỔNG HỢP CUỐI NĂM HỌC", bold: true, alignment: "center", fontSize: 14 },
       { text: `Lớp: ${m.className}    Năm học: ${m.yearName}`, alignment: "center", margin: [0, 0, 0, 12] },
       { text: `Họ và tên: ${m.student.name}`, bold: true },
@@ -61,7 +63,9 @@ export async function hocBaPdf(models: HocBaModel[]): Promise<Buffer> {
         ],
         margin: [0, 28, 0, 0],
       },
-    );
+    ];
+    if (i > 0) block[0].pageBreak = "before";
+    content.push(...block);
   });
 
   const doc = {

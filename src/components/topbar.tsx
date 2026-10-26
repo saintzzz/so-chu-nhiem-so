@@ -24,16 +24,18 @@ function breadcrumb(pathname: string, sections: ReturnType<typeof mergedNav>) {
 
 export function Topbar({
   profile,
+  disabled,
   onOpenMobileNav,
 }: {
   profile: Profile;
+  disabled?: ReadonlySet<string>;
   onOpenMobileNav: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const roles = effectiveRoles(profile);
-  const crumbs = breadcrumb(pathname, mergedNav(roles));
+  const crumbs = breadcrumb(pathname, mergedNav(roles, disabled));
   const initials = profile.full_name
     .split(" ")
     .map((w) => w[0])
@@ -114,7 +116,7 @@ export function Topbar({
         </button>
       </div>
       <CommandPalette
-        open={paletteOpen}
+        disabled={disabled}        open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         roles={roles}
       />

@@ -87,6 +87,14 @@ export const TOOLS: ToolDef[] = [
         { value: "no", label: "Tất cả (ghi rõ câu chưa duyệt trong phụ lục)" },
         { value: "yes", label: "Chỉ câu đã duyệt (khuyến nghị khi ra đề thật)" },
       ]},
+      // CR-061: ty le cau rut tu ngan hang truong vs ngan hang he thong
+      { key: "bank_ratio", label: "Nguồn câu hỏi (trường / hệ thống)", type: "select", default: "50", options: [
+        { value: "50", label: "Cân bằng - 50% trường, 50% hệ thống" },
+        { value: "100", label: "100% ngân hàng trường" },
+        { value: "75", label: "Ưu tiên trường - 75% trường, 25% hệ thống" },
+        { value: "25", label: "Ưu tiên hệ thống - 25% trường, 75% hệ thống" },
+        { value: "0", label: "100% ngân hàng hệ thống" },
+      ]},
       { key: "shuffle", label: "Sinh mã đề hoán vị", type: "select", default: "no", options: [
         { value: "no", label: "1 mã đề" },
         { value: "yes", label: "2 mã đề (hoán vị câu hỏi)" },

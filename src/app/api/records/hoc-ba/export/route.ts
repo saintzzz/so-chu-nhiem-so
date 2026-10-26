@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { hasRole } from "@/lib/roles";
+import { assertModule } from "@/lib/modules";
 import { must } from "@/lib/supabase/must";
 import {
   getStudentYearEndBundle,
@@ -25,6 +26,11 @@ export async function GET(req: NextRequest) {
   const canExport = hasRole(profile, "gvcn") || hasRole(profile, "bgh");
   if (!canExport) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  // CR-060: module hoc_ba tat theo truong
+  const moduleErr = await assertModule("hoc_ba");
+  if (moduleErr) {
+    return NextResponse.json({ error: moduleErr }, { status: 403 });
   }
 
   const sp = req.nextUrl.searchParams;

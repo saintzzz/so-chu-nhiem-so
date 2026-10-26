@@ -11,10 +11,12 @@ export function CommandPalette({
   open,
   onClose,
   roles,
+  disabled,
 }: {
   open: boolean;
   onClose: () => void;
   roles: Role[];
+  disabled?: ReadonlySet<string>;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -23,13 +25,13 @@ export function CommandPalette({
 
   const items = useMemo(() => {
     const flat: { label: string; href: string; section: string }[] = [];
-    for (const s of mergedNav(roles)) {
+    for (const s of mergedNav(roles, disabled)) {
       if (s.href) flat.push({ label: s.label, href: s.href, section: "" });
       for (const c of s.children ?? [])
         flat.push({ label: c.label, href: c.href, section: s.label });
     }
     return flat;
-  }, [roles]);
+  }, [roles, disabled]);
 
   const filtered = items.filter((i) =>
     (i.label + i.section).toLowerCase().includes(query.toLowerCase()),

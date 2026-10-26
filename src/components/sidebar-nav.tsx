@@ -11,15 +11,17 @@ import { cn } from "@/lib/utils";
 
 export function SidebarNav({
   roles,
+  disabled,
   collapsed,
   onNavigate,
 }: {
   roles: Role[];
+  disabled?: ReadonlySet<string>;
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const sections = mergedNav(roles);
+  const sections = mergedNav(roles, disabled);
   const [open, setOpen] = useState<string | null>(
     sections.find((s) =>
       s.children?.some((c) => pathname.startsWith(c.href)),

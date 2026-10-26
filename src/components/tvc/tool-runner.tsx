@@ -88,6 +88,7 @@ export function ToolRunner({
   const [provider, setProvider] = useState<string | null>(null);
   const [missing, setMissing] = useState(0);
   const [review, setReview] = useState(0);
+  const [bankStats, setBankStats] = useState<{ ratio: number; school: number; system: number } | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
@@ -305,6 +306,7 @@ export function ToolRunner({
       setProvider(data.provider ?? null);
       setMissing(data.missing ?? 0);
       setReview(data.review ?? 0);
+      setBankStats(data.bankStats ?? null);
       setMatrixPayload(
         data.matrix
           ? {
@@ -672,6 +674,8 @@ export function ToolRunner({
                 Nguồn sinh: {provider === "question-bank" ? "Ngân hàng câu hỏi" : provider === "fallback-engine" ? "AI (máy chủ dự phòng)" : "AI"}
                 {missing > 0 && ` - còn thiếu ${missing} câu hỏi trong ngân hàng`}
                 {review > 0 && ` - ${review} câu được thay bằng câu gần đúng (khác mức/dạng), cần rà soát`}
+                {bankStats &&
+                  ` - nguồn: ${bankStats.school} câu trường · ${bankStats.system} câu hệ thống`}
               </p>
             )}
             {audioPending && (

@@ -3,11 +3,14 @@ import type { Role } from "@/types";
 export interface NavItem {
   label: string;
   href: string;
+  // CR-060: gan module ban kem - item/section bi an khi truong tat module
+  module?: string;
 }
 
 export interface NavSection {
   label: string;
   href?: string;
+  module?: string;
   children?: NavItem[];
 }
 
@@ -32,7 +35,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
         { label: "Chi tiết hồ sơ học sinh", href: "/records/students" },
-        { label: "Học bạ số", href: "/records/hoc-ba" },
+        { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Sơ đồ lớp", href: "/register/seating" },
         { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
         { label: "Đánh giá & xếp loại", href: "/conduct/evaluation" },
@@ -55,6 +58,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Công cụ soạn học liệu",
+      module: "studio",
       children: [
         { label: "Tất cả công cụ", href: "/studio" },
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
@@ -78,6 +82,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Tư vấn & an toàn",
+      module: "tu_van_an_toan",
       children: [
         { label: "Ghi nhận sự cố", href: "/safety/report" },
         { label: "Theo dõi & nhắc", href: "/safety/followup" },
@@ -100,7 +105,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Lịch sử phiên bản sơ đồ", href: "/register/seating-history" },
         { label: "Cổng thông tin phụ huynh", href: "/parents/portal" },
         { label: "Nộp sổ chủ nhiệm", href: "/register/signoff" },
-        { label: "Nộp sổ học bạ", href: "/register/lock-records" },
+        { label: "Nộp sổ học bạ", href: "/register/lock-records", module: "hoc_ba" },
         { label: "Xuất sổ", href: "/register/export" },
         { label: "Báo cáo tổng hợp (AI)", href: "/records/report" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
@@ -108,6 +113,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Thi đua & năng lực",
+      module: "thi_dua",
       children: [
         { label: "Thu thập & tính điểm", href: "/emulation/scoring" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
@@ -131,6 +137,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Công cụ soạn học liệu",
+      module: "studio",
       children: [
         { label: "Tất cả công cụ", href: "/studio" },
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
@@ -141,6 +148,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Năng lực giáo viên",
+      module: "thi_dua",
       children: [
         { label: "Tự đánh giá & kế hoạch", href: "/competency/self-assessment" },
         { label: "Minh chứng & đánh giá cuối năm", href: "/competency/evidence" },
@@ -169,6 +177,7 @@ export const NAV: Record<Role, NavSection[]> = {
     },
     {
       label: "Công cụ soạn học liệu",
+      module: "studio",
       children: [
         { label: "Tất cả công cụ", href: "/studio" },
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
@@ -209,7 +218,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Học sinh & chất lượng",
       children: [
         { label: "Học sinh toàn trường", href: "/school/students" },
-        { label: "Học bạ số", href: "/records/hoc-ba" },
+        { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy" },
         { label: "Quản lý kỳ thi", href: "/academics/exams" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
@@ -221,15 +230,16 @@ export const NAV: Record<Role, NavSection[]> = {
     {
       label: "Giám sát & phê duyệt",
       children: [
-        { label: "Sự cố toàn trường", href: "/safety/bgh" },
+        { label: "Sự cố toàn trường", href: "/safety/bgh", module: "tu_van_an_toan" },
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
-        { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records" },
-        { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking" },
+        { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records", module: "hoc_ba" },
+        { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking", module: "thi_dua" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
       ],
     },
     {
       label: "Công cụ soạn học liệu",
+      module: "studio",
       children: [
         { label: "Tất cả công cụ", href: "/studio" },
         { label: "Ngân hàng câu hỏi", href: "/studio/questions" },
@@ -250,7 +260,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Điều động dạy thay", href: "/school/substitutes" },
         { label: "Radar cảnh báo sớm", href: "/school/radar" },
         { label: "Trợ lý điều hành (AI)", href: "/school/ai-assistant" },
-        { label: "Sự cố toàn trường", href: "/safety/bgh" },
+        { label: "Sự cố toàn trường", href: "/safety/bgh", module: "tu_van_an_toan" },
         { label: "Thông báo toàn trường", href: "/school/announce" },
       ],
     },
@@ -271,7 +281,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài phân hiệu", href: "/school/journals" },
-        { label: "Học bạ số", href: "/records/hoc-ba" },
+        { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Phân tích điểm thi", href: "/school/exam-analytics" },
       ],
     },
@@ -296,7 +306,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Dashboard địa bàn UBND", href: "/dept/dashboard" },
         { label: "Đơn vị hành chính", href: "/dept/wards" },
         { label: "Báo cáo tổng hợp", href: "/dept/reports" },
-        { label: "Học bạ số", href: "/records/hoc-ba" },
+        { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Cơ sở vật chất", href: "/dept/facilities" },
       ],
     },
@@ -313,8 +323,9 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Quản trị dữ liệu", href: "/dept/data" },
         { label: "Đơn vị hành chính", href: "/dept/wards" },
         { label: "Báo cáo tổng hợp", href: "/dept/reports" },
-        { label: "Học bạ số", href: "/records/hoc-ba" },
+        { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Cơ sở vật chất", href: "/dept/facilities" },
+        { label: "Module theo trường", href: "/dept/modules" },
       ],
     },
     { label: "Hồ sơ cá nhân", href: "/profile" },
@@ -327,6 +338,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Quản lý trường", href: "/dept/schools" },
         { label: "Hoạt động sử dụng", href: "/dept/usage" },
         { label: "Dashboard cấp Sở Giáo dục và Đào tạo", href: "/dept/dashboard" },
+        { label: "Module theo trường", href: "/dept/modules" },
       ],
     },
   ],
@@ -352,12 +364,16 @@ export const ROLE_LABELS: Record<Role, string> = {
  * CR-038: gop menu cua nhieu role - section trung label merge children,
  * item trung href bo bot. Thu tu theo thu tu role (primary truoc).
  */
-export function mergedNav(roles: Role[]): NavSection[] {
+export function mergedNav(
+  roles: Role[],
+  disabled?: ReadonlySet<string>,
+): NavSection[] {
   const out: NavSection[] = [];
   const byLabel = new Map<string, NavSection>();
   const seenHref = new Set<string>();
   for (const role of roles) {
     for (const sec of NAV[role] ?? []) {
+      if (sec.module && disabled?.has(sec.module)) continue;
       const key = sec.href ?? sec.label;
       let target = byLabel.get(key);
       if (!target) {
@@ -370,6 +386,7 @@ export function mergedNav(roles: Role[]): NavSection[] {
         out.push(target);
       }
       for (const c of sec.children ?? []) {
+        if (c.module && disabled?.has(c.module)) continue;
         if (seenHref.has(c.href)) continue;
         seenHref.add(c.href);
         (target.children ??= []).push(c);

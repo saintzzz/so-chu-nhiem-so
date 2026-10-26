@@ -107,6 +107,8 @@ export interface Question {
   grade: number | null;
   source: "generated" | "manual" | "imported";
   review_state: QReviewState;
+  /** null = ngan hang he thong; = school_id la bank rieng cua truong (CR-061) */
+  school_id?: string | null;
   media?: MediaItem[];
   created_at: string;
 }

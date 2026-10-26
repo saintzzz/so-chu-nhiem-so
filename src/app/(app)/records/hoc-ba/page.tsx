@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { requireModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { mustRows } from "@/lib/supabase/must";
@@ -17,6 +18,8 @@ export default async function HocBaPage({
   searchParams: Promise<{ school?: string; class?: string; student?: string }>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh", "pht", "so_gd", "ubnd"]);
+  // CR-060: truong tat module hoc_ba thi chan ca trang
+  await requireModule("hoc_ba");
   const { school, class: classParam, student } = await searchParams;
   const supabase = await createClient();
 

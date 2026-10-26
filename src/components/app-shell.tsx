@@ -11,12 +11,15 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({
   profile,
+  disabledModules,
   children,
 }: {
   profile: Profile;
+  disabledModules?: string[];
   children: React.ReactNode;
 }) {
   const roles = effectiveRoles(profile);
+  const disabled = new Set(disabledModules ?? []);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = domainThemeFor();
@@ -60,7 +63,7 @@ export function AppShell({
             )}
           </button>
         </div>
-        <SidebarNav roles={roles} collapsed={collapsed} />
+        <SidebarNav roles={roles} disabled={disabled} collapsed={collapsed} />
       </aside>
 
       {/* Mobile drawer */}
@@ -97,6 +100,7 @@ export function AppShell({
             </div>
             <SidebarNav
               roles={roles}
+              disabled={disabled}
               collapsed={false}
               onNavigate={() => setMobileOpen(false)}
             />
@@ -108,6 +112,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
           profile={profile}
+          disabled={disabled}
           onOpenMobileNav={() => setMobileOpen(true)}
         />
         <main className="flex-1 overflow-x-hidden p-4 md:p-6">{children}</main>

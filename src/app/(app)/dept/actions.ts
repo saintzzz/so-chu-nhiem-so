@@ -226,3 +226,39 @@ export async function createSchool(input: {
   revalidatePath("/dept/usage");
   return {};
 }
+
+/* ---------- CR-060: bat/tat module theo truong ---------- */
+
+export async function setSchoolModule(
+  schoolId: string,
+  module: string,
+  enabled: boolean,
+): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["so_gd", "admin"]);
+  if (deny) return { error: deny };
+  const { MODULES } = await import("@/lib/modules");
+  if (!MODULES.some((m) => m.key === module))
+    return { error: "Module không hợp lệ." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("school_features").upsert(
+    {
+      school_id: schoolId,
+      module,
+      enabled,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "school_id,module" },
+  );
+  if (error) return { error: "Không lưu được cấu hình module." };
+
+  await logAudit(supabase, {
+    action: enabled ? "module.enable" : "module.disable",
+    entity: "school_features",
+    entityId: `${schoolId}:${module}`,
+    payload: { schoolId, module, enabled },
+  });
+  revalidatePath("/dept/modules");
+  revalidatePath("/", "layout");
+  return {};
+}

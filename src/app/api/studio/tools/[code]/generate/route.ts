@@ -17,6 +17,7 @@ import {
 import { schoolPiiNames } from "@/lib/ai-pii-roster";
 import { ensureTvcProfile } from "@/lib/tvc/profile";
 import { hasFeature } from "@/lib/permissions";
+import { assertModule } from "@/lib/modules";
 import { referencesMissingContext } from "@/lib/tvc/question-validate";
 import { renderFigure } from "@/lib/tvc/figures";
 import { shufflePicked } from "@/lib/tvc/exam-shuffle";
@@ -44,6 +45,7 @@ interface Picked {
   q: Question;
   cell: MatrixCell;
   review: boolean;
+  src?: "school" | "system";
   dispStem?: string;
   dispCorrect?: string;
   dispLabel?: string;
@@ -217,6 +219,7 @@ function buildExamDoc(
         p.q.code ?? "-",
         typeof ans === "string" ? ans : ans ? JSON.stringify(ans) : "-",
         String(perPts(p)),
+        p.src === "school" ? "Trường" : p.src === "system" ? "Hệ thống" : "-",
       ]);
     });
   });
@@ -258,7 +261,7 @@ function buildExamDoc(
         blocks: [
           {
             kind: "table",
-            header: ["Phần", "Câu", "Mã câu hỏi", "Đáp án", "Điểm"],
+            header: ["Phần", "Câu", "Mã câu hỏi", "Đáp án", "Điểm", "Nguồn"],
             rows: ansRows,
           },
           ...(partOf.get("true_false_4")?.length
@@ -457,6 +460,11 @@ export async function POST(
   // CR-034: feature grant studio.ai chan o tang route, khong chi page
   if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio"))) {
     return NextResponse.json({ error: "Tính năng đã bị quản trị tắt." }, { status: 403 });
+  }
+  // CR-060: module flag cap truong - truong chua mua studio thi chan luon
+  const moduleErr = await assertModule("studio");
+  if (moduleErr) {
+    return NextResponse.json({ error: moduleErr }, { status: 403 });
   }
   // FK tvc.* -> tvc.profiles: provisiona il profilo tvc al primo uso (CR-023)
   await ensureTvcProfile();
@@ -743,11 +751,25 @@ export async function POST(
       seenQ.has(q.id) ? false : (seenQ.add(q.id), true),
     );
 
+    // CR-061: tach 2 nguon - bank truong (school_id = truong minh) va bank
+    // he thong (school_id null). Ti le do GV chon qua input.bank_ratio
+    // (% cau tu bank truong, mac dinh 50). Row school_id cua truong khac
+    // khong nen thoat RLS - loai khoi pool cho chac.
+    const mySchool =
+      (profile as { school_id?: string | null }).school_id ?? null;
+    const rawPct = Number(input.bank_ratio);
+    const schoolPct = [0, 25, 50, 75, 100].includes(rawPct) ? rawPct : 50;
+    const bankSchool = bank.filter(
+      (x) => x.school_id && x.school_id === mySchool,
+    );
+    const bankSystem = bank.filter((x) => x.school_id == null);
+
     const pickFrom = (
       cell: MatrixCell,
       extraQtype: boolean,
+      pool: Question[] = bank,
     ): Question[] =>
-      bank.filter(
+      pool.filter(
         (x) =>
           (x.standard_ids ?? []).includes(cell.standard_id) &&
           (extraQtype || x.qtype === cell.qtype) &&
@@ -780,22 +802,40 @@ export async function POST(
     ): Promise<Picked[]> => {
       const result: Picked[] = [];
       for (const cell of cells) {
-        const sameQtype = await pickFrom(cell, false);
-        const sqIds = new Set(sameQtype.map((x) => x.id));
-        const t1 = sameQtype.filter((x) => x.level === cell.level);
-        const t2 = sameQtype.filter((x) => x.level !== cell.level);
-        const t3 = (await pickFrom(cell, true)).filter((x) => !sqIds.has(x.id));
-        const fresh = [...t1, ...t2, ...t3].filter(
-          (x) => !excludeIds.has(x.id) && !excludeStems.has(stemKey(x.stem)),
+        // CR-061: chia quota theo nguon - truong muon wantSchool cau,
+        // he thong phan con lai; nguon nao thieu thi nguon kia bu
+        // (cross-fill) - khong bao THIEU sai khi 1 nguon can.
+        const wantSchool = Math.min(
+          cell.count,
+          Math.round((cell.count * schoolPct) / 100),
         );
-        const rest = [...t1, ...t2, ...t3].filter(
-          (x) => excludeIds.has(x.id) || excludeStems.has(stemKey(x.stem)),
-        );
-        const pool = [...fresh, ...rest];
+        const tierPool = (pool: Question[]): Question[] => {
+          const sameQtype = pickFrom(cell, false, pool);
+          const sqIds = new Set(sameQtype.map((x) => x.id));
+          const t1 = sameQtype.filter((x) => x.level === cell.level);
+          const t2 = sameQtype.filter((x) => x.level !== cell.level);
+          const t3 = pickFrom(cell, true, pool).filter((x) => !sqIds.has(x.id));
+          const fresh = [...t1, ...t2, ...t3].filter(
+            (x) => !excludeIds.has(x.id) && !excludeStems.has(stemKey(x.stem)),
+          );
+          const rest = [...t1, ...t2, ...t3].filter(
+            (x) => excludeIds.has(x.id) || excludeStems.has(stemKey(x.stem)),
+          );
+          return [...fresh, ...rest];
+        };
+        const schoolPool = tierPool(bankSchool);
+        const sysPool = tierPool(bankSystem);
+        // Luot rut: truong toi da wantSchool -> he thong bu phan con lai
+        // -> truong bu lai neu he thong thieu (va nguoc lai ngam).
+        const plan: Question[][] = [
+          schoolPool.slice(0, wantSchool),
+          sysPool,
+          schoolPool.slice(wantSchool),
+        ];
         // Recheck used/stem at pick time - same question can appear in pools
         // of different cells; never insert the same question twice.
         let taken = 0;
-        for (const q of pool) {
+        for (const q of plan.flat()) {
           if (taken >= cell.count) break;
           if (used.has(q.id) || usedStems.has(stemKey(q.stem))) continue;
           used.add(q.id);
@@ -808,6 +848,8 @@ export async function POST(
               q.level !== cell.level ||
               q.qtype !== cell.qtype ||
               excludeIds.has(q.id),
+            src:
+              q.school_id && q.school_id === mySchool ? "school" : "system",
           });
         }
         while (taken < cell.count) {
@@ -970,6 +1012,12 @@ export async function POST(
       review: pickedCT.filter(
         (p) => p.review && !p.q.id.startsWith("missing-"),
       ).length,
+      // CR-061: thong ke nguon de GV kiem chung ty le da chon.
+      bankStats: {
+        ratio: schoolPct,
+        school: realCT.filter((p) => p.src === "school").length,
+        system: realCT.filter((p) => p.src === "system").length,
+      },
       provider: "question-bank",
       usedFallback: true,
     });

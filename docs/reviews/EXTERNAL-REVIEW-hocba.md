@@ -61,6 +61,14 @@ Scope: tính toán xếp loại cuối năm, workflow GVCN→BGH, locking, expor
 - `bundleFor`: exempt = mảng của decision active as-is (kể cả []); `createNextStage` kế thừa `exempt_subject_ids` từ quyết định trước — miễn theo HS không theo stage, [] chỉ còn nghĩa "đã xóa chủ động".
 - Dedupe audit: trigger ghi `hoc_ba.approve` → bỏ `logAudit` trùng trong action.
 
+## Round r-hb5 — APPROVE_WITH_CHANGES (final confirm)
+
+- F1h: **FIXED** — key `danhHieu` trong snapshot khớp phía submit; `is distinct from` xử lý đúng cả row legacy thiếu key.
+- F2r: **FIXED** — active decision's exempt array authoritative (kể cả []); `createNextStage` copy tường minh.
+- 1 Medium mới: `prevErr` chỉ log rồi vẫn insert → stage mới mất miễn môn lặng lẽ. Fixed `956c76e`: lookup fail → return error, không insert.
+
+Kết luận loop: 5 rounds, 10 findings triaged + fixed, zero actionable Critical/High còn lại.
+
 ### Residual risk (documented, accepted)
 
 - GVCN kiên quyết vẫn ghi được quyết định tùy ý kèm ground+note **giả mạo** qua PostgREST (draft→update). Không thể chặn ở DB vì DB không recompute TT22; biện pháp: approve recompute + audit trail bắt buộc (ground+note hiển thị minh bạch cho BGH). Đây là process control có audit, không phải silent forgery.

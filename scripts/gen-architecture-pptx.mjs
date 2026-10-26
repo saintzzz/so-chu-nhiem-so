@@ -1,12 +1,12 @@
 /**
- * Architecture PPTX - kien truc he thong, tech stack, so sanh phuong an.
+ * Architecture PPTX - phan tich sau kien truc he thong Sổ Chủ Nhiệm Số.
  * node scripts/gen-architecture-pptx.mjs -> docs/handover/KIEN-TRUC-HE-THONG.pptx
- * Nguon: docs/project/ARCHITECTURE.md (Phase 4), AGENTS.md, package.json.
+ * Nguon: docs/project/ARCHITECTURE.md, AGENTS.md, package.json, src/, vercel.json.
  * Style dong bo voi gen-user-guide-pptx.mjs (cung palette + transitions).
  */
 import PptxGenJS from "pptxgenjs";
 import JSZip from "jszip";
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const p = new PptxGenJS();
 p.defineLayout({ name: "W", width: 13.33, height: 7.5 });
@@ -68,7 +68,7 @@ function table(s, rows, opts = {}) {
       r.map((c) => ({
         text: String(c),
         options: {
-          fontFace: FONT, fontSize: i === 0 ? 11.5 : 11, bold: i === 0,
+          fontFace: FONT, fontSize: i === 0 ? 11 : 10.5, bold: i === 0,
           color: i === 0 ? C.white : C.ink,
           fill: { color: i === 0 ? C.accent : i % 2 ? C.white : C.bg },
           valign: "middle", margin: 0.08,
@@ -101,39 +101,41 @@ function arrow(s, x, y, w = 0.55) {
   s.background = { color: C.code };
   s.addShape(p.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.14, fill: { color: C.teal2 } });
   s.addText("VieSchool", { x: 0.9, y: 0.6, w: 4, h: 0.4, fontFace: FONT, fontSize: 14, color: C.teal2, bold: true });
-  s.addText("Kiến trúc hệ thống", { x: 0.9, y: 2.1, w: 11.5, h: 1.2, fontFace: FONT, fontSize: 44, bold: true, color: C.white });
-  s.addText("Sổ Chủ Nhiệm Số - nền tảng số hóa công tác chủ nhiệm và quản lý trường học", { x: 0.9, y: 3.3, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 16, color: "94a3b8" });
-  s.addText("Tech stack - Quyết định kiến trúc - So sánh phương án - Mức độ phù hợp", { x: 0.9, y: 4.0, w: 11.5, h: 0.5, fontFace: FONT, fontSize: 13, color: C.teal2 });
+  s.addText("Kiến trúc hệ thống", { x: 0.9, y: 1.9, w: 11.5, h: 1.2, fontFace: FONT, fontSize: 44, bold: true, color: C.white });
+  s.addText("Sổ Chủ Nhiệm Số - nền tảng số hóa công tác chủ nhiệm và quản lý trường học", { x: 0.9, y: 3.1, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 16, color: "94a3b8" });
+  s.addText("Modular monolith - Microservices analysis - Repo topology - Data architecture - Async model - Scaling path", { x: 0.9, y: 3.8, w: 11.5, h: 0.5, fontFace: FONT, fontSize: 12.5, color: C.teal2 });
   s.addText("Nguồn: docs/project/ARCHITECTURE.md - AGENTS.md - cấu hình production thật", { x: 0.9, y: 6.6, w: 11.5, h: 0.4, fontFace: FONT, fontSize: 10.5, color: "64748b" });
 }
 
 // 2 - Bai toan
 {
   const s = p.addSlide();
-  slideTitle(s, "BỐI CẢNH", "Bài toán đặt ra");
+  slideTitle(s, "BỐI CẢNH", "Bài toán đặt ra - ràng buộc quyết định kiến trúc");
   bullets(s, [
     { t: "Số hóa toàn bộ công tác chủ nhiệm và điều hành trường học", b: true },
     { t: "10 vai trò nghiệp vụ + admin", sub: ["GVCN, GVBM, Tổ trưởng, BGH, PHT cơ sở, Kế toán, Sở GD&ĐT, UBND, Phụ huynh, Học sinh"] },
-    { t: "Miền dữ liệu rộng", sub: ["~30 bảng: hồ sơ HS, điểm danh, điểm số, hạnh kiểm, sổ đăng ký chủ nhiệm, thi đua, cố vấn, sự cố an toàn"] },
-    { t: "Yêu cầu phi chức năng", sub: ["Tiếng Việt chuẩn, mobile-first, demo nhiều vai trò, bảo mật tuyệt đối theo vai trò - không rò rỉ chéo"] },
-    { t: "Ràng buộc vận hành", sub: ["Đội ngũ nhỏ, zero-ops, không phát sinh chi phí ngoài quota (zero-overage)"] },
+    { t: "Miền dữ liệu rộng và liên kết chặt", sub: ["~30 bảng: điểm danh chéo giữa sổ đầu bài và điểm danh ngày, điểm số liên kết hạnh kiểm, KPI chủ nhiệm tổng hợp nhiều nguồn"] },
+    { t: "Yêu cầu phi chức năng", sub: ["Tiếng Việt chuẩn, mobile-first, demo nhiều vai trò, phân quyền tuyệt đối - không rò rỉ chéo"] },
+    { t: "Ràng buộc vận hành", b: true, sub: ["Đội ngũ rất nhỏ (1-2 dev + agent), zero-ops, không phát sinh chi phí ngoài quota"] },
   ]);
+  note(s, "Đặc điểm then chốt của bài toán: domain RỘNG nhưng dữ liệu LIÊN KẾT CHẶT - điểm danh, điểm số, hạnh kiểm cùng một học sinh.");
 }
 
-// 3 - So do kien truc
+// 3 - So do tong quan
 {
   const s = p.addSlide();
-  slideTitle(s, "KIẾN TRÚC", "Sơ đồ tổng quan");
-  box(s, { x: 0.6, y: 2.2, w: 2.3, h: 1.5, title: "Browser", sub: "10 vai trò\nmobile-first\nPWA-ready" });
-  arrow(s, 3.0, 2.8);
-  box(s, { x: 3.6, y: 2.0, w: 2.7, h: 1.9, title: "Vercel (Next.js 16)", sub: "App Router + RSC\nServer Actions\nproxy.ts auth redirect\nWAF + rate limits", fill: "dbeafe", line: "2563eb" });
-  arrow(s, 6.45, 2.8);
-  box(s, { x: 7.05, y: 2.0, w: 2.7, h: 1.9, title: "Supabase", sub: "Postgres ~30 bảng\nRow Level Security\nAuth email/password\nRPC + views", fill: "d1fae5", line: "059669" });
-  arrow(s, 9.9, 2.8);
-  box(s, { x: 10.5, y: 2.2, w: 2.2, h: 1.5, title: "Dịch vụ ngoài", sub: "Resend (email PH)\nAI providers\n(TTS, sinh đề)", fill: "fef3c7", line: C.amber });
+  slideTitle(s, "KIẾN TRÚC", "Sơ đồ triển khai - một đơn vị deploy duy nhất");
+  box(s, { x: 0.6, y: 2.1, w: 2.3, h: 1.7, title: "Browser", sub: "10 vai trò\nmobile-first" });
+  arrow(s, 3.0, 2.75);
+  box(s, { x: 3.6, y: 1.9, w: 2.9, h: 2.1, title: "Vercel - Next.js 16", sub: "1 deployable duy nhất\nRSC + Server Actions\nRoute Handlers: ai, auth,\ncron, records, studio,\nwebhooks", fill: "dbeafe", line: "2563eb" });
+  arrow(s, 6.65, 2.75);
+  box(s, { x: 7.25, y: 1.9, w: 2.8, h: 2.1, title: "Supabase (1 project)", sub: "Postgres ~30+ bảng\nRLS mọi bảng tenant\nAuth email/password\nRPC + SQL views", fill: "d1fae5", line: "059669" });
+  arrow(s, 10.2, 2.75);
+  box(s, { x: 10.8, y: 2.1, w: 2.0, h: 1.7, title: "Ngoài", sub: "Resend\nAI providers\nTurnstile", fill: "fef3c7", line: C.amber });
   bullets(s, [
-    { t: "Bảo mật 3 lớp", b: true, sub: ["proxy.ts redirect lạc quan (UX) - requireRole() trong Server Components - RLS trong Postgres là lớp cuối, không phụ thuộc code app"] },
-    { t: "Một deploy duy nhất", sub: ["Git push master - auto-deploy production (git-linked), không server riêng, không CI/CD tự quản"] },
+    { t: "Đây là MODULAR MONOLITH, không phải microservices - một codebase, một deploy, một DB", b: true },
+    { t: "Async có nhưng không có broker: Vercel cron + ai_jobs table + webhook callback (Resend) + Devin async fallback" },
+    { t: "Supabase project chung với sản phẩm khác (tvc360) - tách biệt bằng RLS, không phải DB riêng" },
   ], { y: 4.5, fontSize: 12.5 });
 }
 
@@ -148,181 +150,223 @@ function arrow(s, x, y, w = 0.55) {
     ["UI", "Base UI (shadcn) + custom components", "Accessible primitives sẵn, tự do custom"],
     ["Backend", "Supabase: Auth + Postgres + RLS", "Không tự build backend, RLS = chống rò rỉ chéo vai trò"],
     ["Data access", "@supabase/ssr + supabase-js, Server Actions", "Không cần API layer riêng (ADR-6)"],
-    ["Charts/Export", "Custom SVG, print CSS, docx/pptxgenjs, xlsx, KaTeX", "Xuất sổ/đề thi ra Word, PPT, Excel - in trực tiếp"],
-    ["Infra", "Vercel Pro (git-linked), tên miền *.vieschool.com", "Zero-ops, WAF + rate limit + budgets sẵn có"],
+    ["Export", "docx, pptxgenjs, xlsx (SheetJS CDN), KaTeX, print CSS", "Sổ/đề/báo cáo ra file thật - nghiệp vụ hành chính"],
+    ["Infra", "Vercel Pro region sin1 (Singapore), *.vieschool.com", "Gần user VN, WAF + budgets sẵn có"],
   ], { rowH: 0.52 });
 }
 
-divider("PHẦN II", "Quyết định kiến trúc", "6 ADR chính + lý do chọn từng công nghệ nền tảng");
+divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KHÔNG phải microservices");
 
-// 6 - ADR table
+// 6 - Monolith la gi o day
 {
   const s = p.addSlide();
-  slideTitle(s, "QUYẾT ĐỊNH", "6 quyết định kiến trúc chính (ADR)");
+  slideTitle(s, "PHÂN TÍCH", "SCN là modular monolith - cấu trúc bên trong");
   table(s, [
-    ["ADR", "Quyết định", "Đánh đổi"],
-    ["ADR-1", "Real routes (App Router) thay SPA một URL", "Deep-link, RSC streaming - đổi lại phải quản route tree rõ ràng"],
-    ["ADR-2", "RLS làm lớp phân quyền cuối, app chỉ UX", "An toàn tuyệt đối - đổi lại test policy từng vai trò trước khi wire UI"],
-    ["ADR-3", "JSONB cho sơ đồ chỗ ngồi (layout version)", "Linh hoạt lưới ghế, không đục schema - đổi lại validate ở app"],
-    ["ADR-4", "Gợi ý rule-based, ghi nhãn rõ - không LLM cho nghiệp vụ lõi", "Deterministic, audit được - đổi lại ít 'thông minh' hơn"],
-    ["ADR-5", "Tài khoản demo + role preview, RLS vẫn authoritative", "Demo 10 vai trò mượt - không làm yếu bảo mật"],
-    ["ADR-6", "Server Actions cho mọi write, không API layer", "Ít surface attack, code gọn - Route Handlers chỉ cho upload"],
-  ], { rowH: 0.66 });
+    ["Bounded context (module)", "Đường route", "Dữ liệu riêng"],
+    ["Chủ nhiệm (GVCN)", "records/, attendance/, academics/", "hồ sơ, điểm danh, điểm số"],
+    ["Sổ chủ nhiệm", "register/", "seating, KPI, signoff, events"],
+    ["Hạnh kiểm - cố vấn", "conduct/, counseling/", "conduct_records, cases"],
+    ["Truyền thông PH", "parents/, announcements", "messages, appointments"],
+    ["Hoạt động - an toàn", "activities/, safety/", "activities, incidents"],
+    ["Thi đua - năng lực", "emulation/, competency/", "scores, evidence"],
+    ["Quản trị (BGH/Sở/Tổ)", "school/, dept/, team/", "views aggregate"],
+    ["Shared kernel", "lib/auth, rbac, supabase, utils", "profiles, schools, notifications"],
+  ], { rowH: 0.46 });
+  note(s, "Module = route group + bảng riêng + policy riêng. Ranh giới module được enforce bởi RLS, không phải network boundary.");
 }
 
-// 7 - Vi sao Next.js
+// 7 - Microservices analysis
 {
   const s = p.addSlide();
-  slideTitle(s, "QUYẾT ĐỊNH", "Vì sao Next.js 16 + Vercel, không phải SPA truyền thống");
+  slideTitle(s, "PHÂN TÍCH", "Vì sao KHÔNG microservices - phân tích theo bài toán");
   table(s, [
-    ["Tiêu chí", "Next.js 16 + Vercel (đã chọn)", "SPA + backend riêng (Express/Nest)"],
-    ["Render", "RSC + static/SSR - TTFB nhanh, SEO tốt", "CSR thuần - màn trắng chờ JS, SEO yếu"],
-    ["Backend", "Server Actions trong cùng repo - 1 codebase", "2 codebase, 2 deploy, contract API tự duy trì"],
-    ["Vận hành", "Git push - deploy, rollback 1 click, preview/PR", "Tự quản server/process/CI-CD"],
-    ["Bảo mật", "WAF + rate limit + headers cấu hình sẵn", "Tự dựng reverse proxy + middleware"],
-    ["Chi phí", "Pro $20/tháng, spend cap $1 - không overage", "VPS rẻ hơn nhưng tốn công vận hành"],
-  ], { rowH: 0.56 });
-  note(s, "Đo thật: splash '/' TTFB p95 ~450ms (từng ~3s trước khi tối ưu) - ngân sách <1s được gate tự động bằng check-perf.");
-}
-
-// 8 - Vi sao Supabase
-{
-  const s = p.addSlide();
-  slideTitle(s, "QUYẾT ĐỊNH", "Vì sao Supabase (Postgres + RLS), không phải tự build backend");
-  table(s, [
-    ["Tiêu chí", "Supabase (đã chọn)", "Tự build (Postgres + API thủ công)"],
-    ["Phân quyền", "RLS trong DB - portal/API không thể rò rỉ chéo vai trò", "Kiểm tra ở app layer - quên 1 chỗ = lộ dữ liệu"],
-    ["Auth", "Auth sẵn có, email/password, session cookie SSR", "Tự implement JWT/session - rủi ro bảo mật"],
-    ["Tốc độ phát triển", "Migrations SQL + RPC + views - rất nhanh", "ORM + endpoint cho từng thao tác"],
-    ["Vận hành", "Managed, backup, Spend Cap chặn vượt quota", "Tự monitor DB, tự backup, tự vá"],
-    ["Chi phí", "Pro $25/tháng, cap cứng", "Rẻ về tiền - đắt về công"],
-  ], { rowH: 0.56 });
-  note(s, "Bài toán 10 vai trò x ~30 bảng = phân quyền là rủi ro lớn nhất - RLS loại bỏ nguyên một lớp bug 'quên check quyền'.");
-}
-
-// 9 - Bao mat 3 lop
-{
-  const s = p.addSlide();
-  slideTitle(s, "BẢO MẬT", "Phân quyền 3 lớp - default-deny");
-  box(s, { x: 0.7, y: 2.0, w: 3.7, h: 2.2, title: "Lớp 1 - proxy.ts", sub: "Redirect lạc quan:\nchưa login - /login\nđã login - role home\nCHỈ là UX, không phải authz", fill: "dbeafe", line: "2563eb" });
-  box(s, { x: 4.8, y: 2.0, w: 3.7, h: 2.2, title: "Lớp 2 - Server checks", sub: "requireRole([...]) đầu page\ncheckActionRole trong actions\ngetProfile() React cache()\ndefault-deny nếu role lạ", fill: "d1fae5", line: "059669" });
-  box(s, { x: 8.9, y: 2.0, w: 3.7, h: 2.2, title: "Lớp 3 - Postgres RLS", sub: "Policy theo vai trò trên mọi bảng\nmy_role(), my_school_id(),\nmy_class_ids(), my_student_ids()\nseed mới dùng service_role", fill: "fef3c7", line: C.amber });
-  bullets(s, [
-    { t: "Vai trò vào route của người khác - redirect về home của chính họ, không bao giờ leak data" },
-    { t: "WAF Vercel: rate limit /api + /login, bypass-health cho uptime monitor; headers CSP/HSTS/nosniff/X-Frame đầy đủ" },
-    { t: "Secrets chỉ ở env/dashboard - không commit; audit_logs ghi mọi thao tác nhạy cảm" },
-  ], { y: 4.6, fontSize: 12.5 });
-}
-
-// 10 - Mo hinh du lieu
-{
-  const s = p.addSlide();
-  slideTitle(s, "DỮ LIỆU", "Mô hình dữ liệu - ~30 bảng theo cụm nghiệp vụ");
-  table(s, [
-    ["Cụm", "Bảng chính"],
-    ["Tổ chức & con người", "schools, departments, academic_years, profiles, students, parents, parent_students"],
-    ["Lớp học", "classes, student_groups (Tổ), class_roles (BCS), student_record_history"],
-    ["Giảng dạy", "subjects (per-school), teacher_subjects, timetable_entries, period_logs, period_absences"],
-    ["Điểm danh & học lực", "attendance_records (status+source enum), grades (term/loại KT), support_plans"],
-    ["Hạnh kiểm & cố vấn", "conduct_records, conduct_evaluations, counseling_cases"],
-    ["Truyền thông & hoạt động", "announcements, messages, appointments, activities (draft-pending-approved-done), notifications"],
-    ["Sổ chủ nhiệm & thi đua", "seating_charts (jsonb, version), kpis, register_signoffs, school_year_events, emulation_*"],
-    ["Hệ thống", "audit_logs, notifications, export_log"],
-  ], { rowH: 0.5 });
-  note(s, "Một sự thật = một bảng: period_absences đồng bộ sang attendance_records (source='period_log') - hai màn hình không bao giờ mâu thuẫn.");
-}
-
-// 11 - Luong du lieu
-{
-  const s = p.addSlide();
-  slideTitle(s, "DỮ LIỆU", "Các luồng nghiệp vụ then chốt");
-  bullets(s, [
-    { t: "Điểm danh hai nguồn hợp nhất", b: true, sub: ["Sổ đầu bài (period_absences) upsert sang attendance_records - view attendance_daily gộp một nguồn sự thật"] },
-    { t: "Dashboard = SQL views", sub: ["dashboard_gvcn aggregate vắng/muộn/%CC/at-risk trong ngày - count ở DB, không fetchAllRows rồi đếm ở client"] },
-    { t: "Sơ đồ chỗ ngồi", sub: ["layout jsonb {cols, rows, seats}, version mỗi lần lưu, export PNG/PDF phía client"] },
-    { t: "Thông báo sự kiện", sub: ["Mọi action user khác cần biết - insert notifications cho recipient, feed không bao giờ 'chết'"] },
-    { t: "AI có chuỗi fallback", sub: ["GEMINI/OPENAI/ANTHROPIC multi-key - hết quota thì Devin async job callback - cuối cùng rule-based, không bao giờ crash flow"] },
-    { t: "Email phụ huynh = Resend", sub: ["sendAnnouncement gửi email PH liên kết; thiếu key vẫn lưu in-app + báo emailSkipped"] },
-  ], { fontSize: 12.5 });
-}
-
-divider("PHẦN III", "So sánh phương án", "Đã chọn gì - bỏ qua gì - vì sao");
-
-// 13 - So sanh 4 phuong an
-{
-  const s = p.addSlide();
-  slideTitle(s, "SO SÁNH", "4 phương án cạnh tranh");
-  table(s, [
-    ["Tiêu chí", "Next.js+Supabase (đã chọn)", "VPS + Express + Postgres", "Low-code (Retool/Bubble)", "Open-source (Moodle...)"],
-    ["Time-to-market", "Nhanh nhất - 1 codebase", "Chậm - dựng infra trước", "Nhanh cho CRUD đơn giản", "Chậm - customize nặng"],
-    ["Phân quyền 10 vai trò", "RLS - chặt tuyệt đối", "Tự code - dễ sót", "Kém kiểm soát fine-grain", "Plugin, khó kiểm chứng"],
-    ["UI/UX riêng", "Toàn quyền - Fluent 2 đồng nhất", "Toàn quyền", "Bị giới hạn template", "UI cũ, khó re-skin"],
-    ["Vận hành", "Zero-ops", "Tự lo uptime/backup/CVE", "Vendor lo", "Tự lo toàn bộ"],
-    ["Chi phí", "~$45/tháng cap cứng", "VPS rẻ + công vận hành", "Per-seat - đắt khi scale", "Miễn phí license, đắt công"],
-    ["Lock-in", "Trung bình (Postgres chuẩn)", "Thấp", "Cao - data kẹt trong vendor", "Thấp"],
-  ], { rowH: 0.56 });
-}
-
-// 14 - Uu diem
-{
-  const s = p.addSlide();
-  slideTitle(s, "ĐÁNH GIÁ", "Ưu điểm của phương án đã chọn");
-  bullets(s, [
-    { t: "Bảo mật theo thiết kế, không theo kỷ luật", b: true, sub: ["RLS ở DB = lớp cuối bất khả xâm phạm kể cả khi app bug; 10 vai trò phức tạp vẫn default-deny"] },
-    { t: "Tốc độ phát triển cao", sub: ["Server Actions + generated types + SQL trực tiếp - feature mới không cần dựng API plumbing"] },
-    { t: "Performance đo được, gate được", sub: ["Static shell + RSC; perf budgets trong repo, check-perm fail deploy khi vượt ngưỡng"] },
-    { t: "Zero-ops thật", sub: ["Không server, không on-call infra; git push = deploy; rollback 1 click"] },
-    { t: "Chi phí dự đoán được", sub: ["Vercel $1 pause + Supabase Spend Cap + AI Gateway $1 - vượt quota thì dừng chứ không bill"] },
-    { t: "Hệ sinh thái chuẩn", sub: ["Postgres chuẩn, Next.js mainstream - không kẹt vào framework hiếm, dễ chuyển nếu cần"] },
-  ], { fontSize: 12.5 });
-}
-
-// 15 - Nhuoc diem
-{
-  const s = p.addSlide();
-  slideTitle(s, "ĐÁNH GIÁ", "Nhược điểm & cách giảm thiểu");
-  table(s, [
-    ["Nhược điểm / rủi ro", "Mức độ", "Giảm thiểu"],
-    ["Vendor lock-in nhẹ (Supabase RPC, Vercel)", "Trung bình", "Postgres chuẩn - migrate được; code tách lib/supabase/*"],
-    ["Cold start serverless", "Thấp", "Static shell + splash; perf gate giữ TTFB <1s"],
-    ["RLS khó test", "Trung bình", "Convention: test policy từng vai trò bằng execute_sql trước khi wire UI"],
-    ["~30 bảng + policy = complexity thật", "Cao", "RLS là lý do chọn Supabase - complexity này không tránh được ở phương án nào"],
-    ["Server Actions khó audit hơn REST rõ ràng", "Thấp", "checkActionRole bắt buộc + audit_logs ở mọi mutation nhạy cảm"],
-    ["AI phụ thuộc provider ngoài", "Trung bình", "Multi-key multi-provider fallback + rule-based cuối chuỗi - flow không gãy"],
+    ["Tiêu chí", "Modular monolith (đã chọn)", "Microservices"],
+    ["Team vận hành", "1-2 dev + agent - 1 service duy nhất", "Mỗi service cần owner, monitoring, on-call riêng"],
+    ["Nhất quán dữ liệu", "ACID trong 1 Postgres - period_absences upsert attendance_records trong 1 transaction", "Saga/eventual consistency cho cùng thao tác - phức tạp hơn nhiều"],
+    ["Độ trễ trong domain", "Function call trong process - join trực tiếp ~30 bảng", "Network call giữa services, join qua API - dashboard aggregate rất đắt"],
+    ["Phân quyền", "RLS dùng chung my_role()/my_school_id() - một lần định nghĩa", "Phải tái tạo policy ở từng service hoặc thêm service mesh/authz layer"],
+    ["Deploy/rollback", "1 deploy, 1 rollback - atomic", "Version matrix N services - contract testing bắt buộc"],
+    ["Chi phí", "1 Vercel project + 1 Supabase - ~$45/tháng cap", "N projects + N DB + broker + observability - gấp nhiều lần"],
   ], { rowH: 0.62 });
 }
 
-// 16 - Phu hop bai toan
+// 8 - Khi nao can microservices
 {
   const s = p.addSlide();
-  slideTitle(s, "ĐÁNH GIÁ", "Mức độ phù hợp với bài toán");
-  table(s, [
-    ["Yêu cầu bài toán", "Kiến trúc đáp ứng thế nào"],
-    ["10 vai trò, phân quyền phức tạp", "RLS 3 lớp + requireRole + mergedNav gộp menu đa vai trò - kiểm chứng bằng gate"],
-    ["Nghiệp vụ trường học VN", "Schema chuyên biệt (sổ đầu bài, thi đua, sổ chủ nhiệm HK), không ép vào LMS quốc tế"],
-    ["Demo/bán hàng nhiều vai trò", "Demo accounts + role preview mượt, RLS vẫn chặt (ADR-5)"],
-    ["Mobile-first cho GV/PH", "Tailwind responsive + instant paint loading.tsx skeleton"],
-    ["Vận hành siêu nhẹ", "Zero-ops serverless + monitoring Upptime miễn phí + weekly harness tự audit"],
-    ["Không vượt ngân sách", "Spend cap toàn chuỗi - thiết kế zero-overage từ đầu"],
-    ["Xuất tài liệu hành chính", "docx/pptxgenjs/xlsx/print CSS - sổ, đề thi, báo cáo ra file thật"],
-  ], { rowH: 0.56 });
-  note(s, "Kết luận: kiến trúc này tối ưu cho đúng bài toán - nhiều vai trò, nghiệp vụ VN đặc thù, đội nhỏ, cần demo và ship nhanh.");
+  slideTitle(s, "PHÂN TÍCH", "Microservices có bao giờ đúng cho SCN không");
+  bullets(s, [
+    { t: "Dấu hiệu cần tách service - và thực tế SCN", b: true },
+    { t: "Team >10 dev dẫm chân nhau", sub: ["SCN: đội rất nhỏ, conflict giải quyết bằng module boundaries + code review"] },
+    { t: "Một module có load profile khác hẳn", sub: ["SCN: mọi module đều CRUD dashboard - không có hot path cần scale riêng"] },
+    { t: "Cần ngôn ngữ/stack khác cho một phần", sub: ["SCN: chỉ phần xuất file nặng compute - đã xử lý phía client (pptxgenjs/docx chạy trong browser)"] },
+    { t: "Domain tách được không cần join", sub: ["SCN: ngược lại - điểm danh chéo sổ đầu bài, KPI tổng hợp nhiều nguồn - chống tách"] },
+    { t: "Kết luận", b: true, sub: ["Microservices ở quy mô này = distributed monolith tệ hơn monolith tốt. Điểm tách hợp lý duy nhất hiện có: AI jobs - đã tách thành async pattern (bảng ai_jobs + callback) mà không cần service riêng."] },
+  ], { fontSize: 13 });
 }
 
-// 17 - Ket luan
+// 9 - Repo topology
+{
+  const s = p.addSlide();
+  slideTitle(s, "PHÂN TÍCH", "Repo topology: polyrepo + shared harness, không phải monorepo");
+  table(s, [
+    ["Tiêu chí", "Polyrepo hiện tại (đã chọn)", "Monorepo (turborepo/Nx)"],
+    ["Thực tế", "Mỗi sản phẩm 1 repo: scn, tvc360, slideforge, ssp, aal-site... deploy độc lập", "Một repo chứa tất cả apps + packages chung"],
+    ["Deploy boundary", "Push master repo nào - deploy đúng project đó, đơn giản tuyệt đối", "Cần affected-graph để không deploy lại cả ứng dụng khi sửa shared lib"],
+    ["Code chia sẻ", "Chia sẻ qua SDLC harness (scripts/skills vendored vào từng repo) - không phải packages", "Shared packages import trực tiếp - tiện nhưng couple phiên bản"],
+    ["Blast radius", "Lỗi/secret/bug giới hạn trong 1 repo", "Một commit xấu có thể phá nhiều app cùng lúc"],
+    ["Quyền truy cập", "Repo-level - dễ cấp quyền từng sản phẩm", "Cần CODEOWNERS phức tạp để chặn chéo"],
+    ["Phù hợp bài toán", "Các sản phẩm ĐỘC LẬP khách hàng/lifecycle - không share domain model", "Chỉ đúng nếu các app chia sẻ domain model chung - SCN không có nhu cầu đó"],
+  ], { rowH: 0.62 });
+  note(s, "Thay cho monorepo: SDLC là 'meta-repo' phân phối conventions/gates/skills xuống từng product repo qua bootstrap-harness.sh.");
+}
+
+divider("PHẦN III", "Kiến trúc dữ liệu", "1 Postgres - multi-tenant bằng RLS - schema-per-app bằng naming");
+
+// 11 - Data topology
+{
+  const s = p.addSlide();
+  slideTitle(s, "PHÂN TÍCH", "Topology dữ liệu - 3 cấp độ chia sẻ");
+  table(s, [
+    ["Cấp", "Thực tế SCN", "Phương án thay thế", "Đánh giá"],
+    ["Giữa các sản phẩm", "Chung 1 Supabase project (cxjpgfhqchjoernfmcra) - SCN bảng thường, tvc360 bảng tvc_*", "DB riêng mỗi sản phẩm", "Chung = rẻ + ít ops; rủi ro: nhiễu resource, tách bằng naming + RLS chứ không mạnh bằng DB riêng"],
+    ["Giữa các trường (tenant)", "Shared tables + school_id + RLS policy", "Schema-per-school / DB-per-school", "Shared+RLS = query/migration đơn giản, onboard trường mới = insert rows; schema-per-school chỉ đúng khi compliance bắt buộc cô lập cứng"],
+    ["Bên trong 1 app", "~30 bảng quan hệ chặt + views + RPC", "Nhiều schema/DB theo bounded context", "Join chéo là yêu cầu cốt lõi (attendance_daily gộp 2 nguồn) - 1 DB là điều kiện cần"],
+  ], { rowH: 0.85 });
+  note(s, "Ưu tiên đơn giản vận hành: 1 project, 1 schema, RLS làm việc nặng phân tách ở mọi cấp.");
+}
+
+// 12 - Consistency & integrity
+{
+  const s = p.addSlide();
+  slideTitle(s, "PHÂN TÍCH", "Nhất quán dữ liệu - lý do số 1 chọn monolith");
+  bullets(s, [
+    { t: "Cross-module consistency bằng transaction, không bằng event", b: true },
+    { t: "Điểm danh hai nguồn hợp nhất", sub: ["Ghi period_absences - upsert attendance_records (source='period_log') - view attendance_daily gộp: hai màn hình không bao giờ mâu thuẫn. Microservices sẽ cần saga + eventual consistency cho cùng việc này."] },
+    { t: "Dashboard = SQL views, không phải cache", sub: ["dashboard_gvcn aggregate trực tiếp - luôn đúng, không có cache invalidation problem; count ở DB thay vì fetchAllRows"] },
+    { t: "Invariant tại DB", sub: ["check constraints cho enum mở rộng được, triggers sinh notifications - quy tắc nghiệp vụ sống ở tầng không thể bypass"] },
+    { t: "Đánh đổi chấp nhận", sub: ["Lock dài trên bảng nóng (attendance) khi lớp lớn lưu đồng loạt - chưa là vấn đề ở quy mô trường học VN; nếu có sẽ giải bằng upsert batch + ít transaction hơn"] },
+  ], { fontSize: 12.5 });
+}
+
+// 13 - Async model
+{
+  const s = p.addSlide();
+  slideTitle(s, "PHÂN TÍCH", "Mô hình async - có, nhưng không có broker");
+  table(s, [
+    ["Nhu cầu async", "Cơ chế hiện tại", "Tại sao đủ", "Khi nào không đủ"],
+    ["Cron định kỳ (digest PH, radar sync)", "Vercel cron - /api/cron/*", "2 jobs, tần suất thấp - broker thừa", "Hàng chục jobs tần suất cao"],
+    ["AI job dài (TTS, sinh đề)", "Bảng ai_jobs + Devin session async + /api/ai/devin-callback (token per-job)", "Job chạy ngoài request - DB làm queue trạng thái", "Throughput hàng nghìn job/phút cần SQS/Redis thật"],
+    ["Webhook nhận (Resend)", "/api/webhooks/resend", "Route Handler xác thực signature - chuẩn", "-"],
+    ["Realtime UI", "Client poll qua useAiJob + router.refresh", "Tần suất thấp, độ trễ giây chấp nhận được", "Collaboration thật (nhiều người sửa cùng lúc) sẽ cần Supabase Realtime"],
+  ], { rowH: 0.78 });
+  note(s, "Nguyên tắc: DB + cron + webhook đáp ứng mọi nhu cầu async hiện tại - thêm broker chỉ khi có số đo chứng minh cần.");
+}
+
+// 14 - Caching & perf model
+{
+  const s = p.addSlide();
+  slideTitle(s, "PHÂN TÍCH", "Caching & performance - tối giản có chủ đích");
+  bullets(s, [
+    { t: "Không Redis/Memcached - và không cần ở quy mô này", b: true },
+    { t: "React cache() cho getProfile", sub: ["Dedup auth lookup trong 1 request - layout+page+actions gọi tự do không tốn roundtrip"] },
+    { t: "Static shell + RSC streaming", sub: ["Splash '/' prerender - TTFB p95 ~450ms; loading.tsx skeleton mọi route group - paint tức thì trước khi data về"] },
+    { t: "Đẩy compute xuống đúng tầng", sub: ["Aggregate ở SQL views (DB gần data); xuất file docx/pptx ở browser (không tốn server CPU); KaTeX render client"] },
+    { t: "Cache tầng Vercel CDN", sub: ["Static assets + ISR mặc định của Next - không tự quản cache layer"] },
+    { t: "Khi nào cần thêm cache", sub: ["Dashboard aggregate chậm ở hàng nghìn trường - materialized views hoặc Redis; hiện chưa có số đo nào đòi hỏi"] },
+  ], { fontSize: 12.5 });
+}
+
+divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu nhược - mức độ phù hợp");
+
+// 16 - So sanh kien truc tong the
+{
+  const s = p.addSlide();
+  slideTitle(s, "SO SÁNH", "4 kiến trúc tổng thể cho cùng bài toán");
+  table(s, [
+    ["Tiêu chí", "Modular monolith serverless (đã chọn)", "Microservices", "Monolith VPS truyền thống", "Low-code / LMS có sẵn"],
+    ["Phức tạp vận hành", "Thấp nhất", "Cao nhất", "Trung bình", "Thấp"],
+    ["Nhất quán 10 vai trò x 30 bảng", "ACID + RLS - chặt nhất", "Eventual - khó đảm bảo", "ACID được, RLS tự viết", "Hạn chế customize"],
+    ["Time-to-market", "Nhanh nhất", "Chậm nhất", "Trung bình", "Nhanh cho CRUD, kẹt nghiệp vụ VN"],
+    ["Chi phí ở quy mô trường", "~$45/tháng cap cứng", ">> gấp nhiều lần", "VPS rẻ + công ops", "Per-seat đắt khi scale"],
+    ["Đường thoát khi scale", "Tách module nóng thành service khi có số đo", "Đã phân mảnh sẵn nhưng trả giá từ ngày 1", "Scale-up giới hạn", "Lock-in cứng"],
+  ], { rowH: 0.62 });
+}
+
+// 17 - Uu diem
+{
+  const s = p.addSlide();
+  slideTitle(s, "ĐÁNH GIÁ", "Ưu điểm của kiến trúc đã chọn");
+  bullets(s, [
+    { t: "Bảo mật theo thiết kế, không theo kỷ luật", b: true, sub: ["RLS ở DB = lớp cuối bất khả xâm phạm kể cả khi app bug; 10 vai trò phức tạp vẫn default-deny"] },
+    { t: "Nhất quán dữ liệu tuyệt đối", sub: ["Một Postgres - cross-module invariants trong transaction; điểm danh hai nguồn không bao giờ lệch"] },
+    { t: "Tốc độ phát triển cao", sub: ["Server Actions + generated types + SQL trực tiếp; feature mới không cần plumbing API"] },
+    { t: "Zero-ops thật", sub: ["1 deployable, git push = deploy, rollback 1 click; monitoring Upptime + weekly harness tự audit"] },
+    { t: "Chi phí dự đoán được", sub: ["Spend cap toàn chuỗi - thiết kế zero-overage từ đầu, không phải vá sau"] },
+    { t: "Module boundaries rõ", sub: ["Route groups = bounded contexts; tách được thành service sau này nếu có số đo - không bị khóa"] },
+  ], { fontSize: 12.5 });
+}
+
+// 18 - Nhuoc diem
+{
+  const s = p.addSlide();
+  slideTitle(s, "ĐÁNH GIÁ", "Nhược điểm & cách giảm thiểu - nói thẳng");
+  table(s, [
+    ["Nhược điểm / rủi ro", "Mức độ", "Giảm thiểu / đường thoát"],
+    ["Single point of failure: 1 app chết - cả hệ thống chết", "Cao về mặt lý thuyết", "Vercel multi-region sin1 + static shell vẫn serve khi function lỗi; blast radius nhỏ vì CRUD"],
+    ["Chung Supabase project với tvc360 - nhiễu resource", "Trung bình", "Tách project khi một bên tăng trưởng; naming + RLS đã chuẩn bị sẵn cho việc tách"],
+    ["RLS khó test + ~30 bảng phức tạp", "Cao - complexity thật", "Convention: test policy từng vai trò bằng execute_sql trước khi wire UI; complexity này có ở mọi phương án"],
+    ["Không có broker - async quy mô lớn sẽ kẹt", "Thấp ở quy mô hiện tại", "ai_jobs pattern đã có; thêm queue khi throughput đòi hỏi"],
+    ["Vendor lock-in nhẹ", "Trung bình", "Postgres chuẩn + code tách lib/supabase/* - migrate được"],
+    ["Server Actions kém audit hơn REST rõ ràng", "Thấp", "checkActionRole bắt buộc + audit_logs mọi mutation nhạy cảm"],
+  ], { rowH: 0.62 });
+}
+
+// 19 - Scaling path
+{
+  const s = p.addSlide();
+  slideTitle(s, "ĐÁNH GIÁ", "Đường scale - gãy ở đâu trước, xử lý thế nào");
+  table(s, [
+    ["Quy mô", "Điểm gãy đầu tiên", "Đường xử lý (đã chuẩn bị trong thiết kế)"],
+    ["100-500 trường", "Dashboard aggregate chậm", "Materialized views + index; pattern sẵn - đổi cách đọc không đổi kiến trúc"],
+    ["1.000-5.000 trường", "Connection pool + write hotspot attendance", "Supabase pooler + partition attendance_records theo academic_year; tách Supabase project theo sản phẩm"],
+    ["AI throughput cao", "ai_jobs poll-based kẹt", "Thay bằng queue thật (Supabase pgmq / SQS) - seam đã có sẵn ở useAiJob + callback"],
+    ["Nhiều tenant lớn (Sở toàn tỉnh)", "RLS evaluation cost trên bảng lớn", "Partition theo school_id hoặc schema-per-dept - RLS đã có school_id sẵn"],
+    ["Team lớn hơn", "Monolith conflict", "Tách module nóng ra service - route group boundaries đã là bounded context sẵn"],
+  ], { rowH: 0.72 });
+  note(s, "Nguyên tắc kiến trúc: mọi seam tách (ai_jobs, RLS school_id, route groups) đã được đặt sẵn - scale = đổi bên trong seam, không phải viết lại.");
+}
+
+// 20 - Phu hop
+{
+  const s = p.addSlide();
+  slideTitle(s, "ĐÁNH GIÁ", "Mức độ phù hợp với bài toán - bảng đối chứng");
+  table(s, [
+    ["Yêu cầu bài toán", "Kiến trúc đáp ứng thế nào"],
+    ["10 vai trò, phân quyền phức tạp", "RLS 3 lớp + requireRole + mergedNav - điểm mạnh số 1 của lựa chọn này"],
+    ["Dữ liệu liên kết chặt (điểm danh chéo, KPI tổng hợp)", "1 Postgres + transaction - microservices sẽ phá vỡ đúng chỗ này"],
+    ["Nghiệp vụ trường học VN đặc thù", "Schema chuyên biệt (sổ đầu bài, thi đua, HK), không ép vào LMS quốc tế"],
+    ["Demo/bán hàng nhiều vai trò", "Demo accounts + role preview mượt, RLS vẫn chặt (ADR-5)"],
+    ["Đội nhỏ, không ops", "Zero-ops serverless - monolith VPS hay microservices đều cần người vận hành"],
+    ["Không vượt ngân sách", "Spend cap toàn chuỗi enforce bằng công cụ"],
+    ["Xuất tài liệu hành chính", "docx/pptxgenjs/xlsx/print CSS client-side - không tốn server"],
+  ], { rowH: 0.56 });
+}
+
+// 21 - Ket luan
 {
   const s = p.addSlide();
   s.background = { color: C.code };
   s.addShape(p.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.12, fill: { color: C.teal2 } });
-  s.addText("KẾT LUẬN", { x: 0.9, y: 1.6, w: 4, h: 0.5, fontFace: FONT, fontSize: 15, color: C.teal2, bold: true });
-  s.addText("Serverless + RLS = đúng bài toán", { x: 0.9, y: 2.2, w: 11.5, h: 1.1, fontFace: FONT, fontSize: 36, bold: true, color: C.white });
+  s.addText("KẾT LUẬN", { x: 0.9, y: 1.5, w: 4, h: 0.5, fontFace: FONT, fontSize: 15, color: C.teal2, bold: true });
+  s.addText("Modular monolith serverless - đúng bài toán, đúng quy mô", { x: 0.9, y: 2.1, w: 11.5, h: 1.1, fontFace: FONT, fontSize: 34, bold: true, color: C.white });
   bullets(s, [
-    { t: "Next.js 16 + Supabase cho phép đội nhỏ ship nền tảng 10 vai trò mà không cần đội vận hành riêng", c: C.white },
-    { t: "RLS biến yêu cầu khó nhất (phân quyền đa vai trò) thành thế mạnh kiến trúc", c: C.white },
-    { t: "Zero-overage được enforce bằng công cụ (spend caps + WAF + perf gates), không phải cam kết", c: C.white },
-    { t: "Đánh đổi chấp nhận được: lock-in nhẹ, cold start - đều đã có mitigation đo được", c: C.white },
-  ], { x: 0.9, y: 3.6, w: 11.5, fontSize: 14 });
-  s.addText("Tài liệu kèm: USER-GUIDE-vieschool.pptx (38 slides, hướng dẫn 10 vai trò) - docs/project/ARCHITECTURE.md (chi tiết kỹ thuật)", { x: 0.9, y: 6.4, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 11, color: "94a3b8" });
+    { t: "Microservices cho bài toán này = trả giá distributed systems cho lợi ích không cần: dữ liệu liên kết chặt chống tách, đội nhỏ chống ops nặng", c: C.white },
+    { t: "Polyrepo + shared SDLC harness thay monorepo: sản phẩm độc lập lifecycle, conventions vẫn thống nhất", c: C.white },
+    { t: "RLS biến yêu cầu khó nhất (phân quyền đa vai trò) thành thế mạnh; 1 Postgres giữ nhất quán mà không cần saga", c: C.white },
+    { t: "Không broker/Redis vì chưa có số đo đòi hỏi - seams (ai_jobs, cron, route groups) đã đặt sẵn để thêm khi scale chứng minh cần", c: C.white },
+    { t: "Đánh đổi lớn nhất chấp nhận: SPOF 1 deployable + shared Supabase - cả hai đều có đường thoát rõ khi quy mô đòi hỏi", c: C.white },
+  ], { x: 0.9, y: 3.5, w: 11.5, fontSize: 13.5 });
+  s.addText("Tài liệu kèm: USER-GUIDE-vieschool.pptx (38 slides, 10 vai trò) - docs/project/ARCHITECTURE.md (chi tiết kỹ thuật)", { x: 0.9, y: 6.5, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 11, color: "94a3b8" });
 }
 
 // ============================== WRITE ==============================
@@ -348,4 +392,4 @@ await p.writeFile({ fileName: OUT });
   console.log(`Transitions injected on ${slideNames.length} slides`);
 }
 
-console.log(`Written ${OUT} - ${pageNo + 2} slides`);
+console.log(`Written ${OUT} - ${pageNo + 4} slides`);

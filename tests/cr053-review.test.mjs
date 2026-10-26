@@ -77,12 +77,29 @@ test("r-hb3: trigger chan approve lech snapshot khong can cu + ghi audit", () =>
   assert.match(mig, /'hoc_ba\.approve'/);
 });
 
-test("r-hb3 F2r: exempt resolution uu tien quyet dinh stage active", () => {
+test("r-hb4: approve-guard so sanh danh_hieu voi snapshot danhHieu", () => {
+  assert.match(mig, /snapshot ->> 'danhHieu'\) is distinct from new\.danh_hieu/);
+});
+
+test("r-hb4: exempt resolution authoritative theo decision active", () => {
   const hocba = read("src/lib/hocba.ts");
   const exemptBlock = hocba.match(/const exempt =\s*\n?\s*exemptOverride \?\?[\s\S]*?\[\];/);
   assert.ok(exemptBlock, "phai co khoi exempt resolution trong bundleFor");
-  // phai tim decision cuoi co exempt non-empty, khong uu tien approved cu
-  assert.match(exemptBlock[0], /find\(\(d\) => d\.exempt_subject_ids\?\.length\)/);
+  // mang cua decision cuoi (stage active) as-is - ke ca khi rong
+  assert.match(exemptBlock[0], /decisions\[decisions\.length - 1\]\?\.exempt_subject_ids/);
+});
+
+test("r-hb4: createNextStage ke thua tap mien quyet dinh truoc", () => {
+  const start = actions.indexOf("export async function createNextStage");
+  const fn = actions.slice(start, actions.indexOf("\nexport ", start + 1));
+  assert.match(fn, /exempt_subject_ids: prev\?\.exempt_subject_ids \?\? \[\]/);
+  assert.match(fn, /\.select\("exempt_subject_ids"\)/);
+});
+
+test("r-hb4: action khong ghi trung audit hoc_ba.approve (trigger da ghi)", () => {
+  const start = actions.indexOf("export async function approveYearEnd");
+  const fn = actions.slice(start, actions.indexOf("\nexport ", start + 1));
+  assert.doesNotMatch(fn, /logAudit\(\s*supabase,\s*\{\s*action: "hoc_ba\.approve"/);
 });
 
 test("F3: form co exemption editor va bat can cu khi doi tap mien", () => {

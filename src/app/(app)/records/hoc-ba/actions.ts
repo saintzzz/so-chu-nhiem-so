@@ -333,11 +333,8 @@ export async function approveYearEnd(input: {
 
   const stu = cur.students as unknown as { full_name: string; class_id: string } | null;
   const link = `/records/hoc-ba?class=${stu?.class_id ?? ""}&student=${cur.student_id}`;
-  logAudit(supabase, {
-    action: "hoc_ba.approve",
-    entity: "year_end_decisions",
-    entityId: input.decisionId,
-  });
+  // r-hb4: trigger trg_yed_submit_guard da ghi hoc_ba.approve vao
+  // audit_logs cung transaction - action khong ghi trung nua.
   if (cur.decided_by) {
     await notifyGvcn(
       supabase,
@@ -422,12 +419,24 @@ export async function createNextStage(input: {
   const own = await verifyGvcnOwns(input.studentId);
   if (own.error) return { error: own.error };
   const supabase = await createClient();
+  // r-hb4: ke thua tap mien tu quyet dinh truoc - mon mien danh gia theo
+  // HOC SINH khong theo stage; draft moi mang [] nghia la "da xoa".
+  const { data: prev, error: prevErr } = await supabase
+    .from("year_end_decisions")
+    .select("exempt_subject_ids")
+    .eq("student_id", input.studentId)
+    .eq("academic_year_id", input.academicYearId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (prevErr) console.error("[hocba] prev exempt lookup:", prevErr.message);
   const { error } = await supabase.from("year_end_decisions").insert({
     student_id: input.studentId,
     school_id: profile.school_id,
     academic_year_id: input.academicYearId,
     stage: input.stage,
     status: "draft",
+    exempt_subject_ids: prev?.exempt_subject_ids ?? [],
   });
   if (error) {
     if (error.code === "23505") return { error: "Quyết định giai đoạn này đã tồn tại." };

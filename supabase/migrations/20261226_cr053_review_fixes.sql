@@ -71,6 +71,7 @@ begin
             or (new.computed_snapshot ->> 'kqht') is distinct from new.kqht
             or (new.computed_snapshot ->> 'kqrl') is distinct from new.kqrl
             or (new.computed_snapshot ->> 'promotion') is distinct from new.promotion
+            or (new.computed_snapshot ->> 'danhHieu') is distinct from new.danh_hieu
             or coalesce(array_length(new.exempt_subject_ids, 1), 0) > 0) then
       raise exception 'approved decision deviating from snapshot or exempting subjects requires legal ground and note'
         using errcode = 'P0001';

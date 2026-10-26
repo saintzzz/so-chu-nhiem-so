@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
+import { assertModule } from "@/lib/modules";
 import { getStudentYearEndBundle } from "@/lib/hocba";
 
 import { logAudit } from "@/lib/audit";
@@ -95,6 +96,8 @@ export async function saveYearEndDecision(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvcn"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("hoc_ba");
+  if (modErr) return { error: modErr };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const invalid = validateDecision(input);
@@ -267,6 +270,8 @@ export async function approveYearEnd(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("hoc_ba");
+  if (modErr) return { error: modErr };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
@@ -355,6 +360,8 @@ export async function rejectYearEnd(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("hoc_ba");
+  if (modErr) return { error: modErr };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const reason = input.rejectReason.trim();
@@ -414,6 +421,8 @@ export async function createNextStage(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvcn"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("hoc_ba");
+  if (modErr) return { error: modErr };
   const profile = await getProfile();
   if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
   const own = await verifyGvcnOwns(input.studentId);

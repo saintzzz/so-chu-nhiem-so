@@ -690,6 +690,8 @@ export async function POST(
     // cong pool nho moi standard cho cac tier thay the (khac qtype/level).
     const TRIPLE_LIMIT = 120;
     const POOL_LIMIT = 80;
+    // CHUNK=8 jobs/batch; CR-061 mo job phat 2 query (system + truong)
+    // -> thuc te toi da 16 request PostgREST dong thoi.
     const CHUNK = 8;
     const triples = [
       ...new Map(
@@ -831,9 +833,8 @@ export async function POST(
           );
           return [...fresh, ...rest];
         };
-        // r-h0601: loc cau da dung TRUOC khi cat quota - cau truong bi
-        // cell truoc an mat neu tinh slice tren pool chua loc, he thong
-        // bu vao du bank truong con cau chua dung.
+        // defensive: usable() da loc used/usedStems o moi tier - filter nay
+        // giu ro rang y do quota (neu sau nay usable thay doi).
         const notTaken = (x: Question) =>
           !used.has(x.id) && !usedStems.has(stemKey(x.stem));
         const schoolPool = tierPool(bankSchool).filter(notTaken);

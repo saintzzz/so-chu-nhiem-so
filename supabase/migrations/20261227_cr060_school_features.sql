@@ -27,5 +27,5 @@ create policy sf_write on public.school_features for all to authenticated
   with check ((select my_roles()) && array['admin','so_gd']::text[]);
 
 revoke all on public.school_features from anon;
-grant select on public.school_features to authenticated;
+grant select, insert, update, delete on public.school_features to authenticated;
 grant all on public.school_features to service_role;

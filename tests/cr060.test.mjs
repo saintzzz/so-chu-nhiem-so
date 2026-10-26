@@ -23,19 +23,22 @@ test("AC-60.1 (static): school_features co PK + RLS overlap && + grants", () => 
   assert.match(MIG, /sf_read[\s\S]*&& array\['admin','so_gd'\]/);
   assert.match(MIG, /sf_write[\s\S]*&& array\['admin','so_gd'\]/);
   assert.doesNotMatch(MIG, /@> array\['admin','so_gd'\]/);
-  assert.match(MIG, /grant select on public\.school_features to authenticated/);
+  assert.match(
+    MIG,
+    /grant select, insert, update, delete on public\.school_features to authenticated/,
+  );
   assert.match(MIG, /grant all on public\.school_features to service_role/);
   assert.match(MIG, /revoke all on public\.school_features from anon/);
 });
 
-test("AC-60.2: mergedNav loc section/item theo module bi tat", () => {
+test("AC-60.2 (static): mergedNav loc section/item theo module bi tat", () => {
   assert.match(NAV, /module\?: string/);
   assert.match(NAV, /disabled\?: ReadonlySet<string>/);
   assert.match(NAV, /sec\.module && disabled\?\.has\(sec\.module\)/);
   assert.match(NAV, /c\.module && disabled\?\.has\(c\.module\)/);
 });
 
-test("AC-60.3: 4 module duoc tag vao nav", () => {
+test("AC-60.3 (static): 4 module duoc tag vao nav", () => {
   for (const m of ["studio", "hoc_ba", "tu_van_an_toan", "thi_dua"]) {
     assert.match(NAV, new RegExp(`module: "${m}"`), `nav thieu module ${m}`);
   }
@@ -44,7 +47,7 @@ test("AC-60.3: 4 module duoc tag vao nav", () => {
   }
 });
 
-test("AC-60.4: layout truyen disabled xuong nav + moi cay module co guard", () => {
+test("AC-60.4 (static): layout truyen disabled xuong nav + moi cay module co guard", () => {
   assert.match(APP, /disabledModules\(\)/);
   assert.match(APP, /disabledModules=\{disabled\}/);
   const dirs = readdirSync(join(ROOT, "src/app/(app)"));

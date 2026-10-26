@@ -116,7 +116,8 @@ export function Topbar({
         </button>
       </div>
       <CommandPalette
-        disabled={disabled}        open={paletteOpen}
+        disabled={disabled}
+        open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         roles={roles}
       />

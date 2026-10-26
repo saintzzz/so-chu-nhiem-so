@@ -27,3 +27,18 @@ Reviewer: reviewer-claude (cross-model subagent), doc bang `git show 8f4d173` + 
 ## Verdict hien tai
 
 Cho round confirm sau khi commit fix.
+
+## Round r-h0602 - APPROVE_WITH_CHANGES (ce7e6b2)
+
+9/9 findings fixed. Follow-ups landed in c63xxxx:
+
+- A: grant mo rong `select,insert,update,delete` cho authenticated (RLS
+  khong tu cap table privilege) - migration + live grant.
+- B1: 4 action hoc-ba (`saveYearEndDecision/approveYearEnd/rejectYearEnd/
+  createNextStage`) da co `assertModule("hoc_ba")` sau checkActionRole.
+- B2: debt ghi ro - lock-records ghi truc tiep bang anon client, gate that
+  can RLS tren register_signoffs (CR rieng).
+- C: comment CHUNK ghi ro 8 jobs = 16 query; do latency DC-03 that tren
+  production sau deploy (ghi nhan, khong chan merge).
+- D: format topbar + comment notTaken (defensive).
+- 4b reviewer rut lai: usable() da loc used - notTaken la no-op vo hai.

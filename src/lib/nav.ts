@@ -225,6 +225,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy", module: "van_hanh_nang_cao" },
         { label: "Quản lý kỳ thi", href: "/academics/exams", module: "ky_thi_danh_gia" },
+        { label: "Tuyển sinh đầu cấp", href: "/school/admissions", module: "tuyen_sinh" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài toàn trường", href: "/school/journals" },
@@ -282,6 +283,7 @@ export const NAV: Record<Role, NavSection[]> = {
       // co muc "Hoc sinh toan truong" (school/students chi cho bgh/admin).
       children: [
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy", module: "van_hanh_nang_cao" },
+        { label: "Tuyển sinh đầu cấp", href: "/school/admissions", module: "tuyen_sinh" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài phân hiệu", href: "/school/journals" },

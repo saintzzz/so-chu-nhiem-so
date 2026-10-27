@@ -8,6 +8,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
 const MIG = read("supabase/migrations/20261228_cr062_admissions.sql");
+const MIG2 = read("supabase/migrations/20261229_cr062_admissions_rpcs.sql");
 const ACTIONS = read("src/app/(app)/school/admissions/actions.ts");
 const NAV = read("src/lib/nav.ts");
 const MOD = read("src/lib/modules.ts");
@@ -21,6 +22,13 @@ test("AC-62.1 (static): migration tao 2 bang + RLS theo truong", () => {
   assert.match(MIG, /enable row level security/);
   assert.match(MIG, /school_id = \(select my_school_id\(\)\)/);
   assert.match(MIG, /&& array\['admin','so_gd'\]::text\[\]/);
+  // r-adm1: write policy sieu lai - so_gd chi read, write thuoc bgh/pht/admin
+  assert.match(MIG2, /drop policy if exists adm_app_write/);
+  assert.doesNotMatch(
+    MIG2.match(/create policy adm_app_write[\s\S]*?\);/)?.[0] ?? "",
+    /so_gd/,
+    "write policy khong duoc con so_gd",
+  );
 });
 
 test("AC-62.2 (static): status flow day du 2 cap", () => {
@@ -46,11 +54,37 @@ test("AC-62.4 (static): actions co role + module guard", () => {
   }
 });
 
-test("AC-62.5 (static): enroll tao students + national_id + positive_points", () => {
-  assert.match(ACTIONS, /from\("students"\)\s*\.insert/);
-  assert.match(ACTIONS, /national_id: app\.id_number/);
-  assert.match(ACTIONS, /positive_points: 0/);
-  assert.match(ACTIONS, /status: "enrolled", student_id: st\.id/);
+test("AC-62.5 (static): enroll qua RPC atomic + retry-safe + cung truong", () => {
+  assert.match(ACTIONS, /\.rpc\("admission_enroll"/);
+  assert.match(MIG2, /create or replace function public\.admission_enroll/);
+  // retry-safe: find-or-create + CAS link
+  assert.match(MIG2, /s\.national_id is not distinct from v_app\.id_number/);
+  assert.match(MIG2, /status in \('approved', 'passed'\)\s+and student_id is null/);
+  // campaign + class phai cung truong
+  assert.match(MIG2, /raise exception 'school_mismatch'/);
+  assert.match(ACTIONS, /Lớp đích và đợt tuyển không cùng trường/);
+  // students: day du cot bat buoc theo schema that
+  assert.match(MIG2, /national_id, status, positive_points/);
   // gender check constraint: nam/nu lowercase - normalize khi import
   assert.match(ACTIONS, /normGender/);
+});
+
+test("AC-62.6 (static): finalize qua RPC - chan thieu diem + quota cutoff", () => {
+  assert.match(ACTIONS, /\.rpc\("admission_finalize"/);
+  assert.match(MIG2, /raise exception 'missing_scores:%', v_missing/);
+  // quota > benchmark: cutoff hieu luc theo hang quota, dong diem deu do
+  assert.match(MIG2, /order by total_score desc, full_name, id/);
+  assert.match(MIG2, /offset greatest\(v_quota - 1, 0\)/);
+});
+
+test("AC-62.7 (static): cap SBD qua RPC advisory lock - khong race", () => {
+  assert.match(ACTIONS, /\.rpc\("admission_assign_exam_numbers"/);
+  assert.match(MIG2, /pg_advisory_xact_lock\(hashtext\('adm_sbd_/);
+  assert.match(MIG2, /row_number\(\) over \(order by full_name, id\)/);
+});
+
+test("AC-62.8 (static): score validation reject thay vi drop + CAS no-op", () => {
+  assert.match(ACTIONS, /không hợp lệ \(0-10\)/);
+  assert.match(ACTIONS, /Thiếu điểm môn:/);
+  assert.match(ACTIONS, /Hồ sơ đã đổi trạng thái - tải lại trang/);
 });

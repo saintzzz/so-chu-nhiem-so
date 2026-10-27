@@ -163,7 +163,7 @@ export async function reviewApplication(
   if (deny) return { error: deny };
   const profile = await getProfile();
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("admission_applications")
     .update({
       status: decision,
@@ -178,6 +178,9 @@ export async function reviewApplication(
     console.error("[admissions] reviewApplication:", error.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
+  if (!updated?.length) {
+    return { error: "Hồ sơ đã đổi trạng thái - tải lại trang." };
+  }
   revalidatePath("/school/admissions");
   return {};
 }
@@ -189,44 +192,15 @@ export async function assignExamNumbers(
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
-  const { data: apps, error } = await supabase
-    .from("admission_applications")
-    .select("id")
-    .eq("campaign_id", campaignId)
-    .eq("status", "submitted")
-    .order("full_name");
+  const { data, error } = await supabase.rpc("admission_assign_exam_numbers", {
+    p_campaign: campaignId,
+  });
   if (error) {
-    console.error("[admissions] assignExamNumbers load:", error.message);
+    console.error("[admissions] assignExamNumbers:", error.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
-  }
-  const { data: existing, error: existErr } = await supabase
-    .from("admission_applications")
-    .select("exam_number")
-    .eq("campaign_id", campaignId)
-    .not("exam_number", "is", null);
-  if (existErr) {
-    console.error("[admissions] assignExamNumbers existing:", existErr.message);
-    return { error: "Lỗi hệ thống. Vui lòng thử lại." };
-  }
-  let seq = (existing ?? []).length;
-  let assigned = 0;
-  for (const app of apps ?? []) {
-    seq += 1;
-    const sbd = `TS${String(seq).padStart(4, "0")}`;
-    const { error: uErr } = await supabase
-      .from("admission_applications")
-      .update({ exam_number: sbd, status: "exam_registered" })
-      .eq("id", app.id)
-      .eq("status", "submitted")
-      .select("id");
-    if (uErr) {
-      console.error("[admissions] assignExamNumbers update:", uErr.message);
-      return { error: `Lỗi khi cấp SBD ${sbd}.` };
-    }
-    assigned += 1;
   }
   revalidatePath(`/school/admissions/${campaignId}`);
-  return { assigned };
+  return { assigned: data as number };
 }
 
 /** Lop 10: nhap diem tung mon -> exam_scores + total_score. */
@@ -236,13 +210,33 @@ export async function saveScores(
 ): Promise<{ error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
+  const supabase = await createClient();
+
+  // xac thuc mon nam trong exam_subjects cua campaign va diem 0-10 hop le
+  const { data: app, error: appErr } = await supabase
+    .from("admission_applications")
+    .select("id,campaign_id,admission_campaigns(exam_subjects)")
+    .eq("id", applicationId)
+    .single();
+  if (appErr || !app) return { error: "Không tìm thấy hồ sơ." };
+  const subjects =
+    (app.admission_campaigns as { exam_subjects?: string[] } | null)
+      ?.exam_subjects ?? [];
+  const keys = Object.keys(scores);
+  const unknown = keys.filter((k) => !subjects.includes(k));
+  if (unknown.length) return { error: `Môn không hợp lệ: ${unknown.join(", ")}.` };
+  const missing = subjects.filter((s) => !(s in scores));
+  if (missing.length) return { error: `Thiếu điểm môn: ${missing.join(", ")}.` };
+
   const clean: Record<string, number> = {};
   for (const [k, v] of Object.entries(scores)) {
-    if (typeof v === "number" && v >= 0 && v <= 10) clean[k] = v;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 10) {
+      return { error: `Điểm môn ${k} không hợp lệ (0-10).` };
+    }
+    clean[k] = v;
   }
   const total = Object.values(clean).reduce((a, b) => a + b, 0);
-  const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("admission_applications")
     .update({
       exam_scores: clean,
@@ -255,6 +249,9 @@ export async function saveScores(
     console.error("[admissions] saveScores:", error.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
+  if (!updated?.length) {
+    return { error: "Hồ sơ đã đổi trạng thái - tải lại trang." };
+  }
   revalidatePath("/school/admissions");
   return {};
 }
@@ -266,46 +263,23 @@ export async function finalizeResults(
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
-  const { data: camp, error: campErr } = await supabase
-    .from("admission_campaigns")
-    .select("benchmark")
-    .eq("id", campaignId)
-    .single();
-  if (campErr || !camp) return { error: "Không tìm thấy đợt tuyển." };
-  if (camp.benchmark == null) return { error: "Chưa đặt điểm chuẩn." };
-
-  const { data: apps, error } = await supabase
-    .from("admission_applications")
-    .select("id,total_score")
-    .eq("campaign_id", campaignId)
-    .eq("status", "exam_registered")
-    .not("total_score", "is", null);
+  const { data, error } = await supabase.rpc("admission_finalize", {
+    p_campaign: campaignId,
+  });
   if (error) {
-    console.error("[admissions] finalizeResults load:", error.message);
+    console.error("[admissions] finalizeResults:", error.message);
+    const m = error.message.match(/missing_scores:(\d+)/);
+    if (m) {
+      return { error: `Còn ${m[1]} thí sinh chưa có điểm - nhập đủ điểm trước khi chốt.` };
+    }
+    if (error.message.includes("no_benchmark")) {
+      return { error: "Chưa đặt điểm chuẩn." };
+    }
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
-  let passed = 0;
-  let failed = 0;
-  for (const app of apps ?? []) {
-    const ok = (app.total_score ?? 0) >= camp.benchmark;
-    const { error: uErr } = await supabase
-      .from("admission_applications")
-      .update({
-        status: ok ? "passed" : "failed",
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", app.id)
-      .eq("status", "exam_registered")
-      .select("id");
-    if (uErr) {
-      console.error("[admissions] finalizeResults update:", uErr.message);
-      return { error: "Lỗi khi chốt kết quả." };
-    }
-    if (ok) passed += 1;
-    else failed += 1;
-  }
+  const r = data as { passed?: number; failed?: number };
   revalidatePath(`/school/admissions/${campaignId}`);
-  return { passed, failed };
+  return { passed: r.passed ?? 0, failed: r.failed ?? 0 };
 }
 
 /** Nhap hoc: tao students trong lop da chon cho approved|passed chua enrolled. */
@@ -316,66 +290,43 @@ export async function enrollApplications(
   const deny = await guard();
   if (deny) return { error: deny };
   const profile = await getProfile();
-  if (!profile?.school_id) return { error: "Thiếu hồ sơ trường." };
+  if (!profile) return { error: "Thiếu hồ sơ." };
   const supabase = await createClient();
+
+  const { data: camp, error: campErr } = await supabase
+    .from("admission_campaigns")
+    .select("id,school_id")
+    .eq("id", campaignId)
+    .single();
+  if (campErr || !camp) return { error: "Không tìm thấy đợt tuyển." };
+  if (!hasAnyRole(profile, ["admin"]) && camp.school_id !== profile.school_id) {
+    return { error: "Đợt tuyển không thuộc trường bạn." };
+  }
 
   const { data: cls, error: clsErr } = await supabase
     .from("classes")
     .select("id,school_id")
     .eq("id", classId)
     .single();
-  if (clsErr || !cls || cls.school_id !== profile.school_id) {
-    return { error: "Lớp đích không hợp lệ." };
+  if (clsErr || !cls) return { error: "Lớp đích không hợp lệ." };
+  if (cls.school_id !== camp.school_id) {
+    return { error: "Lớp đích và đợt tuyển không cùng trường." };
+  }
+  if (!hasAnyRole(profile, ["admin"]) && cls.school_id !== profile.school_id) {
+    return { error: "Lớp đích không thuộc trường bạn." };
   }
 
-  const { data: apps, error } = await supabase
-    .from("admission_applications")
-    .select("id,full_name,dob,gender,address,id_number,exam_number")
-    .eq("campaign_id", campaignId)
-    .in("status", ["approved", "passed"])
-    .is("student_id", null);
+  const { data, error } = await supabase.rpc("admission_enroll", {
+    p_campaign: campaignId,
+    p_class: classId,
+  });
   if (error) {
-    console.error("[admissions] enrollApplications load:", error.message);
+    console.error("[admissions] enrollApplications:", error.message);
+    if (error.message.includes("school_mismatch")) {
+      return { error: "Lớp đích và đợt tuyển không cùng trường." };
+    }
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
-  if (!apps?.length) return { enrolled: 0 };
-
-  let enrolled = 0;
-  for (const app of apps) {
-    // code unique theo truong - dung so dinh danh neu co, khong thi TS+id
-    // (max-code-theo-lop se trung vi code la global trong truong).
-    const code = app.id_number || `TS${app.id.slice(0, 8).toUpperCase()}`;
-    const { data: st, error: iErr } = await supabase
-      .from("students")
-      .insert({
-        class_id: classId,
-        code,
-        full_name: app.full_name,
-        dob: app.dob,
-        gender: app.gender,
-        address: app.address,
-        national_id: app.id_number,
-        status: "active",
-        positive_points: 0,
-      })
-      .select("id")
-      .single();
-    if (iErr || !st) {
-      console.error("[admissions] enroll insert:", iErr?.message);
-      return { error: `Lỗi khi nhập học cho ${app.full_name}.` };
-    }
-    const { error: uErr } = await supabase
-      .from("admission_applications")
-      .update({ status: "enrolled", student_id: st.id })
-      .eq("id", app.id)
-      .in("status", ["approved", "passed"])
-      .select("id");
-    if (uErr) {
-      console.error("[admissions] enroll link:", uErr.message);
-      return { error: "Lỗi khi liên kết hồ sơ." };
-    }
-    enrolled += 1;
-  }
   revalidatePath(`/school/admissions/${campaignId}`);
-  return { enrolled };
+  return { enrolled: data as number };
 }

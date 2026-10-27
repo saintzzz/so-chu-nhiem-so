@@ -329,7 +329,18 @@ export function AdmissionBoard({
         >
           Nhập học {(counts.approved ?? 0) + (counts.passed ?? 0)} HS
         </button>
-        {campaign.status !== "open" && (
+        {campaign.status === "open" ? (
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/apply/${campaign.id}`;
+              void navigator.clipboard.writeText(url);
+              setMsg(`Đã sao chép link nộp hồ sơ: ${url}`);
+            }}
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+          >
+            Sao chép link nộp hồ sơ
+          </button>
+        ) : (
           <button
             disabled={pending}
             onClick={() =>

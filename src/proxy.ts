@@ -37,9 +37,16 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
+  // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,
+  // POST /api/admissions/apply co honeypot + Turnstile + RPC kiem open.
+  const isPublicApply =
+    pathname === "/apply" ||
+    pathname.startsWith("/apply/") ||
+    pathname === "/api/admissions/apply";
   // Public API: devin-callback co callback_token rieng, cron routes co
   // CRON_SECRET, webhooks co svix signature (RESEND_WEBHOOK_SECRET).
   const isPublicApi =
+    isPublicApply ||
     pathname === "/api/ai/devin-callback" ||
     pathname.startsWith("/api/cron/") ||
     pathname.startsWith("/api/webhooks/");

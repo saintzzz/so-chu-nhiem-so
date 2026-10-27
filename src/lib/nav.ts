@@ -239,6 +239,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Ký duyệt sổ chủ nhiệm", href: "/register/signoff" },
         { label: "Duyệt & khóa sổ học bạ", href: "/register/lock-records", module: "hoc_ba" },
         { label: "Xếp hạng & khen thưởng", href: "/emulation/ranking", module: "thi_dua" },
+        { label: "Báo cáo thu chi", href: "/finance/reports", module: "khoan_thu" },
         { label: "Nhật ký & lịch sử", href: "/register/audit" },
       ],
     },
@@ -294,6 +295,16 @@ export const NAV: Record<Role, NavSection[]> = {
     { label: "Hồ sơ cá nhân", href: "/profile" },
   ],
   ke_toan: [
+    {
+      label: "Khoản thu",
+      module: "khoan_thu",
+      children: [
+        { label: "Danh mục khoản thu", href: "/finance/items" },
+        { label: "Đợt thu", href: "/finance/periods" },
+        { label: "Hóa đơn & thu tiền", href: "/finance/invoices" },
+        { label: "Báo cáo thu chi", href: "/finance/reports" },
+      ],
+    },
     {
       label: "Quản trị",
       children: [

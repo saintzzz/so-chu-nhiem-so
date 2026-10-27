@@ -10,6 +10,7 @@ import { getProfile } from "@/lib/auth";
 // so dau bai, so chu nhiem, nhan su co ban, notifications.
 export const MODULES = [
   { key: "chuyen_can", label: "Chuyên cần & điểm danh" },
+  { key: "khoan_thu", label: "Khoản thu & học phí" },
   { key: "hoc_ba", label: "Sổ học bạ số" },
   { key: "ky_thi_danh_gia", label: "Kỳ thi & phân tích đánh giá" },
   { key: "phu_huynh_hoat_dong", label: "Phụ huynh & hoạt động" },

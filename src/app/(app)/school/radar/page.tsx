@@ -1,4 +1,5 @@
 import { requireRoles } from "@/lib/auth";
+import { requireModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@/components/data-table";
@@ -39,6 +40,7 @@ const LEVEL_META: Record<
 
 export default async function SchoolRadarPage() {
   const profile = await requireRoles(["bgh", "pht", "admin"]);
+  await requireModule("van_hanh_nang_cao");
   const supabase = await createClient();
 
   // Compute thuan doc - viec ghi canh bao vao early_warnings do server action

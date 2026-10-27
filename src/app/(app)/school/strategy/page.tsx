@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { requireModule } from "@/lib/modules";
 import { StatCard } from "@/components/stat-card";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +8,7 @@ import { must } from "@/lib/supabase/must";
 
 export default async function SchoolStrategyPage() {
   const profile = await requireRoles(["bgh", "pht"]);
+  await requireModule("van_hanh_nang_cao");
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 

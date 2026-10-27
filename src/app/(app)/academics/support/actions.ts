@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
@@ -19,6 +20,8 @@ export async function createSupportPlans(
 ): Promise<{ created: number; error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { created: 0, error: deny };
+  const modErr = await assertModule("ky_thi_danh_gia");
+  if (modErr) return { created: 0, error: modErr };
   const profile = await getProfile();
   if (!profile?.school_id) return { created: 0, error: "Thiếu hồ sơ trường." };
   if (pairs.length === 0) return { created: 0, error: "Chưa chọn mục nào." };

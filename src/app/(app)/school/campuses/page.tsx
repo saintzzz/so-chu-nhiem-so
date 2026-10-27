@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { requireModule } from "@/lib/modules";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -37,6 +38,7 @@ const EVAL_STATUS: Record<
 
 export default async function CampusesPage() {
   const profile = await requireRoles(["bgh", "pht", "ke_toan"]);
+  await requireModule("van_hanh_nang_cao");
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 

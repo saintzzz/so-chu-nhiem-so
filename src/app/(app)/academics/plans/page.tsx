@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireModule } from "@/lib/modules";
 import { requireRoles } from "@/lib/auth";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
@@ -65,6 +66,7 @@ export default async function PlansPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const profile = await requireRoles(["gvcn", "bgh"]);
+  await requireModule("ky_thi_danh_gia");
   const sp = await searchParams;
   const params = toParams(sp);
   const supabase = await createClient();

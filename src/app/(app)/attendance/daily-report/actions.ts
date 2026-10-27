@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 
@@ -16,6 +17,8 @@ export async function saveDailyReport(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["gvcn"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("chuyen_can");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };

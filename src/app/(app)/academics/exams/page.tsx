@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { requireModule } from "@/lib/modules";
 import { requireRoles } from "@/lib/auth";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import Link from "next/link";
@@ -33,6 +34,7 @@ export default async function ExamsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const profile = await requireRoles(["gvcn", "gvbm", "to_truong", "bgh"]);
+  await requireModule("ky_thi_danh_gia");
   const sp = await searchParams;
   const supabase = await createClient();
 

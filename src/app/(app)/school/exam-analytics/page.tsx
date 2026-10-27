@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { requireModule } from "@/lib/modules";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { requireRoles } from "@/lib/auth";
@@ -11,6 +12,7 @@ import { must, mustRows } from "@/lib/supabase/must";
 
 export default async function ExamAnalyticsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
+  await requireModule("ky_thi_danh_gia");
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 

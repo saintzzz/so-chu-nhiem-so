@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
 import { checkActionRole, getProfile } from "@/lib/auth";
@@ -22,6 +23,8 @@ export async function sendAnnouncement(input: {
 }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   // getClaims qua getProfile (local JWT, cached) - getUser() goi Auth server
   // co the timeout im lang trong server action (W03: click nhung 0 row).
   const profile = await getProfile();
@@ -91,6 +94,8 @@ export async function markMessageRead(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const me = await getProfile();
   if (!me) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
@@ -115,6 +120,8 @@ export async function replyMessage(input: {
 }): Promise<{ error?: string; committed?: boolean; messageId?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   if (!input.content.trim()) return { error: "Vui lòng nhập nội dung trả lời." };
   // R2-02: kiểm tra quan hệ người nhận - học sinh ở tầng action (RLS
@@ -220,6 +227,8 @@ export async function updateAppointmentStatus(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   if (!(await getProfile())) return { error: "Phiên đăng nhập đã hết hạn." };
   const supabase = await createClient();
   // CAS: chi cho phep chuyen tu trang thai con mo - khong ghi de

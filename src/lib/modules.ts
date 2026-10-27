@@ -3,13 +3,21 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 
-// CR-060: registry module ban kem theo truong. Mac dinh BAT; admin/so_gd
-// tat trong school_features. Module moi: them key + gan vao nav/route guard.
+// CR-060: registry module ban kem theo truong = ban do doanh thu.
+// Mac dinh BAT; admin/so_gd tat trong school_features -> menu + route +
+// action deu mat. Module moi: them key + tag nav + guard route/action.
+// CORE (khong liet ke): dashboard, ho so, quan ly HS co ban, TKB/diem/
+// so dau bai, so chu nhiem, nhan su co ban, notifications.
 export const MODULES = [
-  { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
+  { key: "chuyen_can", label: "Chuyên cần & điểm danh" },
   { key: "hoc_ba", label: "Sổ học bạ số" },
+  { key: "ky_thi_danh_gia", label: "Kỳ thi & phân tích đánh giá" },
+  { key: "phu_huynh_hoat_dong", label: "Phụ huynh & hoạt động" },
   { key: "tu_van_an_toan", label: "Tư vấn & an toàn học đường" },
   { key: "thi_dua", label: "Thi đua & năng lực giáo viên" },
+  { key: "to_chuyen_mon", label: "Tổ chuyên môn" },
+  { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
+  { key: "van_hanh_nang_cao", label: "Vận hành nâng cao (radar, NQ37, AI, CSVC)" },
 ] as const;
 
 export type ModuleKey = (typeof MODULES)[number]["key"];

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailClassParents } from "@/lib/parent-email";
@@ -24,6 +25,8 @@ export async function createActivity(input: {
 }): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   if (!input.title.trim()) return { error: "Vui lòng nhập tên hoạt động." };
@@ -47,6 +50,8 @@ export async function submitActivity(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   const { data: submitted, error } = await supabase
@@ -111,6 +116,8 @@ export async function announceActivity(
 }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
   // r26: marker RPCs la service-only - chi server action goi duoc qua
@@ -450,6 +457,8 @@ export async function saveActivityAttendance(
 ): Promise<{error?: string }> {
   const deny = await checkActionRole(["gvcn", "bgh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const { supabase, user } = await getContext();
   if (!user) return { error: "Phiên đăng nhập đã hết hạn." };
 

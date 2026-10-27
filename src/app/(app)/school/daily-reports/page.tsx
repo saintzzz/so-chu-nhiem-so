@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { requireModule } from "@/lib/modules";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -13,6 +14,7 @@ import { fetchAllRowsIn } from "@/lib/supabase/fetch-all";
 
 export default async function SchoolDailyReportsPage() {
   const profile = await requireRoles(["bgh", "pht"]);
+  await requireModule("chuyen_can");
   const supabase = await createClient();
 
   const { data: classData } = await must(supabase

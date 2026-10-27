@@ -42,3 +42,13 @@ Cho round confirm sau khi commit fix.
   production sau deploy (ghi nhan, khong chan merge).
 - D: format topbar + comment notTaken (defensive).
 - 4b reviewer rut lai: usable() da loc used - notTaken la no-op vo hai.
+
+## Pha 2 - mo rong 9 module (2026-10-27)
+
+| Round | Verdict | Findings -> Fix |
+|---|---|---|
+| r-h0603 (fc3c7b3) | APPROVE_WITH_CHANGES | 3H + 3M + 1L -> 807e4e9: parent-chat guard, reviewActivity + portal actions, team/lesson-plans to_chuyen_mon, radar/substitutes/school-actions van_hanh, 10 AI routes, ModuleKey typing |
+| r-h0604 (807e4e9) | APPROVE_WITH_CHANGES | 2M + 2L -> a10fd23: daily-digest + gen-questions gated, cron radar-sync loc truong tat module, fmt, debt inventory day du |
+
+Khong con Critical/High actionable. Debt: client direct writes can
+RLS-level gate (CR rieng) - inventory trong CR-060 doc.

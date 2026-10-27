@@ -191,7 +191,6 @@ export async function savePeriod(input: { id?: string; name: string; due_date?: 
 export async function issuePeriod(periodId: string) {
   const deny = await guard();
   if (deny) return { error: deny };
-  const profile = await getProfile();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fee_issue_period", { p_period: periodId });
   if (error) {
@@ -199,41 +198,12 @@ export async function issuePeriod(periodId: string) {
     if (error.message.includes("module_disabled")) return { error: "Module khoản thu đã tắt." };
     return { error: error.message };
   }
-  // Thong bao PH: 1 notification/parent co con trong truong (dedupe profile_id).
-  const { data: period, error: perErr } = await supabase
-    .from("fee_periods")
-    .select("name")
-    .eq("id", periodId)
-    .single();
-  if (perErr) console.error("[finance] period name lookup:", perErr.message);
-  const { data: links, error: linkErr } = await supabase
-    .from("parent_students")
-    .select("parents!inner(profile_id), students!inner(class_id, classes!inner(school_id))")
-    .eq("students.classes.school_id", profile!.school_id)
-    .limit(5000);
-  if (!linkErr && links?.length) {
-    const profileIds = [...new Set(
-      links.map((l) => (l.parents as { profile_id: string } | { profile_id: string }[] | null))
-        .flatMap((p) => (Array.isArray(p) ? p : p ? [p] : []))
-        .map((p) => p.profile_id)
-        .filter(Boolean),
-    )];
-    if (profileIds.length) {
-      const { error: notiErr } = await supabase.from("notifications").insert(
-        profileIds.map((pid) => ({
-          profile_id: pid,
-          type: "fee",
-          title: "Thông báo thu phí",
-          body: `Đợt thu "${period?.name ?? "mới"}" đã phát hành - vui lòng kiểm tra công nợ của con trong cổng phụ huynh.`,
-          link: "/portal/parent",
-        })),
-      );
-      if (notiErr) console.error("[finance] notify parents failed:", notiErr.message);
-    }
-  }
+  // Notifications cho PH nam trong RPC (security definer) - ke_toan khong
+  // doc duoc parents/parent_students qua RLS nen action khong tu insert.
   revalidatePath("/finance/periods");
   revalidatePath("/finance/invoices");
-  return { ok: true, issued: (data as { issued?: number })?.issued ?? 0 };
+  const d = data as { issued?: number; notified?: number } | null;
+  return { ok: true, issued: d?.issued ?? 0, notified: d?.notified ?? 0 };
 }
 
 export async function collectPayment(invoiceId: string, amount: number, method: string, note?: string) {

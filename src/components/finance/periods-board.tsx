@@ -44,7 +44,7 @@ export function PeriodsBoard({ periods, canWrite }: { periods: FeePeriod[]; canW
     const res = await issuePeriod(id);
     setBusy(false);
     if (res?.error) return setErr(res.error);
-    setMsg(`Đã phát hành ${res.issued} hóa đơn.`);
+    setMsg(`Đã phát hành ${res.issued} hóa đơn, gửi ${res.notified ?? 0} thông báo cho phụ huynh.`);
   }
 
   return (

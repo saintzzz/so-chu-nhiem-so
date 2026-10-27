@@ -169,3 +169,4 @@ end; $$;
 
 grant execute on function public.fee_issue_period(uuid) to authenticated;
 grant execute on function public.fee_collect(uuid, numeric, text, text) to authenticated;
+grant execute on function public.fee_module_enabled(uuid) to authenticated;

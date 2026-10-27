@@ -177,13 +177,9 @@ export default async function ParentPortalPage({
           .order("created_at", { ascending: false })
           .limit(12), "fee_invoices"),
         // Module flag: truong tat khoan_thu -> khong hien cong no.
+        // Qua RPC security-definer vi parent khong doc duoc school_features.
         classroom?.school_id
-          ? must(supabase
-              .from("school_features")
-              .select("enabled")
-              .eq("school_id", classroom.school_id)
-              .eq("module", "khoan_thu")
-              .maybeSingle(), "school_features")
+          ? supabase.rpc("fee_module_enabled", { p_school: classroom.school_id })
           : Promise.resolve({ data: null, error: null }),
       ])
     : [
@@ -275,7 +271,7 @@ export default async function ParentPortalPage({
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
 
   // CR-064: cong no cua con. Module off -> an section.
-  const feeEnabled = feeFlagRes.data == null || (feeFlagRes.data as { enabled: boolean }).enabled !== false;
+  const feeEnabled = feeFlagRes.data == null ? true : feeFlagRes.data === true;
   const feeRows = ((feeRes.data ?? []) as {
     id: string;
     amount: number;
@@ -405,6 +401,7 @@ export default async function ParentPortalPage({
     senders: senderErr,
     activity_attendance: actAttErr,
     fee_invoices: feeRes.error,
+    fee_flag: feeFlagRes.error,
   }).filter(([, e]) => e);
   const loadError = srcErrors.length > 0;
   if (loadError) {
@@ -493,9 +490,12 @@ export default async function ParentPortalPage({
               />
             </div>
 
-            {feeEnabled && feeRows.length > 0 && (
+            {feeEnabled && (
               <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
                 <h2 className="mb-3 text-base font-semibold">Công nợ & học phí</h2>
+                {feeRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Chưa có khoản thu nào được phát hành cho học sinh này.</p>
+                ) : (
                 <DataTable columns={["Đợt thu", "Hạn nộp", "Phải thu", "Đã thu", "Trạng thái"]}>
                   {feeRows.map((f) => {
                     const due = f.amount - f.exemption_amount - f.paid_amount;
@@ -515,6 +515,7 @@ export default async function ParentPortalPage({
                     );
                   })}
                 </DataTable>
+                )}
               </div>
             )}
 

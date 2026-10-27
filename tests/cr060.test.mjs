@@ -32,7 +32,7 @@ test("AC-60.1 (static): school_features co PK + RLS overlap && + grants", () => 
 });
 
 test("AC-60.2 (static): mergedNav loc section/item theo module bi tat", () => {
-  assert.match(NAV, /module\?: string/);
+  assert.match(NAV, /module\?: ModuleKey/);
   assert.match(NAV, /disabled\?: ReadonlySet<string>/);
   assert.match(NAV, /sec\.module && disabled\?\.has\(sec\.module\)/);
   assert.match(NAV, /c\.module && disabled\?\.has\(c\.module\)/);
@@ -66,6 +66,15 @@ test("AC-60.4 (static): layout truyen disabled xuong nav + moi cay module co gua
     const lay = read(`src/app/(app)/${d}/layout.tsx`);
     assert.match(lay, new RegExp(`requireModule\\("${m}"\\)`), `${d} thieu guard`);
   }
+  // nav-tag phai khop route-guard: moi href co module tag phai
+  // nam duoi layout cung module hoac page co requireModule cung key
+  // (kiem tra thu cong tai thoi diem viet test - parent-chat la case
+  // duoc phat hien thieu guard).
+  assert.match(
+    read("src/app/(app)/academics/parent-chat/page.tsx"),
+    /requireModule\("phu_huynh_hoat_dong"\)/,
+    "parent-chat thieu guard",
+  );
   // page-level guards cho module tron lan trong thu muc chung
   const PAGES = {
     "academics/exams": "ky_thi_danh_gia", "academics/analysis": "ky_thi_danh_gia",

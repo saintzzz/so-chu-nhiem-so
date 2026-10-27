@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { khbdHasContent, parseKhbd, renderKhbdText } from "@/lib/khbd";
@@ -168,6 +169,8 @@ export async function teamReviewLessonPlan(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["to_truong"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("to_chuyen_mon");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };

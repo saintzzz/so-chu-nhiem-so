@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole, getProfile } from "@/lib/auth";
 import { buildRadarData } from "@/lib/school/radar";
@@ -17,6 +18,8 @@ export async function refreshRadarWarnings(): Promise<{
 }> {
   const deny = await checkActionRole(["bgh", "pht", "admin"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("van_hanh_nang_cao");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };
@@ -73,6 +76,8 @@ export async function updateWarningStatus(
 ): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "pht"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("van_hanh_nang_cao");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const profile = await getProfile();
   if (!profile) return { error: "Phiên đăng nhập đã hết hạn." };

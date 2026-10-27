@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { checkActionRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -54,6 +55,8 @@ export async function bookAppointment(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const { parent, failed: pFailed } = await getOwnParent(supabase);
   if (pFailed) return { error: "Lỗi hệ thống. Vui lòng thử lại." };
@@ -107,6 +110,8 @@ export async function replyToTeacher(input: {
 }): Promise<{ error?: string; committed?: boolean; messageId?: string }> {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const {
     data: { user },
@@ -203,6 +208,8 @@ export async function registerActivity(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const { parent, failed: pFailed } = await getOwnParent(supabase);
   if (pFailed) return { error: "Lỗi hệ thống. Vui lòng thử lại." };
@@ -270,6 +277,8 @@ export async function reportActivityAbsence(input: {
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["phu_huynh"]);
   if (deny) return { error: deny };
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   const supabase = await createClient();
   const { parent, failed: pFailed } = await getOwnParent(supabase);
   if (pFailed) return { error: "Lỗi hệ thống. Vui lòng thử lại." };

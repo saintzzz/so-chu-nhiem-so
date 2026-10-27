@@ -42,3 +42,19 @@ Doi so voi scope ban dau - ghi nhan co chu dich:
 8. Residual: cac action chung khac (counseling/emulation/competency khong co actions.ts rieng - chung dung shared actions chua gan module) va studio sub-actions ngoai 4 API da chan; khi ban module that se tiep tuc mo rong guard vao action-level tung nhom.
 9. **Debt B2 (deferred, pre-existing)**: `/register/lock-records` ghi `register_signoffs` bang client anon truc tiep (lock-records-client.tsx) - page guard chan navigation nhung khong chan PostgREST truc tiep. Gate that cho client-direct writes phai la RLS tren `register_signoffs` join `school_features` - tach migration rieng vi dung vao write path ky duyet.
 10. **Perf note (finding C)**: fetch DC-03 fan-out x2 (moi job = 2 query theo nguon, CHUNK=8 -> 16 req/batch). Da ghi comment tai code. Do latency that cua 1 lan sinh DC-03 trong E2E production sau deploy.
+
+## Pha 2 - mo rong 9 module + deferred debt (2026-10-27)
+
+Module map mo rong 4 -> 9 key (doanh thu): them chuyen_can,
+ky_thi_danh_gia, phu_huynh_hoat_dong, to_chuyen_mon, van_hanh_nang_cao.
+Core luon mo: dashboard, ho so, quan ly HS co ban, TKB/diem/so dau bai,
+so chu nhiem, nhan su co ban.
+
+### Debt con lai (ghi nhan, can CR rieng - RLS-level gate)
+- Ghi truc tiep tu browser client bo qua app-layer flag:
+  - attendance daily-roster -> rpc scn_save_attendance
+  - exams-board -> exams/exam_sessions
+  - cmhs-board -> cmhs_members
+  - register_signoffs (da biet tu pha 1)
+- Fix dung: RLS policy join school_features tren cac bang business,
+  hoac chuyen write path sang server action co assertModule.

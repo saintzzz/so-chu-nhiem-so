@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertModule } from "@/lib/modules";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
@@ -14,7 +15,9 @@ export async function POST(req: Request) {
   if (!profile || !hasAnyRole(profile, ["bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
-  const body = (await req.json()) as { warningId?: string };
+
+  const modErr = await assertModule("van_hanh_nang_cao");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  const body = (await req.json()) as { warningId?: string };
   if (!body.warningId) {
     return NextResponse.json({ error: "Thiếu warningId." }, { status: 400 });
   }

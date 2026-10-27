@@ -83,6 +83,8 @@ export async function reviewActivity(
   if (!profile || !hasAnyRole(profile, ["bgh", "pht", "admin"])) {
     return { error: "Chỉ Ban Giám Hiệu mới có quyền phê duyệt." };
   }
+  const modErr = await assertModule("phu_huynh_hoat_dong");
+  if (modErr) return { error: modErr };
   // R2-09: conditional update phai kiem rows affected - nguoi thua trong
   // duyet dong thoi khong duoc nhan thanh cong.
   const { data: updated, error } = await supabase

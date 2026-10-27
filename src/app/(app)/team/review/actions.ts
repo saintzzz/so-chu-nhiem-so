@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireModule } from "@/lib/modules";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,6 +13,7 @@ interface AssessmentRow {
 
 export async function approveAssessment(assessmentId: string) {
   const profile = await requireRoles(["to_truong"]);
+  await requireModule("to_chuyen_mon");
   const supabase = await createClient();
 
   const { data, error: aErr } = await supabase

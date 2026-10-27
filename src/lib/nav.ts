@@ -1,16 +1,17 @@
+import type { ModuleKey } from "@/lib/modules";
 import type { Role } from "@/types";
 
 export interface NavItem {
   label: string;
   href: string;
   // CR-060: gan module ban kem - item/section bi an khi truong tat module
-  module?: string;
+  module?: ModuleKey;
 }
 
 export interface NavSection {
   label: string;
   href?: string;
-  module?: string;
+  module?: ModuleKey;
   children?: NavItem[];
 }
 

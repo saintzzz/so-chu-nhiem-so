@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertModule } from "@/lib/modules";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateTextDetailed, type AiResult } from "@/lib/ai";
@@ -18,7 +19,9 @@ export async function POST(req: Request) {
   if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền." }, { status: 403 });
   }
-  const body = (await req.json()) as { classId?: string; date?: string };
+
+  const modErr = await assertModule("chuyen_can");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  const body = (await req.json()) as { classId?: string; date?: string };
   if (!body.classId || !body.date) {
     return NextResponse.json({ error: "Thiếu tham số." }, { status: 400 });
   }

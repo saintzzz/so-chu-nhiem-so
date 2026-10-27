@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseLines } from "@/lib/ai-route";
@@ -17,7 +18,9 @@ export async function POST(req: Request) {
   if (!profile || !hasAnyRole(profile, ["gvcn", "bgh", "pht"])) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
-  let classId = "";
+
+  const modErr = await assertModule("ky_thi_danh_gia");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let classId = "";
   let term = "hk1";
   try {
     const body = (await req.json()) as { classId?: string; term?: string };

@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireModule } from "@/lib/modules";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createMeeting(formData: FormData) {
   const profile = await requireRoles(["to_truong"]);
+  await requireModule("to_chuyen_mon");
   if (!profile.department_id) throw new Error("Chưa được phân tổ");
 
   const title = String(formData.get("title") ?? "").trim();

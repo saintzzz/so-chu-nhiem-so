@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
@@ -22,7 +23,9 @@ export async function POST(req: Request) {
   ) {
     return NextResponse.json({ error: "Không có quyền" }, { status: 403 });
   }
-  let type = "";
+
+  const modErr = await assertModule("tu_van_an_toan");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let type = "";
   let severity = "";
   let notes = "";
   try {

@@ -15,10 +15,14 @@ revoke all on public.lms_session_questions from authenticated, anon;
 insert into public.lms_session_questions (session_id, pos, q)
   select s.id, el.ordinality - 1, el.value
   from public.lms_sessions s,
-       jsonb_array_elements(s.questions) with ordinality as el(value, ordinality);
+       jsonb_array_elements(s.questions) with ordinality as el(value, ordinality)
+  on conflict (session_id, pos) do nothing;
 alter table public.lms_sessions drop column if exists questions;
 -- khong con cot bi mat -> select toan bang an toan
 grant select on public.lms_sessions to authenticated;
+-- trang thai grant cuoi cung: submissions chi doc, questions khong grant.
+revoke insert, update, delete on public.lms_submissions from authenticated, anon;
+revoke all on public.lms_session_questions from authenticated, anon;
 
 -- ===== lms_assign: exam phai thuoc truong (qua owner profile) cho moi role =====
 create or replace function public.lms_assign(

@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
 // POST /api/admissions/apply - nop ho so tuyen sinh cong khai.
@@ -32,10 +32,13 @@ async function verifyTurnstile(token: string | null, ip: string | null) {
 }
 
 // DB chi nhan hash - khong luu IP tho (bao ve du lieu ca nhan).
-function hashIp(ip: string | null): string | null {
-  if (!ip) return null;
+// ip null (dev/local) -> bucket "unknown" chung, van bi rate limit.
+function hashIp(ip: string | null): string {
   const salt = process.env.APPLY_IP_SALT ?? "vieschool-apply";
-  return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
+  return createHash("sha256")
+    .update(`${salt}:${ip ?? "unknown"}`)
+    .digest("hex")
+    .slice(0, 32);
 }
 
 export async function POST(req: NextRequest) {
@@ -59,11 +62,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  );
+  // service role: RPC apply bi revoke khoi anon - day la write path
+  // duy nhat, Turnstile + honeypot + rate limit khong the bypass.
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("admission_apply_public", {
     p_campaign: body.campaign_id,
     p_full_name: body.full_name,

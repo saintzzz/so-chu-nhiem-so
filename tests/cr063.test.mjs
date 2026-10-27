@@ -36,9 +36,15 @@ test("AC-63.3: track RPC chi lo status + campaign", () => {
   assert.doesNotMatch(fn, /parent_phone|id_number|address/);
 });
 
-test("AC-63.4: anon chi qua RPC - grant execute 3 fn", () => {
+test("AC-63.4: apply RPC revoke khoi anon - chi service_role", () => {
+  const mig3 = readFileSync(
+    "supabase/migrations/20261233_cr063_apply_revoke_anon.sql",
+    "utf8",
+  );
+  assert.match(mig3, /revoke execute on function public\.admission_apply_public[\s\S]*?from public, anon, authenticated/);
+  assert.match(mig3, /grant execute[\s\S]*?to service_role/);
+  // read RPCs van cho anon (track + info)
   assert.match(mig, /grant execute on function public\.admission_campaign_info/);
-  assert.match(mig, /grant execute on function public\.admission_apply_public/);
   assert.match(mig, /grant execute on function public\.admission_track/);
   assert.doesNotMatch(mig, /grant insert.*admission_applications to anon/i);
 });

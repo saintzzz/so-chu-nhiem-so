@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { collectPayment } from "@/app/(app)/finance/actions";
-import { sortByVietnameseName } from "@/lib/utils";
-import { fmtMoney } from "./items-board";
+import { sortByVietnameseName, formatMoney } from "@/lib/utils";
+import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
+
+const fmtMoney = formatMoney;
 
 export type Invoice = {
   id: string;
@@ -106,7 +108,7 @@ export function InvoicesBoard({ invoices, canWrite }: { invoices: Invoice[]; can
             </label>
             <label className="text-sm flex-1 min-w-40">
               <span className="mb-1 block text-muted-foreground">Ghi chú</span>
-              <input value={note} onChange={(e) => setNote(e.target.value)}
+              <AutoGrowTextarea value={note} onChange={(e) => setNote(e.target.value)} rows={1}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             </label>
           </div>

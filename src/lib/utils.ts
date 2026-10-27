@@ -177,3 +177,8 @@ export function sanitizeOrTerm(q: string): string {
 // validation o school/actions. Grid TKB phai render du range nay, neu
 // khong tiet chieu luu xong se "mat" tren UI.
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+
+// CR-064: dinh dang tien te thong nhat - dung chung server + client.
+export function formatMoney(n: number): string {
+  return new Intl.NumberFormat("vi-VN").format(n) + " đ";
+}

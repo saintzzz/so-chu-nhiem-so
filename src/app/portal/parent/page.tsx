@@ -10,6 +10,7 @@ import {
   currentSchoolYearVN,
   fmtDateVN,
   fmtTimeDateVN,
+  formatMoney,
   todayVN,
 } from "@/lib/utils";
 import Link from "next/link";
@@ -100,7 +101,7 @@ export default async function ParentPortalPage({
   const classroom = student ? (classById.get(student.class_id) ?? null) : null;
   const classNameOf = (classId: string) => classById.get(classId)?.name ?? "-";
 
-  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes, evRes] = student
+  const [attRes, gradeRes, annRes, apptRes, examRes, cmhsRes, subjectRes, msgRes, actRes, evRes, feeRes, feeFlagRes] = student
     ? await Promise.all([
         must(supabase
           .from("attendance_records")
@@ -167,8 +168,27 @@ export default async function ParentPortalPage({
           .gte("event_date", todayVN())
           .order("event_date")
           .limit(12), "school_year_events"),
+        // CR-064 r1: cong no fee cua con - RLS fee_inv_parent da chan
+        // theo parent_students, query chi doc hoa don con dang chon.
+        must(supabase
+          .from("fee_invoices")
+          .select("id,amount,exemption_amount,paid_amount,status,fee_periods(name,due_date)")
+          .eq("student_id", student.id)
+          .order("created_at", { ascending: false })
+          .limit(12), "fee_invoices"),
+        // Module flag: truong tat khoan_thu -> khong hien cong no.
+        classroom?.school_id
+          ? must(supabase
+              .from("school_features")
+              .select("enabled")
+              .eq("school_id", classroom.school_id)
+              .eq("module", "khoan_thu")
+              .maybeSingle(), "school_features")
+          : Promise.resolve({ data: null, error: null }),
       ])
     : [
+        { data: [], error: null },
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
@@ -253,6 +273,20 @@ export default async function ParentPortalPage({
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+
+  // CR-064: cong no cua con. Module off -> an section.
+  const feeEnabled = feeFlagRes.data == null || (feeFlagRes.data as { enabled: boolean }).enabled !== false;
+  const feeRows = ((feeRes.data ?? []) as {
+    id: string;
+    amount: number;
+    exemption_amount: number;
+    paid_amount: number;
+    status: string;
+    fee_periods: { name: string; due_date: string | null } | { name: string; due_date: string | null }[] | null;
+  }[]).map((f) => {
+    const per = Array.isArray(f.fee_periods) ? f.fee_periods[0] : f.fee_periods;
+    return { ...f, period_name: per?.name ?? "-", due_date: per?.due_date ?? null };
+  });
 
   const announcements = (annRes.data ?? []) as Pick<
     Announcement,
@@ -370,6 +404,7 @@ export default async function ParentPortalPage({
     teachers: teacherErr,
     senders: senderErr,
     activity_attendance: actAttErr,
+    fee_invoices: feeRes.error,
   }).filter(([, e]) => e);
   const loadError = srcErrors.length > 0;
   if (loadError) {
@@ -457,6 +492,31 @@ export default async function ParentPortalPage({
                 tone="primary"
               />
             </div>
+
+            {feeEnabled && feeRows.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 text-base font-semibold">Công nợ & học phí</h2>
+                <DataTable columns={["Đợt thu", "Hạn nộp", "Phải thu", "Đã thu", "Trạng thái"]}>
+                  {feeRows.map((f) => {
+                    const due = f.amount - f.exemption_amount - f.paid_amount;
+                    return (
+                      <tr key={f.id}>
+                        <td className="font-medium">{f.period_name}</td>
+                        <td className="text-muted-foreground">{f.due_date ? formatDate(f.due_date) : "-"}</td>
+                        <td className="tabular-nums">{formatMoney(f.amount - f.exemption_amount)}</td>
+                        <td className="tabular-nums">{formatMoney(f.paid_amount)}</td>
+                        <td>
+                          <StatusBadge
+                            label={due <= 0 ? "Đã đủ" : `Còn ${formatMoney(due)}`}
+                            tone={due <= 0 ? "success" : f.status === "partial" ? "warning" : "error"}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </DataTable>
+              </div>
+            )}
 
             {examSessions.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">

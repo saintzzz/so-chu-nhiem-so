@@ -2,9 +2,7 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("vi-VN").format(n) + " đ";
-}
+import { formatMoney as fmt } from "@/lib/utils";
 
 export default async function FeeReportsPage() {
   await requireRoles(["ke_toan", "bgh", "admin", "so_gd"]);

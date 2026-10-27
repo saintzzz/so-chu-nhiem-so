@@ -41,6 +41,17 @@ export async function saveFeeItem(input: {
     active: input.active ?? true,
   };
   if (!row.name || row.unit_price < 0) return { error: "Dữ liệu không hợp lệ." };
+  // IDOR: class_id phai thuoc truong caller.
+  if (row.class_id) {
+    const { data: cls, error: clsErr } = await supabase
+      .from("classes")
+      .select("id")
+      .eq("id", row.class_id)
+      .eq("school_id", profile!.school_id)
+      .maybeSingle();
+    if (clsErr) return { error: clsErr.message };
+    if (!cls) return { error: "Lớp không thuộc trường." };
+  }
   const q = input.id
     ? supabase.from("fee_items").update(row).eq("id", input.id)
     : supabase.from("fee_items").insert({ ...row, school_id: profile!.school_id });
@@ -55,6 +66,28 @@ export async function registerVoluntary(feeItemId: string, studentIds: string[],
   if (deny) return { error: deny };
   const profile = await getProfile();
   const supabase = await createClient();
+  // IDOR: item + students deu phai thuoc truong caller.
+  const { data: item, error: itemErr } = await supabase
+    .from("fee_items")
+    .select("id, kind")
+    .eq("id", feeItemId)
+    .eq("school_id", profile!.school_id)
+    .maybeSingle();
+  if (itemErr) return { error: itemErr.message };
+  if (!item) return { error: "Khoản thu không thuộc trường." };
+  if (register && item.kind !== "voluntary") return { error: "Chỉ khoản tự nguyện mới cần đăng ký." };
+  if (studentIds.length) {
+    const { data: stus, error: stuErr } = await supabase
+      .from("students")
+      .select("id, classes!inner(school_id)")
+      .in("id", studentIds)
+      .eq("classes.school_id", profile!.school_id)
+      .limit(studentIds.length + 1);
+    if (stuErr) return { error: stuErr.message };
+    if ((stus ?? []).length !== studentIds.length) {
+      return { error: "Có học sinh không thuộc trường." };
+    }
+  }
   if (register) {
     const rows = studentIds.map((sid) => ({
       fee_item_id: feeItemId,
@@ -88,6 +121,25 @@ export async function saveExemption(input: {
   if (input.percent <= 0 || input.percent > 100) return { error: "Tỉ lệ miễn giảm phải trong (0-100]." };
   const profile = await getProfile();
   const supabase = await createClient();
+  // IDOR: student + fee_item deu phai thuoc truong caller.
+  const { data: stu, error: stuErr } = await supabase
+    .from("students")
+    .select("id, classes!inner(school_id)")
+    .eq("id", input.student_id)
+    .eq("classes.school_id", profile!.school_id)
+    .maybeSingle();
+  if (stuErr) return { error: stuErr.message };
+  if (!stu) return { error: "Học sinh không thuộc trường." };
+  if (input.fee_item_id) {
+    const { data: item, error: itemErr } = await supabase
+      .from("fee_items")
+      .select("id")
+      .eq("id", input.fee_item_id)
+      .eq("school_id", profile!.school_id)
+      .maybeSingle();
+    if (itemErr) return { error: itemErr.message };
+    if (!item) return { error: "Khoản thu không thuộc trường." };
+  }
   const { error } = await supabase.from("fee_exemptions").insert({
     student_id: input.student_id,
     fee_item_id: input.fee_item_id ?? null,
@@ -139,11 +191,45 @@ export async function savePeriod(input: { id?: string; name: string; due_date?: 
 export async function issuePeriod(periodId: string) {
   const deny = await guard();
   if (deny) return { error: deny };
+  const profile = await getProfile();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fee_issue_period", { p_period: periodId });
   if (error) {
     if (error.message.includes("already_issued")) return { error: "Đợt thu đã phát hành." };
+    if (error.message.includes("module_disabled")) return { error: "Module khoản thu đã tắt." };
     return { error: error.message };
+  }
+  // Thong bao PH: 1 notification/parent co con trong truong (dedupe profile_id).
+  const { data: period, error: perErr } = await supabase
+    .from("fee_periods")
+    .select("name")
+    .eq("id", periodId)
+    .single();
+  if (perErr) console.error("[finance] period name lookup:", perErr.message);
+  const { data: links, error: linkErr } = await supabase
+    .from("parent_students")
+    .select("parents!inner(profile_id), students!inner(class_id, classes!inner(school_id))")
+    .eq("students.classes.school_id", profile!.school_id)
+    .limit(5000);
+  if (!linkErr && links?.length) {
+    const profileIds = [...new Set(
+      links.map((l) => (l.parents as { profile_id: string } | { profile_id: string }[] | null))
+        .flatMap((p) => (Array.isArray(p) ? p : p ? [p] : []))
+        .map((p) => p.profile_id)
+        .filter(Boolean),
+    )];
+    if (profileIds.length) {
+      const { error: notiErr } = await supabase.from("notifications").insert(
+        profileIds.map((pid) => ({
+          profile_id: pid,
+          type: "fee",
+          title: "Thông báo thu phí",
+          body: `Đợt thu "${period?.name ?? "mới"}" đã phát hành - vui lòng kiểm tra công nợ của con trong cổng phụ huynh.`,
+          link: "/portal/parent",
+        })),
+      );
+      if (notiErr) console.error("[finance] notify parents failed:", notiErr.message);
+    }
   }
   revalidatePath("/finance/periods");
   revalidatePath("/finance/invoices");
@@ -164,6 +250,7 @@ export async function collectPayment(invoiceId: string, amount: number, method: 
     if (error.message.includes("already_settled")) return { error: "Hóa đơn đã thanh toán đủ." };
     if (error.message.includes("invalid_amount")) return { error: "Số tiền không hợp lệ (vượt công nợ hoặc <= 0)." };
     if (error.message.includes("school_mismatch")) return { error: "Hóa đơn không thuộc trường." };
+    if (error.message.includes("module_disabled")) return { error: "Module khoản thu đã tắt." };
     return { error: error.message };
   }
   revalidatePath("/finance/invoices");

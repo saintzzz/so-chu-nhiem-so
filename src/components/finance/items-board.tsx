@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveFeeItem } from "@/app/(app)/finance/actions";
+import { formatMoney } from "@/lib/utils";
 
 export type FeeItem = {
   id: string;
@@ -15,8 +16,7 @@ export type FeeItem = {
   active: boolean;
 };
 
-export const fmtMoney = (n: number) =>
-  new Intl.NumberFormat("vi-VN").format(n) + " đ";
+const fmtMoney = formatMoney;
 
 const APPLY_LABEL: Record<string, string> = {
   all: "Toàn trường",

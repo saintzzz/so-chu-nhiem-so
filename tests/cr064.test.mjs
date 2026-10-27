@@ -54,6 +54,19 @@ test("AC-64.4: migration fee_* co RLS tenant + parent view + RPC", () => {
   assert.match(m, /on conflict \(period_id, student_id\) do nothing/); // idempotent issue
 });
 
+// AC-64.4b: r1 fixes - module flag o tang DB + tenant integrity + receipt atomic.
+test("AC-64.4b: migration 3 chan module_off + cross-tenant + receipt atomic", () => {
+  const m3 = read("supabase/migrations/20261236_cr064_fees_flag_tenant.sql");
+  assert.match(m3, /fee_module_enabled/); // helper check school_features
+  assert.match(m3, /module_disabled/); // RPC raise khi tat
+  assert.match(m3, /fee_check_tenant/); // trigger cross-school
+  assert.match(m3, /cross_school_(class|item|student|period|invoice)/);
+  assert.match(m3, /fee_receipt_seq/); // counter per school thay count(*)
+  assert.match(m3, /fee_inv_receipt_uq/); // unique (school_id, receipt_no)
+  // write policies phai co flag check
+  assert.match(m3, /fee_module_enabled\(school_id\)/);
+});
+
 // AC-64.5: UI - khong em/en dash trong copy VN, khong textarea tho.
 test("AC-64.5: finance UI sach convention", () => {
   const dir = join(root, "src/components/finance");

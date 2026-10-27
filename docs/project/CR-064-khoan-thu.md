@@ -4,7 +4,7 @@
 - PO uu tien 1 tu COMPETITIVE-ANALYSIS.md: MISA EMIS co phan he
   Khoan thu rat lon (dang ky khoan thu, mien giam, dot thu, thu tien,
   hoa don, doi soat, 20+ bao cao). ke_toan cua ta dang trong.
-- Module key: khoan_thu. Role chinh: ke_toan (+ bgh xem tong quan).
+- Module key: khoan_thu. Role chinh: ke_toan + bgh/admin ghi (phe duyet ngoai le o truong nho, ke_toan khong phai luc nao cung co mat); so_gd + PH chi doc.
 
 ## Thuc te VN (research MISA EMIS flow)
 - Khoan thu: hoc phi, tien an, tien ban tru, trang phuc, bao hiem,
@@ -37,7 +37,7 @@
 4. Bien lai khong trung so (per school, atomic).
 5. Bao cao theo lop: da thu/chua thu/tong, export CSV.
 6. Module OFF -> route + action + nav deu mat.
-7. ke_toan thao tac duoc, gvcn khong; bgh xem bao cao.
+7. ke_toan/bgh/admin thao tac duoc, gvcn/gvbm/phu_huynh khong; so_gd chi doc.
 
 ## Khong lam (ghi debt)
 - Hoa don dien tu ND123, thanh toan VNPay/QR, Zalo OA thong bao,

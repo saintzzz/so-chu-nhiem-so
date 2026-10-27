@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("van_hanh_nang_cao");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  const body = (await req.json().catch(() => null)) as {
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  const body = (await req.json().catch(() => null)) as {
     question?: unknown;
   } | null;
   // R16: validate runtime - question phai la string va gioi han do dai

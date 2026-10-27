@@ -18,7 +18,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("thi_dua");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let period = "";
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  let period = "";
   try {
     const body = (await req.json()) as { period?: string };
     period = (body.period ?? "").trim();

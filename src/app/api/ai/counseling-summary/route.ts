@@ -23,7 +23,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("tu_van_an_toan");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let issue = "";
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  let issue = "";
   try {
     const body = (await req.json()) as { issue?: string };
     issue = (body.issue ?? "").trim();

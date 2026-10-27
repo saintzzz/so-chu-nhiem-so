@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { respondWithAi, parseJsonObject } from "@/lib/ai-route";
@@ -56,7 +57,9 @@ export async function POST(req: Request) {
   if (!(await hasFeature("studio.ai")) || !(await hasFeature("studio.questions"))) {
     return NextResponse.json({ error: "Tính năng đã bị tắt" }, { status: 403 });
   }
-  let subject = "";
+
+  const modErr = await assertModule("studio");
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let subject = "";
   let grade = 0;
   let topic = "";
   let count = 5;

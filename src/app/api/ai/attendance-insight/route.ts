@@ -20,7 +20,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("chuyen_can");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let classId = "";
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  let classId = "";
   try {
     const body = (await req.json()) as { classId?: string };
     classId = body.classId ?? "";

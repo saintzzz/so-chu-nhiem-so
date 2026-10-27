@@ -25,7 +25,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("tu_van_an_toan");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let type = "";
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  let type = "";
   let severity = "";
   let notes = "";
   try {

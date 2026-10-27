@@ -56,5 +56,12 @@ so chu nhiem, nhan su co ban.
   - exams-board -> exams/exam_sessions
   - cmhs-board -> cmhs_members
   - register_signoffs (da biet tu pha 1)
+  - counseling: intake-form -> counseling_cases, case-controls,
+    referral-card -> counseling_referrals
+  - competency: self-assessment-form -> teacher_assessments,
+    evidence-form -> assessment_evidence
 - Fix dung: RLS policy join school_features tren cac bang business,
   hoac chuyen write path sang server action co assertModule.
+- Convention: actions dung assertModule (tra loi inline); 2 file team
+  (meetings, review) dung requireModule - khop idiom requireRoles cua
+  file do, redirect /dashboard thay vi inline error. Thong nhat sau neu can.

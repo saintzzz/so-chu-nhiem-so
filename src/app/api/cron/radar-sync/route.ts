@@ -36,9 +36,25 @@ async function run(req: NextRequest) {
   }
   const schoolIds = ((schools ?? []) as { id: string }[]).map((s) => s.id);
 
+  // CR-060: bo qua truong da tat module van_hanh_nang_cao - khong tinh
+  // radar cho module khach chua mua.
+  const { data: disabled, error: disabledErr } = await supabase
+    .from("school_features")
+    .select("school_id")
+    .eq("module", "van_hanh_nang_cao")
+    .eq("enabled", false);
+  if (disabledErr) {
+    console.error("[radar-sync] school_features query failed:", disabledErr.message);
+    return NextResponse.json({ error: "query failed" }, { status: 500 });
+  }
+  const disabledSet = new Set(
+    ((disabled ?? []) as { school_id: string }[]).map((r) => r.school_id),
+  );
+  const activeIds = schoolIds.filter((id) => !disabledSet.has(id));
+
   let inserted = 0;
   const errors: string[] = [];
-  for (const schoolId of schoolIds) {
+  for (const schoolId of activeIds) {
     try {
       const data = await buildRadarData(supabase, {
         role: "bgh",

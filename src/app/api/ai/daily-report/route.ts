@@ -21,7 +21,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("chuyen_can");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  const body = (await req.json()) as { classId?: string; date?: string };
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  const body = (await req.json()) as { classId?: string; date?: string };
   if (!body.classId || !body.date) {
     return NextResponse.json({ error: "Thiếu tham số." }, { status: 400 });
   }

@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("phu_huynh_hoat_dong");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  let bullets = "";
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  let bullets = "";
   let audience = "phụ huynh cả lớp";
   let context = "";
   try {

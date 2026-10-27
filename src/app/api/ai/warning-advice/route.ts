@@ -17,7 +17,8 @@ export async function POST(req: Request) {
   }
 
   const modErr = await assertModule("van_hanh_nang_cao");
-  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });  const body = (await req.json()) as { warningId?: string };
+  if (modErr) return NextResponse.json({ error: modErr }, { status: 403 });
+  const body = (await req.json()) as { warningId?: string };
   if (!body.warningId) {
     return NextResponse.json({ error: "Thiếu warningId." }, { status: 400 });
   }

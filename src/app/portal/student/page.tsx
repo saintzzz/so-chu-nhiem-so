@@ -258,11 +258,12 @@ export default async function StudentPortalPage() {
     exams: { name: string; status: string };
   }[]).filter((s) => s.exams.status === "published");
 
-  // CR-065: module tat -> an section; loi khac -> hien empty state.
+  // CR-065: module tat -> an section; loi khac -> error state (khong gia empty).
   const lmsDisabled =
     !!lmsRes.error &&
     (lmsRes.error.message.includes("module_disabled") ||
       lmsRes.error.message.includes("not_student"));
+  const lmsFailed = !!lmsRes.error && !lmsDisabled;
   const lmsItems = (lmsRes.error ? [] : ((lmsRes.data ?? []) as {
     session_id: string;
     title: string;
@@ -493,7 +494,11 @@ export default async function StudentPortalPage() {
                   <ClipboardList className="size-4 text-muted-foreground" />
                   Bài tập trực tuyến
                 </h2>
-                {lmsItems.length === 0 ? (
+                {lmsFailed ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Không tải được bài tập - vui lòng thử lại.
+                  </p>
+                ) : lmsItems.length === 0 ? (
                   <p className="py-4 text-center text-sm text-muted-foreground">
                     Chưa có bài nào được giao.
                   </p>

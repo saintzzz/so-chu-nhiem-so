@@ -9,16 +9,10 @@ export default async function LmsPage() {
   const canWrite = hasAnyRole(profile, ["gvbm", "gvcn", "to_truong", "bgh", "admin"]);
   const supabase = await createClient();
 
-  const examQuery = supabase
-    .from("tvc_exams")
-    .select("id, title, subject_code, grade, created_at")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  // GV chi giao duoc de cua minh; bgh/admin thay het de gan cho dung.
-  if (!hasAnyRole(profile, ["bgh", "admin"])) examQuery.eq("owner_id", profile.id);
-
-  const [examRes, classRes, sessRes] = await Promise.all([
-    examQuery,
+  // De thi chi thuoc ngan hang truong minh (owner la staff cung truong) -
+  // khoa cheo truong ca voi bgh/admin, giong RPC lms_assign.
+  const [staffRes, classRes, sessRes] = await Promise.all([
+    supabase.from("profiles").select("id").eq("school_id", profile.school_id),
     supabase
       .from("classes")
       .select("id, name, grade")
@@ -33,7 +27,17 @@ export default async function LmsPage() {
       .limit(100),
   ]);
 
-  const srcErr = examRes.error ?? classRes.error ?? sessRes.error;
+  const staffIds = (staffRes.data ?? []).map((r) => r.id);
+  const examRes = staffIds.length
+    ? await supabase
+        .from("tvc_exams")
+        .select("id, title, subject_code, grade, created_at")
+        .in("owner_id", staffIds)
+        .order("created_at", { ascending: false })
+        .limit(100)
+    : { data: [], error: null };
+
+  const srcErr = staffRes.error ?? examRes.error ?? classRes.error ?? sessRes.error;
   if (srcErr) {
     return (
       <div>

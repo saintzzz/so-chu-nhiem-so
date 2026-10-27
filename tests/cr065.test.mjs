@@ -22,28 +22,30 @@ test("AC-65.2: lms layout requireRoles + requireModule", () => {
   assert.match(layout, /requireModule\("lms_lite"\)/);
 });
 
-test("AC-65.3: start_attempt khong tra dap an cho HS", () => {
-  const m = read("supabase/migrations/20261240_cr065_lms_lite.sql");
-  const g = read("supabase/migrations/20261241_cr065_lms_grants.sql");
-  // column-grant: questions (chua 'correct') khong doc duoc truc tiep
-  assert.match(g, /revoke all on public\.lms_sessions from authenticated, anon/);
-  const grant = g.match(/grant select \(([^)]*)\)\s*on public\.lms_sessions/);
-  assert.ok(grant, "select column grant ton tai");
-  assert.ok(!grant[1].includes("questions"), "questions khong duoc grant");
-  assert.match(g, /revoke insert, update, delete on public\.lms_submissions/);
-  const fn = m.slice(m.indexOf("function public.lms_start_attempt"), m.indexOf("function public.lms_submit_attempt"));
-  // phai strip khoi 'correct' khi tra cau hoi
-  assert.match(fn, /el\.value - 'correct'/);
-  // khong tra truong nao khac chua dap an
-  assert.doesNotMatch(fn, /'correct',/);
+test("AC-65.3: dap an o bang private default-deny, start_attempt strip correct", () => {
+  const g = read("supabase/migrations/20261243_cr065_lms_private_questions.sql");
+  // snapshot co 'correct' nam trong bang khong grant + khong policy
+  assert.match(g, /create table if not exists public\.lms_session_questions/);
+  assert.match(g, /revoke all on public\.lms_session_questions from authenticated, anon/);
+  assert.doesNotMatch(g, /create policy \w+ on public\.lms_session_questions/);
+  // cot bi mat bi xoa khoi bang readable
+  assert.match(g, /drop column if exists questions/);
+  const m = read("supabase/migrations/20261242_cr065_lms_alias_fix.sql") + g;
+  const fn = g.slice(g.indexOf("function public.lms_start_attempt"), g.indexOf("function public.lms_submit_attempt"));
+  // phai strip 'correct' khi tra cau hoi + doc tu bang private
+  assert.match(fn, /lsq\.q - 'correct'/);
+  assert.match(fn, /lms_session_questions/);
   assert.match(fn, /not_open/);
   assert.match(fn, /already_submitted/);
   assert.match(fn, /forbidden/);
+  // race-safe start
+  assert.match(fn, /on conflict \(session_id, student_id\) do nothing/);
 });
 
 test("AC-65.4: submit cham server-side + deadline + nop mot lan", () => {
   const m = read("supabase/migrations/20261240_cr065_lms_lite.sql");
-  const fn = m.slice(m.indexOf("function public.lms_submit_attempt"));
+  const g = read("supabase/migrations/20261243_cr065_lms_private_questions.sql");
+  const fn = g.slice(g.indexOf("function public.lms_submit_attempt"));
   assert.match(fn, /for update/);
   assert.match(fn, /already_submitted/);
   assert.match(fn, /time_expired/);
@@ -54,12 +56,18 @@ test("AC-65.4: submit cham server-side + deadline + nop mot lan", () => {
   assert.match(m, /unique \(session_id, student_id\)/);
 });
 
-test("AC-65.5: module flag kiem o moi RPC + write policy", () => {
+test("AC-65.5: module flag kiem o moi RPC + write policy + exam cung truong", () => {
   const m = read("supabase/migrations/20261240_cr065_lms_lite.sql");
+  const g = read("supabase/migrations/20261243_cr065_lms_private_questions.sql");
   assert.match(m, /lms_module_enabled/);
   const rpcBodies = m.match(/module_disabled/g) ?? [];
   assert.ok(rpcBodies.length >= 4, `can >=4 cho module_disabled, co ${rpcBodies.length}`);
   assert.match(m, /lms_sessions_write[\s\S]*lms_module_enabled\(school_id\)/);
+  // exam phai thuoc truong caller (qua owner profile) - khong con bypass bgh/admin
+  const af = g.slice(g.indexOf("function public.lms_assign"), g.indexOf("function public.lms_my_assignments"));
+  assert.match(af, /not_exam_owner/);
+  assert.match(af, /p\.school_id = \(select my_school_id\(\)\)/);
+  assert.doesNotMatch(af, /array\['bgh','admin'\]/);
 });
 
 test("AC-65.6: actions chan role + UI sach convention", () => {

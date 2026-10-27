@@ -31,7 +31,7 @@ export default async function LmsSessionResultsPage({
     title?: string;
     closes_at?: string;
     submissions?: SubRow[];
-    not_submitted?: string[];
+    not_started?: string[];
   } | null;
 
   if (error || !res) {
@@ -49,14 +49,14 @@ export default async function LmsSessionResultsPage({
   }
 
   const subs = sortByVietnameseName(res.submissions ?? [], (s) => s.student_name);
-  const notSubmitted = res.not_submitted ?? [];
+  const notStarted = res.not_started ?? [];
 
   return (
     <div>
       <PageHeader section="Bài tập trực tuyến" title={res.title ?? "Kết quả"} />
       <p className="mb-4 text-sm text-muted-foreground">
         Đóng lúc {res.closes_at ? fmtDateTimeVN(res.closes_at) : "-"} · Đã nộp{" "}
-        {subs.filter((s) => s.status === "submitted").length}/{subs.length + notSubmitted.length} học sinh
+        {subs.filter((s) => s.status === "submitted").length}/{subs.length + notStarted.length} học sinh
       </p>
       <DataTable columns={["Học sinh", "Trạng thái", "Điểm tự động", "Nộp lúc"]}>
         {subs.map((s) => (
@@ -84,10 +84,10 @@ export default async function LmsSessionResultsPage({
           </tr>
         )}
       </DataTable>
-      {notSubmitted.length > 0 && (
+      {notStarted.length > 0 && (
         <p className="mt-3 text-sm text-muted-foreground">
-          Chưa nộp ({notSubmitted.length}):{" "}
-          {[...notSubmitted].sort((a, b) => compareVietnameseName(a, b)).join(", ")}
+          Chưa làm bài ({notStarted.length}):{" "}
+          {[...notStarted].sort((a, b) => compareVietnameseName(a, b)).join(", ")}
         </p>
       )}
     </div>

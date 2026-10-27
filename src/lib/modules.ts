@@ -13,6 +13,7 @@ export const MODULES = [
   { key: "khoan_thu", label: "Khoản thu & học phí" },
   { key: "hoc_ba", label: "Sổ học bạ số" },
   { key: "ky_thi_danh_gia", label: "Kỳ thi & phân tích đánh giá" },
+  { key: "lms_lite", label: "Bài tập & kiểm tra trực tuyến" },
   { key: "phu_huynh_hoat_dong", label: "Phụ huynh & hoạt động" },
   { key: "tu_van_an_toan", label: "Tư vấn & an toàn học đường" },
   { key: "thi_dua", label: "Thi đua & năng lực giáo viên" },

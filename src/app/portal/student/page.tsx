@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PortalHeader } from "@/components/portal/portal-header";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
-import { Bell, CalendarDays } from "lucide-react";
+import { Bell, CalendarDays, ClipboardList } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
 import { gradeYearOr } from "@/lib/grades-year";
 import { currentSchoolYearVN, fmtDateVN, todayVN, PERIODS } from "@/lib/utils";
@@ -53,7 +54,7 @@ export default async function StudentPortalPage() {
   > & { classes?: Pick<ClassRoom, "id" | "name" | "school_id" | "academic_year_id"> | null }) | null;
   const classroom = student?.classes ?? null;
 
-  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes] =
+  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes, lmsRes] =
     student ? await Promise.all([
         must(supabase
           .from("attendance_records")
@@ -104,8 +105,11 @@ export default async function StudentPortalPage() {
           .eq("class_id", student.class_id)
           .order("weekday")
           .order("period"), "timetable_entries"),
+        // CR-065: RPC tu check module flag - module_disabled/not_student -> an section.
+        supabase.rpc("lms_my_assignments"),
       ])
     : [
+        { data: [] },
         { data: [] },
         { data: [] },
         { data: [] },
@@ -253,6 +257,24 @@ export default async function StudentPortalPage() {
     subject_id: string;
     exams: { name: string; status: string };
   }[]).filter((s) => s.exams.status === "published");
+
+  // CR-065: module tat -> an section; loi khac -> hien empty state.
+  const lmsDisabled =
+    !!lmsRes.error &&
+    (lmsRes.error.message.includes("module_disabled") ||
+      lmsRes.error.message.includes("not_student"));
+  const lmsItems = (lmsRes.error ? [] : ((lmsRes.data ?? []) as {
+    session_id: string;
+    title: string;
+    duration_minutes: number;
+    opens_at: string;
+    closes_at: string;
+    question_count: number;
+    state: string;
+    score: number | null;
+    max_score: number | null;
+    essay_pending: boolean;
+  }[]));
 
   return (
     <div className="theme-fluent min-h-screen bg-background">
@@ -462,6 +484,51 @@ export default async function StudentPortalPage() {
                     </tr>
                   ))}
                 </DataTable>
+              </div>
+            )}
+
+            {!lmsDisabled && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                  <ClipboardList className="size-4 text-muted-foreground" />
+                  Bài tập trực tuyến
+                </h2>
+                {lmsItems.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Chưa có bài nào được giao.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {lmsItems.map((a) => (
+                      <li key={a.session_id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{a.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {a.question_count} câu · {a.duration_minutes} phút · hạn {formatDate(a.closes_at)}
+                          </p>
+                        </div>
+                        {a.state === "submitted" ? (
+                          <StatusBadge
+                            label={`Đã nộp · ${a.score ?? 0}/${a.max_score ?? 0}đ${a.essay_pending ? " · chờ chấm" : ""}`}
+                            tone="success"
+                          />
+                        ) : a.state === "open" || a.state === "in_progress" ? (
+                          <Link
+                            href={`/portal/student/bai-thi/${a.session_id}`}
+                            className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                          >
+                            {a.state === "in_progress" ? "Làm tiếp" : "Làm bài"}
+                          </Link>
+                        ) : (
+                          <StatusBadge
+                            label={a.state === "upcoming" ? "Chưa mở" : "Đã đóng"}
+                            tone="muted"
+                          />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

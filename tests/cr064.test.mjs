@@ -76,3 +76,15 @@ test("AC-64.5: finance UI sach convention", () => {
     assert.ok(!/<textarea/.test(src), `${f} dung textarea tho`);
   }
 });
+
+// AC-64.4c: migration 4 - notify chi HS vua insert + PH cung truong +
+// bien lai per-payment tren fee_payments.
+test("AC-64.4c: migration 4 notify scoped + receipt per payment", () => {
+  const m4 = read("supabase/migrations/20261238_cr064_fee_receipts_notify.sql");
+  assert.match(m4, /v_students uuid\[\]/); // chi notify HS vua insert
+  assert.match(m4, /ps\.student_id = any\(v_students\)/);
+  assert.match(m4, /pr\.school_id = p\.school_id/); // PH cung truong
+  assert.match(m4, /fee_payments add column if not exists receipt_no/);
+  assert.match(m4, /fee_pay_receipt_uq/); // unique payment receipt
+  assert.match(m4, /received_by, receipt_no\)/); // collect luu BL tren payment
+});

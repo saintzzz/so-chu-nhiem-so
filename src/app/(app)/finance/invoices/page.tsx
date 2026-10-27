@@ -36,13 +36,16 @@ export default async function FeeInvoicesPage({
     periodList[0];
 
   let invoices: Invoice[] = [];
+  let invoicesErr = false;
   if (selected) {
     const { data, error } = await supabase
       .from("fee_invoices")
       .select("id, student_id, amount, exemption_amount, paid_amount, status, receipt_no, students(full_name, classes(name))")
       .eq("period_id", selected.id)
       .limit(2000);
-    if (!error) {
+    if (error) {
+      invoicesErr = true;
+    } else {
       invoices = (data ?? []).map((row) => {
         const raw = Array.isArray(row.students) ? row.students[0] : row.students;
         const stu = raw as { full_name: string; classes: { name: string } | { name: string }[] | null } | null;
@@ -76,7 +79,13 @@ export default async function FeeInvoicesPage({
           <p className="text-sm text-muted-foreground">Chưa có đợt thu nào - tạo ở trang Đợt thu.</p>
         )}
       </div>
-      <InvoicesBoard invoices={invoices} canWrite={canWrite} />
+      {invoicesErr ? (
+        <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-[var(--shadow-sm-token)]">
+          Không tải được dữ liệu - vui lòng thử lại.
+        </p>
+      ) : (
+        <InvoicesBoard invoices={invoices} canWrite={canWrite} />
+      )}
     </div>
   );
 }

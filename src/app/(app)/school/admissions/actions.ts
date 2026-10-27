@@ -153,7 +153,7 @@ export async function addApplications(
   return { added: payload.length };
 }
 
-/** Lop 6: duyet ho so (xet tuyen) -> approved | rejected. */
+/** Lop 6: duyet ho so (xet tuyen) -> approved | rejected. Chi khoi_6. */
 export async function reviewApplication(
   applicationId: string,
   decision: "approved" | "rejected",
@@ -163,6 +163,16 @@ export async function reviewApplication(
   if (deny) return { error: deny };
   const profile = await getProfile();
   const supabase = await createClient();
+  const { data: app, error: appErr } = await supabase
+    .from("admission_applications")
+    .select("id,admission_campaigns(level)")
+    .eq("id", applicationId)
+    .single();
+  if (appErr || !app) return { error: "Không tìm thấy hồ sơ." };
+  const level = (app.admission_campaigns as { level?: string } | null)?.level;
+  if (level !== "khoi_6") {
+    return { error: "Duyệt hồ sơ chỉ áp dụng cho tuyển lớp 6 (xét tuyển)." };
+  }
   const { data: updated, error } = await supabase
     .from("admission_applications")
     .update({
@@ -197,6 +207,12 @@ export async function assignExamNumbers(
   });
   if (error) {
     console.error("[admissions] assignExamNumbers:", error.message);
+    if (error.message.includes("wrong_level")) {
+      return { error: "Chỉ đợt tuyển lớp 10 (thi tuyển) mới cấp SBD." };
+    }
+    if (error.message.includes("campaign_not_found")) {
+      return { error: "Không tìm thấy đợt tuyển." };
+    }
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
   revalidatePath(`/school/admissions/${campaignId}`);
@@ -243,14 +259,16 @@ export async function saveScores(
       total_score: Math.round(total * 100) / 100,
     })
     .eq("id", applicationId)
-    .in("status", ["exam_registered", "passed", "failed"])
+    .eq("status", "exam_registered")
     .select("id");
   if (error) {
     console.error("[admissions] saveScores:", error.message);
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
   if (!updated?.length) {
-    return { error: "Hồ sơ đã đổi trạng thái - tải lại trang." };
+    return {
+      error: "Hồ sơ đã chốt kết quả hoặc đổi trạng thái - không sửa được điểm.",
+    };
   }
   revalidatePath("/school/admissions");
   return {};
@@ -274,6 +292,12 @@ export async function finalizeResults(
     }
     if (error.message.includes("no_benchmark")) {
       return { error: "Chưa đặt điểm chuẩn." };
+    }
+    if (error.message.includes("wrong_level")) {
+      return { error: "Chốt điểm chỉ áp dụng cho đợt tuyển lớp 10 (thi tuyển)." };
+    }
+    if (error.message.includes("campaign_not_found")) {
+      return { error: "Không tìm thấy đợt tuyển." };
     }
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }
@@ -324,6 +348,12 @@ export async function enrollApplications(
     console.error("[admissions] enrollApplications:", error.message);
     if (error.message.includes("school_mismatch")) {
       return { error: "Lớp đích và đợt tuyển không cùng trường." };
+    }
+    if (error.message.includes("campaign_not_found")) {
+      return { error: "Không tìm thấy đợt tuyển." };
+    }
+    if (error.message.includes("class_not_found")) {
+      return { error: "Không tìm thấy lớp đích." };
     }
     return { error: "Lỗi hệ thống. Vui lòng thử lại." };
   }

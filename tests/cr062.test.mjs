@@ -9,6 +9,7 @@ const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
 const MIG = read("supabase/migrations/20261228_cr062_admissions.sql");
 const MIG2 = read("supabase/migrations/20261229_cr062_admissions_rpcs.sql");
+const MIG3 = read("supabase/migrations/20261230_cr062_rpcs_hardening.sql");
 const ACTIONS = read("src/app/(app)/school/admissions/actions.ts");
 const NAV = read("src/lib/nav.ts");
 const MOD = read("src/lib/modules.ts");
@@ -86,5 +87,31 @@ test("AC-62.7 (static): cap SBD qua RPC advisory lock - khong race", () => {
 test("AC-62.8 (static): score validation reject thay vi drop + CAS no-op", () => {
   assert.match(ACTIONS, /không hợp lệ \(0-10\)/);
   assert.match(ACTIONS, /Thiếu điểm môn:/);
-  assert.match(ACTIONS, /Hồ sơ đã đổi trạng thái - tải lại trang/);
+  // r-adm2: sua diem sau finalize bi khoa - chi exam_registered
+  assert.match(ACTIONS, /\.eq\("status", "exam_registered"\)/);
+  assert.match(ACTIONS, /Hồ sơ đã chốt kết quả hoặc đổi trạng thái/);
+});
+
+test("AC-62.9 (static): r-adm2 - retry sau suffix + level guard + pht ins", () => {
+  // retry tim ca code goc lan code_alt deterministic
+  assert.match(MIG3, /v_student := null/);
+  assert.match(MIG3, /s\.code in \(v_code, v_code_alt\)/);
+  // RPC chi khoi_10
+  assert.match(
+    MIG3.match(/create or replace function public\.admission_assign_exam_numbers[\s\S]*?\$\$;/)?.[0] ?? "",
+    /v_level <> 'khoi_10'/,
+  );
+  assert.match(
+    MIG3.match(/create or replace function public\.admission_finalize[\s\S]*?\$\$;/)?.[0] ?? "",
+    /v_level <> 'khoi_10'/,
+  );
+  // finalize pass co dieu kien cutoff tuong minh
+  assert.match(MIG3, /and total_score >= v_cutoff/);
+  // students insert mo cho pht cung truong
+  assert.match(MIG3, /array\['bgh','pht'\]::text\[\]/);
+  // reviewApplication chi khoi_6 (xet tuyen)
+  assert.match(ACTIONS, /level !== "khoi_6"/);
+  // exception RPC map het ra tieng Viet
+  assert.match(ACTIONS, /wrong_level/);
+  assert.match(ACTIONS, /class_not_found/);
 });

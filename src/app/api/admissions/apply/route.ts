@@ -1,19 +1,24 @@
+import { createHash } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 // POST /api/admissions/apply - nop ho so tuyen sinh cong khai.
-// Lop bao ve: honeypot -> Turnstile -> RPC (kiem open + module + dedupe).
+// Lop bao ve: honeypot -> Turnstile (fail-closed khi da cau hinh)
+// -> RPC (kiem open + module + dedupe + rate limit theo ip_hash).
 
 const ERR_MAP: Record<string, string> = {
   campaign_not_found: "Đợt tuyển sinh không tồn tại.",
   campaign_not_open: "Đợt tuyển sinh chưa mở hoặc đã đóng.",
   module_disabled: "Nhà trường chưa mở cổng tuyển sinh trực tuyến.",
   missing_name: "Vui lòng nhập họ tên học sinh.",
+  rate_limited:
+    "Bạn đã gửi quá nhiều hồ sơ. Vui lòng thử lại sau hoặc liên hệ nhà trường.",
 };
 
 async function verifyTurnstile(token: string | null, ip: string | null) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret || !token) return true; // chua cau hinh -> fail-open nhu login
+  if (!secret) return true; // chua cau hinh (dev) - bo qua nhu login
+  if (!token) return false; // da cau hinh ma thieu token -> chan
   const res = await fetch(
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     {
@@ -24,6 +29,13 @@ async function verifyTurnstile(token: string | null, ip: string | null) {
   );
   const json = (await res.json().catch(() => ({}))) as { success?: boolean };
   return json.success === true;
+}
+
+// DB chi nhan hash - khong luu IP tho (bao ve du lieu ca nhan).
+function hashIp(ip: string | null): string | null {
+  if (!ip) return null;
+  const salt = process.env.APPLY_IP_SALT ?? "vieschool-apply";
+  return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
 }
 
 export async function POST(req: NextRequest) {
@@ -63,12 +75,16 @@ export async function POST(req: NextRequest) {
     p_parent_name: body.parent_name,
     p_parent_phone: body.parent_phone,
     p_priority: Number(body.priority) || 1,
+    p_ip_hash: hashIp(ip),
   });
 
   if (error) {
     const key = Object.keys(ERR_MAP).find((k) => error.message.includes(k));
     if (key) {
-      return NextResponse.json({ message: ERR_MAP[key] }, { status: 400 });
+      return NextResponse.json(
+        { message: ERR_MAP[key] },
+        { status: key === "rate_limited" ? 429 : 400 },
+      );
     }
     if (error.message.includes("adm_app_id_number")) {
       return NextResponse.json(

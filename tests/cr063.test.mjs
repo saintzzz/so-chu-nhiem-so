@@ -5,6 +5,9 @@ import { readFileSync } from "node:fs";
 const mig = readFileSync(
   "supabase/migrations/20261231_cr063_public_apply.sql",
   "utf8",
+) + readFileSync(
+  "supabase/migrations/20261232_cr063_public_apply_hardening.sql",
+  "utf8",
 );
 const proxy = readFileSync("src/proxy.ts", "utf8");
 const api = readFileSync("src/app/api/admissions/apply/route.ts", "utf8");
@@ -27,7 +30,8 @@ test("AC-63.2: apply RPC kiem open + module flag + definer", () => {
 });
 
 test("AC-63.3: track RPC chi lo status + campaign", () => {
-  const fn = mig.slice(mig.indexOf("admission_track"));
+  const start = mig.indexOf("function public.admission_track");
+  const fn = mig.slice(start, mig.indexOf("$$;", start));
   assert.match(fn, /jsonb_build_object\(\s*'status'/);
   assert.doesNotMatch(fn, /parent_phone|id_number|address/);
 });
@@ -61,4 +65,29 @@ test("AC-63.7: page dung RPC info, form post API", () => {
 test("AC-63.8: board co nut sao chep link khi open", () => {
   assert.match(board, /\/apply\/\$\{campaign\.id\}/);
   assert.match(board, /Sao ch.p link n.p h. s./);
+});
+
+test("AC-63.9: tracking code mo rong 10 ky tu base32 + retry", () => {
+  assert.match(mig, /generate_series\(1, 10\)/);
+  assert.match(mig, /unique_violation[\s\S]*?v_tries/);
+});
+
+test("AC-63.10: rate limit theo ip_hash 10/gio", () => {
+  assert.match(mig, /admission_apply_attempts/);
+  assert.match(mig, /v_recent >= 10/);
+  assert.match(mig, /rate_limited/);
+  assert.match(api, /p_ip_hash: hashIp/);
+  assert.match(api, /createHash\("sha256"\)/);
+  assert.match(api, /429/);
+});
+
+test("AC-63.11: turnstile fail-closed khi co secret thieu token", () => {
+  assert.match(api, /if \(!secret\) return true/);
+  assert.match(api, /if \(!token\) return false/);
+});
+
+test("AC-63.12: campaign_info khong lo ten khi chua open + noindex", () => {
+  assert.match(mig, /if c\.status <> 'open' then\s*return jsonb_build_object\('status'/);
+  assert.match(page, /robots: \{ index: false/);
+  assert.match(proxy, /isPublicApply[\s\S]*?X-Robots-Tag/);
 });

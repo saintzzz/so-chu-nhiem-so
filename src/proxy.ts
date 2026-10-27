@@ -64,6 +64,13 @@ export async function proxy(request: NextRequest) {
     return redirectWithCookies(url);
   }
   if (!user && isPublicApi) {
+    // cong apply cong khai: khong cho indexer thu thap URL dot tuyen
+    if (isPublicApply) {
+      response.headers.set(
+        "X-Robots-Tag",
+        "noindex, nofollow, noai, noimageai",
+      );
+    }
     return response;
   }
   if (user && isLogin) {

@@ -1,5 +1,9 @@
 import { TrackForm } from "./track-form";
 
+export const metadata = {
+  robots: { index: false, follow: false },
+};
+
 export default function TrackPage() {
   return (
     <main className="mx-auto max-w-md px-4 py-10">

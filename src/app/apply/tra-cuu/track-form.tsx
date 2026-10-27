@@ -54,8 +54,8 @@ export function TrackForm() {
         <input
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
-          placeholder="TSXXXXXX"
-          maxLength={10}
+          placeholder="TSXXXXXXXXXX"
+          maxLength={14}
           className="h-11 flex-1 rounded-lg border border-input bg-background px-3 font-mono text-sm uppercase tracking-widest outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
         />
         <button

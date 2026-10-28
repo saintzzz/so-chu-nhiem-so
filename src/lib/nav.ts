@@ -37,6 +37,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Danh sách học sinh & Tổ", href: "/register/roster" },
         { label: "Chi tiết hồ sơ học sinh", href: "/records/students" },
+        { label: "Biến động học sinh", href: "/movements", module: "bien_dong_hs" },
         { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Sơ đồ lớp", href: "/register/seating" },
         { label: "Nhận xét & vi phạm/khen thưởng", href: "/conduct/records" },
@@ -225,6 +226,7 @@ export const NAV: Record<Role, NavSection[]> = {
       label: "Học sinh & chất lượng",
       children: [
         { label: "Học sinh toàn trường", href: "/school/students" },
+        { label: "Biến động học sinh", href: "/movements", module: "bien_dong_hs" },
         { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy", module: "van_hanh_nang_cao" },
         { label: "Quản lý kỳ thi", href: "/academics/exams", module: "ky_thi_danh_gia" },

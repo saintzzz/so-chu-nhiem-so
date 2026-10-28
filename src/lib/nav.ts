@@ -227,6 +227,7 @@ export const NAV: Record<Role, NavSection[]> = {
       children: [
         { label: "Học sinh toàn trường", href: "/school/students" },
         { label: "Biến động học sinh", href: "/movements", module: "bien_dong_hs" },
+        { label: "Xét tốt nghiệp", href: "/school/graduation", module: "xet_tot_nghiep" },
         { label: "Tích hợp & kết nối", href: "/school/integrations", module: "tich_hop" },
         { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy", module: "van_hanh_nang_cao" },

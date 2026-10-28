@@ -10,10 +10,19 @@ import {
 } from "@/components/library/loans-board";
 
 export default async function LoansPage() {
-  await requireRoles(["bgh", "admin"]);
+  const profile = await requireRoles(["bgh", "admin"]);
   const supabase = await createClient();
 
-  const [loansRes, copiesRes, studentsRes, teachersRes, classesRes] = await Promise.all([
+  const classesRes = await supabase
+    .from("classes")
+    .select("id, name, grade")
+    .eq("school_id", profile.school_id)
+    .order("grade")
+    .order("name")
+    .limit(300);
+  const classIds = (classesRes.data ?? []).map((c) => c.id);
+
+  const [loansRes, copiesRes, studentsRes, teachersRes] = await Promise.all([
     supabase
       .from("lib_loans")
       .select("id, borrower_name, borrower_label, borrowed_at, due_at, accession_no, book_title")
@@ -26,22 +35,20 @@ export default async function LoansPage() {
       .eq("status", "available")
       .order("accession_no")
       .limit(50000),
-    supabase
-      .from("students")
-      .select("id, full_name, classes(name)")
-      .limit(5000),
+    classIds.length
+      ? supabase
+          .from("students")
+          .select("id, full_name, classes(name)")
+          .in("class_id", classIds)
+          .limit(5000)
+      : Promise.resolve({ data: [], error: null }),
     supabase
       .from("profiles")
       .select("id, full_name")
+      .eq("school_id", profile.school_id)
       .not("full_name", "is", null)
       .order("full_name")
       .limit(500),
-    supabase
-      .from("classes")
-      .select("id, name, grade")
-      .order("grade")
-      .order("name")
-      .limit(300),
   ]);
 
   const srcErr = loansRes.error ?? copiesRes.error ?? studentsRes.error ?? teachersRes.error ?? classesRes.error;

@@ -67,6 +67,26 @@ test("AC-66.5: module flag o moi RPC + write policy + revoke ghi truc tiep", () 
   assert.match(M, /lib_loans_read[\s\S]*st\.profile_id = auth\.uid\(\)/);
 });
 
+test("AC-66.7 r1: hardening - revoke PUBLIC, restrict FK, checks, flag o read", () => {
+  const R = read("supabase/migrations/20261245_cr066_lib_r1.sql");
+  assert.match(R, /on delete restrict/);
+  assert.match(R, /lib_books_title_nn check \(btrim\(title\) <> ''\)/);
+  assert.match(R, /revoke all on function public\.lib_checkout[\s\S]*from public, anon/);
+  assert.match(R, /revoke all on function public\.lib_return[\s\S]*from public, anon/);
+  // read policies gan module flag
+  assert.match(R, /lib_books_read[\s\S]*lib_module_enabled\(school_id\)/);
+  assert.match(R, /lib_loans_read[\s\S]*lib_module_enabled\(school_id\)/);
+  // return: copy update kem school + on_loan
+  const rf = R.slice(R.indexOf("function public.lib_return"));
+  assert.match(rf, /and school_id = v_school and status = 'on_loan'/);
+  assert.match(rf, /copy_state_conflict/);
+  // checkout: validate borrower TRUOC khi doi copy
+  const cf = R.slice(R.indexOf("function public.lib_checkout"), R.indexOf("function public.lib_return"));
+  const iVal = cf.indexOf("if p_student is not null");
+  const iUpd = cf.indexOf("set status = 'on_loan'");
+  assert.ok(iVal > 0 && iUpd > iVal, "borrower validate phai truoc copy update");
+});
+
 test("AC-66.6: actions chan role + UI sach convention + portal gan flag", () => {
   const act = read("src/app/(app)/library/actions.ts");
   assert.match(act, /checkActionRole/);

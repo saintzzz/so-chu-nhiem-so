@@ -25,7 +25,9 @@ moi nam o day. Moi item ghi ro dieu kien unblock.
 ## 4. Diem danh camera / biometric
 - **Can**: phan tu (camera/edge device), DPIA rieng (luu embedding, khong luu
   anh), dong y phu huynh, giai doan pilot duyet.
-- **Phan khong can cred**: DPIA design doc - viet ngay duoc.
+- **Da chuan bi**: DPIA + kien truc edge + schema + luong du lieu +
+  checklist trien khai (`docs/research/CAMERA-ATTENDANCE-DESIGN.md`);
+  chi cho khach hang pilot + vendor edge.
 
 ## 5. Cong thanh toan online (VNPAY/MoMo)
 - **Can**: merchant account + ky hop dong -> API keys.

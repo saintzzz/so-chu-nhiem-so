@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { disabledModules } from "@/lib/modules";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, BarChart } from "@/components/charts";
@@ -194,6 +196,60 @@ export default async function SchoolDashboardPage() {
   const schoolName =
     (schoolRow as Pick<School, "name"> | null)?.name ?? "Trường";
 
+  // CR-071: viec cho phe duyet - chi dem module dang bat, head-count,
+  // tenant-scoped. Strip an khi tong = 0.
+  const sid = profile.school_id ?? "";
+  const disabled = await disabledModules();
+  const countPending = async (
+    table: string,
+    statusCol: string,
+    statusVal: string,
+    mod: string,
+  ) =>
+    sid && !disabled.has(mod)
+      ? must(
+          supabase
+            .from(table)
+            .select("id", { count: "exact", head: true })
+            .eq("school_id", sid)
+            .eq(statusCol, statusVal),
+          table,
+        ).then((r) => r.count ?? 0)
+      : 0;
+  const [mvPending, ddPending, hbPending, tnPending, subPending] =
+    await Promise.all([
+      countPending("sm_requests", "status", "pending", "bien_dong_hs"),
+      countPending("dd_assignments", "status", "pending", "dieu_dong"),
+      countPending("hb_exports", "status", "gvcn_signed", "hoc_ba"),
+      countPending("tn_decisions", "decision", "pending", "xet_tot_nghiep"),
+      countPending(
+        "substitute_requests",
+        "status",
+        "pending",
+        "van_hanh_nang_cao",
+      ),
+    ]);
+  const pendingItems = [
+    { label: "Biến động học sinh", count: mvPending, href: "/movements" },
+    {
+      label: "Điều động giáo viên",
+      count: ddPending,
+      href: "/schedule/mobilization",
+    },
+    { label: "Học bạ chờ ký", count: hbPending, href: "/records/exports" },
+    {
+      label: "Xét tốt nghiệp",
+      count: tnPending,
+      href: "/school/graduation",
+    },
+    {
+      label: "Điều động dạy thay",
+      count: subPending,
+      href: "/school/substitutes",
+    },
+  ].filter((i) => i.count > 0);
+  const pendingTotal = pendingItems.reduce((s, i) => s + i.count, 0);
+
   return (
     <>
       <PageHeader
@@ -201,6 +257,29 @@ export default async function SchoolDashboardPage() {
         title="Dashboard cấp trường"
         description={`${schoolName} - theo dõi an toàn, thi đua và KPI của trường`}
       />
+
+      {pendingTotal > 0 && (
+        <div className="mb-4 rounded-xl border border-warning bg-warning-bg p-3 shadow-[var(--shadow-sm-token)]">
+          <h2 className="mb-2 text-sm font-semibold">
+            Việc chờ phê duyệt ({pendingTotal})
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {pendingItems.map((i) => (
+              <Link
+                prefetch={false}
+                key={i.href}
+                href={i.href}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+              >
+                {i.label}
+                <span className="rounded-md bg-warning-bg px-1.5 text-xs font-semibold text-warning">
+                  {i.count}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMounted } from "@/hooks/use-mounted";
 import { ChevronDown } from "lucide-react";
 import { mergedNav } from "@/lib/nav";
 import { SECTION_ICONS, ITEM_ICONS, FALLBACK_ICON } from "@/lib/nav-icons";
@@ -20,13 +21,22 @@ export function SidebarNav({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
-  const pathname = usePathname();
+  // Pathname gate sau mounted: Next 16 render client components trong layout
+  // voi pathname context stale -> SSR va hydration phai giong nhau.
+  const rawPathname = usePathname();
+  const mounted = useMounted();
+  const pathname = mounted ? rawPathname : "";
   const sections = mergedNav(roles, disabled);
-  const [open, setOpen] = useState<string | null>(
-    sections.find((s) =>
-      s.children?.some((c) => pathname.startsWith(c.href)),
-    )?.label ?? sections.find((s) => s.children)?.label ?? null,
-  );
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => {
+    if (!mounted) return;
+    setOpen(
+      sections.find((s) =>
+        s.children?.some((c) => pathname.startsWith(c.href)),
+      )?.label ?? sections.find((s) => s.children)?.label ?? null,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, mounted]);
 
   return (
     <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Điều hướng chính">

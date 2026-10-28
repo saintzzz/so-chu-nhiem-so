@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useMounted } from "@/hooks/use-mounted";
 import { Bell, LogOut, Menu, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mergedNav, ROLE_LABELS } from "@/lib/nav";
@@ -31,7 +32,11 @@ export function Topbar({
   disabled?: ReadonlySet<string>;
   onOpenMobileNav: () => void;
 }) {
-  const pathname = usePathname();
+  // Pathname gate sau mounted: Next 16 SSR layout voi pathname context
+  // stale -> crumbs tinh tren server co the sai so voi client.
+  const rawPathname = usePathname();
+  const mounted = useMounted();
+  const pathname = mounted ? rawPathname : "";
   const router = useRouter();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const roles = effectiveRoles(profile);

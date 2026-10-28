@@ -324,7 +324,7 @@ export default function RequestsBoard({
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card">
+      <div className="relative overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">

@@ -30,6 +30,8 @@ function mapRpcError(message: string): string {
   if (message.includes("class_required")) return "Chọn lớp nhận học sinh.";
   if (message.includes("class_not_found")) return "Lớp nhận không thuộc trường.";
   if (message.includes("payload_incomplete")) return "Nhập đủ họ tên và ngày sinh học sinh chuyển đến.";
+  if (message.includes("invalid_dob")) return "Ngày sinh không hợp lệ.";
+  if (message.includes("invalid_gender")) return "Giới tính không hợp lệ.";
   if (message.includes("student_required")) return "Chọn học sinh.";
   if (message.includes("student_not_found")) return "Học sinh không thuộc trường.";
   if (message.includes("invalid_state")) return "Trạng thái học sinh không phù hợp với loại biến động.";

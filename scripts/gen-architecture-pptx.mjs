@@ -114,7 +114,8 @@ function arrow(s, x, y, w = 0.55) {
   bullets(s, [
     { t: "Số hóa toàn bộ công tác chủ nhiệm và điều hành trường học", b: true },
     { t: "10 vai trò nghiệp vụ + admin", sub: ["GVCN, GVBM, Tổ trưởng, BGH, PHT cơ sở, Kế toán, Sở GD&ĐT, UBND, Phụ huynh, Học sinh"] },
-    { t: "Miền dữ liệu rộng và liên kết chặt", sub: ["~30 bảng: điểm danh chéo giữa sổ đầu bài và điểm danh ngày, điểm số liên kết hạnh kiểm, KPI chủ nhiệm tổng hợp nhiều nguồn"] },
+    { t: "Miền dữ liệu rộng và liên kết chặt", sub: ["86 bảng trong schema public: điểm danh chéo sổ đầu bài, điểm số liên kết hạnh kiểm, học bạ, tuyển sinh -> nhập học -> học phí - cùng một học sinh xuyên suốt"] },
+    { t: "Bán theo gói tính năng", sub: ["Trường mua module nào dùng module đó - yêu cầu kiến trúc: gating ở nav + route + RPC + RLS, không chỉ ẩn menu"] },
     { t: "Yêu cầu phi chức năng", sub: ["Tiếng Việt chuẩn, mobile-first, demo nhiều vai trò, phân quyền tuyệt đối - không rò rỉ chéo"] },
     { t: "Ràng buộc vận hành", b: true, sub: ["Đội ngũ rất nhỏ (1-2 dev + agent), zero-ops, không phát sinh chi phí ngoài quota"] },
   ]);
@@ -129,13 +130,14 @@ function arrow(s, x, y, w = 0.55) {
   arrow(s, 3.0, 2.75);
   box(s, { x: 3.6, y: 1.9, w: 2.9, h: 2.1, title: "Vercel - Next.js 16", sub: "1 deployable duy nhất\nRSC + Server Actions\nRoute Handlers: ai, auth,\ncron, records, studio,\nwebhooks", fill: "dbeafe", line: "2563eb" });
   arrow(s, 6.65, 2.75);
-  box(s, { x: 7.25, y: 1.9, w: 2.8, h: 2.1, title: "Supabase (1 project)", sub: "Postgres ~30+ bảng\nRLS mọi bảng tenant\nAuth email/password\nRPC + SQL views", fill: "d1fae5", line: "059669" });
+  box(s, { x: 7.25, y: 1.9, w: 2.8, h: 2.1, title: "Supabase (1 project)", sub: "public: 86 bảng SCN\n+ 3 schema app khác\nRLS mọi bảng tenant\nRPC + SQL views", fill: "d1fae5", line: "059669" });
   arrow(s, 10.2, 2.75);
   box(s, { x: 10.8, y: 2.1, w: 2.0, h: 1.7, title: "Ngoài", sub: "Resend\nAI providers\nTurnstile", fill: "fef3c7", line: C.amber });
   bullets(s, [
     { t: "Đây là MODULAR MONOLITH, không phải microservices - một codebase, một deploy, một DB", b: true },
     { t: "Async có nhưng không có broker: Vercel cron + ai_jobs table + webhook callback (Resend) + async fallback" },
-    { t: "Supabase project chung với một sản phẩm nội bộ khác - tách biệt bằng RLS, không phải DB riêng" },
+    { t: "Cùng Supabase project có 3 schema của các app nội bộ khác - cô lập bằng schema + RLS; SCN chiếm schema public (86 bảng)" },
+    { t: "Surface public duy nhất: /apply (tuyển sinh, không cần login) - Turnstile + revoke anon + RPC security-definer" },
   ], { y: 4.5, fontSize: 12.5 });
 }
 
@@ -164,8 +166,9 @@ function arrow(s, x, y, w = 0.55) {
   box(s, { x: 8.9, y: 1.95, w: 3.7, h: 1.9, title: "Lớp 3 - Postgres RLS", sub: "Policy theo vai trò mọi bảng\nmy_role(), my_school_id(),\nmy_class_ids()...\nseed mới dùng service_role", fill: "fef3c7", line: C.amber });
   bullets(s, [
     { t: "Vai trò vào route của người khác - redirect về home của chính họ, không bao giờ leak data" },
+    { t: "Lớp 2.5 - schoolFeature(module): trường tắt module thì nav mất + route redirect + RPC trả module_disabled + RLS chặn (CR-060)" },
     { t: "WAF Vercel: rate limit /api + /login, bypass-health cho uptime monitor; headers CSP/HSTS/nosniff/X-Frame đầy đủ" },
-    { t: "Anti-scraping lớp 1 (CR-054, đã deploy): robots.txt chặn AI crawler, noindex route authed, export cap 20/h/uid, Turnstile login" },
+    { t: "Anti-scraping (CR-054): robots.txt chặn AI crawler, noindex route authed, export cap 20/h/uid; Turnstile login + /apply public" },
     { t: "252 RLS policies đã wrap (select auth.uid()) - evaluate 1 lần/statement thay vì per-row (CR-057)" },
     { t: "Secrets chỉ ở env/dashboard - không commit; audit_logs ghi mọi thao tác nhạy cảm" },
   ], { y: 4.1, fontSize: 11.5 });
@@ -185,10 +188,15 @@ divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KH
     ["Truyền thông PH", "parents/, announcements", "messages, appointments"],
     ["Hoạt động - an toàn", "activities/, safety/", "activities, incidents"],
     ["Thi đua - năng lực", "emulation/, competency/", "scores, evidence"],
-    ["Quản trị (BGH/Sở/Tổ)", "school/, dept/, team/", "views aggregate"],
+    ["Tuyển sinh", "school/admissions/, apply/ (public)", "admission_campaigns, applications"],
+    ["Khoản thu", "finance/", "fee_items, periods, receipts"],
+    ["LMS-lite", "lms/ + portal/student/bai-thi", "exam_sessions, submissions"],
+    ["Thư viện", "library/", "catalog, dang_ky_ca_biet, loans"],
+    ["Biến động HS", "movements/", "movement_requests (RPC-only writes)"],
+    ["Quản trị (BGH/Sở/Tổ)", "school/, dept/, team/", "views aggregate, school_features"],
     ["Shared kernel", "lib/auth, rbac, supabase, utils", "profiles, schools, notifications"],
-  ], { rowH: 0.46 });
-  note(s, "Module = route group + bảng riêng + policy riêng. Ranh giới module được enforce bởi RLS, không phải network boundary.");
+  ], { rowH: 0.42 });
+  note(s, "15 bounded contexts. Module = route group + bảng riêng + policy riêng + module flag - tắt flag là tắt cả 4 lớp (nav/route/RPC/RLS), không chỉ ẩn menu.");
 }
 
 // 7 - Microservices analysis
@@ -199,7 +207,7 @@ divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KH
     ["Tiêu chí", "Modular monolith (đã chọn)", "Microservices"],
     ["Team vận hành", "1-2 dev + agent - 1 service duy nhất", "Mỗi service cần owner, monitoring, on-call riêng"],
     ["Nhất quán dữ liệu", "ACID trong 1 Postgres - period_absences upsert attendance_records trong 1 transaction", "Saga/eventual consistency cho cùng thao tác - phức tạp hơn nhiều"],
-    ["Độ trễ trong domain", "Function call trong process - join trực tiếp ~30 bảng", "Network call giữa services, join qua API - dashboard aggregate rất đắt"],
+    ["Độ trễ trong domain", "Function call trong process - join trực tiếp 86 bảng", "Network call giữa services, join qua API - dashboard aggregate rất đắt"],
     ["Phân quyền", "RLS dùng chung my_role()/my_school_id() - một lần định nghĩa", "Phải tái tạo policy ở từng service hoặc thêm service mesh/authz layer"],
     ["Deploy/rollback", "1 deploy, 1 rollback - atomic", "Version matrix N services - contract testing bắt buộc"],
     ["Chi phí", "1 Vercel project + 1 Supabase - ~$45/tháng cap", "N projects + N DB + broker + observability - gấp nhiều lần"],
@@ -216,7 +224,7 @@ divider("PHẦN II", "Kiến trúc tổng thể", "Modular monolith - vì sao KH
     { t: "Một module có load profile khác hẳn", sub: ["SCN: mọi module đều CRUD dashboard - không có hot path cần scale riêng"] },
     { t: "Cần ngôn ngữ/stack khác cho một phần", sub: ["SCN: chỉ phần xuất file nặng compute - đã xử lý phía client (pptxgenjs/docx chạy trong browser)"] },
     { t: "Domain tách được không cần join", sub: ["SCN: ngược lại - điểm danh chéo sổ đầu bài, KPI tổng hợp nhiều nguồn - chống tách"] },
-    { t: "Kết luận", b: true, sub: ["Microservices ở quy mô này = distributed monolith tệ hơn monolith tốt. Điểm tách hợp lý duy nhất hiện có: AI jobs - đã tách thành async pattern (bảng ai_jobs + callback) mà không cần service riêng."] },
+    { t: "Kết luận", b: true, sub: ["Microservices ở quy mô này = distributed monolith tệ hơn monolith tốt. Sau wave CR-060..067 (5 module mới) kết luận càng đúng: tuyển sinh -> nhập học -> khoản thu -> học bạ là 1 chuỗi transaction - chống tách tuyệt đối. Điểm tách hợp lý duy nhất: AI jobs - đã tách thành async pattern (ai_jobs + callback)."] },
   ], { fontSize: 13 });
 }
 
@@ -246,9 +254,9 @@ divider("PHẦN III", "Kiến trúc dữ liệu", "1 Postgres - multi-tenant b�
     ["Cấp", "Thực tế SCN", "Phương án thay thế", "Đánh giá"],
     ["Giữa các sản phẩm", "Chung 1 Supabase project với một app nội bộ khác - tách bằng table naming + RLS", "DB riêng cho SCN", "Chung = rẻ + ít ops; rủi ro: nhiễu resource, tách bằng naming + RLS chứ không mạnh bằng DB riêng"],
     ["Giữa các trường (tenant)", "Shared tables + school_id + RLS policy", "Schema-per-school / DB-per-school", "Shared+RLS = query/migration đơn giản, onboard trường mới = insert rows; schema-per-school chỉ đúng khi compliance bắt buộc cô lập cứng"],
-    ["Bên trong 1 app", "~30 bảng quan hệ chặt + views + RPC", "Nhiều schema/DB theo bounded context", "Join chéo là yêu cầu cốt lõi (attendance_daily gộp 2 nguồn) - 1 DB là điều kiện cần"],
+    ["Bên trong 1 app", "86 bảng public quan hệ chặt + views + RPC (SCN dùng schema public; app khác ở schema riêng)", "Nhiều schema/DB theo bounded context", "Join chéo là yêu cầu cốt lõi (attendance_daily gộp 2 nguồn, học bạ kéo điểm + HK + chuyên cần) - 1 DB là điều kiện cần"],
   ], { rowH: 0.85 });
-  note(s, "Ưu tiên đơn giản vận hành: 1 project, 1 schema, RLS làm việc nặng phân tách ở mọi cấp.");
+  note(s, "Ưu tiên đơn giản vận hành: 1 project, RLS làm việc nặng phân tách ở mọi cấp. Schema-per-app đã có sẵn như seam tách project sau này.");
 }
 
 // 12 - Consistency & integrity
@@ -260,6 +268,8 @@ divider("PHẦN III", "Kiến trúc dữ liệu", "1 Postgres - multi-tenant b�
     { t: "Điểm danh hai nguồn hợp nhất", sub: ["Ghi period_absences - upsert attendance_records (source='period_log') - view attendance_daily gộp: hai màn hình không bao giờ mâu thuẫn. Microservices sẽ cần saga + eventual consistency cho cùng việc này."] },
     { t: "Dashboard = SQL views, không phải cache", sub: ["dashboard_gvcn aggregate trực tiếp - luôn đúng, không có cache invalidation problem; count ở DB thay vì fetchAllRows"] },
     { t: "Invariant tại DB", sub: ["check constraints cho enum mở rộng được, triggers sinh notifications - quy tắc nghiệp vụ sống ở tầng không thể bypass"] },
+    { t: "Atomic ở nghiệp vụ nhạy cảm", sub: ["Số biên lai + số ĐKCB đánh atomic theo trường trong RPC (không race khi 2 kế toán thu cùng lúc); mượn/trả sách check tồn trong 1 transaction"] },
+    { t: "Movement qua security-definer RPC", sub: ["Biến động HS: direct table write bị revoke - duyệt chuyển/bảo lưu chỉ qua RPC, snapshot tên+lớp tại thời điểm yêu cầu (audit-sound)"] },
     { t: "Đánh đổi chấp nhận", sub: ["Lock dài trên bảng nóng (attendance) khi lớp lớn lưu đồng loạt - chưa là vấn đề ở quy mô trường học VN; nếu có sẽ giải bằng upsert batch + ít transaction hơn"] },
   ], { fontSize: 12.5 });
 }
@@ -301,7 +311,7 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   table(s, [
     ["Tiêu chí", "Modular monolith serverless (đã chọn)", "Microservices", "Monolith VPS truyền thống", "Low-code / LMS có sẵn"],
     ["Phức tạp vận hành", "Thấp nhất", "Cao nhất", "Trung bình", "Thấp"],
-    ["Nhất quán 10 vai trò x 30 bảng", "ACID + RLS - chặt nhất", "Eventual - khó đảm bảo", "ACID được, RLS tự viết", "Hạn chế customize"],
+    ["Nhất quán 10 vai trò x 86 bảng", "ACID + RLS - chặt nhất", "Eventual - khó đảm bảo", "ACID được, RLS tự viết", "Hạn chế customize"],
     ["Time-to-market", "Nhanh nhất", "Chậm nhất", "Trung bình", "Nhanh cho CRUD, kẹt nghiệp vụ VN"],
     ["Chi phí ở quy mô trường", "~$45/tháng cap cứng", ">> gấp nhiều lần", "VPS rẻ + công ops", "Per-seat đắt khi scale"],
     ["Đường thoát khi scale", "Tách module nóng thành service khi có số đo", "Đã phân mảnh sẵn nhưng trả giá từ ngày 1", "Scale-up giới hạn", "Lock-in cứng"],
@@ -359,10 +369,12 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   table(s, [
     ["Limitation", "Cách xử lý", "Độ khó / Trạng thái"],
     ["Edge-TTS bị MS chặn IP datacenter Vercel - audio TTS lỗi trên prod", "Fork @andresaya/edge-tts (Sec-MS-GEC v2) + Gemini TTS provider fallback (CR-056)", "Xong - độ khó trung bình; chuỗi fallback provider đã có sẵn"],
-    ["Chung Supabase project với app nội bộ - noisy neighbor đụng IO budget", "CR-058: tách schema app kia sang project riêng; phase 0 inventory xong, không downtime", "Trung bình - cần Pro project mới + cutover; không phải viết lại code"],
+    ["Chung Supabase project: 3 schema app khác cùng project - noisy neighbor đụng IO budget", "CR-058: cô lập theo schema đã có; tách hẳn sang project riêng vẫn pending cutover", "Trung bình - cần Pro project mới + cutover có downtime nhỏ; không phải viết lại code"],
+    ["Cổng public /apply - surface đầu tiên không cần login", "CR-063 hardening: Turnstile + revoke anon + chỉ RPC security-definer ghi được", "Xong - đã deploy kèm tính năng"],
     ["252 RLS policy bare auth.uid() - evaluate lại mỗi row", "CR-057: wrap (select auth.uid()) toàn bộ - 1 lần/statement; advisors sạch", "Xong - dễ về kỹ thuật, rườm về khối lượng"],
     ["Authed bulk scrape (user hợp lệ script cào)", "Lớp 1 đã deploy (export cap 20/h + captcha); lớp 2: port check_rate_limit per-uid sang public schema", "Dễ-trung bình - pattern có sẵn, migration nhỏ"],
     ["AI jobs poll-based (không queue thật)", "Thêm pgmq/SQS khi throughput đòi hỏi - seam ai_jobs + callback đã đặt", "Trung bình - đổi bên trong seam, giữ API"],
+    ["LMS chấm tự động: essay_pending vẫn cần GV chấm tay; gian lận thi cử online chưa có chống chéo nâng cao", "Chấp nhận ở mức bài tập lớp học; nâng cấp: chống tab-switch, giám sát webcam nếu làm thi thật", "Trung bình - tính năng mới, chưa phải lỗi"],
     ["SPOF: 1 deployable + 1 Supabase project", "Chấp nhận một phần: Vercel sin1 + static shell; Supabase backup managed", "Khó khắc phục hoàn toàn ở budget này - multi-region là quyết định chi phí"],
   ], { rowH: 0.72 });
 }
@@ -379,6 +391,8 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
     ["Demo/bán hàng nhiều vai trò", "Demo accounts + role preview mượt, RLS vẫn chặt (ADR-5)"],
     ["Đội nhỏ, không ops", "Zero-ops serverless - monolith VPS hay microservices đều cần người vận hành"],
     ["Không vượt ngân sách", "Spend cap toàn chuỗi enforce bằng công cụ"],
+    ["Bán theo gói cho trường", "school_features + gating 4 lớp - feature flags ở tầng kiến trúc, không phải if-else UI"],
+    ["Cổng public cho phụ huynh tuyển sinh", "Route /apply ngoài auth + Turnstile + RPC-only writes - public không đồng nghĩa mở toang"],
     ["Xuất tài liệu hành chính", "docx/pptxgenjs/xlsx/print CSS client-side - không tốn server"],
   ], { rowH: 0.56 });
 }
@@ -393,11 +407,12 @@ divider("PHẦN IV", "So sánh & đánh giá", "Phương án tổng thể - ưu 
   bullets(s, [
     { t: "Microservices cho bài toán này = trả giá distributed systems cho lợi ích không cần: dữ liệu liên kết chặt chống tách, đội nhỏ chống ops nặng", c: C.white },
     { t: "Repo riêng single-package thay monorepo: SCN là bounded context hoàn chỉnh, deploy boundary = domain boundary", c: C.white },
-    { t: "RLS biến yêu cầu khó nhất (phân quyền đa vai trò) thành thế mạnh; 1 Postgres giữ nhất quán mà không cần saga", c: C.white },
-    { t: "Không broker/Redis vì chưa có số đo đòi hỏi - seams (ai_jobs, cron, route groups) đã đặt sẵn để thêm khi scale chứng minh cần", c: C.white },
+    { t: "RLS biến yêu cầu khó nhất (phân quyền đa vai trò) thành thế mạnh; 1 Postgres giữ nhất quán mà không cần saga - kể cả chuỗi tuyển sinh -> nhập học -> thu phí -> học bạ", c: C.white },
+    { t: "Module flags (school_features) đưa 'bán theo gói' xuống tầng kiến trúc: tắt flag = nav + route + RPC + RLS cùng tắt", c: C.white },
+    { t: "Không broker/Redis vì chưa có số đo đòi hỏi - seams (ai_jobs, cron, route groups, schema-per-app) đã đặt sẵn để thêm khi scale chứng minh cần", c: C.white },
     { t: "Đánh đổi lớn nhất chấp nhận: SPOF 1 deployable + shared Supabase - cả hai đều có đường thoát rõ khi quy mô đòi hỏi", c: C.white },
   ], { x: 0.9, y: 3.5, w: 11.5, fontSize: 13.5 });
-  s.addText("Tài liệu kèm: USER-GUIDE-vieschool.pptx (38 slides, 10 vai trò) - docs/project/ARCHITECTURE.md (chi tiết kỹ thuật)", { x: 0.9, y: 6.5, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 11, color: "94a3b8" });
+  s.addText("Tài liệu kèm: USER-GUIDE-vieschool.pptx (43 slides, 10 vai trò + module mở rộng) - docs/project/ARCHITECTURE.md (chi tiết kỹ thuật)", { x: 0.9, y: 6.5, w: 11.5, h: 0.6, fontFace: FONT, fontSize: 11, color: "94a3b8" });
 }
 
 // ============================== WRITE ==============================
@@ -420,7 +435,5 @@ await p.writeFile({ fileName: OUT });
     zip.file(name, xml);
   }
   writeFileSync(OUT, await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" }));
-  console.log(`Transitions injected on ${slideNames.length} slides`);
+  console.log(`Written ${OUT} - ${slideNames.length} slides (transitions injected)`);
 }
-
-console.log(`Written ${OUT} - ${pageNo + 4} slides`);

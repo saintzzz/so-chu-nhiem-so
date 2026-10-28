@@ -146,15 +146,17 @@ function featureSlide(section, title, items, img, caption) {
 // ---------- S2 Tong quan ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "GIỚI THIỆU", "Hệ thống gồm 2 module chính trên một nền tảng");
+  slideTitle(s, "GIỚI THIỆU", "Nền tảng trường học toàn diện - 3 lớp module");
   bullets(s, [
     { t: "Sổ Chủ Nhiệm Số (SCN) - vận hành lớp học & nhà trường", b: 1 },
-    { sub: ["Điểm danh, sổ điểm, hạnh kiểm, sổ liên lạc phụ huynh, thời khóa biểu, sự cố an toàn, sơ đồ chỗ ngồi, báo cáo BGH/Sở", "Phân quyền theo vai trò: GVCN, GVBM, Tổ trưởng, PHT, BGH, Kế toán, Sở GD&ĐT, UBND, Phụ huynh, Học sinh, Admin"] },
+    { sub: ["Điểm danh, sổ điểm, hạnh kiểm, sổ liên lạc phụ huynh, thời khóa biểu, sự cố an toàn, sơ đồ chỗ ngồi, học bạ số, báo cáo BGH/Sở", "Phân quyền theo vai trò: GVCN, GVBM, Tổ trưởng, PHT, BGH, Kế toán, Sở GD&ĐT, UBND, Phụ huynh, Học sinh, Admin"] },
     { t: "TVC360 Studio - công cụ soạn thảo giáo viên", b: 1 },
-    { sub: ["KHBĐ theo CV 5512 (DC-01), ma trận đề (DC-02), đề kiểm tra theo ma trận (DC-03), bộ câu hỏi (DC-04), phiếu học tập (DC-05), bài trình chiếu PPTX (DC-06)", "Ngân hàng câu hỏi chung của trường gắn YCCĐ, duyệt 2 lớp, xuất DOCX/PDF/PPTX, LaTeX/KaTeX"] },
+    { sub: ["KHBĐ theo CV 5512 (DC-01), ma trận đề (DC-02), đề kiểm tra (DC-03), bộ câu hỏi (DC-04), phiếu học tập (DC-05), PPTX (DC-06)", "Ngân hàng câu hỏi chung của trường gắn YCCĐ, duyệt 2 lớp, xuất DOCX/PDF/PPTX, LaTeX/KaTeX"] },
+    { t: "Module mở rộng - bán theo gói (school_features)", b: 1 },
+    { sub: ["Tuyển sinh đầu cấp + cổng public, Khoản thu, Bài tập trực tuyến (LMS), Thư viện, Biến động học sinh", "Trường mua gói nào - menu/route/RPC/RLS của gói đó mới hoạt động; BGH tự bật/tắt tại /school/modules"] },
     { t: "Dữ liệu theo trường (multi-tenant): mọi bảng scope school_id + RLS nghiêm ngặt", b: 1 },
     { t: "Vai trò kiêm nhiệm (multi-role): một cán bộ giữ nhiều vai trò - menu và quyền gộp từ toàn bộ vai trò", b: 1 },
-  ]);
+  ], { fontSize: 12.5 });
   note(s, "Thiết kế cho quy mô: 100 000 user giai đoạn pilot, lộ trình 1 000 000.");
 }
 
@@ -209,6 +211,46 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Studio TVC360 - soạn học liệu & 
   { t: "A-03 sinh hội thoại + bài nghe kèm AUDIO THẬT (giọng neural) phát ngay trong trình duyệt" },
   { t: "Hình Toán vẽ SVG tham số (deterministic); LaTeX -> Word Equation native khi xuất DOCX" },
 ], "17-exams.png", "Ngân hàng câu hỏi và sinh đề theo ma trận");
+
+// ---------- Module mo rong (CR-062..067) ----------
+featureSlide("MODULE MỞ RỘNG", "Tuyển sinh đầu cấp - quy trình chuẩn, có cổng public", [
+  { t: "2 luồng theo cấp: Khối 6 xét tuyển theo địa bàn; Khối 10 thi tuyển 3 môn (Toán/Văn/NN + chuyên) có SBD", b: 1 },
+  { t: "Flow Khối 6: submitted → approved/rejected → enrolled" },
+  { t: "Flow Khối 10: submitted → exam_registered (cấp SBD) → chấm điểm → passed/failed theo điểm chuẩn → enrolled" },
+  { t: "Cổng công khai /apply: phụ huynh nộp hồ sơ + tra cứu trạng thái tại /apply/tra-cuu - KHÔNG cần tài khoản" },
+  { t: "Hồ sơ trúng tuyển → nhập học → gán mã định danh (national_id) → phân công giảng dạy sẵn có", sub: ["Quản lý tại /school/admissions (BGH/admin/so_gd); campaign có quota + benchmark theo năm"] },
+]);
+
+featureSlide("MODULE MỞ RỘNG", "Khoản thu - phân hệ tài chính của trường (/finance)", [
+  { t: "Danh mục khoản thu: học phí, tiền ăn, bán trú, trang phục, bảo hiểm, SGK, hoạt động - bắt buộc hoặc tự nguyên", b: 1 },
+  { t: "Đăng ký khoản thu theo lớp/khối → định mức/HS → miễn giảm (hộ nghèo, chính sách) → đợt thu" },
+  { t: "Thu tiền: tiền mặt/chuyển khoản + biên lai tự đánh số atomic theo trường; thông báo PH trong cùng RPC" },
+  { t: "Công nợ + báo cáo thu chi (/finance/reports); PH xem khoản thu của con trên portal" },
+  { t: "Phân quyền: kế toán + BGH/admin ghi; Sở GD và PH chỉ đọc", sub: ["Thiết kế tham chiếu phân hệ Khoản thu của MISA EMIS (phân tích đối thủ)"] },
+]);
+
+featureSlide("MODULE MỞ RỘNG", "Bài tập trực tuyến (LMS-lite) - HS làm bài ngay trên hệ thống", [
+  { t: "GV giao đề đã có (tvc_exams) cho lớp: chọn lớp + cửa sổ mở/đóng + thời lượng → tạo session", b: 1 },
+  { t: "HS thấy bài được giao trong portal, làm trong cửa sổ cho phép, nộp 1 lần (/portal/student/bai-thi)" },
+  { t: "Chấm tự động: trắc nghiệm, đúng/sai 4 ý, trả lời ngắn theo answer.correct; tự luận → essay_pending cho GV" },
+  { t: "GV xem kết quả theo session: điểm tự động, trạng thái nộp, danh sách HS" },
+  { t: "Tận dụng sẵn ngân hàng câu hỏi + ma trận sinh đề - vòng khép kín: soạn → duyệt → giao → chấm", c: C.accent },
+]);
+
+featureSlide("MODULE MỞ RỘNG", "Thư viện + Biến động học sinh - quy trình hành chính", [
+  { t: "Thư viện (/library): danh mục sách, ĐKCB đánh số atomic theo trường, mượn/trả cho HS và GV", b: 1 },
+  { t: "Quá hạn tính từ due_at (không lưu trạng thái riêng); admin/BGH quản lý, HS xem sách đang mượn trên portal" },
+  { t: "Biến động HS (/movements): chuyển đến/chuyển đi/bảo lưu/nhập học lại - 4 loại yêu cầu có duyệt", b: 1 },
+  { t: "Flow: GVCN/staff tạo yêu cầu → BGH phê duyệt → students.status cập nhật (transferred/reserved/active)" },
+  { t: "Snapshot tên + lớp tại thời điểm yêu cầu (audit-sound); mọi write qua RPC - theo TT 32/2020 Điều lệ trường" },
+]);
+
+featureSlide("MODULE MỞ RỘNG", "Module flags - trường mua gói nào dùng gói đó (/school/modules)", [
+  { t: "school_features(school_id, module, enabled): BGH/admin bật-tắt module của trường mình; so_gd set default", b: 1 },
+  { t: "Tắt module = mất nav + redirect route + RPC trả module_disabled + RLS chặn PostgREST - 4 lớp phòng thủ" },
+  { t: "Vừa là cơ chế bán hàng theo gói, vừa làm menu gọn cho trường không dùng module", c: C.accent },
+  { t: "Keys: studio, hoc_ba, attendance, conduct, safety, parents_portal, exams, emulation, substitutes, counseling, dept_report, tuyen_sinh, khoan_thu, lms_lite, thu_vien, bien_dong_hs" },
+]);
 
 // ---------- S3 Moi truong demo ----------
 {
@@ -487,9 +529,10 @@ featureSlide("BAN GIÁM HIỆU / PHT", "Điều hành trường - phạm vi và 
   { t: "PHT giới hạn theo cơ sở (duclm@nd.scn chỉ thấy Cơ sở 2)" },
 ], "23-bgh-radar.png", "Radar cảnh báo sớm toàn trường");
 
-featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - giám sát", [
+featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - tài chính - giám sát", [
   { t: "Kế toán: nhân sự, cơ sở vật chất, thiết bị, báo cáo tài chính NQ37 - KHÔNG thấy hồ sơ học tập HS", b: 1 },
-  { t: "Sở GD: dashboard các trường + AI bản tin; tạo trường mới (tự năm học, tổ, môn, tài khoản BGH)", b: 1 },
+  { t: "Khoản thu /finance (nếu trường bật module): khoản thu, đợt thu, thu tiền + biên lai, công nợ, báo cáo thu chi" },
+  { t: "Sở GD: dashboard các trường + AI bản tin; tạo trường mới; set module default + duyệt tuyển sinh liên trường", b: 1 },
   { t: "Quản trị dữ liệu: kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/PH, liên kết mồ côi" },
   { t: "UBND xã: dashboard địa bàn chỉ đọc (theo mô hình chính quyền 2 cấp)" },
 ], "28-dept-dashboard.png", "Dashboard Sở GD&ĐT");
@@ -497,7 +540,8 @@ featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - giám sát", [
 featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
   { t: "PH nhiều con: bộ chọn con trên đầu portal - dữ liệu tách đúng từng em", b: 1 },
   { t: "Tin nhắn 2 chiều với GVCN; đặt lịch hẹn chờ xác nhận; đăng ký hoạt động / báo vắng" },
-  { t: "HS: TKB, điểm HK1/HK2/CN, hạnh kiểm, học bạ cá nhân (/portal/student/hoc-ba) - chỉ đọc, server kiểm quyền sở hữu" },
+  { t: "PH xem khoản thu của con (module khoan_thu); nộp hồ sơ tuyển sinh + tra cứu tại /apply - không cần tài khoản" },
+  { t: "HS: TKB, điểm HK1/HK2/CN, hạnh kiểm, học bạ (/portal/student/hoc-ba), bài tập trực tuyến (/portal/student/bai-thi), sách đang mượn - chỉ đọc, server kiểm quyền sở hữu" },
   { t: "Mẹo: Ctrl+K tìm nhanh chức năng/HS; URL chứa ngày - bookmark được; mọi Import có 'Tải template'" },
 ], "30-parent-portal.png", "Portal phụ huynh");
 
@@ -527,6 +571,11 @@ featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
     { t: "ONBOARDING: bootstrap workbook lên trường scratch → verify counts → cleanup về 0", b: 1 },
     { t: "EDGE CASES: câu 'như hình' không hình bị chặn; import sai format báo rõ; câu trùng stem cảnh báo", b: 1 },
     { t: "HỌC BẠ SỐ: anhptl@nd.scn trình quyết định → hainv@nd.scn trả lại/duyệt → khóa qua /register/lock-records; GVCN lớp khác (huynq@nd.scn) mở chi tiết/xuất bị chặn", b: 1 },
+    { t: "MODULE FLAGS: tắt lms_lite tại /school/modules → nav mất + /lms redirect + RPC trả module_disabled", b: 1 },
+    { t: "TUYỂN SINH: nộp hồ sơ public /apply (không login) → tra cứu /apply/tra-cuu → BGH duyệt tại /school/admissions", b: 1 },
+    { t: "LMS: GV giao đề + cửa sổ + thời lượng → HS làm /portal/student/bai-thi → nộp 1 lần → chấm tự động", b: 1 },
+    { t: "KHOẢN THU: đợt thu → thu tiền phát biên lai → công nợ giảm; PH thấy khoản thu trên portal", b: 1 },
+    { t: "BIẾN ĐỘNG: yêu cầu chuyển/bảo lưu → BGH duyệt → students.status đổi + snapshot lưu lớp cũ", b: 1 },
   ]);
 }
 

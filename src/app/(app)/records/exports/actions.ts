@@ -104,8 +104,10 @@ export async function downloadExport(exportId: string): Promise<
     filename: `hocba-${stu?.code ?? exportId}.xml`,
     verify: {
       shaOk,
-      gvcnOk: !e.gvcn_sig || e.gvcn_sig === signHash(e.id, "gvcn", e.sha256),
-      bghOk: !e.bgh_sig || e.bgh_sig === signHash(e.id, "bgh", e.sha256),
+      // Chu ky chi hop le khi XML checksum khop truoc - XML bi sua thi
+      // moi chu ky deu vo nghia du sig van match sha256 cu.
+      gvcnOk: shaOk && (!e.gvcn_sig || e.gvcn_sig === signHash(e.id, "gvcn", e.sha256)),
+      bghOk: shaOk && (!e.bgh_sig || e.bgh_sig === signHash(e.id, "bgh", e.sha256)),
     },
   };
 }

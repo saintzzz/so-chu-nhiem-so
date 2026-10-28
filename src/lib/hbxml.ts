@@ -47,13 +47,26 @@ export function withSignatures(
   sigs: { gvcn?: { sig: string; by: string; at: string }; bgh?: { sig: string; by: string; at: string } },
 ): string {
   const parts: string[] = [];
-  if (sigs.gvcn) parts.push(`    <GVCN sig="${sigs.gvcn.sig}" by="${esc(sigs.gvcn.by)}" at="${sigs.gvcn.at}"/>`);
-  if (sigs.bgh) parts.push(`    <BGH sig="${sigs.bgh.sig}" by="${esc(sigs.bgh.by)}" at="${sigs.bgh.at}"/>`);
+  if (sigs.gvcn) parts.push(`    <GVCN sig="${esc(sigs.gvcn.sig)}" by="${esc(sigs.gvcn.by)}" at="${esc(sigs.gvcn.at)}"/>`);
+  if (sigs.bgh) parts.push(`    <BGH sig="${esc(sigs.bgh.sig)}" by="${esc(sigs.bgh.by)}" at="${esc(sigs.bgh.at)}"/>`);
   if (!parts.length) return xml;
   return xml.replace("</HocBaDienTu>", `  <ChuKy>\n${parts.join("\n")}\n  </ChuKy>\n</HocBaDienTu>`);
 }
 
-const SECRET = () => process.env.HB_SIGNING_SECRET ?? "scn-hb-dev-secret";
+// Fail-closed: thieu secret thi khong ky/xac minh duoc - khong fallback
+// gia tri cong khai (chu ky se gia mao duoc).
+// Uu tien HB_SIGNING_SECRET; neu chua set thi derive tu SUPABASE_SERVICE_ROLE_KEY
+// (secret manh da co san o moi moi truong deploy). Rotate service key -> chu ky
+// cu khong verify duoc, verify() se bao khong hop le khi tai XML.
+function SECRET(): string {
+  const s = process.env.HB_SIGNING_SECRET;
+  if (s && s.length >= 32) return s;
+  const svc = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (svc) {
+    return createHmac("sha256", svc).update("hb-signing-key-v1").digest("hex");
+  }
+  throw new Error("HB_SIGNING_SECRET is not configured (>=32 chars required).");
+}
 
 /** Chu ky he thong HMAC-SHA256 tren (export_id|role|sha256_xml). */
 export function signHash(exportId: string, role: "gvcn" | "bgh", sha: string): string {

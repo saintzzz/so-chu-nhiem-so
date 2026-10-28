@@ -13,7 +13,12 @@ const env = Object.fromEntries(
 const ok = (name, cond, extra = "") =>
   console.log(`${cond ? "PASS" : "FAIL"} ${name}${extra ? " - " + extra : ""}`);
 const errHas = (r, s) => !!r.error && JSON.stringify(r.error).includes(s);
-const SECRET = env.HB_SIGNING_SECRET ?? "scn-hb-dev-secret";
+// Mirror hbxml.SECRET(): HB_SIGNING_SECRET, fallback derive tu service role key.
+const SECRET = env.HB_SIGNING_SECRET?.length >= 32
+  ? env.HB_SIGNING_SECRET
+  : env.SUPABASE_SERVICE_ROLE_KEY
+    ? createHmac("sha256", env.SUPABASE_SERVICE_ROLE_KEY).update("hb-signing-key-v1").digest("hex")
+    : (() => { throw new Error("no signing secret available"); })();
 const sig = (id, role, sha) => createHmac("sha256", SECRET).update(`${id}|${role}|${sha}`).digest("hex");
 
 const bgh = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);

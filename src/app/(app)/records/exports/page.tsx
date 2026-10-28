@@ -30,7 +30,14 @@ export default async function ExportsPage({
 
   const cls = classes?.find((c) => c.id === classId) ?? classes?.[0] ?? null;
 
-  const [{ data: students }, { data: exports }, { data: year }] = cls
+  const { data: year } = await must(supabase
+    .from("academic_years")
+    .select("id")
+    .eq("school_id", profile.school_id)
+    .eq("is_current", true)
+    .maybeSingle(), "academic_years");
+
+  const [{ data: students }, { data: exports }] = cls
     ? await Promise.all([
         must(supabase
           .from("students")
@@ -38,18 +45,15 @@ export default async function ExportsPage({
           .eq("class_id", cls.id)
           .neq("status", "transferred")
           .limit(200), "students"),
-        must(supabase
-          .from("hb_exports")
-          .select("id,student_id,status,gvcn_at,bgh_at")
-          .eq("school_id", profile.school_id), "hb_exports"),
-        must(supabase
-          .from("academic_years")
-          .select("id")
-          .eq("school_id", profile.school_id)
-          .eq("is_current", true)
-          .maybeSingle(), "academic_years"),
+        year
+          ? must(supabase
+              .from("hb_exports")
+              .select("id,student_id,status,gvcn_at,bgh_at")
+              .eq("school_id", profile.school_id)
+              .eq("academic_year_id", year.id), "hb_exports")
+          : Promise.resolve({ data: [] }),
       ])
-    : [{ data: [] }, { data: [] }, { data: null }];
+    : [{ data: [] }, { data: [] }];
 
   return (
     <ExportsBoard

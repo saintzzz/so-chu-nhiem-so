@@ -7,6 +7,7 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const read = (p) => readFileSync(join(root, p), "utf8");
 const M = read("supabase/migrations/20261250_cr068_tot_nghiep.sql");
+const M2 = read("supabase/migrations/20261251_cr068_tn_r1.sql");
 const DOC = read("docs/project/CR-068-xet-tot-nghiep.md");
 
 test("AC-68.1: CR doc + module key + nav", () => {
@@ -54,4 +55,10 @@ test("AC-68.4: page + actions + board conventions", () => {
   assert.match(BD, /compareVietnameseName/);
   assert.match(BD, /relative overflow-x-auto/);
   assert.doesNotMatch(BD, /—|–/);
+});
+
+test("AC-68.5: r1 - finalize preserve override", () => {
+  assert.match(M2, /d\.decision = 'pending'[\s\S]*d\.decided_by is null/,
+    "finalize chi tinh lai dong chua override");
+  assert.match(M2, /p_value = 'pending' then null/, "pending = huy override");
 });

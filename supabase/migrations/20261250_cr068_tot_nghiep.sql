@@ -196,9 +196,11 @@ begin
   if not found then raise exception 'decision_not_found'; end if;
   if v_camp_status <> 'open' then raise exception 'campaign_closed'; end if;
 
+  -- 'pending' = huy override: xoa decided_* de finalize tinh lai theo eligible.
   update public.tn_decisions
   set decision = p_value, note = nullif(btrim(coalesce(p_note,'')), ''),
-      decided_by = auth.uid(), decided_at = now()
+      decided_by = case when p_value = 'pending' then null else auth.uid() end,
+      decided_at = case when p_value = 'pending' then null else now() end
   where id = p_id;
   return jsonb_build_object('ok', true);
 end $$;
@@ -222,11 +224,13 @@ begin
   if not found then raise exception 'campaign_not_found'; end if;
   if v_camp.status <> 'open' then raise exception 'campaign_closed'; end if;
 
-  -- Pending -> theo eligible; override (da co decided_by) giu nguyen.
+  -- Pending CHUA override (decided_by null) -> theo eligible;
+  -- dong da duoc bgh override thu cong giu nguyen.
   update public.tn_decisions d
   set decision = case when d.eligible then 'approved' else 'rejected' end,
       decided_by = auth.uid(), decided_at = now()
-  where d.campaign_id = p_campaign and d.decision = 'pending';
+  where d.campaign_id = p_campaign and d.decision = 'pending'
+    and d.decided_by is null;
 
   -- approved -> status='graduated' + history + notify GVCN.
   for v_stu in

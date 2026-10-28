@@ -71,9 +71,16 @@ r = await bgh.rpc("tn_set_decision", { p_id: d0.id, p_value: "approved", p_note:
 ok("override_approve", !r.error, JSON.stringify(r.error ?? r.data));
 const stuId = d0.student_id;
 
-// 9) finalize -> approved graduated + history + notify
+// 8b) r1: override 'rejected' 1 HS eligible-khong-ro -> finalize KHONG duoc doi
+const d1 = decs.data[1];
+await bgh.rpc("tn_set_exam", { p_decision: d1.id, p_score: 9 });
+await bgh.rpc("tn_set_decision", { p_id: d1.id, p_value: "rejected", p_note: "QA reject override" });
+
+// 9) finalize -> approved graduated + history + notify; override reject giu nguyen
 r = await bgh.rpc("tn_finalize", { p_campaign: campId });
 ok("finalize", !r.error && r.data?.graduated >= 1, JSON.stringify(r.error ?? r.data));
+const d1After = await admin.from("tn_decisions").select("decision").eq("id", d1.id).single();
+ok("override_preserved", d1After.data?.decision === "rejected", JSON.stringify(d1After.data));
 const stu = await admin.from("students").select("status").eq("id", stuId).single();
 ok("student_graduated", stu.data?.status === "graduated", JSON.stringify(stu.data));
 const hist = await admin.from("student_record_history").select("field,new_value")

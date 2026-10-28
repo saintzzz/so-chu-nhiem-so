@@ -17,6 +17,7 @@ export const MODULES = [
   { key: "phu_huynh_hoat_dong", label: "Phụ huynh & hoạt động" },
   { key: "tu_van_an_toan", label: "Tư vấn & an toàn học đường" },
   { key: "thi_dua", label: "Thi đua & năng lực giáo viên" },
+  { key: "thu_vien", label: "Thư viện" },
   { key: "to_chuyen_mon", label: "Tổ chuyên môn" },
   { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
   { key: "tuyen_sinh", label: "Tuyển sinh đầu cấp" },

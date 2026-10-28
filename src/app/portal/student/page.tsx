@@ -5,7 +5,7 @@ import { PortalHeader } from "@/components/portal/portal-header";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge, ATT_STATUS } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
-import { Bell, CalendarDays, ClipboardList } from "lucide-react";
+import { Bell, BookOpen, CalendarDays, ClipboardList } from "lucide-react";
 import { semesterAverage, yearAverage } from "@/lib/tt22";
 import { gradeYearOr } from "@/lib/grades-year";
 import { currentSchoolYearVN, fmtDateVN, todayVN, PERIODS } from "@/lib/utils";
@@ -54,7 +54,7 @@ export default async function StudentPortalPage() {
   > & { classes?: Pick<ClassRoom, "id" | "name" | "school_id" | "academic_year_id"> | null }) | null;
   const classroom = student?.classes ?? null;
 
-  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes, lmsRes] =
+  const [attRes, gradeRes, subjectRes, conductRes, annRes, examRes, evRes, ttRes, lmsRes, libFlagRes, libLoansRes] =
     student ? await Promise.all([
         must(supabase
           .from("attendance_records")
@@ -107,8 +107,19 @@ export default async function StudentPortalPage() {
           .order("period"), "timetable_entries"),
         // CR-065: RPC tu check module flag - module_disabled/not_student -> an section.
         supabase.rpc("lms_my_assignments"),
+        // CR-066: thu_vien - flag theo truong cua lop + sach dang muon (RLS scope ve minh).
+        supabase.rpc("lib_module_enabled", { p_school: classroom?.school_id ?? null }),
+        supabase
+          .from("lib_loans")
+          .select("id, borrowed_at, due_at, accession_no, book_title")
+          .eq("student_id", student.id)
+          .is("returned_at", null)
+          .order("due_at")
+          .limit(50),
       ])
     : [
+        { data: [] },
+        { data: [] },
         { data: [] },
         { data: [] },
         { data: [] },
@@ -276,6 +287,19 @@ export default async function StudentPortalPage() {
     max_score: number | null;
     essay_pending: boolean;
   }[]));
+
+  // CR-066: thu_vien - flag loi/tat -> an section; loans RLS da scope ve minh.
+  const libEnabled = !libFlagRes.error && libFlagRes.data === true;
+  const libLoans = ((libLoansRes.data ?? []) as {
+    id: string; borrowed_at: string; due_at: string;
+    accession_no: number | null; book_title: string | null;
+  }[]).map((r) => ({
+    id: r.id,
+    borrowed_at: r.borrowed_at,
+    due_at: r.due_at,
+    accession_no: r.accession_no ?? 0,
+    book_title: r.book_title ?? "?",
+  }));
 
   return (
     <div className="theme-fluent min-h-screen bg-background">
@@ -532,6 +556,40 @@ export default async function StudentPortalPage() {
                         )}
                       </li>
                     ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {libEnabled && (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+                <h2 className="mb-3 flex items-center gap-2 text-base font-semibold">
+                  <BookOpen className="size-4 text-muted-foreground" />
+                  Sách đang mượn
+                </h2>
+                {libLoans.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">
+                    Không có sách nào đang mượn.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {libLoans.map((l) => {
+                      const overdue = l.due_at.slice(0, 10) < todayIso;
+                      return (
+                        <li key={l.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{l.book_title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              ĐKCB {l.accession_no} · mượn {formatDate(l.borrowed_at)}
+                            </p>
+                          </div>
+                          <StatusBadge
+                            label={overdue ? `Quá hạn ${formatDate(l.due_at)}` : `Hạn ${formatDate(l.due_at)}`}
+                            tone={overdue ? "error" : "muted"}
+                          />
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

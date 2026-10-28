@@ -44,7 +44,7 @@ function hashIp(ip: string | null): string {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ message: "Yêu cầu không hợp lệ." }, { status: 400 });
+    return NextResponse.json({ error: "Yêu cầu không hợp lệ." }, { status: 400 });
   }
 
   // honeypot: bot dien -> gia thanh cong, khong ghi gi
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const ok = await verifyTurnstile(body.captcha_token ?? null, ip);
   if (!ok) {
     return NextResponse.json(
-      { message: "Xác minh không thành công. Vui lòng thử lại." },
+      { error: "Xác minh không thành công. Vui lòng thử lại." },
       { status: 403 },
     );
   }
@@ -83,18 +83,18 @@ export async function POST(req: NextRequest) {
     const key = Object.keys(ERR_MAP).find((k) => error.message.includes(k));
     if (key) {
       return NextResponse.json(
-        { message: ERR_MAP[key] },
+        { error: ERR_MAP[key] },
         { status: key === "rate_limited" ? 429 : 400 },
       );
     }
     if (error.message.includes("adm_app_id_number")) {
       return NextResponse.json(
-        { message: "Số CCCD/định danh này đã nộp hồ sơ trong đợt tuyển." },
+        { error: "Số CCCD/định danh này đã nộp hồ sơ trong đợt tuyển." },
         { status: 409 },
       );
     }
     return NextResponse.json(
-      { message: "Không thể nộp hồ sơ. Vui lòng thử lại sau." },
+      { error: "Không thể nộp hồ sơ. Vui lòng thử lại sau." },
       { status: 500 },
     );
   }

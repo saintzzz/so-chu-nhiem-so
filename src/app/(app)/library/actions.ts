@@ -28,7 +28,14 @@ function mapRpcError(message: string): string {
   if (message.includes("already_returned")) return "Lượt mượn đã trả.";
   if (message.includes("invalid_condition")) return "Tình trạng trả không hợp lệ.";
   if (message.includes("forbidden")) return "Bạn không có quyền thực hiện thao tác này.";
-  return message;
+  console.error("[library] rpc:", message);
+  return "Lỗi hệ thống. Vui lòng thử lại.";
+}
+
+function rpcFail(db: { message: string }) {
+  const { message: raw } = db;
+  const msg = mapRpcError(raw);
+  return { error: msg };
 }
 
 export async function addBook(input: {
@@ -41,7 +48,7 @@ export async function addBook(input: {
   price?: number | null;
   copies: number;
   source?: string;
-}) {
+}): Promise<{ ok?: boolean; bookId?: string; copies?: number; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -56,14 +63,14 @@ export async function addBook(input: {
     p_copies: input.copies,
     p_source: input.source ?? null,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   revalidatePath("/library");
   revalidatePath("/library/register");
   const d = data as { book_id?: string; copies?: number } | null;
   return { ok: true, bookId: d?.book_id, copies: d?.copies ?? 0 };
 }
 
-export async function addCopies(bookId: string, count: number, source?: string) {
+export async function addCopies(bookId: string, count: number, source?: string): Promise<{ ok?: boolean; added?: number; firstNo?: number; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -72,7 +79,7 @@ export async function addCopies(bookId: string, count: number, source?: string) 
     p_count: count,
     p_source: source ?? null,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   revalidatePath("/library");
   revalidatePath("/library/register");
   const d = data as { added?: number; first_no?: number } | null;
@@ -85,7 +92,7 @@ export async function checkout(input: {
   teacher_id?: string | null;
   days: number;
   note?: string;
-}) {
+}): Promise<{ ok?: boolean; loanId?: string; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -96,13 +103,13 @@ export async function checkout(input: {
     p_days: input.days,
     p_note: input.note ?? null,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   revalidatePath("/library/loans");
   const d = data as { loan_id?: string } | null;
   return { ok: true, loanId: d?.loan_id };
 }
 
-export async function returnLoan(loanId: string, condition: "ok" | "damaged" | "lost", note?: string) {
+export async function returnLoan(loanId: string, condition: "ok" | "damaged" | "lost", note?: string): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -111,7 +118,7 @@ export async function returnLoan(loanId: string, condition: "ok" | "damaged" | "
     p_condition: condition,
     p_note: note ?? null,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   revalidatePath("/library/loans");
   return { ok: true };
 }

@@ -2,10 +2,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-const ROOT = new URL("..", import.meta.url).pathname;
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const MIG = read("supabase/migrations/20261228_cr062_admissions.sql");
 const MIG2 = read("supabase/migrations/20261229_cr062_admissions_rpcs.sql");

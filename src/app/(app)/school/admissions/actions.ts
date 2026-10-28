@@ -286,9 +286,11 @@ export async function finalizeResults(
   });
   if (error) {
     console.error("[admissions] finalizeResults:", error.message);
-    const m = error.message.match(/missing_scores:(\d+)/);
+    const { message: rpcMsg } = error;
+    const m = rpcMsg.match(/missing_scores:(\d+)/);
     if (m) {
-      return { error: `Còn ${m[1]} thí sinh chưa có điểm - nhập đủ điểm trước khi chốt.` };
+      const msg = `Còn ${m[1]} thí sinh chưa có điểm - nhập đủ điểm trước khi chốt.`;
+      return { error: msg };
     }
     if (error.message.includes("no_benchmark")) {
       return { error: "Chưa đặt điểm chuẩn." };

@@ -15,6 +15,25 @@ async function guard() {
   return assertModule("khoan_thu");
 }
 
+// RPC raise ma loi (20261234/35) -> nhan VN; code la -> nhan chung.
+function mapRpcError(message: string): string {
+  if (message.includes("period_not_found")) return "Không tìm thấy đợt thu.";
+  if (message.includes("invoice_not_found")) return "Không tìm thấy hóa đơn.";
+  if (message.includes("already_issued")) return "Đợt thu đã phát hành.";
+  if (message.includes("already_settled")) return "Hóa đơn đã thanh toán hoặc miễn.";
+  if (message.includes("invalid_amount")) return "Số tiền không hợp lệ.";
+  if (message.includes("school_mismatch")) return "Dữ liệu không thuộc trường.";
+  if (message.includes("forbidden")) return "Bạn không có quyền thực hiện thao tác này.";
+  return "Lỗi hệ thống. Vui lòng thử lại.";
+}
+
+function fail(ctx: string, db: { message: string }) {
+  const { message: raw } = db;
+  console.error(`[finance] ${ctx}:`, raw);
+  const msg = mapRpcError(raw);
+  return { error: msg };
+}
+
 export async function saveFeeItem(input: {
   id?: string;
   name: string;
@@ -25,7 +44,7 @@ export async function saveFeeItem(input: {
   grade?: number | null;
   class_id?: string | null;
   active?: boolean;
-}) {
+}): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const profile = await getProfile();
@@ -49,19 +68,19 @@ export async function saveFeeItem(input: {
       .eq("id", row.class_id)
       .eq("school_id", profile!.school_id)
       .maybeSingle();
-    if (clsErr) return { error: clsErr.message };
+    if (clsErr) return fail("feeItem.class", clsErr);
     if (!cls) return { error: "Lớp không thuộc trường." };
   }
   const q = input.id
     ? supabase.from("fee_items").update(row).eq("id", input.id)
     : supabase.from("fee_items").insert({ ...row, school_id: profile!.school_id });
   const { error } = await q;
-  if (error) return { error: error.message };
+  if (error) return fail("rpc", error);
   revalidatePath("/finance/items");
   return { ok: true };
 }
 
-export async function registerVoluntary(feeItemId: string, studentIds: string[], register: boolean) {
+export async function registerVoluntary(feeItemId: string, studentIds: string[], register: boolean): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const profile = await getProfile();
@@ -73,7 +92,7 @@ export async function registerVoluntary(feeItemId: string, studentIds: string[],
     .eq("id", feeItemId)
     .eq("school_id", profile!.school_id)
     .maybeSingle();
-  if (itemErr) return { error: itemErr.message };
+  if (itemErr) return fail("feeItem.item", itemErr);
   if (!item) return { error: "Khoản thu không thuộc trường." };
   if (register && item.kind !== "voluntary") return { error: "Chỉ khoản tự nguyện mới cần đăng ký." };
   if (studentIds.length) {
@@ -83,7 +102,7 @@ export async function registerVoluntary(feeItemId: string, studentIds: string[],
       .in("id", studentIds)
       .eq("classes.school_id", profile!.school_id)
       .limit(studentIds.length + 1);
-    if (stuErr) return { error: stuErr.message };
+    if (stuErr) return fail("fee.students", stuErr);
     if ((stus ?? []).length !== studentIds.length) {
       return { error: "Có học sinh không thuộc trường." };
     }
@@ -97,14 +116,14 @@ export async function registerVoluntary(feeItemId: string, studentIds: string[],
     const { error } = await supabase
       .from("fee_registrations")
       .upsert(rows, { onConflict: "fee_item_id,student_id" });
-    if (error) return { error: error.message };
+    if (error) return fail("rpc", error);
   } else {
     const { error } = await supabase
       .from("fee_registrations")
       .delete()
       .eq("fee_item_id", feeItemId)
       .in("student_id", studentIds);
-    if (error) return { error: error.message };
+    if (error) return fail("rpc", error);
   }
   revalidatePath("/finance/items");
   return { ok: true };
@@ -115,7 +134,7 @@ export async function saveExemption(input: {
   fee_item_id?: string | null;
   percent: number;
   reason?: string;
-}) {
+}): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   if (input.percent <= 0 || input.percent > 100) return { error: "Tỉ lệ miễn giảm phải trong (0-100]." };
@@ -128,7 +147,7 @@ export async function saveExemption(input: {
     .eq("id", input.student_id)
     .eq("classes.school_id", profile!.school_id)
     .maybeSingle();
-  if (stuErr) return { error: stuErr.message };
+  if (stuErr) return fail("fee.students", stuErr);
   if (!stu) return { error: "Học sinh không thuộc trường." };
   if (input.fee_item_id) {
     const { data: item, error: itemErr } = await supabase
@@ -137,7 +156,7 @@ export async function saveExemption(input: {
       .eq("id", input.fee_item_id)
       .eq("school_id", profile!.school_id)
       .maybeSingle();
-    if (itemErr) return { error: itemErr.message };
+    if (itemErr) return fail("feeItem.item", itemErr);
     if (!item) return { error: "Khoản thu không thuộc trường." };
   }
   const { error } = await supabase.from("fee_exemptions").insert({
@@ -147,12 +166,12 @@ export async function saveExemption(input: {
     reason: input.reason ?? null,
     school_id: profile!.school_id,
   });
-  if (error) return { error: error.message };
+  if (error) return fail("rpc", error);
   revalidatePath("/finance/items");
   return { ok: true };
 }
 
-export async function savePeriod(input: { id?: string; name: string; due_date?: string }) {
+export async function savePeriod(input: { id?: string; name: string; due_date?: string }): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const profile = await getProfile();
@@ -166,7 +185,7 @@ export async function savePeriod(input: { id?: string; name: string; due_date?: 
       .eq("id", input.id)
       .eq("status", "draft")
       .select("id");
-    if (error) return { error: error.message };
+    if (error) return fail("rpc", error);
     if (!updated?.length) return { error: "Đợt thu đã phát hành - không sửa được." };
   } else {
     const { data: year, error: yearErr } = await supabase
@@ -174,7 +193,7 @@ export async function savePeriod(input: { id?: string; name: string; due_date?: 
       .select("id")
       .eq("is_current", true)
       .maybeSingle();
-    if (yearErr) return { error: yearErr.message };
+    if (yearErr) return fail("fee.year", yearErr);
     const { error } = await supabase.from("fee_periods").insert({
       name: input.name.trim(),
       due_date: input.due_date || null,
@@ -182,13 +201,13 @@ export async function savePeriod(input: { id?: string; name: string; due_date?: 
       school_id: profile!.school_id,
       created_by: profile!.id,
     });
-    if (error) return { error: error.message };
+    if (error) return fail("rpc", error);
   }
   revalidatePath("/finance/periods");
   return { ok: true };
 }
 
-export async function issuePeriod(periodId: string) {
+export async function issuePeriod(periodId: string): Promise<{ ok?: boolean; issued?: number; notified?: number; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -196,7 +215,7 @@ export async function issuePeriod(periodId: string) {
   if (error) {
     if (error.message.includes("already_issued")) return { error: "Đợt thu đã phát hành." };
     if (error.message.includes("module_disabled")) return { error: "Module khoản thu đã tắt." };
-    return { error: error.message };
+    return fail("rpc", error);
   }
   // Notifications cho PH nam trong RPC (security definer) - ke_toan khong
   // doc duoc parents/parent_students qua RLS nen action khong tu insert.
@@ -206,7 +225,7 @@ export async function issuePeriod(periodId: string) {
   return { ok: true, issued: d?.issued ?? 0, notified: d?.notified ?? 0 };
 }
 
-export async function collectPayment(invoiceId: string, amount: number, method: string, note?: string) {
+export async function collectPayment(invoiceId: string, amount: number, method: string, note?: string): Promise<{ ok?: boolean; receipt?: string; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -221,7 +240,7 @@ export async function collectPayment(invoiceId: string, amount: number, method: 
     if (error.message.includes("invalid_amount")) return { error: "Số tiền không hợp lệ (vượt công nợ hoặc <= 0)." };
     if (error.message.includes("school_mismatch")) return { error: "Hóa đơn không thuộc trường." };
     if (error.message.includes("module_disabled")) return { error: "Module khoản thu đã tắt." };
-    return { error: error.message };
+    return fail("rpc", error);
   }
   revalidatePath("/finance/invoices");
   return { ok: true, receipt: (data as { receipt_no?: string })?.receipt_no };

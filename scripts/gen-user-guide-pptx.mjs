@@ -195,7 +195,7 @@ featureSlide("CHỨC NĂNG NỔI BẬT", "Học bạ số - quyết định cu�
   { t: "Stages: quyết định đầu năm → sau đánh giá lại / sau rèn luyện hè (theo kết quả lên lớp)" },
   { t: "Xuất DOCX/PDF từng HS hoặc cả lớp - watermark 'BẢN NHÁP - CHƯA DUYỆT' khi chưa duyệt" },
   { t: "Phân quyền: GVCN chỉ lớp mình; PHT chỉ cơ sở mình; Sở GD/UBND xem chỉ đọc; HS xem học bạ bản thân trên portal" },
-]);
+], "32-hoc-ba-so.png", "Học bạ số lớp 8A2 - trạng thái duyệt/khóa theo TT22");
 
 featureSlide("CHỨC NĂNG NỔI BẬT", "Phụ huynh & Học sinh - cổng hai chiều", [
   { t: "PH chỉ thấy con mình (nhiều con: bộ chọn trên đầu portal, dữ liệu tách theo từng em)", b: 1 },

@@ -2,9 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
-const read = (p) => readFileSync(join(root, p), "utf8");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (p) => readFileSync(join(root, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 // AC-64.1: khoan_thu module registered + nav tagged.
 test("AC-64.1: khoan_thu la module doc lap, nav gan flag", () => {

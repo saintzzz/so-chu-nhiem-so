@@ -31,9 +31,18 @@
 - KHONG lam: upload giay to dinh kem (CR sau), cong tinh NV1/NV2 cap So.
 
 ## AC
-1. Campaign open -> link /apply/<id> public form; nop -> row submitted
-   + tracking_code hien thi cho nguoi nop.
-2. Campaign draft/closed -> form khong cho nop.
-3. Tra cuu bang tracking_code -> chi tra status + ten dot.
-4. Bot: honeypot tripped -> gia thanh cong khong ghi; turnstile fail -> reject.
-5. Module flag tuyen_sinh OFF -> cong apply cung tat (check trong RPC).
+- AC-63.1: tracking_code + unique index + dedupe id_number.
+- AC-63.2: apply RPC kiem open + module flag + definer.
+- AC-63.3: track RPC chi lo status + campaign.
+- AC-63.4: apply RPC revoke khoi anon - chi service_role.
+- AC-63.5: proxy whitelist /apply + api.
+- AC-63.6: API co honeypot + turnstile + err map.
+- AC-63.7: page dung RPC info, form post API.
+- AC-63.8: board co nut sao chep link khi open.
+- AC-63.9: tracking code mo rong 10 ky tu base32 + retry.
+- AC-63.10: rate limit theo ip_hash 10/gio.
+- AC-63.11: turnstile fail-closed khi co secret thieu token.
+- AC-63.12: campaign_info khong lo ten khi chua open + noindex.
+- Campaign draft/closed -> form khong cho nop.
+- Bot: honeypot tripped -> gia thanh cong khong ghi.
+- Module flag tuyen_sinh OFF -> cong apply cung tat (check trong RPC).

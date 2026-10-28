@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const mig = read("supabase/migrations/20261226_cr053_review_fixes.sql");
 const actions = read("src/app/(app)/records/hoc-ba/actions.ts");

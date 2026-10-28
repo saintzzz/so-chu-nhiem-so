@@ -6,11 +6,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const MIG = read("supabase/migrations/20261023_cr055_tenant_indexes.sql");
 const AUDIO = read("src/app/api/studio/tools/[code]/audio/route.ts");
@@ -100,7 +100,7 @@ const ttsTmp = join(ROOT, "tests/.tmp-tts.ts");
   const { writeFileSync } = await import("node:fs");
   writeFileSync(ttsTmp, src);
 }
-const { extractDialogueTurns } = await import(ttsTmp);
+const { extractDialogueTurns } = await import(pathToFileURL(ttsTmp).href);
 
 test("REV-1: section Hoi thoai cho phep nhan vat A:/B: (dang SGK)", () => {
   const doc = {

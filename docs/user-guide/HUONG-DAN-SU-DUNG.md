@@ -200,6 +200,22 @@ Menu **Hồ sơ lớp học → Học bạ số** (`/records/hoc-ba`). Học b�
 
 **Quyền xem khác**: PHT chỉ thấy học bạ lớp thuộc cơ sở mình phụ trách (đăng nhập `duclm@nd.scn` - chỉ các lớp A3); Sở GD (`sovqt@demo.scn`) và UBND (`daonvl@demo.scn`) xem toàn bộ trường thuộc phạm vi nhưng **chỉ đọc** - không có nút lưu/trình/duyệt/xuất.
 
+![Học bạ số](images/32-hoc-ba-so.png)
+
+### 2.14 Biến động học sinh
+
+Menu **Quản lý học sinh → Biến động học sinh** (`/movements`) - module `bien_dong_hs`.
+
+Ghi nhận mọi thay đổi tình trạng học tập của HS trong năm: **chuyển đến** (HS mới vào lớp giữa năm), **chuyển đi** (ra trường khác), **bảo lưu** (tạm nghỉ giữ chỗ), **nhập học lại** (quay lại sau bảo lưu/nghỉ). Mỗi biến động lưu loại, ngày, lý do, trường đến/đi - danh sách lọc theo loại và thời gian. HS chuyển đi/bảo lưu tự loại khỏi sĩ số điểm danh.
+
+### 2.15 Giao bài trực tuyến (LMS-lite)
+
+Menu **Bài tập trực tuyến** (`/lms`) - module `lms_lite`:
+
+1. Tạo phiên giao bài: chọn **bộ đề** (từ ngân hàng câu hỏi) + lớp + thời gian mở/đóng + thời lượng làm bài.
+2. HS vào portal làm bài trắc nghiệm trong khung giờ - hệ thống **chấm tự động**.
+3. Theo dõi ai đã nộp/chưa nộp, điểm từng em, đáp án sai nhiều nhất.
+
 ---
 
 ## 3. Giáo viên bộ môn (GVBM)
@@ -240,7 +256,9 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Tài khoản giáo viên** (`school/users`): tạo/sửa tài khoản cán bộ - họ tên, email, mật khẩu, vai trò chính, **vai trò kiêm nhiệm** (GVCN kiêm GVBM/tổ trưởng...), mã nhân viên, loại hợp đồng, cơ sở, tổ chuyên môn; khối "Tổ chuyên môn - môn học" gán môn phụ trách cho từng tổ và trưởng tổ. Chỉ BGH/admin.
 - **Cơ sở** (`school/campuses`): khai báo cơ sở chính/phân hiệu - quyết định phạm vi của PHT.
 - **Học bạ số** (`/records/hoc-ba`): xem học bạ mọi lớp, duyệt/trả lại quyết định cuối năm của GVCN, xuất học bạ DOCX/PDF theo lớp hoặc từng HS (chi tiết quy trình: mục 2.13).
-- **Điều động dạy thay**, **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ** (`/register/lock-records` - khóa luôn quyết định cuối năm đã duyệt), **Sự cố toàn trường** (đánh dấu đã báo cáo).
+- **Tuyển sinh đầu cấp** (`/school/admissions`) - module `tuyen_sinh`: quản lý kỳ tuyển (khối 6 xét tuyển, khối 10 thi tuyển), duyệt hồ sơ từ cổng public, công bố kết quả. Cổng public `/apply` cho PH nộp hồ sơ + `/apply/tra-cuu` tra cứu - không cần tài khoản.
+- **Thư viện** (`/library`) - module `thu_vien`: **Danh mục sách**, **Mượn & trả sách** (`/library/loans` - ghi mượn/trả, theo dõi quá hạn), **Sổ đăng ký cá biệt** (`/library/register` - số ĐKCB theo chuẩn Thư viện Quốc gia).
+- **Điều động dạy thay**, **Biến động học sinh** (`/movements`), **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ** (`/register/lock-records` - khóa luôn quyết định cuối năm đã duyệt), **Sự cố toàn trường** (đánh dấu đã báo cáo).
 
 > Khởi tạo trường mới từ đầu (tài khoản, cơ sở, tổ, lớp, HS, PH, TKB): xem `KHOI-TAO-TRUONG-MOI.md` kèm file Excel `docs/templates/khoi-tao-truong.xlsx`.
 
@@ -254,12 +272,16 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 
 ## 5b. Kế toán trường
 
-Kế toán chỉ tiếp cận dữ liệu hành chính - tài chính, **không** xem được hồ sơ học tập/chuyên cần của học sinh:
+Kế toán quản lý phân hệ tài chính - hành chính của trường (đăng nhập `trangpt@nd.scn`):
 
-- **Nhân sự**: danh sách cán bộ, giáo viên trong trường.
-- **Cơ sở vật chất**: quản lý cơ sở/phân hiệu, phòng học.
-- **Thiết bị**: sổ thiết bị, tình trạng, bảo trì.
-- **Báo cáo NQ37**: báo cáo tài chính - cơ sở vật chất theo Nghị quyết 37.
+**Khoản thu** (`/finance`) - module `khoan_thu`, quy trình 4 bước:
+
+1. **Danh mục khoản thu** (`/finance/items`): khai báo các loại phí - học phí, tiền ăn, đồng phục, bảo hiểm... mỗi khoản có đơn giá và tính chất (bắt buộc/tự nguyện).
+2. **Đợt thu** (`/finance/periods`): mở đợt thu theo tháng/kỳ, gắn khoản thu áp cho từng lớp hoặc cả trường.
+3. **Hóa đơn & thu tiền** (`/finance/invoices`): hệ thống sinh hóa đơn theo đợt cho từng HS; ghi nhận thanh toán từng biên lai, xem còn nợ. PH nhận thông báo số tiền phải đóng.
+4. **Báo cáo thu chi** (`/finance/reports`): tổng hợp theo đợt/lớp/khoản thu - đã thu, còn nợ, tỷ lệ thu.
+
+**Hành chính khác**: Nhân sự trường, Cơ sở vật chất, Thiết bị (sổ tài sản, bảo trì), Báo cáo NQ37 (định mức biên chế).
 
 ---
 
@@ -295,6 +317,8 @@ Mọi thao tác (đặt hẹn, nhắn tin, đăng ký) chỉ áp dụng cho con 
 ## 8. Học sinh
 
 Portal học sinh xem dữ liệu bản thân: thời khóa biểu, điểm các môn, hạnh kiểm, thông báo lớp, lịch thi. Mục **Học bạ** (`/portal/student/hoc-ba`) hiển thị học bạ cá nhân: điểm HK1/HK2/cả năm từng môn, hạnh kiểm, chuyên cần - cùng dữ liệu GVCN/BGH dùng để ra quyết định cuối năm.
+
+**Bài tập trực tuyến**: khi GV giao bài (mục 2.15), portal HS hiện bài cần làm → làm trắc nghiệm ngay trong trình duyệt → hệ thống chấm tự động, em xem điểm và đáp án sai.
 
 ![Portal học sinh](images/31-student-portal.png)
 

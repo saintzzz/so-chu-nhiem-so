@@ -7,16 +7,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const { shufflePicked } = await import(
-  join(ROOT, "src/lib/tvc/exam-shuffle.ts")
+  pathToFileURL(join(ROOT, "src/lib/tvc/exam-shuffle.ts")).href
 );
-const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+const { docToPptx } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/pptx.ts")).href);
 const JSZip = (await import("jszip")).default;
 
 const ROUTE = read("src/app/api/studio/tools/[code]/generate/route.ts");

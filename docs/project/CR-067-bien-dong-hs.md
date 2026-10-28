@@ -46,6 +46,16 @@ Module ban kem `bien_dong_hs` (school_features). Tat flag = mat nav + redirect r
   (can Storage bucket + quy dinh giay to).
 - Thong bao PH/HS ve bien dong: backlog (kenh PH = email, can template rieng).
 
+## Acceptance criteria
+- AC-67.1: `bien_dong_hs` la module doc lap trong school_features + nav cho
+  gvcn/bgh; CR doc + module key ton tai.
+- AC-67.2: schema sm_requests (status check) + student status 'reserved' +
+  trigger tenant check.
+- AC-67.3: RPC guard role + module + state transitions (double pending,
+  approve 2 lan bi chan).
+- AC-67.4: mutating RPC revoke public/anon, grant authenticated.
+- AC-67.5: route guard + actions + UI conventions (empty state, confirm).
+
 ## Test
 - Static contract tests/cr067.test.mjs.
 - Live: tao/duyet tung loai, deny paths (gvbm, cross-school, module off, double

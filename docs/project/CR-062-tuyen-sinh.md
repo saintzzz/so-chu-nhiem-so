@@ -23,13 +23,21 @@
 - KHONG lam: cong dang ky public (sau), chuyen truong chuyen rieng.
 
 ## AC
-1. bgh/pht/admin tao campaign 2 level; gvcn khong thay menu. so_gd chi
-   giam sat (SELECT qua RLS, khong thao tac - thao tac thuoc truong).
-2. Import Excel ho so -> rows trong DB (verify bang query).
-3. khoi_6: approve -> enrolled tao students + national_id.
-4. khoi_10: cap SBD -> nhap diem -> chot benchmark -> pass/fail -> enroll.
-5. Module off: nav an + route deny + action reject.
-6. RLS: chi cung truong thay campaign cua minh.
+- AC-62.1: migration tao 2 bang (campaigns/applications) + RLS theo truong.
+- AC-62.2: status flow day du 2 cap (khoi_6 xet tuyen, khoi_10 thi tuyen).
+- AC-62.3: module key `tuyen_sinh` + nav tag + route guard
+  (bgh/pht/admin thao tac; gvcn khong thay menu; so_gd chi giam sat).
+- AC-62.4: actions co role + module guard.
+- AC-62.5: khoi_6 approve -> enrolled qua RPC atomic + retry-safe +
+  tao students cung truong + national_id.
+- AC-62.6: khoi_10 finalize qua RPC - chan khi con thi sinh thieu diem
+  + quota cutoff.
+- AC-62.7: cap SBD qua RPC advisory lock - khong race.
+- AC-62.8: score validation reject thay vi drop + CAS no-op.
+- AC-62.9 (r-adm2): retry sau suffix + level guard + pht ins.
+- Import Excel ho so -> rows trong DB (verify bang query).
+- Module off: nav an + route deny + action reject.
+- RLS: chi cung truong thay campaign cua minh.
 
 ## Quyet dinh nghiep vu (review r-adm1)
 - Quota (chi tieu): khi quota > 0 va so thi sinh dat benchmark vuot quota,

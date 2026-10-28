@@ -212,6 +212,19 @@ Soạn học liệu theo CTGDPT 2018 tại `/studio` - vai trò: GVBM, GVCN, t�
 | Quản trị người dùng (Sở) | Danh sách tài khoản các trường |
 | Quản trị dữ liệu (Sở) | Kiểm tra toàn vẹn: lớp thiếu GVCN, HS chưa có tổ/PH, liên kết mồ côi |
 
+### 3.16 Module mở rộng (bán theo gói - `school_features`)
+
+Mỗi trường mua gói module riêng (`/dept/modules` - admin/Sở bật-tắt). Module tắt thì menu + route + action đều ẩn - vừa là chiến lược bán hàng vừa là UX gọn.
+
+| Module | Route | Mô tả |
+|---|---|---|
+| Tuyển sinh đầu cấp | `/school/admissions` + public `/apply`, `/apply/tra-cuu` | Kỳ tuyển khối 6 xét tuyển / khối 10 thi tuyển; PH nộp hồ sơ online không cần tài khoản, tra cứu bằng mã hồ sơ; trường duyệt + công bố kết quả |
+| Khoản thu | `/finance/{items,periods,invoices,reports}` | Danh mục khoản thu → đợt thu theo kỳ → hóa đơn từng HS → biên lai → báo cáo thu chi; notify PH số phải đóng |
+| LMS-lite | `/lms` + portal HS | GV giao bài trắc nghiệm từ ngân hàng câu hỏi theo khung giờ; HS làm online, chấm tự động, thống kê nộp/điểm |
+| Thư viện | `/library/{,loans,register}` | Danh mục sách, mượn/trả + quá hạn, sổ đăng ký cá biệt (ĐKCB chuẩn Thư viện Quốc gia) |
+| Biến động HS | `/movements` | Chuyển đến/chuyển đi/bảo lưu/nhập học lại; tự cập nhật sĩ số |
+| Học bạ số | `/records/hoc-ba` | Xem §3.9 - quyết định cuối năm TT22 |
+
 ## 4. Luồng nghiệp vụ xuyên module
 
 1. **Vắng trong tiết học**: Sổ đầu bài đánh dấu vắng → `attendance_records` cập nhật → dashboard/tracking/leaves thống kê → PH nhận thông báo.
@@ -221,6 +234,8 @@ Soạn học liệu theo CTGDPT 2018 tại `/studio` - vai trò: GVBM, GVCN, t�
 5. **Sự cố an toàn**: GVCN ghi nhận (AI viết lại) → xử lý + ghi chú → mức Cao báo BGH → lưu trữ tra cứu.
 6. **Cảnh báo sớm**: hệ thống chấm điểm rủi ro từ chuyên cần/điểm/sự cố → BGH radar → AI đề xuất → tiếp nhận → đóng.
 7. **Học bạ cuối năm**: điểm + hạnh kiểm + NLPC + chuyên cần tổng hợp → hệ thống gợi ý xếp loại TT22 → GVCN trình → BGH duyệt/trả lại → đợt duyệt khóa sổ → xuất học bạ DOCX/PDF; HS xem học bạ bản thân trên portal.
+8. **Thu phí**: kế toán khai khoản thu → mở đợt thu → hóa đơn theo HS → PH thông báo → ghi biên lai → báo cáo nợ; biến động HS tự điều chỉnh đối tượng thu.
+9. **Tuyển sinh**: trường mở kỳ tuyển → PH nộp hồ sơ public → duyệt → HS trúng tuyển chuyển thành `students` + liên kết PH → nhập lớp → vào luồng chủ nhiệm.
 
 ## 5. Trí tuệ nhân tạo (AI)
 

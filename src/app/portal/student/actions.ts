@@ -14,10 +14,22 @@ function mapRpcError(message: string): string {
   if (message.includes("time_expired")) return "Đã hết thời gian làm bài.";
   if (message.includes("forbidden")) return "Bài này không dành cho lớp của bạn.";
   if (message.includes("session_not_found")) return "Không tìm thấy bài.";
-  return message;
+  console.error("[portal] rpc:", message);
+  return "Lỗi hệ thống. Vui lòng thử lại.";
 }
 
-export async function myAssignments() {
+function rpcFail(db: { message: string }) {
+  const { message: raw } = db;
+  const msg = mapRpcError(raw);
+  return { error: msg };
+}
+
+export async function myAssignments(): Promise<{
+  ok?: boolean;
+  disabled?: boolean;
+  items?: unknown[];
+  error?: string;
+}> {
   const deny = await checkActionRole(["hoc_sinh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -25,21 +37,26 @@ export async function myAssignments() {
   if (error) {
     if (error.message.includes("module_disabled")) return { ok: true, disabled: true, items: [] };
     if (error.message.includes("not_student")) return { ok: true, items: [] };
-    return { error: mapRpcError(error.message) };
+    return rpcFail(error);
   }
   return { ok: true, items: (data ?? []) as unknown[] };
 }
 
-export async function startAttempt(sessionId: string) {
+export async function startAttempt(
+  sessionId: string,
+): Promise<{ ok?: boolean; data?: unknown; error?: string }> {
   const deny = await checkActionRole(["hoc_sinh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("lms_start_attempt", { p_session: sessionId });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   return { ok: true, data };
 }
 
-export async function submitAttempt(sessionId: string, answers: Record<string, unknown>) {
+export async function submitAttempt(
+  sessionId: string,
+  answers: Record<string, unknown>,
+): Promise<{ ok?: boolean; data?: unknown; error?: string }> {
   const deny = await checkActionRole(["hoc_sinh"]);
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -47,6 +64,6 @@ export async function submitAttempt(sessionId: string, answers: Record<string, u
     p_session: sessionId,
     p_answers: answers,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   return { ok: true, data };
 }

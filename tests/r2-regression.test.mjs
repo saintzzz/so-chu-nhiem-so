@@ -7,26 +7,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
-const { averageScoreBand, yearAverage, lowGradeStudentIds } = await import(
-  join(ROOT, "src/lib/tt22.ts")
-);
-const { fetchAllRows } = await import(
-  join(ROOT, "src/lib/supabase/fetch-all.ts")
-);
+const { averageScoreBand, yearAverage, lowGradeStudentIds } = await import(pathToFileURL(join(ROOT, "src/lib/tt22.ts")).href);
+const { fetchAllRows } = await import(pathToFileURL(join(ROOT, "src/lib/supabase/fetch-all.ts")).href);
 const { olderMessagesPredicate, mergeChatMessages, STAFF_CHAT_ROLES } =
-  await import(join(ROOT, "src/lib/chat.ts"));
-const { messageLinkForRole, teacherChatLinkForRole } = await import(
-  join(ROOT, "src/lib/message-link.ts")
-);
-const { monthParts, prevMonthOf } = await import(
-  join(ROOT, "src/lib/utils.ts")
-);
+  await import(pathToFileURL(join(ROOT, "src/lib/chat.ts")).href);
+const { messageLinkForRole, teacherChatLinkForRole } = await import(pathToFileURL(join(ROOT, "src/lib/message-link.ts")).href);
+const { monthParts, prevMonthOf } = await import(pathToFileURL(join(ROOT, "src/lib/utils.ts")).href);
 
 const MIGRATION = read("supabase/migrations/20261105_r2_security_fixes.sql");
 
@@ -581,7 +573,7 @@ test("R6-01: sendEmail tra sent=1, failed=1 khi 1/2 dia chi loi", async () => {
   // EMAIL_PROVIDER ep duong env, bo qua vault).
   process.env.EMAIL_PROVIDER = "resend";
   process.env.RESEND_API_KEY = "test";
-  const { sendEmail } = await import(join(ROOT, "src/lib/email.ts"));
+  const { sendEmail } = await import(pathToFileURL(join(ROOT, "src/lib/email.ts")).href);
   const origFetch = globalThis.fetch;
   const statuses = [200, 500];
   let call = 0;
@@ -2490,7 +2482,7 @@ const {
   parseKhbd,
   parseKhbdStrict,
   renderKhbdText,
-} = await import(join(ROOT, "src/lib/khbd.ts"));
+} = await import(pathToFileURL(join(ROOT, "src/lib/khbd.ts")).href);
 
 test("CR-035: parseKhbd roundtrip va tu choi input hong", () => {
   const k = emptyKhbd();
@@ -2711,9 +2703,7 @@ test("CR-035/Codex: approvals scope activity theo TAT CA lop ke ca archived", ()
 });
 
 // ===== CR-037: Studio DC-01 KHBD quality - sanitizer + prompt + wiring =====
-const { sanitizeKhbdDoc } = await import(
-  join(ROOT, "src/lib/tvc/khbd-doc.ts")
-);
+const { sanitizeKhbdDoc } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/khbd-doc.ts")).href);
 
 const KHBD_OK = {
   title: "Bai test",
@@ -2772,10 +2762,8 @@ test("CR-037: route + prompt + fallback dung khung CV 5512", () => {
 });
 
 // ===== CR-038: multi-role (concurrent_roles) - role set helpers + wiring =====
-const { effectiveRoles, hasRole, hasAnyRole, CONCURRENT_ELIGIBLE } = await import(
-  join(ROOT, "src/lib/roles.ts")
-);
-const { mergedNav, NAV } = await import(join(ROOT, "src/lib/nav.ts"));
+const { effectiveRoles, hasRole, hasAnyRole, CONCURRENT_ELIGIBLE } = await import(pathToFileURL(join(ROOT, "src/lib/roles.ts")).href);
+const { mergedNav, NAV } = await import(pathToFileURL(join(ROOT, "src/lib/nav.ts")).href);
 
 test("CR-038: effectiveRoles gop role chinh + concurrent hop le", () => {
   const p = { role: "gvcn", concurrent_roles: ["gvbm", "to_truong"] };
@@ -2851,9 +2839,7 @@ test("CR-038: khong con .in(\"role\"/.eq(\"role\" loc concurrent o cac query sta
 });
 
 // --- CR-040: username theo ten that -----------------------------------------
-const { usernameBase, suggestUsername, emailLocal } = await import(
-  join(ROOT, "src/lib/username.ts")
-);
+const { usernameBase, suggestUsername, emailLocal } = await import(pathToFileURL(join(ROOT, "src/lib/username.ts")).href);
 
 test("CR-040: usernameBase bo dau, lay ten + viet tat ho dem", () => {
   assert.equal(usernameBase("Lê Duy Linh"), "linhld");
@@ -3145,9 +3131,7 @@ test("r29: save/update material validate content truoc khi ghi DB", () => {
 });
 
 // --- CR-050: ma de hoan vi ------------------------------------------------
-const { shufflePicked } = await import(
-  join(ROOT, "src/lib/tvc/exam-shuffle.ts")
-);
+const { shufflePicked } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/exam-shuffle.ts")).href);
 
 const mkPicked = (id, qtype, context = null) => ({ q: { id, qtype, context, stem: `q${id}` } });
 
@@ -3198,10 +3182,11 @@ test("CR-051: de thi sach dap an - appendix khong con trong doc", () => {
   const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
   // buildExamDoc tra {doc, answerDoc} - dap an la DocContent rieng
   assert.match(route, /const \{ doc: docCT, answerDoc: ansCT \} = buildExamDoc/);
-  // doc khong con appendix nhung dap an
-  const ret = route.slice(route.indexOf("return {\n    doc: {"));
-  const end = ret.indexOf("answerDoc,\n  };");
-  assert.ok(end > 0, "return {doc, answerDoc} khong tim thay");
+  // doc khong con appendix nhung dap an: response tra de (docCT) va
+  // dap an (docDA: ansCT) rieng, phan de khong chua appendix.
+  const ret = route.slice(route.indexOf("doc: docCT,"));
+  const end = ret.indexOf("docDB,");
+  assert.ok(end > 0, "response {doc, docDA} khong tim thay");
   const docPart = ret.slice(0, end);
   assert.ok(!/appendix/.test(docPart), "de thi con appendix lo dap an");
 });
@@ -3225,7 +3210,7 @@ test("CR-051: trang chi tiet material nhom cac van ban cung pack", () => {
 
 // --- CR-052: pptx tuong tac -------------------------------------------------
 test("CR-052: docToPptx interactive - answer shape an + interactiveSeq trong XML", async () => {
-  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const { docToPptx } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/pptx.ts")).href);
   const JSZip = (await import("jszip")).default;
   const doc = {
     title: "T", author: "a", sections: [{
@@ -3256,7 +3241,7 @@ test("CR-052: docToPptx interactive - answer shape an + interactiveSeq trong XML
 });
 
 test("CR-052: docToPptx khong interactive - khong timing, dap an in san", async () => {
-  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const { docToPptx } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/pptx.ts")).href);
   const JSZip = (await import("jszip")).default;
   const doc = {
     title: "T", author: "a", sections: [{
@@ -3276,8 +3261,10 @@ test("CR-052: docToPptx khong interactive - khong timing, dap an in san", async 
 test("CR-052: doc.interactive flag + DC-06 fields + TTS wiring trong route", () => {
   const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
   assert.match(route, /doc\.interactive = true/);
-  assert.match(route, /input\.audio === "yes"/);
-  assert.match(route, /synthesizeSpeech/);
+  // CR-056: TTS tach sang audio/route.ts voi budget rieng
+  const audio = readSrc("src/app/api/studio/tools/[code]/audio/route.ts");
+  assert.match(audio, /input\.audio/);
+  assert.match(audio, /synthesizeSpeech/);
   const reg = readSrc("src/lib/tvc/registry.ts");
   assert.match(reg, /key: "interactive"/);
   assert.match(reg, /key: "audio"/);
@@ -3295,13 +3282,12 @@ test("AC-51.5: pack simple chi tra de + dap an, full moi co du phong + bien ban"
 });
 
 test("AC-52.4: DC-06 TTS ton trong route budget - skip khi het han", () => {
-  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
-  // CR-052 audio block: kiem tra budget truoc moi section
-  const dc06 = route.slice(route.indexOf('code === "DC-06" && doc?.sections'));
-  assert.match(dc06, /budget < 15_000\) break/);
-  assert.match(dc06, /ROUTE_BUDGET_MS - \(Date\.now\(\) - routeStartedAt\)/);
+  // CR-056: audio tach sang route rieng voi TTS_BUDGET_MS (~100s)
+  const audio = readSrc("src/app/api/studio/tools/[code]/audio/route.ts");
+  assert.match(audio, /budget < 15_000\) break/);
+  assert.match(audio, /TTS_BUDGET_MS - 10_000/);
   // khong key/quota -> bo am thanh, van tra doc
-  assert.match(dc06, /quotaOk/);
+  assert.match(audio, /quotaOk/);
 });
 
 test("QA r30: input.subject chi tra cuu khi tool khai bao field subject", () => {
@@ -3319,7 +3305,7 @@ test("QA r30: input.subject chi tra cuu khi tool khai bao field subject", () => 
 });
 
 test("QA r30: interactive trich dap an tu note block + dong nhung giua doan", async () => {
-  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const { docToPptx } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/pptx.ts")).href);
   const JSZip = (await import("jszip")).default;
   // content that AI that bam prompt cu: dap an nam trong note block.
   const doc = {
@@ -3354,7 +3340,7 @@ test("QA r30: DC-06 prompt co nhanh interactive yeu cau dap an dong rieng", () =
 });
 
 test("r30: inline split khong an van thuong 'trả lời:' + NOTE_TAIL_CUT khong cat dap an hop le", async () => {
-  const { docToPptx } = await import(join(ROOT, "src/lib/tvc/pptx.ts"));
+  const { docToPptx } = await import(pathToFileURL(join(ROOT, "src/lib/tvc/pptx.ts")).href);
   const JSZip = (await import("jszip")).default;
   // "HS trả lời:" la noi dung binh thuong - khong duoc bien thanh reveal.
   const doc = {
@@ -3387,10 +3373,12 @@ test("r30: save/gen state guards + TTS doc ban alias (aiDocRaw)", () => {
   assert.match(runner, /disabled=\{saving \|\| pending \|\| !!aiJob\.job\}/);
   // pack state chi reset khi chap nhan ket qua moi
   assert.match(runner, /resetPackState\(\);[\s\S]{0,80}setDoc\(data\.doc\)/);
-  const route = readSrc("src/app/api/studio/tools/[code]/generate/route.ts");
-  // DC-06 TTS doc tu aiDocRaw (con alias HSxxx) - khong leak ten that
-  assert.match(route, /const ttsDoc = aiDocRaw \?\? doc/);
-  assert.match(route, /ttsDoc\.sections\?\.\[i\]/);
+  // DC-06 TTS (CR-056 audio route): text truyen qua mask() = pseudonymizeNames
+  // tren roster truong - khong leak ten that len TTS provider.
+  const audio = readSrc("src/app/api/studio/tools/[code]/audio/route.ts");
+  assert.match(audio, /pseudonymizeNames/);
+  assert.match(audio, /schoolPiiNames/);
+  assert.match(audio, /mask\(text\.trim\(\)\.slice\(0, 800\)\)/);
 });
 
 test("r32: poll timeout la terminal - finish(onFail) chu khong stop im lang", () => {
@@ -3405,7 +3393,7 @@ test("r33-1: saveYearEndDecision tai tinh server-side - client snapshot bi bo qu
   const a = read("src/app/(app)/records/hoc-ba/actions.ts");
   // gia tri client chi la goi y: server goi getStudentYearEndBundle va
   // so sanh input voi comp.* - lech thi bat buoc can cu + ghi chu.
-  assert.match(a, /getStudentYearEndBundle\(input\.studentId, input\.academicYearId\)/);
+  assert.match(a, /getStudentYearEndBundle\(\s*input\.studentId,\s*input\.academicYearId,/);
   assert.match(a, /input\.kqht !== comp\.kqht\.value/);
   assert.match(a, /input\.promotion !== comp\.promotion\.value/);
   // snapshot ghi tu comp.* server, KHONG tu input.computedSnapshot
@@ -3417,7 +3405,7 @@ test("r33-1: saveYearEndDecision tai tinh server-side - client snapshot bi bo qu
 
 test("r33-3: luu nhap tren row rejected giu nguyen status (trigger chan rejected->draft)", () => {
   const a = read("src/app/(app)/records/hoc-ba/actions.ts");
-  assert.match(a, /\.\.\.\(submit \? \{ status: payload\.status \} : \{\}\)/);
+  assert.match(a, /\.\.\.\(submit \? \{ status: "submitted" \} : \{\}\)/);
 });
 
 test("r33-4: BGH path chan sua decided_by/decided_at (attribution bat bien)", () => {

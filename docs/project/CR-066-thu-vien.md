@@ -81,3 +81,5 @@ ban kem theo `school_features`.
   `module_disabled`.
 - AC-66.6: UI qua Playwright: them sach -> muon -> tra; portal HS
   thay sach dang muon; report register render.
+- AC-66.7 (r1 hardening): revoke PUBLIC tren mutating RPC, restrict
+  FK, check constraints, module flag o read path.

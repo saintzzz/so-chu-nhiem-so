@@ -47,7 +47,7 @@ export function ApplyForm({
     setBusy(false);
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setErr(json.message ?? "Nộp hồ sơ không thành công. Vui lòng thử lại.");
+      setErr(json.error ?? "Nộp hồ sơ không thành công. Vui lòng thử lại.");
       return;
     }
     setDone(json.tracking_code);

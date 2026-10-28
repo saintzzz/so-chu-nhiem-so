@@ -5,14 +5,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const { redactPiiText, pseudonymizeNames, deanonymizeNames, minimizePrompt } =
-  await import(join(ROOT, "src/lib/ai-privacy.ts"));
+  await import(pathToFileURL(join(ROOT, "src/lib/ai-privacy.ts")).href);
 
 // --- redactPiiText --------------------------------------------------------
 test("redact: email bi cat", () => {
@@ -360,10 +360,17 @@ test("guard r10: deanon tren cau truc da parse, khong tren chuoi JSON", () => {
 });
 
 test("guard r10: TTS doc doc con alias - khong gui ten that cho TTS", () => {
-  const src = read("src/app/api/studio/tools/[code]/generate/route.ts");
-  assert.match(src, /extractDialogueTurns\(aiDocRaw \?\? doc\)/,
-    "TTS phai doc aiDocRaw (con alias), khong phai doc da deanon");
-  assert.match(src, /minimizeDeep\(input/,
+  // CR-056: TTS chuyen sang audio/route.ts - doc client gui da deanon,
+  // phai alias lai (mask) truoc khi goi provider ngoai.
+  const src = read("src/app/api/studio/tools/[code]/audio/route.ts");
+  assert.match(src, /pseudonymizeNames\(t, roster\.names\)/,
+    "audio route phai alias lai truoc khi gui cho TTS provider");
+  assert.match(src, /synthesizeDialogue\(maskedTurns/,
+    "dialogue turns phai masked truoc khi synthesize");
+  assert.match(src, /synthesizeSpeech\(mask\(/,
+    "speech text phai masked truoc khi synthesize");
+  const gen = read("src/app/api/studio/tools/[code]/generate/route.ts");
+  assert.match(gen, /minimizeDeep\(input/,
     "input phai minimizeDeep truoc khi buildPrompt stringify");
 });
 
@@ -455,9 +462,7 @@ test("guard r11: deanon boundary Unicode-aware", () => {
 
 // --- r12 -------------------------------------------------------------------
 
-const { collectUsedNames } = await import(
-  join(ROOT, "src/lib/ai-privacy.ts")
-);
+const { collectUsedNames } = await import(pathToFileURL(join(ROOT, "src/lib/ai-privacy.ts")).href);
 
 test("r12: collectUsedNames chi giu ten co trong input caller", () => {
   const roster = [

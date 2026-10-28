@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+const read = (p) => readFileSync(join(ROOT, p), "utf8").replaceAll(String.fromCharCode(13,10), String.fromCharCode(10));
 
 const WRAP = read("supabase/migrations/20261224_cr057_rls_auth_uid_wrap.sql");
 const HARD = read("supabase/migrations/20261225_cr057_scalability_hardening.sql");

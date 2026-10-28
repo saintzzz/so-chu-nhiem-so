@@ -438,7 +438,10 @@ export async function createNextStage(input: {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (prevErr) return { error: `Không đọc được miễn môn trước đó: ${prevErr.message}` };
+  if (prevErr) {
+    console.error("[hocba] prev exempt:", prevErr.message);
+    return { error: "Không đọc được miễn môn trước đó." };
+  }
   const { error } = await supabase.from("year_end_decisions").insert({
     student_id: input.studentId,
     school_id: profile.school_id,

@@ -31,11 +31,14 @@
 9. Thong bao PH khi phat hanh dot thu qua notifications/email san co.
 
 ## AC
-1. Tao khoan thu, gan khoi/lop; PH/HS khong thay khi module OFF.
-2. Dot thu tinh hoa don dung: bat buoc + dang ky - mien giam.
-3. Thu tung phan -> partial; du -> paid; mien 100% -> exempt.
-4. Bien lai khong trung so (per school, atomic).
-5. Bao cao theo lop: da thu/chua thu/tong, export CSV.
+1. AC-64.1: Tao khoan thu, gan khoi/lop; PH/HS khong thay khi module OFF.
+2. AC-64.2: Dot thu tinh hoa don dung: bat buoc + dang ky - mien giam.
+3. AC-64.3: Thu tung phan -> partial; du -> paid; mien 100% -> exempt;
+   finance actions chan role + module, RPC atomic.
+4. AC-64.4: Bien lai khong trung so (per school, atomic); migration
+   fee_* co RLS tenant + parent view + RPC hardening.
+5. AC-64.5: Bao cao theo lop: da thu/chua thu/tong, export CSV;
+   finance UI sach convention.
 6. Module OFF -> route + action + nav deu mat.
 7. ke_toan/bgh/admin thao tac duoc, gvcn/gvbm/phu_huynh khong; so_gd chi doc.
 

@@ -24,7 +24,14 @@ function mapRpcError(message: string): string {
   if (message.includes("class_not_found")) return "Không tìm thấy lớp.";
   if (message.includes("invalid_window")) return "Khoảng thời gian không hợp lệ.";
   if (message.includes("forbidden")) return "Bạn không có quyền thực hiện thao tác này.";
-  return message;
+  console.error("[lms] rpc:", message);
+  return "Lỗi hệ thống. Vui lòng thử lại.";
+}
+
+function rpcFail(db: { message: string }) {
+  const { message: raw } = db;
+  const msg = mapRpcError(raw);
+  return { error: msg };
 }
 
 export async function assignSession(input: {
@@ -34,7 +41,7 @@ export async function assignSession(input: {
   closes_at: string;
   duration_minutes: number;
   title?: string;
-}) {
+}): Promise<{ ok?: boolean; sessionId?: string; questionCount?: number; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -46,13 +53,13 @@ export async function assignSession(input: {
     p_duration: input.duration_minutes,
     p_title: input.title ?? null,
   });
-  if (error) return { error: mapRpcError(error.message) };
+  if (error) return rpcFail(error);
   revalidatePath("/lms");
   const d = data as { session_id?: string; question_count?: number } | null;
   return { ok: true, sessionId: d?.session_id, questionCount: d?.question_count ?? 0 };
 }
 
-export async function closeSession(sessionId: string) {
+export async function closeSession(sessionId: string): Promise<{ ok?: boolean; error?: string }> {
   const deny = await guard();
   if (deny) return { error: deny };
   const supabase = await createClient();
@@ -63,7 +70,7 @@ export async function closeSession(sessionId: string) {
     .eq("id", sessionId)
     .eq("status", "open")
     .select("id");
-  if (error) return { error: error.message };
+  if (error) return rpcFail(error);
   if (!updated?.length) return { error: "Bài đã đóng hoặc không tồn tại." };
   revalidatePath("/lms");
   return { ok: true };

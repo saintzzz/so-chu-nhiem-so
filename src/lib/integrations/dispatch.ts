@@ -26,6 +26,23 @@ function envSecret(name: string | null): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+// SSRF guard: chi https cong khai; chan localhost/private/link-local/metadata.
+// Kiem tra lai khi dispatch du endpoint da duoc validate luc luu connector.
+function safeEndpoint(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return false;
+    if (h.startsWith("[")) return false; // ipv6 literal
+    if (/^(0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return false;
+    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(h)) return false; // cgnat
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function postJson(
   url: string,
   body: string,
@@ -65,6 +82,7 @@ export async function dispatchEvent(
     case "webhook":
     case "custom": {
       if (!conn.endpoint_url) return { ok: false, error: "endpoint_required" };
+      if (!safeEndpoint(conn.endpoint_url)) return { ok: false, error: "invalid_endpoint" };
       if (conn.auth_type === "hmac_sha256") {
         const secret = envSecret(conn.secret_name);
         if (!secret) return { ok: false, error: "secret_env_missing" };
@@ -90,6 +108,7 @@ export async function dispatchEvent(
       if (!endpoint || !secret) {
         return { ok: false, error: "credentials_required" };
       }
+      if (!safeEndpoint(endpoint)) return { ok: false, error: "invalid_endpoint" };
       const envelope = `<Envelope><Header><SchoolCode>${conn.config.school_code ?? ""}</SchoolCode><Token>${createHmac("sha256", secret).update(ev.idempotency_key ?? ev.id).digest("hex")}</Token></Header><Body>${body.replace(/</g, "&lt;")}</Body></Envelope>`;
       try {
         const res = await fetch(endpoint, {

@@ -7,6 +7,7 @@ import { join } from "node:path";
 const root = new URL("..", import.meta.url).pathname;
 const read = (p) => readFileSync(join(root, p), "utf8");
 const M = read("supabase/migrations/20261248_cr072_integration.sql");
+const M2 = read("supabase/migrations/20261249_cr072_int_r1.sql");
 const DOC = read("docs/project/CR-072-integration-framework.md");
 
 test("AC-72.1: CR doc + module key + nav", () => {
@@ -42,6 +43,22 @@ test("AC-72.3: RPC guards - role + module + service_role boundary", () => {
   assert.match(M, /v_attempts >= 6[\s\S]*'dead'/);
 });
 
+test("AC-72.3b: r1 fixes - dequeue module gate, enqueue bgh|admin, SSRF, int_receive", () => {
+  const deq = M2.slice(M2.indexOf("function public.int_dequeue"), M2.indexOf("$$;", M2.indexOf("function public.int_dequeue")));
+  assert.match(deq, /int_module_enabled\(i\.school_id\)/, "dequeue ton trong module gate");
+  const enq = M2.slice(M2.indexOf("function public.int_enqueue"), M2.indexOf("$$;", M2.indexOf("function public.int_enqueue")));
+  assert.match(enq, /array\['bgh','admin'\]/, "enqueue chi bgh|admin");
+  assert.doesNotMatch(enq, /gvcn|gvbm|ke_toan/, "staff khong enqueue truc tiep");
+  assert.match(M2, /create or replace function public\.int_endpoint_ok/);
+  assert.match(M2, /invalid_endpoint/);
+  assert.match(M2, /192\\\.168|169\\\.254/, "chan private IP");
+  const rcv = M2.slice(M2.indexOf("function public.int_receive"), M2.indexOf("$$;", M2.indexOf("function public.int_receive")));
+  assert.match(rcv, /service_role/, "inbound qua service_role");
+  assert.match(rcv, /module_disabled/);
+  assert.match(rcv, /on conflict \(source, idem_key\) do nothing/);
+  assert.match(M2, /grant execute on function public\.int_receive\(uuid, text, text, jsonb, text, text\) to authenticated, service_role/);
+});
+
 test("AC-72.4: worker + dispatch - cron auth, signature, no secrets in code", () => {
   const W = read("src/app/api/cron/integration-worker/route.ts");
   assert.match(W, /CRON_SECRET/);
@@ -54,6 +71,8 @@ test("AC-72.4: worker + dispatch - cron auth, signature, no secrets in code", ()
   assert.match(D, /process\.env\[name\]/);
   assert.match(D, /credentials_required/);
   assert.match(D, /AbortSignal\.timeout/);
+  assert.match(D, /safeEndpoint/);
+  assert.match(D, /invalid_endpoint/);
 });
 
 test("AC-72.5: UI conventions", () => {

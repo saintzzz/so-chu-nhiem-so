@@ -241,6 +241,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Sổ đăng ký cá biệt", href: "/library/register", module: "thu_vien" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
+        { label: "Điều động giáo viên", href: "/schedule/mobilization", module: "dieu_dong" },
         { label: "Sổ đầu bài toàn trường", href: "/school/journals" },
         { label: "Phân tích điểm thi", href: "/school/exam-analytics", module: "ky_thi_danh_gia" },
       ],

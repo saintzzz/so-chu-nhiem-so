@@ -20,6 +20,7 @@ export const MODULES = [
   { key: "thu_vien", label: "Thư viện" },
   { key: "bien_dong_hs", label: "Biến động học sinh" },
   { key: "xet_tot_nghiep", label: "Xét tốt nghiệp" },
+  { key: "dieu_dong", label: "Điều động giáo viên" },
   { key: "tich_hop", label: "Tích hợp & kết nối" },
   { key: "to_chuyen_mon", label: "Tổ chuyên môn" },
   { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },

@@ -6,8 +6,9 @@ moi nam o day. Moi item ghi ro dieu kien unblock.
 ## 1. VNeID dang nhap (production)
 - **Can**: dang ky dinh danh to chuc theo ND 69/2024, hoac hop dong vendor
   C06/LGSP (VNPT/FPT...). Khong co OAuth public cho app doc lap.
-- **Da chuan bi**: hook design `vneid_subject_id` tren profiles + flow mapping
-  sau SSO; chi cho vendor spec de implement.
+- **Da chuan bi**: schema `vneid_subject_id` tren `students` + `profiles`
+  (unique partial index, migration 20261255) + SSO hook contract
+  (`docs/project/CR-074-vneid-prep.md`); chi cho vendor spec de implement.
 - **Khong lam fake**: khong gia lap OAuth VNeID trong app.
 
 ## 2. Connector CSDL hoc ba so Bo GD&DT (QD 3016)

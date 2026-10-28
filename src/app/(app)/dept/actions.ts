@@ -264,3 +264,42 @@ export async function setSchoolModule(
   revalidatePath("/", "layout");
   return {};
 }
+
+/* ---------- CR-073: ban goi theo phan he - bat/tat hang loat ---------- */
+
+export async function setSuiteModules(
+  schoolId: string,
+  suite: string,
+  enabled: boolean,
+): Promise<{ error?: string }> {
+  const deny = await checkActionRole(["so_gd", "admin"]);
+  if (deny) return { error: deny };
+  const { SUITES } = await import("@/lib/modules");
+  const s = SUITES.find((x) => x.key === suite);
+  if (!s) return { error: "Phân hệ không hợp lệ." };
+
+  const supabase = await createClient();
+  const me = await getProfile();
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("school_features").upsert(
+    s.modules.map((m) => ({
+      school_id: schoolId,
+      module: m,
+      enabled,
+      updated_at: now,
+      updated_by: me?.id ?? null,
+    })),
+    { onConflict: "school_id,module" },
+  );
+  if (error) return { error: "Không lưu được cấu hình phân hệ." };
+
+  await logAudit(supabase, {
+    action: enabled ? "suite.enable" : "suite.disable",
+    entity: "school_features",
+    entityId: `${schoolId}:suite:${suite}`,
+    payload: { schoolId, suite, enabled, modules: [...s.modules] },
+  });
+  revalidatePath("/dept/modules");
+  revalidatePath("/", "layout");
+  return {};
+}

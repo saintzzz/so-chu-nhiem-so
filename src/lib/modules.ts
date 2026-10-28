@@ -30,6 +30,38 @@ export const MODULES = [
 
 export type ModuleKey = (typeof MODULES)[number]["key"];
 
+// CR-073: packaging theo 4 phan he kinh doanh. Entitlement thuc van la
+// school_features per-module; suite = gom nhom de ban goi + bat/tat hang loat
+// trong /dept/modules. Dashboard/report cot loi nam trong CORE (khong liet ke).
+export const SUITES = [
+  {
+    key: "quan_ly",
+    label: "Quản lý trường & hành chính",
+    modules: [
+      "tuyen_sinh", "khoan_thu", "bien_dong_hs", "thu_vien", "hoc_ba",
+      "xet_tot_nghiep", "chuyen_can", "dieu_dong", "van_hanh_nang_cao",
+    ],
+  },
+  {
+    key: "day_hoc",
+    label: "Hỗ trợ dạy & học",
+    modules: ["studio", "lms_lite", "ky_thi_danh_gia", "to_chuyen_mon"],
+  },
+  {
+    key: "ph_hocsinh",
+    label: "Chăm sóc PH-HS & giữ chân",
+    modules: ["phu_huynh_hoat_dong", "tu_van_an_toan", "thi_dua"],
+  },
+  {
+    key: "baocao_tichhop",
+    label: "Dashboard, báo cáo & tích hợp",
+    modules: ["tich_hop"],
+  },
+] as const;
+export type SuiteKey = (typeof SUITES)[number]["key"];
+export const suiteOf = (m: ModuleKey): SuiteKey | null =>
+  SUITES.find((s) => (s.modules as readonly string[]).includes(m))?.key ?? null;
+
 // Set cac module bi TAT cua truong hien tai. Dedupe theo request.
 export const disabledModules = cache(async (): Promise<Set<string>> => {
   const profile = await getProfile();

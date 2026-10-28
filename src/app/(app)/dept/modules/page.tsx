@@ -2,8 +2,8 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { must } from "@/lib/supabase/must";
 import { PageHeader } from "@/components/page-header";
-import { MODULES } from "@/lib/modules";
-import { ModuleMatrix } from "./toggles";
+import { MODULES, SUITES } from "@/lib/modules";
+import { ModuleMatrix, SuitePanel } from "./toggles";
 
 // CR-060: admin/so_gd bat-tat module theo truong. Khong co row = mac dinh BAT.
 export default async function DeptModulesPage() {
@@ -34,6 +34,15 @@ export default async function DeptModulesPage() {
       <PageHeader
         title="Module theo trường"
         description="Bật/tắt module bán kèm cho từng trường - menu và route của module tắt sẽ bị ẩn với toàn bộ tài khoản trường đó"
+      />
+      <SuitePanel
+        schools={(schools ?? []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          code: s.code ?? "",
+        }))}
+        suites={SUITES}
+        matrix={matrix}
       />
       <ModuleMatrix
         schools={(schools ?? []).map((s) => ({

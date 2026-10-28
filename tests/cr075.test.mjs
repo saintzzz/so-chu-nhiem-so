@@ -25,13 +25,20 @@ test("migration: tables + RLS + RPC + gate", () => {
   ]) assert.ok(mig.includes(s), `missing ${s}`);
   assert.ok(!mig.includes("create policy yt_health_write"), "no direct write policy");
   assert.match(mig, /grant execute on function public\.yt_upsert_health.*to authenticated/);
+  // r1: revoke DML + gvcn bound to school + student-school integrity
+  assert.ok(mig.includes("revoke insert, update, delete on public.yt_health_records"));
+  assert.ok(mig.includes("revoke insert, update, delete on public.yt_bhyt_cards"));
+  assert.ok(mig.includes("and c.school_id = p_school"), "gvcn branch tenant-bound");
+  assert.ok(mig.includes("cross_tenant_student"), "student-school integrity guard");
 });
 
-test("page: roles + module gate + must()", () => {
-  assert.match(page, /requireRoles\(\["bgh", "admin", "pht"\]\)/);
+test("page: roles + module gate + must() + least-data", () => {
+  assert.match(page, /requireRoles\(\["bgh", "admin", "pht", "gvcn"\]\)/);
   assert.ok(page.includes('requireModule("y_te_bhyt")'));
   assert.ok(page.includes('must('));
   assert.ok(page.includes(".eq(\"school_id\""));
+  assert.ok(!page.includes('.order("full_name")'), "no raw full_name sort");
+  assert.ok(page.includes('.in("student_id", studentIds)'), "per-class fetch");
 });
 
 test("actions: role check + module assert + rpc", () => {

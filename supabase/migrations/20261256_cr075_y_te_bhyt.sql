@@ -48,15 +48,23 @@ create table public.yt_bhyt_cards (
 alter table public.yt_bhyt_cards enable row level security;
 create index yt_bhyt_school on public.yt_bhyt_cards(school_id);
 
--- Tenant guard: row.school_id phai bang truong cua caller (service bo qua).
+-- Tenant guard: row.school_id phai bang truong cua caller (service bo qua)
+-- VA bang truong cua lop HS (chan ca service-role import sai student).
 create or replace function public.yt_tenant_guard()
 returns trigger language plpgsql security definer set search_path = public as
 $$
 declare
   v_caller uuid := public.my_school_id();
+  v_stu_school uuid;
 begin
   if v_caller is not null and new.school_id is distinct from v_caller then
     raise exception 'cross_tenant';
+  end if;
+  select c.school_id into v_stu_school
+    from public.students s join public.classes c on c.id = s.class_id
+    where s.id = new.student_id;
+  if v_stu_school is not null and new.school_id is distinct from v_stu_school then
+    raise exception 'cross_tenant_student';
   end if;
   return new;
 end $$;
@@ -74,13 +82,16 @@ $$ select p_school = (select my_school_id())
          or exists (
            select 1 from public.students s
            join public.classes c on c.id = s.class_id
-           where s.id = p_student and c.gvcn_id = (select auth.uid()))) $$;
+           where s.id = p_student and c.gvcn_id = (select auth.uid())
+             and c.school_id = p_school)) $$;
 
 create policy yt_health_read on public.yt_health_records for select to authenticated
   using (public.yt_can_read(student_id, school_id));
 create policy yt_bhyt_read on public.yt_bhyt_cards for select to authenticated
   using (public.yt_can_read(student_id, school_id));
--- Khong co policy insert/update/delete -> write chi qua RPC definer.
+-- Khong co policy insert/update/delete + revoke DML -> write chi qua RPC.
+revoke insert, update, delete on public.yt_health_records from authenticated;
+revoke insert, update, delete on public.yt_bhyt_cards from authenticated;
 
 -- Write RPCs: bgh|admin cung truong + module bat + HS cung truong.
 create or replace function public.yt_upsert_health(

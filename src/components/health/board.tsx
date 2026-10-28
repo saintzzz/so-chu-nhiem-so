@@ -67,6 +67,15 @@ export default function HealthBoard({
   const setH = (k: string, v: string) => setHealthForm((f) => f && { ...f, [k]: v });
   const setB = (k: string, v: string) => setBhytForm((f) => f && { ...f, [k]: v });
 
+  // Inline validation (constraint DB: height 30-250, weight 2-300, from<=to).
+  const numErr = (v: string, min: number, max: number) =>
+    v.trim() === "" ? null : (!Number.isFinite(Number(v)) || Number(v) < min || Number(v) > max
+      ? `không hợp lệ (${min}-${max})` : null);
+  const hHeightErr = healthForm ? numErr(healthForm.height, 30, 250) : null;
+  const hWeightErr = healthForm ? numErr(healthForm.weight, 2, 300) : null;
+  const bhytDateErr = bhytForm && bhytForm.from && bhytForm.to && bhytForm.to < bhytForm.from
+    ? "Hạn đến phải sau hạn từ." : null;
+
   return (
     <div className="space-y-4">
       <ClassChips
@@ -96,7 +105,7 @@ export default function HealthBoard({
           </thead>
           <tbody>
             {sorted.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Chưa có học sinh nào trong lớp.</td></tr>
+              <tr><td colSpan={canWrite ? 7 : 6} className="px-4 py-8 text-center text-muted-foreground">Chưa có học sinh nào trong lớp.</td></tr>
             )}
             {sorted.map((s) => {
               const h = latestOf(s.id);
@@ -152,9 +161,11 @@ export default function HealthBoard({
             <label className="text-xs text-muted-foreground">Ngày khám
               <input type="date" value={healthForm.checkedAt} onChange={(e) => setH("checkedAt", e.target.value)} className={input} /></label>
             <label className="text-xs text-muted-foreground">Chiều cao (cm)
-              <input inputMode="decimal" value={healthForm.height} onChange={(e) => setH("height", e.target.value)} className={input} placeholder="145" /></label>
+              <input inputMode="decimal" value={healthForm.height} onChange={(e) => setH("height", e.target.value)} className={input} placeholder="145" />
+              {hHeightErr && <span className="text-xs text-destructive">Chiều cao {hHeightErr}</span>}</label>
             <label className="text-xs text-muted-foreground">Cân nặng (kg)
-              <input inputMode="decimal" value={healthForm.weight} onChange={(e) => setH("weight", e.target.value)} className={input} placeholder="40" /></label>
+              <input inputMode="decimal" value={healthForm.weight} onChange={(e) => setH("weight", e.target.value)} className={input} placeholder="40" />
+              {hWeightErr && <span className="text-xs text-destructive">Cân nặng {hWeightErr}</span>}</label>
             <label className="text-xs text-muted-foreground">Răng
               <input value={healthForm.dental} onChange={(e) => setH("dental", e.target.value)} className={input} placeholder="Tốt / Sâu 2 răng" /></label>
             <label className="text-xs text-muted-foreground">Thị lực trái
@@ -167,7 +178,7 @@ export default function HealthBoard({
           <label className="block text-xs text-muted-foreground">Ghi chú
             <AutoGrowTextarea value={healthForm.note} onChange={(e) => setH("note", e.target.value)} /></label>
           <div className="flex gap-2">
-            <button type="button" disabled={pending}
+            <button type="button" disabled={pending || !!hHeightErr || !!hWeightErr}
               onClick={() => act(() => recordHealth({
                 studentId: healthForm.studentId, checkedAt: healthForm.checkedAt,
                 height: healthForm.height, weight: healthForm.weight,
@@ -198,12 +209,13 @@ export default function HealthBoard({
             <label className="text-xs text-muted-foreground">Hiệu lực từ
               <input type="date" value={bhytForm.from} onChange={(e) => setB("from", e.target.value)} className={input} /></label>
             <label className="text-xs text-muted-foreground">Hiệu lực đến
-              <input type="date" value={bhytForm.to} onChange={(e) => setB("to", e.target.value)} className={input} /></label>
+              <input type="date" value={bhytForm.to} onChange={(e) => setB("to", e.target.value)} className={input} />
+              {bhytDateErr && <span className="text-xs text-destructive">{bhytDateErr}</span>}</label>
           </div>
           <label className="block text-xs text-muted-foreground">Ghi chú
             <AutoGrowTextarea value={bhytForm.note} onChange={(e) => setB("note", e.target.value)} /></label>
           <div className="flex gap-2">
-            <button type="button" disabled={pending || !bhytForm.status}
+            <button type="button" disabled={pending || !bhytForm.status || !!bhytDateErr}
               onClick={() => act(() => upsertBhyt({
                 studentId: bhytForm.studentId, cardNo: bhytForm.cardNo, kcbb: bhytForm.kcbb,
                 from: bhytForm.from, to: bhytForm.to, status: bhytForm.status, note: bhytForm.note,

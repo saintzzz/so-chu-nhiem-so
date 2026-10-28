@@ -26,13 +26,24 @@ export async function recordHealth(input: {
 }): Promise<string | null> {
   const deny = await guard();
   if (deny) return deny;
+  const num = (s: string, label: string, min: number, max: number) => {
+    if (s.trim() === "") return { v: null };
+    const n = Number(s);
+    if (!Number.isFinite(n) || n < min || n > max) {
+      return { err: `${label} không hợp lệ (${min}-${max}).` };
+    }
+    return { v: n };
+  };
+  const h = num(input.height, "Chiều cao", 30, 250);
+  if (h.err) return h.err;
+  const w = num(input.weight, "Cân nặng", 2, 300);
+  if (w.err) return w.err;
   const supabase = await createClient();
-  const num = (s: string) => (s.trim() === "" ? null : Number(s));
   const { data, error } = await supabase.rpc("yt_upsert_health", {
     p_student: input.studentId,
     p_checked_at: input.checkedAt || null,
-    p_height: num(input.height),
-    p_weight: num(input.weight),
+    p_height: h.v,
+    p_weight: w.v,
     p_vleft: input.vleft, p_vright: input.vright, p_dental: input.dental,
     p_conclusion: input.conclusion, p_note: input.note,
   });
@@ -47,6 +58,9 @@ export async function upsertBhyt(input: {
 }): Promise<string | null> {
   const deny = await guard();
   if (deny) return deny;
+  if (input.from && input.to && input.to < input.from) {
+    return "Hạn đến phải sau hạn từ.";
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("yt_upsert_bhyt", {
     p_student: input.studentId,

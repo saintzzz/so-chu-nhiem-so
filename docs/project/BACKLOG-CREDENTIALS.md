@@ -41,6 +41,18 @@ moi nam o day. Moi item ghi ro dieu kien unblock.
 ## 8. CRM / SIS ben thu 3
 - **Can**: vendor spec cu the. Framework connector (CR-072) mo san.
 
+## 9. Google Workspace Marketplace + Classroom add-on (research: GOOGLE-MS-INTEGRATION)
+- **Can**: Google Cloud project + OAuth consent + Marketplace review + Google SSO;
+  truong dung can Workspace for Education Teaching&Learning/Plus.
+- **Gia tri**: embed VieSchool vao Classroom (iframe attachment), domain install,
+  kenh phan phoi 40M+ users. Mot kenh ban doc quyen Google.
+
+## 10. Microsoft AppSource + Teams LTI app
+- **Can**: Entra app registration + admin consent + partner onboarding/review.
+- **Gia tri**: embed vao Teams; phan phoi qua AppSource.
+- **Khong can cred**: OneRoster PROVIDER endpoint (CR-072) - truong M365 nhap
+  client cred vao SDS la Teams/Entra/OneNote tu provision tu data minh.
+
 ## Roadmap khong can credential - dang chay SDLC
 - CR-068 xet_tot_nghiep
 - CR-069 hoc ba XML QD 3016 + system signing

@@ -73,15 +73,20 @@ const notif = await admin.from("notifications").select("id")
   .eq("profile_id", t1).eq("type", "dieu_dong").limit(1);
 ok("notify_teacher", (notif.data ?? []).length === 1);
 
-// 7) effective_teacher resolution
-const eff = await admin.rpc("dd_effective_teacher", {
+// 7) effective_teacher resolution (JWT real - r1: fail closed cross-tenant/module off)
+const eff = await bgh.rpc("dd_effective_teacher", {
   p_entry: entry.data.id, p_date: "2026-11-15",
 });
 ok("effective_mid", eff.data === t1, `got ${eff.data}`);
-const effOut = await admin.rpc("dd_effective_teacher", {
+const effOut = await bgh.rpc("dd_effective_teacher", {
   p_entry: entry.data.id, p_date: "2026-12-15",
 });
 ok("effective_outside", effOut.data === entry.data.teacher_id, `got ${effOut.data}`);
+// 7b) service-role caller (uid null) -> fail closed null
+const effAnon = await admin.rpc("dd_effective_teacher", {
+  p_entry: entry.data.id, p_date: "2026-11-15",
+});
+ok("effective_service_null", effAnon.data === null, `got ${effAnon.data}`);
 
 // 8) overlap active denied
 r = await bgh.rpc("dd_create", {
@@ -116,6 +121,10 @@ const rd = await bgh.from("dd_assignments").select("id").limit(5);
 ok("module_off_read", !rd.error && rd.data.length === 0, `rows=${rd.data?.length}`);
 r = await bgh.rpc("dd_end", { p_id: asn1 });
 ok("module_off_rpc", errHas(r, "module_disabled"), r.error?.message);
+const effOff = await bgh.rpc("dd_effective_teacher", {
+  p_entry: entry.data.id, p_date: "2026-11-15",
+});
+ok("module_off_effective", effOff.data === null, `got ${effOff.data}`);
 await admin.from("school_features").update({ enabled: true })
   .eq("school_id", SCHOOL).eq("module", "dieu_dong");
 

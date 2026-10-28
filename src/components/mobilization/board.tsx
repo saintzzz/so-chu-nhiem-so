@@ -216,7 +216,7 @@ export default function MobilizationBoard({
                     </td>
                     <td className="p-3">{teacherName(a.teacher_id)}</td>
                     <td className="p-3 text-xs text-muted-foreground">
-                      {a.effective_from}{a.effective_to ? ` → ${a.effective_to}` : " → không thời hạn"}
+                      {a.effective_from}{a.effective_to ? ` - ${a.effective_to}` : " - không thời hạn"}
                     </td>
                     <td className="max-w-48 truncate p-3 text-xs" title={a.reason}>{a.reason}</td>
                     <td className="p-3">
@@ -228,7 +228,7 @@ export default function MobilizationBoard({
                           <>
                             <button type="button" disabled={pending}
                               onClick={() => act(() => approveAssignment(a.id), "Đã duyệt - có hiệu lực.")}
-                              className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-accent">Aprobar</button>
+                              className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-accent">Phê duyệt</button>
                             <button type="button" disabled={pending}
                               onClick={() => act(() => cancelAssignment(a.id), "Đã hủy phân công.")}
                               className="rounded-lg border border-border px-2 py-1 text-xs text-destructive hover:bg-accent">Hủy</button>

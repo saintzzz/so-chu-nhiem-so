@@ -191,15 +191,30 @@ begin
 end $$;
 
 -- Consumer resolution: GV thuc te day entry vao ngay d.
+-- r1: fail closed - cung tenant + module bat; khong leak phan cong cross-tenant.
 create or replace function public.dd_effective_teacher(p_entry uuid, p_date date)
-returns uuid language sql stable security definer set search_path = public as
-$$ select coalesce(
+returns uuid language plpgsql stable security definer set search_path = public as
+$$
+declare
+  v_school uuid;
+begin
+  select c.school_id into v_school
+    from public.timetable_entries e
+    join public.classes c on c.id = e.class_id
+    where e.id = p_entry;
+  if v_school is null
+     or v_school is distinct from public.my_school_id()
+     or not public.dd_module_enabled(v_school) then
+    return null;
+  end if;
+  return coalesce(
     (select a.teacher_id from public.dd_assignments a
       where a.timetable_entry_id = p_entry and a.status = 'active'
         and a.effective_from <= p_date
         and coalesce(a.effective_to, date '9999-12-31') >= p_date
       order by a.decided_at desc limit 1),
-    (select e.teacher_id from public.timetable_entries e where e.id = p_entry)) $$;
+    (select e.teacher_id from public.timetable_entries e where e.id = p_entry));
+end $$;
 
 revoke all on function public.dd_assert_no_overlap(uuid, date, date, uuid) from public, anon;
 revoke all on function public.dd_create(uuid, uuid, date, date, text) from public, anon;

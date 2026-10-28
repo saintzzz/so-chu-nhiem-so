@@ -300,6 +300,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Chiến lược & chỉ tiêu", href: "/school/strategy", module: "van_hanh_nang_cao" },
         { label: "Tuyển sinh đầu cấp", href: "/school/admissions", module: "tuyen_sinh" },
         { label: "Xếp thời khóa biểu", href: "/schedule/manage" },
+        { label: "Điều động giáo viên", href: "/schedule/mobilization", module: "dieu_dong" },
         { label: "Thời khóa biểu", href: "/schedule/timetable" },
         { label: "Sổ đầu bài phân hiệu", href: "/school/journals" },
         { label: "Học bạ số", href: "/records/hoc-ba", module: "hoc_ba" },

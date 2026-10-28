@@ -30,6 +30,10 @@ test("migration: tables + RLS + RPC + gate", () => {
   assert.ok(mig.includes("revoke insert, update, delete on public.yt_bhyt_cards"));
   assert.ok(mig.includes("and c.school_id = p_school"), "gvcn branch tenant-bound");
   assert.ok(mig.includes("cross_tenant_student"), "student-school integrity guard");
+  // r2: pht campus-bound (fail-closed sin campus)
+  assert.ok(mig.includes("'pht' = any(my_roles())"), "pht branch separate");
+  assert.ok(mig.includes("c.campus_id = pr.campus_id"), "pht campus-bound");
+  assert.ok(!mig.includes("'pht','ke_toan'"), "pht not in unrestricted leader set");
 });
 
 test("page: roles + module gate + must() + least-data", () => {
@@ -39,6 +43,7 @@ test("page: roles + module gate + must() + least-data", () => {
   assert.ok(page.includes(".eq(\"school_id\""));
   assert.ok(!page.includes('.order("full_name")'), "no raw full_name sort");
   assert.ok(page.includes('.in("student_id", studentIds)'), "per-class fetch");
+  assert.ok(page.includes("c.campus_id === profile.campus_id"), "pht campus filter");
 });
 
 test("actions: role check + module assert + rpc", () => {
@@ -50,6 +55,6 @@ test("actions: role check + module assert + rpc", () => {
 test("nav + registry + suite", () => {
   assert.ok(nav.includes('"/school/health"'));
   assert.ok(modules.includes('"y_te_bhyt"'));
-  assert.ok(modules.includes('"y_te_bhyt", "van_hanh_nang_cao"'));
+  assert.ok(modules.includes('"y_te_bhyt", "van_thu"'));
   assert.ok(!page.includes("\u2014") && !page.includes("\u2013"), "no em/en dash");
 });

@@ -73,12 +73,23 @@ create trigger yt_health_tenant before insert or update on public.yt_health_reco
 create trigger yt_bhyt_tenant before insert or update on public.yt_bhyt_cards
   for each row execute function public.yt_tenant_guard();
 
--- Read: cung truong + module bat + (bgh|admin|pht|ke_toan HOAC gvcn cua lop HS).
+-- Read: cung truong + module bat +
+--  - bgh/admin/ke_toan/so_gd: toan truong
+--  - pht: chi HS thuoc campus minh phu trach (fail-closed khi chua phan campus)
+--  - gvcn: HS thuoc lop chu nhiem cua minh
 create or replace function public.yt_can_read(p_student uuid, p_school uuid)
 returns boolean language sql stable security definer set search_path = public as
 $$ select p_school = (select my_school_id())
     and public.yt_module_enabled(p_school)
-    and ((select my_roles()) && array['bgh','admin','pht','ke_toan','so_gd']::text[]
+    and ((select my_roles()) && array['bgh','admin','ke_toan','so_gd']::text[]
+         or (
+           'pht' = any(my_roles())
+           and exists (
+             select 1 from public.students s
+             join public.classes c on c.id = s.class_id
+             join public.profiles pr on pr.id = (select auth.uid())
+             where s.id = p_student and c.school_id = p_school
+               and pr.campus_id is not null and c.campus_id = pr.campus_id))
          or exists (
            select 1 from public.students s
            join public.classes c on c.id = s.class_id

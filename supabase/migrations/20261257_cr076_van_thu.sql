@@ -123,3 +123,6 @@ revoke all on function public.vt_create(text, text, text, date, text, text, text
 revoke all on function public.vt_update(uuid, text, uuid, text) from public, anon;
 grant execute on function public.vt_create(text, text, text, date, text, text, text, text, uuid, date) to authenticated;
 grant execute on function public.vt_update(uuid, text, uuid, text) to authenticated;
+
+-- Khong co policy insert/update/delete + revoke DML -> write chi qua RPC.
+revoke insert, update, delete on public.vt_documents from authenticated;

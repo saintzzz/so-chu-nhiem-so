@@ -22,6 +22,7 @@ export const MODULES = [
   { key: "xet_tot_nghiep", label: "Xét tốt nghiệp" },
   { key: "dieu_dong", label: "Điều động giáo viên" },
   { key: "y_te_bhyt", label: "Y tế & BHYT học sinh" },
+  { key: "van_thu", label: "Văn thư & công văn" },
   { key: "tich_hop", label: "Tích hợp & kết nối" },
   { key: "to_chuyen_mon", label: "Tổ chuyên môn" },
   { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
@@ -40,7 +41,8 @@ export const SUITES = [
     label: "Quản lý trường & hành chính",
     modules: [
       "tuyen_sinh", "khoan_thu", "bien_dong_hs", "thu_vien", "hoc_ba",
-      "xet_tot_nghiep", "chuyen_can", "dieu_dong", "y_te_bhyt", "van_hanh_nang_cao",
+      "xet_tot_nghiep", "chuyen_can", "dieu_dong", "y_te_bhyt", "van_thu",
+      "van_hanh_nang_cao",
     ],
   },
   {

@@ -19,17 +19,24 @@ export default async function HealthPage({
   const { class: classId } = await searchParams;
   const sid = profile.school_id ?? "";
 
-  const isLeader = hasAnyRole(profile, ["bgh", "admin", "pht", "ke_toan", "so_gd"]);
-  const { data: classes } = sid
+  // Scope lop theo dung RLS: bgh/admin/ke_toan/so_gd toan truong;
+  // pht chi campus minh (fail-closed khi chua phan campus);
+  // gvcn lop chu nhiem. Profile co the gom nhieu role -> lay hop.
+  const seeAll = hasAnyRole(profile, ["bgh", "admin", "ke_toan", "so_gd"]);
+  const { data: classRows } = sid
     ? await must(supabase
         .from("classes")
-        .select("id,name,grade")
+        .select("id,name,grade,campus_id,gvcn_id")
         .eq("school_id", sid)
-        // gvcn chi xem lop chu nhiem cua minh (RLS cung chan o tang data)
-        .eq(isLeader ? "school_id" : "gvcn_id", isLeader ? sid : profile.id)
         .order("grade")
         .order("name"), "classes")
     : { data: [] };
+  type ClsRow = { id: string; name: string; grade: number; campus_id: string | null; gvcn_id: string | null };
+  const classes = seeAll
+    ? (classRows ?? [])
+    : (classRows ?? []).filter((c: ClsRow) =>
+        (profile.campus_id && c.campus_id === profile.campus_id && hasAnyRole(profile, ["pht"])) ||
+        c.gvcn_id === profile.id);
 
   const cls = (classes ?? []).find((c) => c.id === classId) ?? classes?.[0] ?? null;
 

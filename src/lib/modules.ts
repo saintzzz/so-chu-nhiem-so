@@ -19,6 +19,7 @@ export const MODULES = [
   { key: "thi_dua", label: "Thi đua & năng lực giáo viên" },
   { key: "thu_vien", label: "Thư viện" },
   { key: "bien_dong_hs", label: "Biến động học sinh" },
+  { key: "tich_hop", label: "Tích hợp & kết nối" },
   { key: "to_chuyen_mon", label: "Tổ chuyên môn" },
   { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
   { key: "tuyen_sinh", label: "Tuyển sinh đầu cấp" },

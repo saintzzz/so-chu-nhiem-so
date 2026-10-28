@@ -9,6 +9,7 @@ import {
   cancelAssignment,
 } from "@/app/(app)/schedule/mobilization/actions";
 import { StatusBadge } from "@/components/status-badge";
+import { sortByVietnameseName } from "@/lib/utils";
 
 type Cls = { id: string; name: string; grade: number };
 type Entry = {
@@ -51,6 +52,7 @@ export default function MobilizationBoard({
   const [ok, setOk] = useState<string | null>(null);
   const [form, setForm] = useState<{ entryId: string; teacherId: string; from: string; to: string; reason: string } | null>(null);
 
+  const sortedTeachers = sortByVietnameseName(teachers, (t) => t.full_name);
   const teacherName = (id: string) => teachers.find((t) => t.id === id)?.full_name ?? "-";
   const entryOf = (id: string) => entries.find((e) => e.id === id);
   const act = (fn: () => Promise<string | null>, okMsg: string) => {
@@ -103,7 +105,7 @@ export default function MobilizationBoard({
                 onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
                 <option value="">- Chọn giáo viên -</option>
-                {teachers.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+                {sortedTeachers.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
               </select>
             </label>
             <label className="text-sm">

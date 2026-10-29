@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  copyTimetable,
   saveTimetableEntry,
   deleteTimetableEntry,
 } from "@/app/(app)/school/actions";
@@ -30,11 +31,13 @@ export function TimetableEditor({
   entries,
   subjects,
   teachers,
+  classes = [],
 }: {
   classId: string;
   entries: Entry[];
   subjects: { id: string; name: string }[];
   teachers: { id: string; full_name: string }[];
+  classes?: { id: string; name: string }[];
 }) {
   const [editing, setEditing] = useState<{
     id?: string;
@@ -45,6 +48,9 @@ export function TimetableEditor({
   const [teacherId, setTeacherId] = useState("");
   const [room, setRoom] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [copyFrom, setCopyFrom] = useState("");
+  const [skipConflicts, setSkipConflicts] = useState(true);
   const [pending, start] = useTransition();
 
   const sortedTeachers = [...teachers].sort((a, b) =>
@@ -53,6 +59,25 @@ export function TimetableEditor({
   const grid = new Map(entries.map((e) => [`${e.weekday}-${e.period}`, e]));
   const subName = new Map(subjects.map((s) => [s.id, s.name]));
   const teaName = new Map(teachers.map((t) => [t.id, t.full_name]));
+  // CR-073: so tiet/tuan theo mon (footer summary).
+  const weeklyCount = entries.reduce<Map<string, number>>((acc, e) => {
+    acc.set(e.subject_id, (acc.get(e.subject_id) ?? 0) + 1);
+    return acc;
+  }, new Map());
+
+  function doCopy() {
+    if (!copyFrom) return;
+    setErr(null); setMsg(null);
+    start(async () => {
+      const r = await copyTimetable({
+        sourceClassId: copyFrom,
+        targetClassId: classId,
+        skipConflicts,
+      });
+      if (r.error) setErr(r.error);
+      else setMsg(`Đã sao chép ${r.copied ?? 0} tiết${r.skipped ? ` (bỏ qua ${r.skipped} xung đột)` : ""}.`);
+    });
+  }
 
   function openCell(weekday: number, period: number) {
     const ex = grid.get(`${weekday}-${period}`);
@@ -89,6 +114,35 @@ export function TimetableEditor({
 
   return (
     <>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        {classes.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
+            <span className="text-sm text-muted-foreground">Sao chép TKB từ lớp:</span>
+            <select value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)} className={selCls + " w-40"}>
+              <option value="">- Chọn lớp -</option>
+              {classes.filter((c) => c.id !== classId).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input type="checkbox" checked={skipConflicts} onChange={(e) => setSkipConflicts(e.target.checked)} />
+              Bỏ qua xung đột
+            </label>
+            <Button size="sm" variant="outline" onClick={doCopy} disabled={pending || !copyFrom}>
+              Sao chép
+            </Button>
+          </div>
+        )}
+        <a href={`/api/schedule/export?class=${classId}`}
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-primary hover:bg-muted">
+          Xuất CSV
+        </a>
+        <a href="/schedule/by-teacher"
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-primary hover:bg-muted">
+          Xem theo giáo viên
+        </a>
+        {msg && <span className="text-sm text-emerald-700 dark:text-emerald-400">{msg}</span>}
+      </div>
       <div className="relative overflow-x-auto rounded-xl border border-border bg-card shadow-[var(--shadow-sm-token)]">
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
@@ -157,6 +211,21 @@ export function TimetableEditor({
         </table>
       </div>
       {err && <p className="mt-3 text-sm text-error">{err}</p>}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+        <span className="font-medium text-muted-foreground">Số tiết/tuần:</span>
+        {weeklyCount.size === 0 && <span className="text-muted-foreground">chưa có tiết nào</span>}
+        {[...weeklyCount.entries()]
+          .sort((a, b) => (subName.get(a[0]) ?? "").localeCompare(subName.get(b[0]) ?? "", "vi"))
+          .map(([sid, n]) => (
+            <span key={sid} className="rounded-full bg-muted px-2.5 py-1 text-xs">
+              {subName.get(sid) ?? "?"}: <b className="tabular-nums">{n}</b>
+            </span>
+          ))}
+        <span className="ml-auto text-xs text-muted-foreground">
+          Tổng: <b className="tabular-nums">{entries.length}</b> tiết
+        </span>
+      </div>
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

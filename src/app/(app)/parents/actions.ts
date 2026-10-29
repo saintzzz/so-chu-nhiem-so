@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { assertModule } from "@/lib/modules";
 import { createClient } from "@/lib/supabase/server";
 import { emailClassParents } from "@/lib/parent-email";
+import { enqueueClassComm } from "@/lib/comm/outbox";
 import { checkActionRole, getProfile } from "@/lib/auth";
 // R10-03: link thong bao theo role nguoi nhan (helper chia se, test duoc).
 import { messageLinkForRole } from "@/lib/message-link";
@@ -64,21 +65,39 @@ export async function sendAnnouncement(input: {
       return { error: "Học sinh không thuộc lớp đã chọn." };
     }
   }
-  const { error } = await supabase.from("announcements").insert({
+  const { data: annRow, error } = await supabase.from("announcements").insert({
     sender_id: profile.id,
     school_id: profile?.school_id ?? null,
     class_id: input.classId,
     student_id: input.studentId,
     title: input.title.trim(),
     content: input.content.trim(),
-  });
+  }).select("id").single();
   if (error) {
     console.error("[announce] insert failed:", error.message);
     return { error: "Không lưu được thông báo. Vui lòng thử lại." };
   }
 
-  // Email kênh liên hệ duy nhất hiện tại (Zalo/SMS chưa áp dụng).
+  // Email la kenh mac dinh; CR-069: zalo/sms enqueue them khi
+  // integration + template + consent da cau hinh (sonst no-op).
   const mail = await emailClassParents(supabase, input);
+  if (profile.school_id) {
+    const commInput = {
+      schoolId: profile.school_id,
+      classId: input.classId,
+      templateName: "announcement",
+      payload: { title: input.title.trim(), content: input.content.trim().slice(0, 400) },
+      dedupePrefix: `ann:${annRow?.id ?? cls.school_id}`,
+    };
+    for (const channel of ["zalo", "sms"] as const) {
+      try {
+        await enqueueClassComm(supabase, { ...commInput, channel });
+      } catch (e) {
+        // Kanal-Fehler durfen Announcement nicht brechen - nur loggen.
+        console.error(`[announce] ${channel} enqueue:`, e);
+      }
+    }
+  }
   revalidatePath("/parents/compose");
   revalidatePath("/attendance/notify");
   return {

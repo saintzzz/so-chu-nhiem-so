@@ -6,8 +6,10 @@ import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import {
   addEquipment,
+  addEquipmentIssue,
   updateEquipmentCondition,
   deleteEquipment,
+  updateEquipmentIssue,
 } from "@/app/(app)/school/actions";
 
 interface Item {
@@ -38,14 +40,42 @@ const CONDITIONS: Record<string, { label: string; tone: "success" | "warning" | 
 const inputCls =
   "h-9 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-ring";
 
+interface Issue {
+  id: string;
+  equipment_id: string;
+  reported_date: string;
+  kind: string;
+  description: string;
+  status: string;
+  resolution_note: string | null;
+}
+
+const ISSUE_KIND: Record<string, string> = {
+  hong: "Hỏng",
+  sua_chua: "Sửa chữa",
+  bao_tri: "Bảo trì",
+  thay_the: "Thay thế",
+  khac: "Khác",
+};
+const ISSUE_STATUS: Record<string, string> = {
+  open: "Mở",
+  in_progress: "Đang xử lý",
+  resolved: "Đã xong",
+  cancelled: "Hủy",
+};
+
 export function EquipmentBoard({
   items,
   campuses,
   canDelete,
+  issues = [],
+  canIssues = false,
 }: {
   items: Item[];
   campuses: { id: string; name: string }[];
   canDelete: boolean;
+  issues?: Issue[];
+  canIssues?: boolean;
 }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("thiet_bi");
@@ -171,6 +201,93 @@ export function EquipmentBoard({
           </tr>
         )}
       </DataTable>
+
+      {canIssues && (
+        <EquipmentIssuesSection issues={issues} items={items} pending={pending} setErr={setErr} />
+      )}
     </>
+  );
+}
+
+function EquipmentIssuesSection({
+  issues,
+  items,
+  pending,
+  setErr,
+}: {
+  issues: Issue[];
+  items: Item[];
+  pending: boolean;
+  setErr: (e: string | null) => void;
+}) {
+  const [, start] = useTransition();
+  const [showAdd, setShowAdd] = useState(false);
+  const [eqId, setEqId] = useState("");
+  const [kind, setKind] = useState("hong");
+  const [desc, setDesc] = useState("");
+  const eqName = new Map(items.map((i) => [i.id, i.name]));
+
+  function add() {
+    if (!eqId || !desc.trim()) return;
+    start(async () => {
+      const r = await addEquipmentIssue({ equipmentId: eqId, kind, description: desc });
+      if (r?.error) setErr(r.error);
+      else { setShowAdd(false); setDesc(""); setEqId(""); }
+    });
+  }
+  function setStatus(id: string, status: string) {
+    start(async () => {
+      const r = await updateEquipmentIssue(id, { status });
+      if (r?.error) setErr(r.error);
+    });
+  }
+
+  const open = issues.filter((i) => i.status !== "resolved" && i.status !== "cancelled");
+  const closed = issues.filter((i) => i.status === "resolved" || i.status === "cancelled");
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold">Sự cố & bảo trì ({open.length} mở)</h2>
+        <Button size="sm" variant="outline" onClick={() => setShowAdd(!showAdd)}>
+          {showAdd ? "Đóng" : "+ Báo sự cố"}
+        </Button>
+      </div>
+      {showAdd && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+          <div className="flex flex-wrap gap-3">
+            <select value={eqId} onChange={(e) => setEqId(e.target.value)} className={inputCls + " w-56"}>
+              <option value="">- Chọn thiết bị -</option>
+              {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+            </select>
+            <select value={kind} onChange={(e) => setKind(e.target.value)} className={inputCls + " w-40"}>
+              {Object.entries(ISSUE_KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <input value={desc} onChange={(e) => setDesc(e.target.value)}
+            placeholder="Mô tả sự cố *" className={inputCls} />
+          <Button size="sm" onClick={add} disabled={pending || !eqId || !desc.trim()}>Ghi nhận</Button>
+        </div>
+      )}
+      {issues.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Chưa có sự cố / bảo trì nào.</p>
+      ) : (
+        <div className="space-y-2">
+          {[...open, ...closed].map((i) => (
+            <div key={i.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 px-3 py-2 text-sm">
+              <span className="text-muted-foreground whitespace-nowrap">{i.reported_date}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs">{ISSUE_KIND[i.kind] ?? i.kind}</span>
+              <span className="font-medium">{eqName.get(i.equipment_id) ?? "?"}</span>
+              <span className="flex-1 min-w-40">{i.description}</span>
+              <select value={i.status} onChange={(e) => setStatus(i.id, e.target.value)}
+                disabled={pending}
+                className="h-8 rounded-lg border border-border bg-background px-2 text-xs">
+                {Object.entries(ISSUE_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

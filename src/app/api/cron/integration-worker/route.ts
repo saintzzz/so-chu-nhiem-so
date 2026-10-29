@@ -27,14 +27,20 @@ async function handle(req: NextRequest) {
 
   const supabase = createAdminClient();
   const { data: events, error } = await supabase.rpc("int_dequeue", { p_batch: 20 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[int-worker] dequeue:", error.message);
+    return NextResponse.json({ error: "dequeue failed" }, { status: 500 });
+  }
   if (!events?.length) return NextResponse.json({ processed: 0 });
 
   const connIds = [...new Set((events as OutboxEvent[]).map((e) => e.connector_id).filter(Boolean))];
   const { data: conns, error: connErr } = connIds.length
     ? await supabase.from("int_connectors").select("*").in("id", connIds)
     : { data: [], error: null };
-  if (connErr) return NextResponse.json({ error: connErr.message }, { status: 500 });
+  if (connErr) {
+    console.error("[int-worker] connectors:", connErr.message);
+    return NextResponse.json({ error: "connector fetch failed" }, { status: 500 });
+  }
   const connMap = new Map((conns ?? []).map((c) => [c.id, c]));
 
   let sent = 0;

@@ -28,6 +28,7 @@ export const MODULES = [
   { key: "studio", label: "Công cụ soạn học liệu & ngân hàng câu hỏi" },
   { key: "tuyen_sinh", label: "Tuyển sinh đầu cấp" },
   { key: "van_hanh_nang_cao", label: "Vận hành nâng cao (radar, NQ37, AI, CSVC)" },
+  { key: "bua_an", label: "Bữa ăn & bán trú" },
 ] as const;
 
 export type ModuleKey = (typeof MODULES)[number]["key"];
@@ -42,7 +43,7 @@ export const SUITES = [
     modules: [
       "tuyen_sinh", "khoan_thu", "bien_dong_hs", "thu_vien", "hoc_ba",
       "xet_tot_nghiep", "chuyen_can", "dieu_dong", "y_te_bhyt", "van_thu",
-      "van_hanh_nang_cao",
+      "van_hanh_nang_cao", "bua_an",
     ],
   },
   {

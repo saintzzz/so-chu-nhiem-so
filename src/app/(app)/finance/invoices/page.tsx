@@ -15,6 +15,17 @@ export default async function FeeInvoicesPage({
   const { period: periodParam } = await searchParams;
   const supabase = await createClient();
 
+  const { data: bankRow, error: bankErr } = await supabase
+    .from("school_integrations")
+    .select("config")
+    .eq("school_id", profile.school_id ?? "")
+    .eq("provider", "bank")
+    .maybeSingle();
+  if (bankErr) console.error("[invoices] bank config:", bankErr.message);
+  const bank = (bankRow?.config ?? {}) as {
+    bank_code?: string; account_number?: string; account_name?: string;
+  };
+
   const { data: periods, error: periodsErr } = await supabase
     .from("fee_periods")
     .select("id, name, status")
@@ -40,7 +51,7 @@ export default async function FeeInvoicesPage({
   if (selected) {
     const { data, error } = await supabase
       .from("fee_invoices")
-      .select("id, student_id, amount, exemption_amount, paid_amount, status, receipt_no, students(full_name, classes(name))")
+      .select("id, student_id, amount, exemption_amount, paid_amount, status, receipt_no, payment_code, students(full_name, classes(name))")
       .eq("period_id", selected.id)
       .limit(2000);
     if (error) {
@@ -58,6 +69,7 @@ export default async function FeeInvoicesPage({
           paid_amount: row.paid_amount,
           status: row.status,
           receipt_no: row.receipt_no,
+          payment_code: row.payment_code,
           student_name: stu?.full_name ?? "?",
           class_name: cls?.name ?? "?",
         } as Invoice;
@@ -84,7 +96,7 @@ export default async function FeeInvoicesPage({
           Không tải được dữ liệu - vui lòng thử lại.
         </p>
       ) : (
-        <InvoicesBoard invoices={invoices} canWrite={canWrite} />
+        <InvoicesBoard invoices={invoices} canWrite={canWrite} bank={bank} />
       )}
     </div>
   );

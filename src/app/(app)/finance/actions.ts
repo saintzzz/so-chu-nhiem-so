@@ -245,3 +245,74 @@ export async function collectPayment(invoiceId: string, amount: number, method: 
   revalidatePath("/finance/invoices");
   return { ok: true, receipt: (data as { receipt_no?: string })?.receipt_no };
 }
+
+// --- CR-068: cau hinh ngan hang + doi soat webhook -------------------
+
+const BANK_CODE_RE = /^[A-Z]{2,10}$/;
+
+export async function saveBankConfig(input: {
+  bank_code: string;
+  account_number: string;
+  account_name?: string;
+  sepay_enabled?: boolean;
+}): Promise<{ ok?: boolean; error?: string }> {
+  const deny = await checkActionRole(["bgh", "admin", "ke_toan"]);
+  if (deny) return { error: deny };
+  const mod = await assertModule("khoan_thu");
+  if (mod) return { error: mod };
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  const bank = input.bank_code.trim().toUpperCase();
+  const acc = input.account_number.replace(/\s/g, "");
+  if (!BANK_CODE_RE.test(bank)) return { error: "Mã ngân hàng không hợp lệ." };
+  if (!/^\d{6,20}$/.test(acc)) return { error: "Số tài khoản không hợp lệ." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("school_integrations").upsert({
+    school_id: profile.school_id,
+    provider: "bank",
+    enabled: true,
+    config: {
+      bank_code: bank,
+      account_number: acc,
+      account_name: input.account_name?.trim() || null,
+    },
+    updated_by: profile.id,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "school_id,provider" });
+  if (error) return fail("bankConfig", error);
+  const { error: spErr } = await supabase.from("school_integrations").upsert({
+    school_id: profile.school_id,
+    provider: "sepay",
+    enabled: input.sepay_enabled ?? false,
+    config: {},
+    updated_by: profile.id,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "school_id,provider" });
+  if (spErr) return fail("sepayConfig", spErr);
+  revalidatePath("/finance/integrations");
+  return { ok: true };
+}
+
+export async function matchTransaction(
+  txnId: string,
+  invoiceId: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  const deny = await guard();
+  if (deny) return { error: deny };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fee_match_txn", {
+    p_txn: txnId,
+    p_invoice: invoiceId,
+  });
+  if (error) {
+    if (error.message.includes("already_matched")) return { error: "Giao dịch đã được đối soát." };
+    if (error.message.includes("txn_not_found")) return { error: "Không tìm thấy giao dịch." };
+    if (error.message.includes("invoice_not_found")) return { error: "Không tìm thấy hóa đơn." };
+    if (error.message.includes("already_settled")) return { error: "Hóa đơn đã thanh toán đủ." };
+    if (error.message.includes("invalid_amount")) return { error: "Số tiền vượt công nợ." };
+    return fail("matchTxn", error);
+  }
+  revalidatePath("/finance/integrations");
+  revalidatePath("/finance/invoices");
+  return { ok: true };
+}

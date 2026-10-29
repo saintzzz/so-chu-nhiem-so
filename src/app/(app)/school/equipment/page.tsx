@@ -14,7 +14,7 @@ export default async function EquipmentPage() {
   const supabase = await createClient();
   const sid = profile.school_id ?? "";
 
-  const [{ data: eqRaw }, { data: cpRaw }] = await Promise.all([
+  const [{ data: eqRaw }, { data: cpRaw }, { data: issRaw }] = await Promise.all([
     must(supabase
       .from("equipment")
       .select("*")
@@ -22,6 +22,12 @@ export default async function EquipmentPage() {
       .order("category")
       .order("name"), "equipment"),
     must(supabase.from("campuses").select("id,name").eq("school_id", sid), "campuses"),
+    must(supabase
+      .from("equipment_issues")
+      .select("id, equipment_id, reported_date, kind, description, status, resolution_note")
+      .eq("school_id", sid)
+      .order("reported_date", { ascending: false })
+      .limit(50), "issues"),
   ]);
   const items = (eqRaw ?? []) as {
     id: string;
@@ -61,6 +67,8 @@ export default async function EquipmentPage() {
         items={items}
         campuses={(cpRaw ?? []) as Pick<Campus, "id" | "name">[]}
         canDelete={hasRole(profile, "bgh") || hasRole(profile, "ke_toan")}
+        issues={(issRaw ?? []) as never[]}
+        canIssues
       />
     </div>
   );

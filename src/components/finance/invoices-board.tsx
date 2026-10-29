@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { collectPayment } from "@/app/(app)/finance/actions";
 import { sortByVietnameseName, formatMoney } from "@/lib/utils";
+import { vietQrUrl } from "@/lib/vietqr";
 import { AutoGrowTextarea } from "@/components/ui/auto-grow-textarea";
 
 const fmtMoney = formatMoney;
@@ -15,9 +16,16 @@ export type Invoice = {
   paid_amount: number;
   status: "unpaid" | "partial" | "paid" | "exempt";
   receipt_no: string | null;
+  payment_code?: string | null;
   student_name: string;
   class_name: string;
 };
+
+export interface BankCfg {
+  bank_code?: string;
+  account_number?: string;
+  account_name?: string;
+}
 
 const STATUS_LABEL: Record<string, string> = {
   unpaid: "Chưa thu",
@@ -33,12 +41,22 @@ const STATUS_CLS: Record<string, string> = {
   exempt: "bg-muted text-muted-foreground",
 };
 
-export function InvoicesBoard({ invoices, canWrite }: { invoices: Invoice[]; canWrite: boolean }) {
+export function InvoicesBoard({ invoices, canWrite, bank }: { invoices: Invoice[]; canWrite: boolean; bank?: BankCfg }) {
   const [paying, setPaying] = useState<Invoice | null>(null);
+  const [qrFor, setQrFor] = useState<Invoice | null>(null);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("cash");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!qrFor) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQrFor(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [qrFor]);
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
   const [q, setQ] = useState("");
@@ -154,8 +172,14 @@ export function InvoicesBoard({ invoices, canWrite }: { invoices: Invoice[]; can
                 {canWrite && (
                   <td className="px-4 py-3 text-right">
                     {(i.status === "unpaid" || i.status === "partial") && (
-                      <button onClick={() => { setPaying(i); setAmount(String(i.amount - i.exemption_amount - i.paid_amount)); setErr(null); }}
-                        disabled={busy} className="text-sm text-primary hover:underline">Thu tiền</button>
+                      <>
+                        <button onClick={() => { setPaying(i); setAmount(String(i.amount - i.exemption_amount - i.paid_amount)); setErr(null); }}
+                          disabled={busy} className="text-sm text-primary hover:underline">Thu tiền</button>
+                        {bank?.bank_code && bank?.account_number && (
+                          <>{" "}<button type="button" onClick={() => setQrFor(i)}
+                            className="text-sm text-primary hover:underline">QR</button></>
+                        )}
+                      </>
                     )}
                   </td>
                 )}
@@ -164,6 +188,37 @@ export function InvoicesBoard({ invoices, canWrite }: { invoices: Invoice[]; can
           </tbody>
         </table>
       </div>
+
+      {qrFor && bank?.bank_code && bank?.account_number && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation">
+          <div role="dialog" aria-modal="true" aria-label="Mã QR chuyển khoản"
+            className="rounded-xl bg-card p-6 shadow-lg max-w-sm w-full text-center space-y-3">
+            <p className="font-medium">{qrFor.student_name} - {qrFor.class_name}</p>
+            <p className="text-sm text-muted-foreground">
+              Số tiền: <b className="tabular-nums">{formatMoney(qrFor.amount - qrFor.exemption_amount - qrFor.paid_amount)}</b>
+              {qrFor.payment_code && <> · Mã: <b className="font-mono">{qrFor.payment_code}</b></>}
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={vietQrUrl({
+                bankCode: bank.bank_code,
+                accountNumber: bank.account_number,
+                accountName: bank.account_name,
+                amount: qrFor.amount - qrFor.exemption_amount - qrFor.paid_amount,
+                addInfo: qrFor.payment_code ?? undefined,
+              })}
+              alt="QR chuyển khoản"
+              className="mx-auto w-56 h-56 rounded-lg border border-border"
+            />
+            <p className="text-xs text-muted-foreground">
+              Phụ huynh quét QR bằng app ngân hàng - nội dung chuyển khoản chứa mã
+              hóa đơn để hệ thống tự khớp giao dịch (khi bật SePay).
+            </p>
+            <button type="button" onClick={() => setQrFor(null)}
+              className="rounded-lg border border-border px-4 py-2 text-sm">Đóng</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

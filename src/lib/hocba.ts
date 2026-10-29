@@ -56,6 +56,7 @@ export interface YearEndBundle {
     dob: string | null;
     gender: string | null;
     national_id: string | null;
+    vneid_subject_id: string | null;
     class_id: string;
   };
   subjectRows: SubjectYearRow[];
@@ -420,7 +421,7 @@ export async function getStudentYearEndBundle(
   const { data: stu } = await must(
     supabase
       .from("students")
-      .select("id,full_name,code,dob,gender,national_id,class_id")
+      .select("id,full_name,code,dob,gender,national_id,vneid_subject_id,class_id")
       .eq("id", studentId)
       .maybeSingle(),
     "hocba/student",
@@ -485,7 +486,7 @@ export async function getClassYearEndBundles(
   const { data: students } = await must(
     supabase
       .from("students")
-      .select("id,full_name,code,dob,gender,national_id,class_id")
+      .select("id,full_name,code,dob,gender,national_id,vneid_subject_id,class_id")
       .eq("class_id", classId)
       .order("id"),
     "hocba/students",

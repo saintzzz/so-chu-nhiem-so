@@ -86,6 +86,7 @@ export default async function TimetableManagePage({
           entries={entries}
           subjects={subjects}
           teachers={teachers}
+          classes={classes}
         />
       ) : (
         <p className="text-muted-foreground">Chưa có lớp nào để xếp thời khóa biểu.</p>

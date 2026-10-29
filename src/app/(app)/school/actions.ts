@@ -273,6 +273,83 @@ export async function deleteEquipment(id: string): Promise<{ error?: string }> {
   return {};
 }
 
+// --- CR-072: equipment issues (sự cố / bảo trì) ---------------------
+
+export async function addEquipmentIssue(input: {
+  equipmentId: string;
+  kind: string;
+  description: string;
+}): Promise<{ ok?: boolean; error?: string }> {
+  const deny = await checkActionRole(["bgh", "pht", "ke_toan"]);
+  if (deny) return { error: deny };
+  const modErr = await assertModule("van_hanh_nang_cao");
+  if (modErr) return { error: modErr };
+  const supabase = await createClient();
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  if (!input.description.trim()) return { error: "Mô tả sự cố bắt buộc." };
+  // equipment phai thuoc truong (RLS cung chan, nhung check som cho meldung ro).
+  const { data: eq, error: eqErr } = await supabase
+    .from("equipment")
+    .select("id")
+    .eq("id", input.equipmentId)
+    .eq("school_id", profile.school_id)
+    .maybeSingle();
+  if (eqErr) {
+    console.error("[school] equipment check:", eqErr.message);
+    return { error: "Không kiểm tra được thiết bị - vui lòng thử lại." };
+  }
+  if (!eq) return { error: "Thiết bị không thuộc trường của bạn." };
+  const { error } = await supabase.from("equipment_issues").insert({
+    school_id: profile.school_id,
+    equipment_id: input.equipmentId,
+    kind: input.kind,
+    description: input.description.trim(),
+    reported_by: profile.id,
+  });
+  if (error) {
+    console.error("[school] add equipment issue:", error.message);
+    return { error: "Không ghi nhận được sự cố - vui lòng thử lại." };
+  }
+  revalidatePath("/school/equipment");
+  return { ok: true };
+}
+
+export async function updateEquipmentIssue(
+  issueId: string,
+  input: { status: string; resolutionNote?: string },
+): Promise<{ ok?: boolean; error?: string }> {
+  const deny = await checkActionRole(["bgh", "pht", "ke_toan"]);
+  if (deny) return { error: deny };
+  const modErr = await assertModule("van_hanh_nang_cao");
+  if (modErr) return { error: modErr };
+  const supabase = await createClient();
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  // CAS: chi cap nhat khi su co con mo (open/in_progress) - resolved/
+  // cancelled la trang thai ket thuc, .select de biet row nao thuc su doi.
+  const { data: upd, error } = await supabase
+    .from("equipment_issues")
+    .update({
+      status: input.status,
+      resolution_note: input.resolutionNote?.trim() || null,
+      resolved_date:
+        input.status === "resolved" ? new Date().toISOString().slice(0, 10) : null,
+    })
+    .eq("id", issueId)
+    .eq("school_id", profile.school_id)
+    .in("status", ["open", "in_progress"])
+    .select("id");
+  if (error) {
+    console.error("[school] update equipment issue:", error.message);
+    return { error: "Không cập nhật được sự cố - vui lòng thử lại." };
+  }
+  if (!upd?.length)
+    return { error: "Sự cố đã đóng - không cập nhật được." };
+  revalidatePath("/school/equipment");
+  return { ok: true };
+}
+
 export async function addSchoolKpi(input: {
   period: string;
   title: string;
@@ -1104,4 +1181,107 @@ export async function listItemAcl(input: {
     return { error: "Không tải được danh sách giới hạn - vui lòng thử lại." };
   }
   return { emails: profRes.rows.map((p) => p.email).filter(Boolean) as string[] };
+}
+
+// --- CR-073: TKB nang cao - copy TKB giua cac lop ---------------------
+
+export async function copyTimetable(input: {
+  sourceClassId: string;
+  targetClassId: string;
+  skipConflicts?: boolean;
+}): Promise<{ copied?: number; skipped?: number; error?: string }> {
+  const deny = await checkActionRole(["bgh", "pht"]);
+  if (deny) return { error: deny };
+  const supabase = await createClient();
+  const profile = await getProfile();
+  if (!profile?.school_id) return { error: "Phiên đăng nhập đã hết hạn." };
+  if (input.sourceClassId === input.targetClassId)
+    return { error: "Lớp nguồn và lớp đích trùng nhau." };
+
+  const { data: clsRows, error: clsErr } = await supabase
+    .from("classes")
+    .select("id,school_id")
+    .in("id", [input.sourceClassId, input.targetClassId]);
+  if (clsErr) {
+    console.error("[school] copy timetable classes:", clsErr.message);
+    return { error: "Lỗi tra cứu lớp - vui lòng thử lại." };
+  }
+  if ((clsRows ?? []).length !== 2 || (clsRows ?? []).some((c) => c.school_id !== profile.school_id))
+    return { error: "Cả hai lớp phải thuộc trường của bạn." };
+
+  const { data: src, error: srcErr } = await supabase
+    .from("timetable_entries")
+    .select("subject_id,teacher_id,weekday,period,room")
+    .eq("class_id", input.sourceClassId);
+  if (srcErr) {
+    console.error("[school] copy timetable src:", srcErr.message);
+    return { error: "Không tải được TKB lớp nguồn - vui lòng thử lại." };
+  }
+  if (!src?.length) return { error: "Lớp nguồn chưa có thời khóa biểu." };
+
+  const { data: tgt, error: tgtErr } = await supabase
+    .from("timetable_entries")
+    .select("id,weekday,period")
+    .eq("class_id", input.targetClassId);
+  if (tgtErr) {
+    console.error("[school] copy timetable tgt:", tgtErr.message);
+    return { error: "Không tải được TKB lớp đích - vui lòng thử lại." };
+  }
+  const occupied = new Set((tgt ?? []).map((e) => `${e.weekday}-${e.period}`));
+
+  // Teacher-conflict: giao vien khong the day 2 lop cung tiet.
+  const { data: schoolClasses, error: scErr } = await supabase
+    .from("classes").select("id").eq("school_id", profile.school_id);
+  if (scErr) {
+    console.error("[school] copy timetable classes:", scErr.message);
+    return { error: "Không tải được danh sách lớp - vui lòng thử lại." };
+  }
+  const otherClassIds = (schoolClasses ?? []).map((c) => c.id)
+    .filter((id) => id !== input.targetClassId);
+  const teacherBusy = new Set<string>();
+  if (otherClassIds.length) {
+    const busy = await fetchAllRowsIn<{ teacher_id: string | null; weekday: number; period: number }>(
+      (chunk, f, t) => supabase
+        .from("timetable_entries")
+        .select("teacher_id,weekday,period")
+        .not("teacher_id", "is", null)
+        .in("class_id", chunk)
+        .order("id").range(f, t),
+      otherClassIds,
+    );
+    if (busy.error || busy.truncated)
+      return { error: "Không kiểm tra được lịch giáo viên - vui lòng thử lại." };
+    for (const e of busy.rows)
+      teacherBusy.add(`${e.teacher_id}-${e.weekday}-${e.period}`);
+  }
+
+  let copied = 0;
+  let skipped = 0;
+  for (const e of src) {
+    const key = `${e.weekday}-${e.period}`;
+    const teacherKey = e.teacher_id ? `${e.teacher_id}-${key}` : null;
+    if (occupied.has(key) || (teacherKey && teacherBusy.has(teacherKey))) {
+      if (!input.skipConflicts)
+        return { error: `Xung đột ở thứ ${e.weekday} tiết ${e.period} - bật 'bỏ qua xung đột' để copy phần còn lại.` };
+      skipped++;
+      continue;
+    }
+    const { error } = await supabase.from("timetable_entries").insert({
+      class_id: input.targetClassId,
+      subject_id: e.subject_id,
+      teacher_id: e.teacher_id,
+      weekday: e.weekday,
+      period: e.period,
+      room: e.room,
+    });
+    if (error) {
+      if (error.code === "23505") { skipped++; continue; }
+      console.error("[school] copy timetable insert:", error.message);
+      return { copied, skipped, error: "Copy gián đoạn - một số tiết đã được chèn." };
+    }
+    occupied.add(key);
+    copied++;
+  }
+  revalidatePath("/schedule/manage");
+  return { copied, skipped };
 }

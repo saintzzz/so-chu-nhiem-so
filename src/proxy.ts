@@ -40,7 +40,10 @@ export async function proxy(request: NextRequest) {
   // CR-082: noi dung SEO cong khai tren /guides* (rewrite sang
   // vieschool-content trong next.config). Prefix match bao gom ca
   // /guides-indexnow-key.txt o root.
-  const isPublicGuides = pathname.startsWith("/guides");
+  const isPublicGuides =
+    pathname === "/guides" ||
+    pathname.startsWith("/guides/") ||
+    pathname === "/guides-indexnow-key.txt";
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,
   // POST /api/admissions/apply co honeypot + Turnstile + RPC kiem open.
   const isPublicApply =

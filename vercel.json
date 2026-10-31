@@ -2,6 +2,10 @@
   "regions": [
     "sin1"
   ],
+  "rewrites": [
+    { "source": "/guides-indexnow-key.txt", "destination": "https://vieschool-content.vercel.app/guides-indexnow-key.txt" },
+    { "source": "/guides/:path*", "destination": "https://vieschool-content.vercel.app/scn/guides/:path*" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -29,6 +33,15 @@
         {
           "key": "X-Robots-Tag",
           "value": "noai, noimageai"
+        }
+      ]
+    },
+    {
+      "source": "/guides/:path*",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     }

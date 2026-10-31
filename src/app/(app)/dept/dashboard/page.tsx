@@ -40,10 +40,11 @@ export default async function DeptDashboardPage() {
 
   const { data: schoolRows } = await must(supabase
     .from("schools")
-    .select("id,name,org_unit_id"), "schools");
+    .select("id,name,code,org_unit_id"), "schools");
   const allSchools = (schoolRows ?? []) as {
     id: string;
     name: string;
+    code: string | null;
     org_unit_id: string | null;
   }[];
   const scopedSchools = scopedOrgIds
@@ -90,10 +91,22 @@ export default async function DeptDashboardPage() {
   for (const row of D.emulation ?? []) {
     totals.set(row.class_id, (totals.get(row.class_id) ?? 0) + row.score);
   }
+  const schoolOf = new Map(allSchools.map((s) => [s.id, s]));
   const ranking = classes
-    .map((c) => ({ name: c.name, value: totals.get(c.id) ?? 0 }))
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      school: schoolOf.get(c.school_id),
+      value: totals.get(c.id) ?? 0,
+    }))
     .sort((a, b) => b.value - a.value);
-  const chartData = ranking.map((r) => ({ label: r.name, value: r.value }));
+  const seenLabels = new Set<string>();
+  const chartData = ranking.map((r, i) => {
+    let label = `${r.name} (${r.school?.code ?? r.school?.name ?? "?"})`;
+    if (seenLabels.has(label)) label = `${label} #${i + 1}`;
+    seenLabels.add(label);
+    return { label, value: r.value };
+  });
 
   return (
     <>
@@ -163,9 +176,14 @@ export default async function DeptDashboardPage() {
           footer={<span>Kỳ {EMULATION_PERIOD}</span>}
         >
           {ranking.map((r, i) => (
-            <tr key={r.name}>
+            <tr key={r.id}>
               <td className="font-medium">{i + 1}</td>
-              <td>{r.name}</td>
+              <td>
+                {r.name}
+                <span className="block text-xs text-muted-foreground">
+                  {r.school?.name ?? "-"}
+                </span>
+              </td>
               <td className="font-semibold">{r.value}</td>
               <td>
                 {i === 0 && r.value > 0 && (

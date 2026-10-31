@@ -2,6 +2,28 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  // CR-082: /guides* proxy sang deployment vieschool-content (SEO content
+  // tach repo). vercel.json rewrites khong hoat dong voi nextjs framework.
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/guides-indexnow-key.txt",
+          destination:
+            "https://vieschool-content.vercel.app/guides-indexnow-key.txt",
+        },
+        {
+          source: "/guides",
+          destination: "https://vieschool-content.vercel.app/scn/guides",
+        },
+        {
+          source: "/guides/:path*",
+          destination:
+            "https://vieschool-content.vercel.app/scn/guides/:path*",
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {

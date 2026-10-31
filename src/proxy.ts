@@ -37,6 +37,10 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isLogin = pathname === "/login";
+  // CR-082: noi dung SEO cong khai tren /guides* (rewrite sang
+  // vieschool-content trong next.config). Prefix match bao gom ca
+  // /guides-indexnow-key.txt o root.
+  const isPublicGuides = pathname.startsWith("/guides");
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,
   // POST /api/admissions/apply co honeypot + Turnstile + RPC kiem open.
   const isPublicApply =
@@ -58,10 +62,13 @@ export async function proxy(request: NextRequest) {
     return res;
   };
 
-  if (!user && !isLogin && !isPublicApi) {
+  if (!user && !isLogin && !isPublicApi && !isPublicGuides) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return redirectWithCookies(url);
+  }
+  if (!user && isPublicGuides) {
+    return response;
   }
   if (!user && isPublicApi) {
     // cong apply cong khai: khong cho indexer thu thap URL dot tuyen
@@ -80,7 +87,7 @@ export async function proxy(request: NextRequest) {
   }
   // CR-054: route authed khong cho indexer (crawler hop phap deu mat
   // session ngay, nhung noindex ngan data leak qua search cache/preview).
-  if (user) {
+  if (user && !isPublicGuides) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noai, noimageai");
   }
   return response;

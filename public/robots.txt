@@ -34,3 +34,5 @@ Disallow: /
 # Bot thuong van duoc index landing
 User-agent: *
 Allow: /
+
+Sitemap: https://sochunhiem.vieschool.com/guides/sitemap.xml

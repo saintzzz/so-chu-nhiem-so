@@ -20,12 +20,17 @@ export default async function LoginPage() {
         <p className="mt-1 text-center text-sm text-muted-foreground">
           Nền tảng số hóa công tác chủ nhiệm cho trường học
         </p>
-        <p className="mt-0.5 mb-6 text-center text-xs text-muted-foreground">
+        <p className="mt-0.5 mb-1.5 text-center text-xs text-muted-foreground">
           Sản phẩm của{" "}
           <a href="https://vieschool.com" className="font-medium text-primary hover:underline">
             VieSchool
           </a>{" "}
           - hệ sinh thái số cho trường học Việt Nam
+        </p>
+        <p className="mb-6 text-center text-xs text-muted-foreground">
+          <a href="/guides" className="font-medium text-primary hover:underline">
+            Cẩm nang giáo viên chủ nhiệm
+          </a>
         </p>
         <LoginForm />
       </div>

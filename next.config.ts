@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
             "https://vieschool-content.vercel.app/guides-indexnow-key.txt",
         },
         {
+          source: "/sitemap.xml",
+          destination:
+            "https://vieschool-content.vercel.app/scn/guides/sitemap.xml",
+        },
+        {
           source: "/guides",
           destination: "https://vieschool-content.vercel.app/scn/guides",
         },

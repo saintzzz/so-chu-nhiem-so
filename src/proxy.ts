@@ -48,6 +48,8 @@ export async function proxy(request: NextRequest) {
   // (truoc day redirect /login -> mat kenh discovery)
   const isPublicSeoFiles =
     pathname === "/robots.txt" || pathname === "/sitemap.xml";
+  // CR-113: /mua cong khai - trang ban hang (rewrite sang vieschool-content)
+  const isPublicMua = pathname === "/mua";
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,
   // POST /api/admissions/apply co honeypot + Turnstile + RPC kiem open.
   const isPublicApply =
@@ -69,12 +71,12 @@ export async function proxy(request: NextRequest) {
     return res;
   };
 
-  if (!user && !isLogin && !isPublicApi && !isPublicGuides && !isPublicSeoFiles) {
+  if (!user && !isLogin && !isPublicApi && !isPublicGuides && !isPublicSeoFiles && !isPublicMua) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return redirectWithCookies(url);
   }
-  if (!user && (isPublicGuides || isPublicSeoFiles)) {
+  if (!user && (isPublicGuides || isPublicSeoFiles || isPublicMua)) {
     return response;
   }
   if (!user && isPublicApi) {
@@ -94,7 +96,7 @@ export async function proxy(request: NextRequest) {
   }
   // CR-054: route authed khong cho indexer (crawler hop phap deu mat
   // session ngay, nhung noindex ngan data leak qua search cache/preview).
-  if (user && !isPublicGuides && !isPublicSeoFiles) {
+  if (user && !isPublicGuides && !isPublicSeoFiles && !isPublicMua) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noai, noimageai");
   }
   return response;

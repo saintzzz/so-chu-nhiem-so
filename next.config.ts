@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
             "https://vieschool-content.vercel.app/scn/guides/sitemap.xml",
         },
         {
+          source: "/mua",
+          destination: "https://vieschool-content.vercel.app/scn/mua",
+        },
+        {
           source: "/guides",
           destination: "https://vieschool-content.vercel.app/scn/guides",
         },

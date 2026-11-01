@@ -49,7 +49,8 @@ export async function proxy(request: NextRequest) {
   const isPublicSeoFiles =
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml" ||
-    pathname === "/llms.txt";
+    pathname === "/llms.txt" ||
+    pathname === "/logo.png";
   // CR-113: /mua cong khai - trang ban hang (rewrite sang vieschool-content)
   const isPublicMua = pathname === "/mua";
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,

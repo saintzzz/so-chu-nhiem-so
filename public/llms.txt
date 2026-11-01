@@ -1,0 +1,13 @@
+# Sổ Chủ Nhiệm Số
+
+> Sổ chủ nhiệm điện tử cho giáo viên chủ nhiệm tiểu học Việt Nam tại sochunhiem.vieschool.com. Nhận xét học sinh theo Thông tư 22, đánh giá hạnh kiểm, quản lý hồ sơ lớp học. Các hướng dẫn miễn phí dành cho giáo viên chủ nhiệm và Ban Giám Hiệu.
+
+## Hướng dẫn
+
+- [Sổ chủ nhiệm điện tử là gì](https://sochunhiem.vieschool.com/guides/so-chu-nhiem-dien-tu-la-gi): Khái niệm, lợi ích so với sổ giấy, cách bắt đầu
+- [Mẫu nhận xét chủ nhiệm cuối năm học](https://sochunhiem.vieschool.com/guides/mau-nhan-xet-chu-nhiem): Cách viết nhận xét đúng Thông tư 22, mẫu câu theo mức Đạt - Chưa đạt
+- [Đánh giá hạnh kiểm theo Thông tư 22](https://sochunhiem.vieschool.com/guides/danh-gia-hanh-kiem-tt22): Khung đánh giá, tiêu chí và quy trình ghi nhận
+
+## Mua gói
+
+- [Mua Sổ Chủ Nhiệm Số](https://sochunhiem.vieschool.com/mua): Kích hoạt cho giáo viên hoặc toàn trường

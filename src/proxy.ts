@@ -47,7 +47,9 @@ export async function proxy(request: NextRequest) {
   // CR-112: robots.txt + sitemap phai public de Googlebot doc duoc
   // (truoc day redirect /login -> mat kenh discovery)
   const isPublicSeoFiles =
-    pathname === "/robots.txt" || pathname === "/sitemap.xml";
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/llms.txt";
   // CR-113: /mua cong khai - trang ban hang (rewrite sang vieschool-content)
   const isPublicMua = pathname === "/mua";
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,

@@ -1,20 +1,24 @@
-# Chặn AI crawler / LLM scraper - noi dung khong cho phep dung de train.
-# (honor-system: chan bot ton trong robots; lop chan that su o Turnstile/WAF)
-User-agent: GPTBot
+# Bot tim kiem/tra loi AI - CHO PHEP de xuat hien trong ChatGPT/Perplexity/Claude answers.
+# (OAI-SearchBot = ChatGPT search, PerplexityBot = Perplexity index, ClaudeBot/Claude-SearchBot = Claude)
 User-agent: OAI-SearchBot
 User-agent: ChatGPT-User
-User-agent: ClaudeBot
-User-agent: anthropic-ai
-User-agent: Claude-User
-User-agent: Claude-SearchBot
 User-agent: PerplexityBot
 User-agent: Perplexity-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: MistralAI-User
+Allow: /
+
+# Bot THU THAP DU LIEU TRAINING thuan tuy - van chan (honor-system).
+# GPTBot chan khong anh huong ChatGPT search (search dung OAI-SearchBot).
+User-agent: GPTBot
 User-agent: CCBot
 User-agent: Bytespider
 User-agent: Amazonbot
 User-agent: meta-externalagent
 User-agent: FacebookBot
-User-agent: MistralAI-User
 User-agent: Applebot-Extended
 User-agent: AI2Bot
 User-agent: Diffbot
@@ -27,7 +31,7 @@ User-agent: PanguBot
 User-agent: cohere-training-data-crawler
 Disallow: /
 
-# Opt-out khoi training Gemini/Vertex AI (token kiem soat cua Google)
+# Opt-out khoi training Gemini/Vertex AI (khong anh huong Gemini search grounding - dung Google index)
 User-agent: Google-Extended
 Disallow: /
 

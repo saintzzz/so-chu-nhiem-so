@@ -1,9 +1,10 @@
 /**
- * PROPOSAL keu goi dong dau tu / share-risk: tong ~2.79 ty VND - 3 phan, tinh bottom-up
+ * PROPOSAL keu goi dong dau tu / share-risk: tong ~2.85 ty VND - 3 phan, tinh bottom-up
  * theo resource plan (rate x allocation x thang) - khong dung so tron.
- *   A - Da dau tu (sunk):    T03/2026 -> 15/10/2026 (~7.5 thang) ~ 793.7M
- *   B - Du kien phat trien:  16/10/2026 -> 31/03/2027 (5.5 thang) ~ 829.45M
- *   C - Maintain/sua loi:    T04/2027 -> T12/2028 (21 thang)     ~ 1 165.5M
+ * Cap nhat 02/11/2026 theo tinh hinh thuc te.
+ *   A - Da dau tu (sunk):    T03/2026 -> 02/11/2026 (~8 thang)  ~ 859.5M
+ *   B - Du kien phat trien:  03/11/2026 -> 18/04/2027 (5.5 thang) ~ 829.45M
+ *   C - Maintain/sua loi:    T05/2027 -> T01/2029 (21 thang)     ~ 1 165.5M
  * Nguon: docs/handover/PROPOSAL-tong-dau-tu-2ty8.md
  * node scripts/gen-proposal-investment-pptx.mjs -> docs/handover/PROPOSAL-tong-dau-tu-2ty8.pptx
  */
@@ -60,15 +61,15 @@ function note(s, txt, y = 6.9) {
 {
   const s = p.addSlide();
   s.background = { color: C.code };
-  s.addText("ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.79 TỶ ĐỒNG", {
+  s.addText("ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.85 TỶ ĐỒNG", {
     x: 0.8, y: 2.0, w: 11.7, h: 1, fontFace: FONT, fontSize: 32, bold: true, color: C.white,
   });
   s.addText("VieSchool - Sổ Chủ Nhiệm Số + TVC360 - kêu gọi đồng đầu tư / share-risk", {
     x: 0.8, y: 3.05, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 15, color: "5eead4",
   });
-  s.addText("Tính bottom-up từ resource plan (rate × allocation × tháng): ~794M đã đầu tư · ~829M phát triển đến T03/2027 · ~1 166M maintain đến hết 2028", {
+  s.addText("Tính bottom-up từ resource plan (rate × allocation × tháng): ~859.5M đã đầu tư · ~829M phát triển đến T04/2027 · ~1 166M maintain đến T01/2029", {
     x: 0.8, y: 3.7, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 13, color: "94a3b8" });
-  s.addText("Sản phẩm đã live production tại sochunhiem.vieschool.com - không phải đề xuất trên giấy", {
+  s.addText("Sản phẩm live production tại vieschool.com - tenant trial TRIAL01 đang onboard khách hàng tiềm năng thật", {
     x: 0.8, y: 4.25, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 11.5, italic: true, color: "64748b" });
 }
 
@@ -85,10 +86,10 @@ function note(s, txt, y = 6.9) {
   ], { y: 1.9, w: 5.6 });
   table(s, [
     ["Phần", "Giai đoạn", "Số tiền"],
-    ["A - Đã đầu tư", "T03/26 - 15/10/26 (7.5th)", "~793.7M (28%)"],
-    ["B - Phát triển", "16/10/26 - 31/03/27 (5.5th)", "~829.45M (30%)"],
-    ["C - Maintain", "T04/27 - T12/28 (21th)", "~1 165.5M (42%)"],
-    ["TỔNG", "", "~2 788.65M ≈ 2.79 tỷ"],
+    ["A - Đã đầu tư", "T03/26 - 02/11/26 (~8th)", "~859.5M (30%)"],
+    ["B - Phát triển", "03/11/26 - 18/04/27 (5.5th)", "~829.45M (29%)"],
+    ["C - Maintain", "T05/27 - T01/29 (21th)", "~1 165.5M (41%)"],
+    ["TỔNG", "", "~2 854.45M ≈ 2.85 tỷ"],
   ], { x: 6.6, y: 1.9, w: 6.2, boldLast: true });
   bullets(s, [
     { t: "Team ramp theo thực tế: đầu dự án 2 người, QA vào từ T08, full team từ T09 - không tính 3.3 FTE suốt để inflate phần A", c: C.accent },
@@ -100,38 +101,39 @@ function note(s, txt, y = 6.9) {
 // ---------- S3 Phan A resource plan ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHẦN A - ĐÃ ĐẦU TƯ", "T03/2026 - 15/10/2026 (~7.5 tháng) - tổng ~793.7M VND, sunk cost không hoàn lại");
+  slideTitle(s, "PHẦN A - ĐÃ ĐẦU TƯ", "T03/2026 - 02/11/2026 (~8 tháng) - tổng ~859.5M VND, sunk cost không hoàn lại");
   table(s, [
-    ["Người", "T03-06 (4th) nền tảng", "T07-08 (2th) nghiệp vụ lõi", "T09 (1th) TVC360+SCN", "T01-15/10 (0.5th) demo gate", "Tổng"],
-    ["Bình - FS (55M)", "100%", "100%", "100%", "100%", "412 500 000"],
-    ["Phiên - BE (40M)", "80%", "100%", "100%", "100%", "268 000 000"],
-    ["Lan - QA (25M)", "-", "50%", "100%", "100%", "62 500 000"],
-    ["PM/BA (30M)", "-", "30%", "30%", "30%", "31 500 000"],
-    ["Nhân sự", "348M", "233M", "129M", "64.5M", "774 500 000"],
-    ["Infra + AI dev + domain", "", "", "", "", "~19 200 000"],
-    ["TỔNG PHẦN A", "", "", "", "", "~793 700 000"],
+    ["Người", "T03-06 (4th) nền tảng", "T07-08 (2th) nghiệp vụ lõi", "T09 (1th) TVC360+SCN", "T10-02/11 (1th) modular+trial", "Tổng"],
+    ["Bình - FS (55M)", "100%", "100%", "100%", "100%", "440 000 000"],
+    ["Phiên - BE (40M)", "80%", "100%", "100%", "100%", "288 000 000"],
+    ["Lan - QA (25M)", "-", "50%", "100%", "100%", "75 000 000"],
+    ["PM/BA (30M)", "-", "30%", "30%", "30%", "36 000 000"],
+    ["Nhân sự", "348M", "233M", "129M", "129M", "839 000 000"],
+    ["Infra + AI dev + domain", "", "", "", "", "~20 500 000"],
+    ["TỔNG PHẦN A", "", "", "", "", "~859 500 000"],
   ], { boldLast: true, fontSize: 10.5, rowH: 0.42 });
 }
 
 // ---------- S4 Phan A gia tri ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHẦN A - GIÁ TRỊ ĐÃ TẠO RA", "~794M sunk - sản phẩm live, không phải ý tưởng");
+  slideTitle(s, "PHẦN A - GIÁ TRỊ ĐÃ TẠO RA", "~859.5M sunk - sản phẩm live + khách trial thật, không phải ý tưởng");
   bullets(s, [
-    { t: "49 CR lớn đã merge (CR-001 → CR-049) - gồm chiến dịch hardening ~30 vòng external review độc lập" },
-    { t: "Multi-tenant 3 trường, phân quyền 11 role enforce ở DB (RLS) - không chỉ UI" },
-    { t: "Studio/TVC360: sinh KHBĐ theo CV 5512, ngân hàng 21k+ câu hỏi phủ 81/81 YCCĐ, export DOCX/PPTX, TTS audio thật" },
-    { t: "QA production: 49/49 coverage + 57/57 security-edge + 18/18 onboarding + 23/23 lifecycle" },
-    { t: "AI production-grade: multi-key/multi-model fallback, hedged race (doc dài 33.7s → ~5s), PII redaction" },
-    { t: "Self-service demo tại sochunhiem.vieschool.com - trường tự đăng nhập dùng thử" },
-    { t: "Tham chiếu giá trị thay thế: thuê dev shop cùng scope ~7.5 tháng thường 1.3-1.6 tỷ - định giá ở payroll là conservative", c: C.accent },
+    { t: "77+ CR lớn đã merge (CR-001 → CR-077) - ~40 vòng external review độc lập theo External Review Loop" },
+    { t: "20 module nghiệp vụ / 4 suite bán lẻ (Quản lý trường, Dạy-học, PH-HS, Dashboard-tích hợp) - entitlement bật-tắt theo trường, gate menu + route + RPC" },
+    { t: "Tenant trial TRIAL01 đang chạy cho khách tiềm năng thật - chỉ mở tác vụ cơ bản, khóa phân hệ nâng cao (verified E2E)" },
+    { t: "Nghiệp vụ T10: học bạ XML QĐ 3016 + ký số 2 cấp, xét tốt nghiệp, điều động GV trên TKB, văn thư, y tế-BHYT, thư viện, biến động" },
+    { t: "Integration framework (connectors + outbox + worker) sẵn sàng cho CSDL Bộ / VNeID / cổng thanh toán - chờ credential đối tác" },
+    { t: "Multi-tenant 4 trường, RBAC 11 role enforce ở DB (RLS); Studio: ngân hàng 21k+ câu hỏi phủ 81/81 YCCĐ, export DOCX/PPTX, TTS thật" },
+    { t: "AI production-grade: multi-key/multi-model fallback, hedged race (doc dài 33.7s → ~5s), PII redaction; camera điểm danh đã có DPIA + kiến trúc edge" },
+    { t: "Tham chiếu giá trị thay thế: thuê dev shop cùng scope ~8 tháng thường 1.4-1.7 tỷ - định giá ở payroll là conservative", c: C.accent },
   ]);
 }
 
 // ---------- S5 Phan B resource plan ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHẦN B - PHÁT TRIỂN", "16/10/2026 - 31/03/2027 (5.5 tháng) - giữ nguyên team 3.3 FTE");
+  slideTitle(s, "PHẦN B - PHÁT TRIỂN", "03/11/2026 - 18/04/2027 (5.5 tháng) - giữ nguyên team 3.3 FTE");
   table(s, [
     ["Người / Khoản", "Allocation", "Rate", "5.5 tháng (VND)"],
     ["Bình - Fullstack", "100%", "55M", "302 500 000"],
@@ -155,20 +157,21 @@ function note(s, txt, y = 6.9) {
   slideTitle(s, "PHẦN B - DELIVERABLES", "Giải ngân gắn milestone kiểm chứng được");
   table(s, [
     ["Tháng", "Deliverable", "Acceptance"],
-    ["T10-T11/2026", "Pilot 3-5 trường thật: data migration + đào tạo GV", "Trường pilot đăng nhập + nhập liệu thật; SLA hotfix trong ngày"],
-    ["T12/2026", "Ngân hàng THCS theo YCCĐ đối tác + duyệt 2 lớp (tổ → BGH)", "Coverage YCCĐ đạt target; workflow approve hoạt động E2E"],
-    ["T01/2027", "Báo cáo DPIA/bảo mật + tài liệu vận hành + runbook", "External review pass; handover docs hoàn chỉnh"],
-    ["T02-T03/2027", "Hoàn thiện theo feedback pilot + chuẩn bị commercial launch + billing", "Sản phẩm sẵn sàng bán; billing path đã test"],
-  ], { rowH: 0.7 });
+    ["Đã xong T10/26", "Suite entitlement/billing foundation + integration framework + tenant trial self-serve (TRIAL01)", "20 module/4 suite gate menu+route+RPC; trial E2E verified - KHÔNG tính lại vào B", ],
+    ["T11-T12/2026", "Pilot 3-5 trường thật: data migration + đào tạo GV + onboarding self-serve", "Trường pilot đăng nhập + nhập liệu thật; SLA hotfix trong ngày"],
+    ["T01/2027", "Ngân hàng THCS theo YCCĐ đối tác + duyệt 2 lớp (tổ → BGH)", "Coverage YCCĐ đạt target; workflow approve hoạt động E2E"],
+    ["T02/2027", "Báo cáo DPIA/bảo mật + tài liệu vận hành + runbook + cổng thanh toán VNPAY/MoMo", "External review pass; handover docs hoàn chỉnh; payment path test"],
+    ["T03-T04/2027", "Hoàn thiện theo feedback pilot + commercial launch", "Sản phẩm sẵn sàng bán; 3-5 trường trả phí (stretch)"],
+  ], { rowH: 0.62, fontSize: 10.5 });
   bullets(s, [
     { t: "Không ứng trọn một lần - giải ngân theo tháng/milestone có deliverable kiểm chứng được", c: C.accent },
-  ], { y: 5.2, fontSize: 12.5 });
+  ], { y: 5.4, fontSize: 12.5 });
 }
 
 // ---------- S7 Phan C ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHẦN C - MAINTAIN / SỬA LỖI", "T04/2027 - T12/2028 (21 tháng) - vận hành lean ~1.0 FTE");
+  slideTitle(s, "PHẦN C - MAINTAIN / SỬA LỖI", "T05/2027 - T01/2029 (21 tháng) - vận hành lean ~1.0 FTE");
   table(s, [
     ["Người / Khoản", "Allocation", "Rate", "21 tháng (VND)"],
     ["Bình - Fullstack (oncall/hotfix/CR nhỏ)", "70%", "55M", "808 500 000"],
@@ -188,13 +191,13 @@ function note(s, txt, y = 6.9) {
 // ---------- S8 Phuong an share-risk ----------
 {
   const s = p.addSlide();
-  slideTitle(s, "PHƯƠNG ÁN KÊU GỌI & CHIA SẺ", "Chia doanh thu T03/27-T03/29 (2 năm đầu) - sau đó chuyển cổ phần");
+  slideTitle(s, "PHƯƠNG ÁN KÊU GỌI & CHIA SẺ", "Chia doanh thu 24 tháng từ khách trả phí đầu tiên - sau đó chuyển cổ phần");
   table(s, [
     ["Tiêu chí", "PA-1: fund phần B (ưu tiên)", "PA-2: fund B + C"],
     ["Nhà đầu tư gánh (50%)", "~414 725 000 (50% phần B)", "~997 475 000 (50% của B+C)"],
-    ["Dev gánh", "50% B + A sunk ~794M + tự gánh C ~1 166M + vận hành", "50% (B+C) + A sunk ~794M + vận hành"],
-    ["Rev-share T03/27-T03/29", "Nhà đầu tư ~40% / dev ~60%", "Nhà đầu tư ~45% / dev ~55%"],
-    ["Cổ phần sau T03/2029", "~10-15%", "~15-20% (cam kết lớn hơn)"],
+    ["Dev gánh", "50% B + A sunk ~859.5M + tự gánh C ~1 166M + vận hành", "50% (B+C) + A sunk ~859.5M + vận hành"],
+    ["Rev-share 24 tháng đầu", "Nhà đầu tư ~40% / dev ~60%", "Nhà đầu tư ~45% / dev ~55%"],
+    ["Cổ phần sau kỳ rev-share", "~10-15%", "~15-20% (cam kết lớn hơn)"],
   ], { rowH: 0.55, fontSize: 11 });
   note(s, "Share-risk 50-50 về chi phí ở cả 2 phương án; dev giữ majority rev-share vì gánh sunk A + IP + toàn bộ công sức vận hành.", 6.45);
 }
@@ -205,12 +208,12 @@ function note(s, txt, y = 6.9) {
   slideTitle(s, "ĐIỀU KHOẢN & TÓM TẮT", "Con số chốt mang đi negotiate");
   table(s, [
     ["Mục", "Giá trị"],
-    ["Tổng kinh phí dự án", "~2 788 650 000 VND (~2.79 tỷ)"],
-    ["Đã đầu tư (sunk - sweat equity)", "~793.7M (28%) - T03/26 → 15/10/26"],
+    ["Tổng kinh phí dự án", "~2 854 450 000 VND (~2.85 tỷ)"],
+    ["Đã đầu tư (sunk - sweat equity)", "~859.5M (30%) - T03/26 → 02/11/26"],
     ["PA-1 - kêu gọi trước tiên", "NĐT gánh 50% B ≈ ~414.7M → NĐT ~40% rev-share 2 năm + ~10-15% cổ phần sau 2029"],
     ["PA-2 - mở rộng", "NĐT gánh 50% (B+C) ≈ ~997.5M → NĐT ~45% rev-share 2 năm + ~15-20% cổ phần sau 2029"],
     ["Burn rate", "Build: 129M NS + ~8.1M infra /th · Maintain: 46.5M NS + ~9M infra /th"],
-    ["Trạng thái sản phẩm", "Live production - 3 trường demo - QA xanh - ~30 vòng external review"],
+    ["Trạng thái sản phẩm", "Live production - 3 trường demo + 1 tenant trial khách thật - 20 module/4 suite - QA xanh"],
   ], { rowH: 0.48, fontSize: 11 });
   bullets(s, [
     { t: "Điều khoản bắt buộc: giải ngân theo milestone - phần A không hoàn/khấu trừ - clock doanh thu đếm từ khách paid đầu tiên (trễ thì dịch cửa sổ) - cổ phần vesting từ ngày ký - báo cáo burn hàng tháng + audit rights - IP thuộc bên phát triển - scale >5 trường thì review hạ tầng qua CR riêng", c: C.muted },

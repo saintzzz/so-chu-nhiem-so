@@ -1,7 +1,7 @@
-# ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.79 TỶ ĐỒNG
+# ĐỀ XUẤT KINH PHÍ DỰ ÁN - ~2.85 TỶ ĐỒNG
 
 **Mục tiêu:** kêu gọi đồng đầu tư / share-risk cho VieSchool - Sổ Chủ Nhiệm Số + TVC360.
-**Ngày:** 16/10/2026. Trạng thái: bản nháp để negotiate.
+**Ngày:** 16/10/2026 - cập nhật 02/11/2026 theo tình hình thực tế. Trạng thái: bản nháp để negotiate.
 
 **Phương pháp tính:** bottom-up - rate/tháng × allocation % × số tháng của từng người theo từng phase. Không có con số tổng tròn - tổng là kết quả cộng dồn.
 
@@ -16,42 +16,45 @@
 
 ---
 
-## PHẦN A - ĐÃ ĐẦU TƯ (T03/2026 - 15/10/2026, 7.5 tháng)
+## PHẦN A - ĐÃ ĐẦU TƯ (T03/2026 - 02/11/2026, ~8 tháng)
 
-Bên phát triển đã tự gánh toàn bộ để đưa sản phẩm từ 0 → production sẵn sàng demo gate 15/10.
+Bên phát triển đã tự gánh toàn bộ để đưa sản phẩm từ 0 → production và tiếp tục phát triển đến hôm nay, không dừng ở demo gate 15/10.
 
 ### Resource plan theo phase
 
-| Người | T03-T06/26 (4 tháng) - nền tảng | T07-T08/26 (2 tháng) - nghiệp vụ lõi | T09/26 (1 tháng) - TVC360 + SCN | T01-15/10/26 (0.5 tháng) - demo gate | Tổng (VND) |
+| Người | T03-T06/26 (4 tháng) - nền tảng | T07-T08/26 (2 tháng) - nghiệp vụ lõi | T09/26 (1 tháng) - TVC360 + SCN | T10-02/11/26 (1 tháng) - modular + trial | Tổng (VND) |
 |---|---|---|---|---|---|
-| Bình - Fullstack | 100% → 220M | 100% → 110M | 100% → 55M | 100% → 27.5M | **412 500 000** |
-| Phiên - Backend | 80% → 128M | 100% → 80M | 100% → 40M | 100% → 20M | **268 000 000** |
-| Lan - QA | - | 50% → 25M | 100% → 25M | 100% → 12.5M | **62 500 000** |
-| PM / BA | - | 30% → 18M | 30% → 9M | 30% → 4.5M | **31 500 000** |
-| **Nhân sự** | **348M** | **233M** | **129M** | **64.5M** | **774 500 000** |
-| Infra + AI dev + domain | | | | | ~19 200 000 |
-| **TỔNG PHẦN A** | | | | | **~793 700 000** |
+| Bình - Fullstack | 100% → 220M | 100% → 110M | 100% → 55M | 100% → 55M | **440 000 000** |
+| Phiên - Backend | 80% → 128M | 100% → 80M | 100% → 40M | 100% → 40M | **288 000 000** |
+| Lan - QA | - | 50% → 25M | 100% → 25M | 100% → 25M | **75 000 000** |
+| PM / BA | - | 30% → 18M | 30% → 9M | 30% → 9M | **36 000 000** |
+| **Nhân sự** | **348M** | **233M** | **129M** | **129M** | **839 000 000** |
+| Infra + AI dev + domain | | | | | ~20 500 000 |
+| **TỔNG PHẦN A** | | | | | **~859 500 000** |
 
 ### Nội dung từng sub-phase
 
 - **T03-T06:** kiến trúc multi-tenant, RBAC 11 role, RLS/tenant isolation, schema nghiệp vụ (chuyên cần, hồ sơ, điểm, hạnh kiểm)
 - **T07-T08:** hoàn thiện nghiệp vụ lõi, portal PH/HS, auth + phân quyền, QA vào cuộc 50%
 - **T09:** requirement TVC360 (04/09) + khởi động SCN (11/09) - Studio soạn học liệu, ngân hàng câu hỏi, KHBĐ CV 5512; full team
-- **T01-15/10:** demo gate - self-service onboarding trên sochunhiem.vieschool.com, QA toàn diện, fix perf + RLS
+- **T10-02/11:** demo gate → modular packaging (20 module / 4 suite bán lẻ, entitlement per-school) → provision tenant trial TRIAL01 cho khách tiềm năng thật
 
-### Minh chứng giá trị đã có
+### Minh chứng giá trị đã có (cập nhật 02/11)
 
-- 49 CR lớn đã merge (CR-001 → CR-049), gồm chiến dịch hardening ~30 vòng external review độc lập
-- Multi-tenant 3 trường, phân quyền 11 role enforce ở DB (RLS)
+- **77+ CR lớn đã merge** (CR-001 → CR-077), gồm ~40 vòng external review độc lập theo External Review Loop
+- **20 module nghiệp vụ** chia 4 suite bán lẻ: Quản lý trường / Dạy & học / Chăm sóc PH-HS / Dashboard & tích hợp - bật-tắt theo từng trường, menu + route + RPC đều gate
+- **Tenant trial TRIAL01 đang chạy** cho khách hàng tiềm năng thật - chỉ mở tác vụ cơ bản, khóa phân hệ nâng cao (đã verify Playwright end-to-end)
+- Nghiệp vụ mới trong T10: học bạ XML QĐ 3016 + ký số 2 cấp, xét tốt nghiệp, điều động GV trên TKB, văn thư, y tế-BHYT (campus-scoped RLS), thư viện, biến động HS, integration framework (connectors + outbox + worker) sẵn sàng cho CSDL Bộ/VNeID/cổng thanh toán
+- Multi-tenant 4 trường, phân quyền 11 role enforce ở DB (RLS)
 - Ngân hàng 21k+ câu hỏi phủ 81/81 YCCĐ; export DOCX/PPTX; TTS audio thật
-- QA production: 49/49 coverage + 57/57 security-edge + 18/18 onboarding + 23/23 lifecycle
 - AI production-grade: multi-key/multi-model fallback, hedged race (doc dài 33.7s → ~5s), PII redaction
+- Camera điểm danh: DPIA + kiến trúc edge đã thiết kế xong, chờ pilot phần cứng
 
-> Tham chiếu: thuê dev shop cùng scope ~7.5 tháng thường 1.3-1.6 tỷ; định giá ở cost payroll là conservative.
+> Tham chiếu: thuê dev shop cùng scope ~8 tháng thường 1.4-1.7 tỷ; định giá ở cost payroll là conservative.
 
 ---
 
-## PHẦN B - DỰ KIẾN PHÁT TRIỂN (16/10/2026 - 31/03/2027, 5.5 tháng)
+## PHẦN B - DỰ KIẾN PHÁT TRIỂN (03/11/2026 - 18/04/2027, 5.5 tháng)
 
 Giữ nguyên cấu hình team đã chứng minh hiệu quả (3.3 FTE = 129M/tháng nhân sự).
 
@@ -71,16 +74,16 @@ Giữ nguyên cấu hình team đã chứng minh hiệu quả (3.3 FTE = 129M/th
 
 ### Deliverables theo tháng
 
-- **T10-T11:** pilot 3-5 trường thật (data migration + đào tạo GV), SLA hotfix trong ngày
-- **T12:** ngân hàng câu hỏi THCS theo YCCĐ đối tác, pipeline duyệt 2 lớp (tổ → BGH)
-- **T01/2027:** báo cáo DPIA/bảo mật, tài liệu vận hành, runbook
-- **T02-T03/2027:** hoàn thiện theo feedback pilot, chuẩn bị commercial launch + billing
+- **T11/2026:** trial TRIAL01 đang chạy → mở rộng pilot 3-5 trường thật (data migration + đào tạo GV), SLA hotfix trong ngày
+- **T12/2026:** ngân hàng câu hỏi THCS theo YCCĐ đối tác, pipeline duyệt 2 lớp (tổ → BGH); billing path trên nền suite entitlement đã có
+- **T01-T02/2027:** báo cáo DPIA/bảo mật, tài liệu vận hành, runbook; tích hợp thật khi đối tác cấp credential (CSDL Bộ nạp điểm, VNeID, cổng thanh toán - framework đã sẵn)
+- **T03-T04/2027:** hoàn thiện theo feedback pilot, commercial launch + billing trên mô hình bán lẻ module
 
 > Supabase Pro + compute Small bắt buộc từ khi có tenant trả phí (vụ throttling 09/10 chứng minh free tier không đủ) - đã tính trong bảng.
 
 ---
 
-## PHẦN C - MAINTAIN / SỬA LỖI (T04/2027 - T12/2028, 21 tháng)
+## PHẦN C - MAINTAIN / SỬA LỖI (T05/2027 - T01/2029, 21 tháng)
 
 Vận hành lean sau launch - không giữ team build.
 
@@ -107,12 +110,12 @@ Vận hành lean sau launch - không giữ team build.
 
 | Phần | Giai đoạn | Số tiền (VND) |
 |---|---|---|
-| A - Đã đầu tư (sunk) | T03/26 - 15/10/26 (7.5 tháng) | **~793 700 000** |
-| B - Phát triển | 16/10/26 - 31/03/27 (5.5 tháng) | **~829 450 000** |
-| C - Maintain | T04/27 - T12/28 (21 tháng) | **~1 165 500 000** |
-| **TỔNG** | | **~2 788 650 000 (~2.79 tỷ)** |
+| A - Đã đầu tư (sunk) | T03/26 - 02/11/26 (~8 tháng) | **~859 500 000** |
+| B - Phát triển | 03/11/26 - 18/04/27 (5.5 tháng) | **~829 450 000** |
+| C - Maintain | T05/27 - T01/29 (21 tháng) | **~1 165 500 000** |
+| **TỔNG** | | **~2 854 450 000 (~2.85 tỷ)** |
 
-- Bên phát triển đã bỏ: ~794M (28%) - sunk, không hoàn, không khấu trừ
+- Bên phát triển đã bỏ: ~859.5M (30%) - sunk, không hoàn, không khấu trừ
 - Kêu gọi trước tiên (PA-1): **50% phần B ≈ 414 725 000** - dev gánh 50% còn lại
 - Nếu mở rộng (PA-2): **50% của B + C ≈ 997 475 000** - dev gánh 50% còn lại
 - Burn rate build: 129M nhân sự + ~8.1M infra /tháng
@@ -122,14 +125,14 @@ Vận hành lean sau launch - không giữ team build.
 
 ## PHƯƠNG ÁN KÊU GỌI & CHIA SẺ
 
-Mô hình chung: **share-risk 50-50** - nhà đầu tư và bên phát triển mỗi bên gánh 50% chi phí kêu gọi. **T03/2027 - T03/2029 (2 năm đầu) chia doanh thu; sau T03/2029 chuyển sang chia cổ phần.** Phần A (~794M) là sweat equity của bên phát triển - không hoàn, không khấu trừ, không tính vào phần 50-50.
+Mô hình chung: **share-risk 50-50** - nhà đầu tư và bên phát triển mỗi bên gánh 50% chi phí kêu gọi. **Từ khách trả phí đầu tiên +24 tháng chia doanh thu; sau đó chuyển sang chia cổ phần.** Phần A (~859.5M) là sweat equity của bên phát triển - không hoàn, không khấu trừ, không tính vào phần 50-50.
 
 ### PA-1 - Share-risk 50-50 phần B (~829 450 000) - ưu tiên trước
 
 | Mục | Đề xuất |
 |---|---|
 | Nhà đầu tư gánh | **50% phần B ≈ 414 725 000** cho 5.5 tháng phát triển |
-| Bên phát triển gánh | 50% phần B (~414.7M sweat equity) + phần A sunk (~794M) + tự gánh phần C (~1 166M maintain) + toàn bộ công sức vận hành |
+| Bên phát triển gánh | 50% phần B (~414.7M sweat equity) + phần A sunk (~859.5M) + tự gánh phần C (~1 166M maintain) + toàn bộ công sức vận hành |
 | Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư ~40% / dev ~60%** - dev giữ majority vì gánh A sunk + C + IP + vận hành |
 | Cổ phần sau T03/2029 | Nhà đầu tư ~**10-15%** |
 
@@ -138,11 +141,11 @@ Mô hình chung: **share-risk 50-50** - nhà đầu tư và bên phát triển m
 | Mục | Đề xuất |
 |---|---|
 | Nhà đầu tư gánh | **50% của B+C ≈ 997 475 000** - phần B ứng theo milestone, phần C trả theo tháng thực tế (~27.75M/th × 21 tháng) |
-| Bên phát triển gánh | 50% của B+C (~997.5M) + phần A sunk (~794M) + vận hành |
+| Bên phát triển gánh | 50% của B+C (~997.5M) + phần A sunk (~859.5M) + vận hành |
 | Chia doanh thu T03/27 - T03/29 | **Nhà đầu tư ~45% / dev ~55%** - cam kết lớn hơn PA-1 → share cao hơn |
 | Cổ phần sau T03/2029 | Nhà đầu tư ~**15-20%** |
 
-> Tổng quan contribute: PA-1 dev gánh ~2.37 tỷ vs NĐT ~415M; PA-2 dev gánh ~1.79 tỷ vs NĐT ~997M. Cổ phần sau kỳ phản ánh chênh lệch cam kết.
+> Tổng quan contribute: PA-1 dev gánh ~2.44 tỷ vs NĐT ~415M; PA-2 dev gánh ~1.86 tỷ vs NĐT ~997M. Cổ phần sau kỳ phản ánh chênh lệch cam kết.
 
 ### Điều khoản bắt buộc kèm theo
 

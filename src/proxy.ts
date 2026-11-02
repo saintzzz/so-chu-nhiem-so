@@ -53,6 +53,10 @@ export async function proxy(request: NextRequest) {
     pathname === "/logo.png";
   // CR-113: /mua cong khai - trang ban hang (rewrite sang vieschool-content)
   const isPublicMua = pathname === "/mua";
+  // trang chu cong khai cho guest - rewrite ra landing tinh tren
+  // vieschool-content (truoc day redirect /login -> Google crawl thay
+  // trang trong). User da dang nhap van vao dashboard nhu cu.
+  const isPublicHome = pathname === "/";
   // Cong tuyen sinh cong khai: trang /apply/* chi doc qua RPC definer,
   // POST /api/admissions/apply co honeypot + Turnstile + RPC kiem open.
   const isPublicApply =
@@ -74,6 +78,13 @@ export async function proxy(request: NextRequest) {
     return res;
   };
 
+  if (!user && isPublicHome) {
+    const res = NextResponse.rewrite(
+      "https://vieschool-content.vercel.app/scn/home",
+    );
+    response.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  }
   if (!user && !isLogin && !isPublicApi && !isPublicGuides && !isPublicSeoFiles && !isPublicMua) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

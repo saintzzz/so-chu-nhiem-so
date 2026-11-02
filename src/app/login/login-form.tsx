@@ -21,10 +21,20 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [slowLogin, setSlowLogin] = useState(false);
 
   async function signIn(e: string, p: string): Promise<boolean> {
     const supabase = createClient();
-    const captchaToken = await getTurnstileToken();
+    // Turnstile can hold the sign-in ~30s on strict networks - staged copy
+    // after 4s says "security check" instead of looking hung.
+    const slowTimer = setTimeout(() => setSlowLogin(true), 4000);
+    let captchaToken: string | null = null;
+    try {
+      captchaToken = await getTurnstileToken();
+    } finally {
+      clearTimeout(slowTimer);
+      setSlowLogin(false);
+    }
     const { error: err } = await supabase.auth.signInWithPassword({
       email: e,
       password: p,
@@ -103,7 +113,7 @@ export function LoginForm() {
         className="h-11 w-full text-[15px]"
         disabled={loading || demoLoading}
       >
-        {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+        {loading ? (slowLogin ? "Đang kiểm tra bảo mật..." : "Đang đăng nhập...") : "Đăng nhập"}
       </Button>
       <div className="flex items-center gap-3">
         <span className="h-px flex-1 bg-border" />
@@ -118,7 +128,7 @@ export function LoginForm() {
         disabled={loading || demoLoading}
         onClick={onDemo}
       >
-        {demoLoading ? "Đang vào bản demo..." : "Vào trải nghiệm demo"}
+        {demoLoading ? (slowLogin ? "Đang kiểm tra bảo mật..." : "Đang vào bản demo...") : "Vào trải nghiệm demo"}
       </Button>
       <p className="text-center text-xs text-muted-foreground">
         Trường demo THCS Nguyễn Du - dữ liệu mẫu sẵn sàng, không cần tài khoản

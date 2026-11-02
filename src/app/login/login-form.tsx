@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getTurnstileToken } from "@/lib/turnstile";
 import { Button } from "@/components/ui/button";
 
-// CR-023: public one-click demo on the seeded `nd` school (THCS Nguyen Du).
+// CR-114: public one-click demo on the seeded `nd` school (THCS Nguyen Du).
 // demo.gvcn@nd.scn is GVCN of 7A1 with full seeded operational data -
 // standard public-demo pattern; the tenant is demo data only and the
 // account's blast radius is a single filler class, so shared visitors
@@ -60,7 +60,7 @@ export function LoginForm() {
     setDemoLoading(true);
     setError(null);
     if (!(await signIn(DEMO_EMAIL, DEMO_PASSWORD))) {
-      setError("Bản demo đang bảo trì. Vui lòng thử lại sau.");
+      setError("Không vào được bản demo lúc này - vui lòng thử lại.");
       setDemoLoading(false);
     }
   }

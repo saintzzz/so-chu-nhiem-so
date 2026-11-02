@@ -1,13 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { KeyRound, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+// CR-114 r1: the shared public demo account must never expose credential
+// changes (a DB trigger hard-blocks them anyway - this hides the dead UI).
+const DEMO_ACCOUNT_EMAIL = "demo.gvcn@nd.scn";
+
 /** CR-17: self-service password change for every signed-in role. */
 export function ChangePasswordButton({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+
+  useEffect(() => {
+    createClient()
+      .auth.getSession()
+      .then(({ data }) => {
+        setIsDemo(data.session?.user?.email === DEMO_ACCOUNT_EMAIL);
+      });
+  }, []);
+
+  if (isDemo) return null;
 
   return (
     <>

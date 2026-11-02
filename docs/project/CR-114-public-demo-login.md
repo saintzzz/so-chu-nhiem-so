@@ -41,3 +41,13 @@ rieng, khong phai fix).
 - tsc + next build: green (148 routes).
 - Browser prod sau deploy: nut -> dashboard "Xin chao, Co Trai Nghiem /
   Lop chu nhiem 7A1 - THCS Nguyen Du".
+
+## External review round 1 (codex) - da fix
+
+- P1: visitor co the goi auth.updateUser({password}) doi mat khau chung ->
+  migration 20261262 them trigger `block_demo_credential_change` tren
+  auth.users, chan ca doi email. Verify live: updateUser password/email deu
+  bi BLOCK, creds goc van dang nhap duoc. `ChangePasswordButton` tu an voi
+  session demo (hide dead UI; trigger la boundary cung).
+- P2: copy loi demo "dang bao tri" gay hieu nham voi loi Turnstile/rate
+  limit -> doi thanh copy trung lap "Khong vao duoc ban demo luc nay".

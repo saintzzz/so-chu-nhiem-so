@@ -9,17 +9,17 @@ Hôm nay, ngày ... tháng ... năm 20..., tại ...............................
 
 **BÊN A (Bên phát triển / Chủ dự án):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Lê Duy Linh |
 |---|---|
-| Sinh ngày | ................... | 
-| CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
-| Địa chỉ thường trú | .................................................................... |
-| Điện thoại | ................... Email .................................... |
-| Tài khoản NH | ................... Ngân hàng .................................... Chủ TK .................................... |
+| Sinh ngày | 25/03/1990 |
+| CCCD/CMND số | 038089017682 - Ngày cấp 04/09/2022 - Nơi cấp: Cục CS về QLHC & TTXH |
+| Địa chỉ thường trú | Chung cư HH1, Lô A13, KDT hai bên đường Lê Trọng Tấn, An Khánh, Hà Nội |
+| Điện thoại | 0948042989 - Email: linhld@vieschool.com |
+| Tài khoản NH | 01579495001 - Ngân hàng TPbank - Chủ TK: Le Duy Linh |
 
 **BÊN B (Nhà đầu tư):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Đàm Thanh Hiền |
 |---|---|
 | Sinh ngày | ................... |
 | CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
@@ -53,7 +53,7 @@ Sau khi trao đổi, hai bên thống nhất ký kết Hợp đồng hợp tác 
 
 3.1. Hai bên thống nhất áp dụng **phương án PA-1**: Bên B góp **414 725 000 VND** (bằng chữ: *bốn trăm mười bốn triệu bảy trăm hai mươi lăm nghìn đồng*), tương đương năm mươi phần trăm chi phí Phần B - giai đoạn phát triển 03/11/2026 - 18/04/2027. Phần ngân sách còn lại do Bên A tự gánh bằng lao động và nguồn lực của mình.
 
-3.2. Giải ngân theo tiến độ và điều kiện tại Phụ lục 2. Mỗi đợt giải ngân được thực hiện bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở) trong 07 ngày làm việc kể từ ngày đủ điều kiện giải ngân.
+3.2. Bên B giải ngân **hàng tháng** theo lịch tại Phụ lục 2 bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở), chậm nhất 07 ngày làm việc sau ngày đến hạn từng đợt. Điều kiện của mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước đó theo Điều 4.2. Nếu một milestone kỹ thuật tại Phụ lục 2 chưa đạt, hai bên có thể thống nhất bằng văn bản tạm dừng hoặc điều chỉnh các đợt giải ngân tiếp theo.
 
 3.3. Phần A (~859 500 000 VND) là sweat equity Bên A đã chi: không hoàn lại, không khấu trừ vào khoản góp của Bên B, không tính vào tỷ lệ chia 50-50; chỉ dùng làm căn cứ cam kết và cơ sở định giá.
 
@@ -188,17 +188,20 @@ Ghi chú: số liệu căn cứ tài liệu đề xuất kinh phí ngày 02/11/2
 ## PHỤ LỤC 2 - TIẾN ĐỘ GIẢI NGÂN VÀ NGHIỆM THU
 (Kèm theo hợp đồng số .../HĐHT-2026/PA-1)
 
-**Bảng 1 - Đợt giải ngân:**
+**Bảng 1 - Lịch giải ngân hàng tháng:**
 
-| Đợt | Thời điểm / Điều kiện giải ngân | Tỷ lệ | Số tiền (VND) |
-| --- | --- | --- | --- |
-| 1 | Ký hợp đồng (dự kiến T11/2026) | 30% | 124 417 500 |
-| 2 | Nghiệm thu M2 - pilot 3-5 trường (dự kiến T12/2026) | 25% | 103 681 250 |
-| 3 | Nghiệm thu M3 - DPIA + runbook + payment path (dự kiến T02/2027) | 25% | 103 681 250 |
-| 4 | Nghiệm thu tổng Phần B - commercial launch (dự kiến 18/04/2027) | 20% | 82 945 000 |
-| TỔNG |  | 100% | 414 725 000 |
+| Đợt | Thời điểm giải ngân | Số tiền (VND) |
+| --- | --- | --- |
+| 1 | Khi ký hợp đồng (dự kiến T11/2026) | 82 945 000 |
+| 2 | Ngày 05/12/2026 | 82 945 000 |
+| 3 | Ngày 05/01/2027 | 82 945 000 |
+| 4 | Ngày 05/02/2027 | 82 945 000 |
+| 5 | Ngày 05/03/2027 | 82 945 000 |
+| TỔNG |  | 414 725 000 |
 
-**Bảng 2 - Milestone và tiêu chí nghiệm thu:**
+Điều kiện mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước theo Điều 4.2.
+
+**Bảng 2 - Milestone kỹ thuật và tiêu chí nghiệm thu** (theo dõi tiến độ; không tự động chặn giải ngân - xử lý theo Điều 3.2):
 
 | Milestone | Deliverable | Tiêu chí nghiệm thu |
 | --- | --- | --- |
@@ -219,7 +222,7 @@ Kết quả kiểm tra: đạt / đạt có điều kiện / chưa đạt - ghi 
 
 Kết luận: milestone được nghiệm thu / yêu cầu hoàn thiện trước ngày ...............................
 
-Đợt giải ngân liên quan được/không được kích hoạt theo Phụ lục 2.
+Kết luận này làm cơ sở hai bên thống nhất điều chỉnh các đợt giải ngân tiếp theo (nếu có) theo Điều 3.2.
 
 **BÊN A** (Ký, ghi rõ họ tên)                    **BÊN B** (Ký, ghi rõ họ tên)
 

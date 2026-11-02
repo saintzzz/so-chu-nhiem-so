@@ -8,17 +8,17 @@ Hôm nay, ngày ... tháng ... năm 20..., tại ...............................
 
 **BÊN A (Bên phát triển / Chủ dự án):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Lê Duy Linh |
 |---|---|
-| Sinh ngày | ................... | 
-| CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
-| Địa chỉ thường trú | .................................................................... |
-| Điện thoại | ................... Email .................................... |
-| Tài khoản NH | ................... Ngân hàng .................................... Chủ TK .................................... |
+| Sinh ngày | 25/03/1990 |
+| CCCD/CMND số | 038089017682 - Ngày cấp 04/09/2022 - Nơi cấp: Cục CS về QLHC & TTXH |
+| Địa chỉ thường trú | Chung cư HH1, Lô A13, KDT hai bên đường Lê Trọng Tấn, An Khánh, Hà Nội |
+| Điện thoại | 0948042989 - Email: linhld@vieschool.com |
+| Tài khoản NH | 01579495001 - Ngân hàng TPbank - Chủ TK: Le Duy Linh |
 
 **BÊN B (Nhà đầu tư):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Đàm Thanh Hiền |
 |---|---|
 | Sinh ngày | ................... |
 | CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
@@ -52,7 +52,7 @@ Sau khi trao đổi, hai bên thống nhất ký kết Hợp đồng hợp tác 
 
 3.1. Hai bên thống nhất áp dụng **phương án {{PA_CODE}}**: Bên B góp **{{CONTRIBUTION}} VND** (bằng chữ: *{{CONTRIBUTION_WORDS}}*), tương đương năm mươi phần trăm {{PA_SCOPE}}. Phần ngân sách còn lại do Bên A tự gánh bằng lao động và nguồn lực của mình.
 
-3.2. Giải ngân theo tiến độ và điều kiện tại Phụ lục 2. Mỗi đợt giải ngân được thực hiện bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở) trong 07 ngày làm việc kể từ ngày đủ điều kiện giải ngân.
+3.2. Bên B giải ngân **hàng tháng** theo lịch tại Phụ lục 2 bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở), chậm nhất 07 ngày làm việc sau ngày đến hạn từng đợt. Điều kiện của mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước đó theo Điều 4.2. Nếu một milestone kỹ thuật tại Phụ lục 2 chưa đạt, hai bên có thể thống nhất bằng văn bản tạm dừng hoặc điều chỉnh các đợt giải ngân tiếp theo.
 
 3.3. Phần A (~859 500 000 VND) là sweat equity Bên A đã chi: không hoàn lại, không khấu trừ vào khoản góp của Bên B, không tính vào tỷ lệ chia 50-50; chỉ dùng làm căn cứ cam kết và cơ sở định giá.
 

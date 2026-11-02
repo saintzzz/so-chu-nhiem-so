@@ -9,17 +9,17 @@ Hôm nay, ngày ... tháng ... năm 20..., tại ...............................
 
 **BÊN A (Bên phát triển / Chủ dự án):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Lê Duy Linh |
 |---|---|
-| Sinh ngày | ................... | 
-| CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
-| Địa chỉ thường trú | .................................................................... |
-| Điện thoại | ................... Email .................................... |
-| Tài khoản NH | ................... Ngân hàng .................................... Chủ TK .................................... |
+| Sinh ngày | 25/03/1990 |
+| CCCD/CMND số | 038089017682 - Ngày cấp 04/09/2022 - Nơi cấp: Cục CS về QLHC & TTXH |
+| Địa chỉ thường trú | Chung cư HH1, Lô A13, KDT hai bên đường Lê Trọng Tấn, An Khánh, Hà Nội |
+| Điện thoại | 0948042989 - Email: linhld@vieschool.com |
+| Tài khoản NH | 01579495001 - Ngân hàng TPbank - Chủ TK: Le Duy Linh |
 
 **BÊN B (Nhà đầu tư):**
 
-| Ông/Bà | .................................................................... |
+| Ông/Bà | Đàm Thanh Hiền |
 |---|---|
 | Sinh ngày | ................... |
 | CCCD/CMND số | ................... Ngày cấp ................... Nơi cấp ................... |
@@ -53,7 +53,7 @@ Sau khi trao đổi, hai bên thống nhất ký kết Hợp đồng hợp tác 
 
 3.1. Hai bên thống nhất áp dụng **phương án PA-2**: Bên B góp **997 475 000 VND** (bằng chữ: *chín trăm chín mươi bảy triệu bốn trăm bảy mươi lăm nghìn đồng*), tương đương năm mươi phần trăm tổng chi phí Phần B và Phần C - giai đoạn phát triển và bảo trì đến T01/2029. Phần ngân sách còn lại do Bên A tự gánh bằng lao động và nguồn lực của mình.
 
-3.2. Giải ngân theo tiến độ và điều kiện tại Phụ lục 2. Mỗi đợt giải ngân được thực hiện bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở) trong 07 ngày làm việc kể từ ngày đủ điều kiện giải ngân.
+3.2. Bên B giải ngân **hàng tháng** theo lịch tại Phụ lục 2 bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ Dự án nếu hai bên thống nhất mở), chậm nhất 07 ngày làm việc sau ngày đến hạn từng đợt. Điều kiện của mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước đó theo Điều 4.2. Nếu một milestone kỹ thuật tại Phụ lục 2 chưa đạt, hai bên có thể thống nhất bằng văn bản tạm dừng hoặc điều chỉnh các đợt giải ngân tiếp theo.
 
 3.3. Phần A (~859 500 000 VND) là sweat equity Bên A đã chi: không hoàn lại, không khấu trừ vào khoản góp của Bên B, không tính vào tỷ lệ chia 50-50; chỉ dùng làm căn cứ cam kết và cơ sở định giá.
 
@@ -198,32 +198,47 @@ Ghi chú: số liệu căn cứ tài liệu đề xuất kinh phí ngày 02/11/2
 ## PHỤ LỤC 2 - TIẾN ĐỘ GIẢI NGÂN VÀ NGHIỆM THU
 (Kèm theo hợp đồng số .../HĐHT-2026/PA-2)
 
-**Bảng 1 - Đợt giải ngân:**
+**Bảng 1 - Lịch giải ngân hàng tháng:**
 
-| Đợt | Thời điểm / Điều kiện giải ngân | Tỷ lệ | Số tiền (VND) |
-| --- | --- | --- | --- |
-| 1 | Ký hợp đồng (dự kiến T11/2026) | 30% | 124 417 500 |
-| 2 | Nghiệm thu M2 - pilot 3-5 trường (dự kiến T12/2026) | 25% | 103 681 250 |
-| 3 | Nghiệm thu M3 - DPIA + runbook + payment path (dự kiến T02/2027) | 25% | 103 681 250 |
-| 4 | Nghiệm thu tổng Phần B - commercial launch (dự kiến 18/04/2027) | 20% | 82 945 000 |
-| 5 | Hết quý Phần C (T05-T07/2027) + báo cáo burn-rate quý | - | 83 250 000 |
-| 6 | Hết quý Phần C (T08-T10/2027) + báo cáo burn-rate quý | - | 83 250 000 |
-| 7 | Hết quý Phần C (T11/2027-T01/2028) + báo cáo burn-rate quý | - | 83 250 000 |
-| 8 | Hết quý Phần C (T02-T04/2028) + báo cáo burn-rate quý | - | 83 250 000 |
-| 9 | Hết quý Phần C (T05-T07/2028) + báo cáo burn-rate quý | - | 83 250 000 |
-| 10 | Hết quý Phần C (T08-T10/2028) + báo cáo burn-rate quý | - | 83 250 000 |
-| 11 | Hết quý Phần C (T11/2028-T01/2029) + báo cáo burn-rate quý | - | 83 250 000 |
-| TỔNG |  |  | 997 475 000 |
+| Đợt | Thời điểm giải ngân | Số tiền (VND) |
+| --- | --- | --- |
+| 1 | Khi ký hợp đồng (dự kiến T11/2026) - Phần B | 82 945 000 |
+| 2 | Ngày 05/12/2026 - Phần B | 82 945 000 |
+| 3 | Ngày 05/01/2027 - Phần B | 82 945 000 |
+| 4 | Ngày 05/02/2027 - Phần B | 82 945 000 |
+| 5 | Ngày 05/03/2027 - Phần B | 82 945 000 |
+| 6 | Ngày 05/05/2027 - Phần C | 27 750 000 |
+| 7 | Ngày 05/06/2027 - Phần C | 27 750 000 |
+| 8 | Ngày 05/07/2027 - Phần C | 27 750 000 |
+| 9 | Ngày 05/08/2027 - Phần C | 27 750 000 |
+| 10 | Ngày 05/09/2027 - Phần C | 27 750 000 |
+| 11 | Ngày 05/10/2027 - Phần C | 27 750 000 |
+| 12 | Ngày 05/11/2027 - Phần C | 27 750 000 |
+| 13 | Ngày 05/12/2027 - Phần C | 27 750 000 |
+| 14 | Ngày 05/01/2028 - Phần C | 27 750 000 |
+| 15 | Ngày 05/02/2028 - Phần C | 27 750 000 |
+| 16 | Ngày 05/03/2028 - Phần C | 27 750 000 |
+| 17 | Ngày 05/04/2028 - Phần C | 27 750 000 |
+| 18 | Ngày 05/05/2028 - Phần C | 27 750 000 |
+| 19 | Ngày 05/06/2028 - Phần C | 27 750 000 |
+| 20 | Ngày 05/07/2028 - Phần C | 27 750 000 |
+| 21 | Ngày 05/08/2028 - Phần C | 27 750 000 |
+| 22 | Ngày 05/09/2028 - Phần C | 27 750 000 |
+| 23 | Ngày 05/10/2028 - Phần C | 27 750 000 |
+| 24 | Ngày 05/11/2028 - Phần C | 27 750 000 |
+| 25 | Ngày 05/12/2028 - Phần C | 27 750 000 |
+| 26 | Ngày 05/01/2029 - Phần C | 27 750 000 |
+| TỔNG |  | 997 475 000 |
 
-**Bảng 2 - Milestone và tiêu chí nghiệm thu:**
+Điều kiện mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước theo Điều 4.2.
+
+**Bảng 2 - Milestone kỹ thuật và tiêu chí nghiệm thu** (theo dõi tiến độ; không tự động chặn giải ngân - xử lý theo Điều 3.2):
 
 | Milestone | Deliverable | Tiêu chí nghiệm thu |
 | --- | --- | --- |
 | M2 - Pilot (dự kiến T12/2026) | 3-5 trường thật đăng nhập + nhập liệu thật; đào tạo GV | Trường pilot vận hành thật trên production; SLA hotfix trong ngày |
 | M3 - Vận hành (dự kiến T02/2027) | Báo cáo DPIA/bảo mật + runbook vận hành + cổng thanh toán test | External review pass; handover docs hoàn chỉnh; payment path test xong |
 | M4 - Launch (dự kiến 18/04/2027) | Onboarding self-serve + sản phẩm sẵn sàng bán commercial | Đăng ký + nạp dữ liệu tự phục vụ chạy E2E; billing path verified |
-
-Các đợt giải ngân Phần C (đợt 5-11) chỉ yêu cầu báo cáo burn-rate quý theo Điều 4.2, không gắn milestone sản phẩm.
 
 
 **MẪU BIÊN BẢN NGHIỆM THU MILESTONE**
@@ -238,7 +253,7 @@ Kết quả kiểm tra: đạt / đạt có điều kiện / chưa đạt - ghi 
 
 Kết luận: milestone được nghiệm thu / yêu cầu hoàn thiện trước ngày ...............................
 
-Đợt giải ngân liên quan được/không được kích hoạt theo Phụ lục 2.
+Kết luận này làm cơ sở hai bên thống nhất điều chỉnh các đợt giải ngân tiếp theo (nếu có) theo Điều 3.2.
 
 **BÊN A** (Ký, ghi rõ họ tên)                    **BÊN B** (Ký, ghi rõ họ tên)
 

@@ -50,25 +50,35 @@ const MILESTONES = [
 ];
 
 function pa1Tranches() {
-  const T = 414_725_000;
+  const per = 82_945_000; // 414 725 000 / 5 dot hang thang
   return [
-    ["Đợt", "Thời điểm / Điều kiện giải ngân", "Tỷ lệ", "Số tiền (VND)"],
-    ["1", "Ký hợp đồng (dự kiến T11/2026)", "30%", fmt(Math.round(T * 0.30))],
-    ["2", "Nghiệm thu M2 - pilot 3-5 trường (dự kiến T12/2026)", "25%", fmt(Math.round(T * 0.25))],
-    ["3", "Nghiệm thu M3 - DPIA + runbook + payment path (dự kiến T02/2027)", "25%", fmt(Math.round(T * 0.25))],
-    ["4", "Nghiệm thu tổng Phần B - commercial launch (dự kiến 18/04/2027)", "20%", fmt(T - Math.round(T * 0.30) - 2 * Math.round(T * 0.25))],
-    ["TỔNG", "", "100%", fmt(T)],
+    ["Đợt", "Thời điểm giải ngân", "Số tiền (VND)"],
+    ["1", "Khi ký hợp đồng (dự kiến T11/2026)", fmt(per)],
+    ["2", "Ngày 05/12/2026", fmt(per)],
+    ["3", "Ngày 05/01/2027", fmt(per)],
+    ["4", "Ngày 05/02/2027", fmt(per)],
+    ["5", "Ngày 05/03/2027", fmt(per)],
+    ["TỔNG", "", fmt(per * 5)],
   ];
 }
-const C_QUARTERS = ["T05-T07/2027", "T08-T10/2027", "T11/2027-T01/2028", "T02-T04/2028", "T05-T07/2028", "T08-T10/2028", "T11/2028-T01/2029"];
+const C_MONTHS = [
+  "05/2027", "06/2027", "07/2027", "08/2027", "09/2027", "10/2027", "11/2027", "12/2027",
+  "01/2028", "02/2028", "03/2028", "04/2028", "05/2028", "06/2028", "07/2028", "08/2028",
+  "09/2028", "10/2028", "11/2028", "12/2028", "01/2029",
+];
 function pa2Tranches() {
-  const b = pa1Tranches().slice(0, -1);
-  const cPart = 582_750_000;
-  const rows = C_QUARTERS.map((q, i) => [
-    String(5 + i), `Hết quý Phần C (${q}) + báo cáo burn-rate quý`, "-", fmt(Math.round(cPart / 7)),
-  ]);
-  rows[rows.length - 1][3] = fmt(cPart - Math.round(cPart / 7) * 6);
-  return [...b, ...rows, ["TỔNG", "", "", fmt(997_475_000)]];
+  const bPart = 82_945_000, cPart = 27_750_000; // B: 414.725M/5 - C: 582.75M/21
+  const rows = [
+    ["Đợt", "Thời điểm giải ngân", "Số tiền (VND)"],
+    ["1", "Khi ký hợp đồng (dự kiến T11/2026) - Phần B", fmt(bPart)],
+    ["2", "Ngày 05/12/2026 - Phần B", fmt(bPart)],
+    ["3", "Ngày 05/01/2027 - Phần B", fmt(bPart)],
+    ["4", "Ngày 05/02/2027 - Phần B", fmt(bPart)],
+    ["5", "Ngày 05/03/2027 - Phần B", fmt(bPart)],
+    ...C_MONTHS.map((m, i) => [String(6 + i), `Ngày 05/${m} - Phần C`, fmt(cPart)]),
+    ["TỔNG", "", fmt(bPart * 5 + cPart * 21)],
+  ];
+  return rows;
 }
 
 function acceptMinutes() {
@@ -86,7 +96,7 @@ function acceptMinutes() {
     "",
     "Kết luận: milestone được nghiệm thu / yêu cầu hoàn thiện trước ngày ...............................",
     "",
-    "Đợt giải ngân liên quan được/không được kích hoạt theo Phụ lục 2.",
+    "Kết luận này làm cơ sở hai bên thống nhất điều chỉnh các đợt giải ngân tiếp theo (nếu có) theo Điều 3.2.",
     "",
     "«SIG»",
   ].join("\n");
@@ -111,14 +121,16 @@ Ghi chú: số liệu căn cứ tài liệu đề xuất kinh phí ngày 02/11/2
 ## PHỤ LỤC 2 - TIẾN ĐỘ GIẢI NGÂN VÀ NGHIỆM THU
 (Kèm theo hợp đồng số .../HĐHT-2026/${v.PA_CODE})
 
-**Bảng 1 - Đợt giải ngân:**
+**Bảng 1 - Lịch giải ngân hàng tháng:**
 
 ${trancheMd}
 
-**Bảng 2 - Milestone và tiêu chí nghiệm thu:**
+Điều kiện mỗi đợt (trừ đợt 1): Bên A đã gửi báo cáo tháng trước theo Điều 4.2.
+
+**Bảng 2 - Milestone kỹ thuật và tiêu chí nghiệm thu** (theo dõi tiến độ; không tự động chặn giải ngân - xử lý theo Điều 3.2):
 
 ${milestoneMd}
-${v.key === "PA2" ? "\nCác đợt giải ngân Phần C (đợt 5-11) chỉ yêu cầu báo cáo burn-rate quý theo Điều 4.2, không gắn milestone sản phẩm.\n" : ""}
+
 ${acceptMinutes()}
 
 ## PHỤ LỤC 3 - XÁC NHẬN PHƯƠNG ÁN HỢP TÁC ${v.PA_CODE}

@@ -6,31 +6,53 @@ import { createClient } from "@/lib/supabase/client";
 import { getTurnstileToken } from "@/lib/turnstile";
 import { Button } from "@/components/ui/button";
 
+// CR-023: public one-click demo on the seeded `nd` school (THCS Nguyen Du).
+// demo.gvcn@nd.scn is GVCN of 7A1 with full seeded operational data -
+// standard public-demo pattern; the tenant is demo data only and the
+// account's blast radius is a single filler class, so shared visitors
+// cannot disturb the QA trio (anhptl/minhtv/hainv).
+const DEMO_EMAIL = "demo.gvcn@nd.scn";
+const DEMO_PASSWORD = "demo1234";
+
 export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  async function signIn(e: string, p: string): Promise<boolean> {
+    const supabase = createClient();
+    const captchaToken = await getTurnstileToken();
+    const { error: err } = await supabase.auth.signInWithPassword({
+      email: e,
+      password: p,
+      options: captchaToken ? { captchaToken } : undefined,
+    });
+    if (err) return false;
+    router.push("/");
+    router.refresh();
+    return true;
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const captchaToken = await getTurnstileToken();
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-      options: captchaToken ? { captchaToken } : undefined,
-    });
-    if (err) {
+    if (!(await signIn(email, password))) {
       setError("Đăng nhập thất bại. Kiểm tra lại tên đăng nhập và mật khẩu.");
       setLoading(false);
-      return;
     }
-    router.push("/");
-    router.refresh();
+  }
+
+  async function onDemo() {
+    setDemoLoading(true);
+    setError(null);
+    if (!(await signIn(DEMO_EMAIL, DEMO_PASSWORD))) {
+      setError("Bản demo đang bảo trì. Vui lòng thử lại sau.");
+      setDemoLoading(false);
+    }
   }
 
   return (
@@ -79,10 +101,28 @@ export function LoginForm() {
         type="submit"
         size="lg"
         className="h-11 w-full text-[15px]"
-        disabled={loading}
+        disabled={loading || demoLoading}
       >
         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
       </Button>
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">hoặc</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="h-11 w-full text-[15px]"
+        disabled={loading || demoLoading}
+        onClick={onDemo}
+      >
+        {demoLoading ? "Đang vào bản demo..." : "Vào trải nghiệm demo"}
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        Trường demo THCS Nguyễn Du - dữ liệu mẫu sẵn sàng, không cần tài khoản
+      </p>
     </form>
   );
 }

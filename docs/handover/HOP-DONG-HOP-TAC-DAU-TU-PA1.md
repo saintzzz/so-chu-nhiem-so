@@ -1,8 +1,8 @@
 # HỢP ĐỒNG HỢP TÁC ĐẦU TƯ PHÁT TRIỂN PHẦN MỀM
 
-**DỰ THẢO ĐỂ ĐÀM PHÁN - Chưa phải văn bản pháp lý hoàn chỉnh. Hai bên cần tham vấn luật sư, đơn vị công chứng và tư vấn thuế trước khi ký.**
+**Phương án PA-1 - DỰ THẢO ĐỂ ĐÀM PHÁN - Chưa phải văn bản pháp lý hoàn chỉnh. Hai bên cần tham vấn luật sư, đơn vị công chứng và tư vấn thuế trước khi ký.**
 
-Số: .../HĐHT-2026
+Số: .../HĐHT-2026/PA-1
 
 - Hôm nay, ngày ... tháng ... năm 2026, tại ...,
 - Chúng tôi gồm:
@@ -47,12 +47,7 @@ Hai bên thống nhất ký kết Hợp đồng hợp tác đầu tư phát tri�
 
 ## Điều 3. Phương án góp vốn và giải ngân
 
-3.1. Bên B chọn MỘT trong hai phương án (đánh dấu X và ký nháy):
-
-- **[ ] PA-1**: Bên B góp **414 725 000 VND** (năm mươi phần trăm chi phí Phần B).
-- **[ ] PA-2**: Bên B góp **997 475 000 VND** (năm mươi phần trăm tổng chi phí Phần B và Phần C).
-
-Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng lao động và nguồn lực của mình.
+3.1. Hai bên thống nhất áp dụng **phương án PA-1**: Bên B góp **414 725 000 VND** (bốn trăm mười bốn triệu bảy trăm hai mươi lăm nghìn đồng), tương đương năm mươi phần trăm chi phí Phần B - giai đoạn phát triển 03/11/2026 - 18/04/2027. Phần còn lại của ngân sách được góp do Bên A tự gánh bằng lao động và nguồn lực của mình.
 
 3.2. Giải ngân theo milestone tại Phụ lục 2. Mỗi đợt giải ngân được thực hiện bằng chuyển khoản vào tài khoản ngân hàng của Bên A (hoặc tài khoản riêng phục vụ dự án nếu hai bên thống nhất mở) trong 7 ngày làm việc sau khi milestone trước được nghiệm thu theo Điều 5.
 
@@ -80,10 +75,7 @@ Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng l
 
 6.1. Thời kỳ chia doanh thu: **24 tháng liên tiếp** tính từ ngày Dự án có khách hàng trả phí đầu tiên. Nếu chưa có khách trả phí, thời kỳ này chưa bắt đầu chạy và tự động dịch theo.
 
-6.2. Tỷ lệ chia "Doanh thu thuần":
-
-- PA-1: Bên B 40% - Bên A 60%.
-- PA-2: Bên B 45% - Bên A 55%.
+6.2. Tỷ lệ chia "Doanh thu thuần": **Bên B 40% - Bên A 60%**.
 
 6.3. "Doanh thu thuần" = tổng tiền thực thu từ khách hàng của Dự án trong kỳ, trừ: thuế VAT phải nộp, phí cổng thanh toán/ngân hàng, khoản hoàn tiền cho khách. Không trừ chi phí vận hành, nhân sự, hạ tầng.
 
@@ -95,7 +87,7 @@ Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng l
 
 7.1. Hai bên thừa nhận tại ngày ký chưa có pháp nhân sở hữu Dự án. Do đó quyền sở hữu của Bên B được cam kết theo cơ chế sau:
 
-- Khi một pháp nhân (công ty TNHH hoặc cổ phần) được thành lập để sở hữu Dự án, Bên B được nhận tỷ lệ cổ phần/phần vốn góp: **PA-1: [10-15]% - PA-2: [15-20]%** (tỷ lệ chính xác ghi tại Phụ lục 3), vesting đều theo thời gian kể từ ngày hợp đồng này có hiệu lực.
+- Khi một pháp nhân (công ty TNHH hoặc cổ phần) được thành lập để sở hữu Dự án, Bên B được nhận tỷ lệ cổ phần/phần vốn góp **12.5%**, vesting đều theo thời gian kể từ ngày hợp đồng này có hiệu lực.
 - Nếu đến khi kết thúc thời kỳ chia doanh thu mà chưa thành lập pháp nhân, hai bên phải đàm phán và ký văn bản trong 60 ngày để chuyển quyền của Bên B thành: (a) quyền chia lợi nhuận tương đương tỷ lệ đã thống nhất, hoặc (b) phương án khác hai bên chấp thuận. Trong thời gian chưa có văn bản mới, Bên B tiếp tục được chia doanh thu theo tỷ lệ tại Điều 6.2.
 
 7.2. Tỷ lệ cổ phần/phần vốn góp của Bên B chịu điều chỉnh pha loãng nếu pháp nhân phát hành thêm vốn cho các nhà đầu tư sau, theo nguyên tắc áp dụng đồng đều cho mọi cổ đông cùng vòng.
@@ -120,7 +112,7 @@ Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng l
 
 ## Điều 10. Bảo trì, SLA và phạm vi công việc
 
-10.1. Bên A cam kết trong thời hạn Phần C (hoặc thời hạn được tài trợ tương ứng): sửa lỗi critical trong ngày làm việc, regression trước mỗi lần triển khai, theo dõi uptime và báo cáo định kỳ.
+10.1. Bên A cam kết trong thời hạn Phần B và Phần C (Phần C do Bên A tự tài trợ): sửa lỗi critical trong ngày làm việc, regression trước mỗi lần triển khai, theo dõi uptime và báo cáo định kỳ.
 
 10.2. Tính năng mới lớn ngoài kế hoạch được xử lý như thay đổi phạm vi (CR): hai bên thống nhất phạm vi, kinh phí và ai chịu chi phí trước khi làm.
 
@@ -158,9 +150,9 @@ Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng l
 
 16.2. Phụ lục là bộ phận không tách rời:
 
-- **Phụ lục 1**: Ngân sách chi tiết Phần B và Phần C (theo `PROPOSAL-tong-dau-tu-2ty8` ngày 02/11/2026).
+- **Phụ lục 1**: Ngân sách chi tiết Phần B (theo `PROPOSAL-tong-dau-tu-2ty8` ngày 02/11/2026).
 - **Phụ lục 2**: Bảng milestone, đợt giải ngân, tiêu chí nghiệm thu và mẫu biên bản.
-- **Phụ lục 3**: Phương án được chọn (PA-1/PA-2), tỷ lệ chia doanh thu, tỷ lệ cổ phần tương lai chính xác.
+- **Phụ lục 3**: Xác nhận phương án PA-1 - khoản góp 414 725 000 VND, tỷ lệ chia doanh thu Bên B 40%, tỷ lệ cổ phần tương lai 12.5%.
 - **Phụ lục 4**: Danh mục tài sản Dự án tại ngày ký (repo, domain, môi trường, danh sách tenant).
 
 16.3. Mọi sửa đổi phải lập phụ lục/văn bản bổ sung có ký đủ hai bên.
@@ -175,4 +167,4 @@ Phần còn lại của ngân sách B và/hoặc C do Bên A tự gánh bằng l
 
 ---
 
-*Lưu ý khi dùng bản dự thảo này: (1) điền đầy đủ thông tin định danh hai bên trước khi ký; (2) chọn rõ PA-1 hay PA-2 và chốt tỷ lệ cổ phần chính xác tại Phụ lục 3; (3) xác nhận cách xử lý thuế TNCN trên phần chia doanh thu với tư vấn thuế; (4) nếu có ý định thành lập công ty sớm, cân nhắc ký trực tiếp hợp đồng góp vốn với pháp nhân thay vì bản cá nhân này; (5) cân nhắc công chứng để tăng tính thi hành.*
+*Lưu ý khi dùng bản dự thảo này: (1) điền đầy đủ thông tin định danh hai bên trước khi ký; (2) tỷ lệ cổ phần 12.5% là mức đề xuất mặc định trong khoảng đàm phán 10-15% - điều chỉnh được nếu hai bên thống nhất; (3) xác nhận cách xử lý thuế TNCN trên phần chia doanh thu với tư vấn thuế; (4) nếu có ý định thành lập công ty sớm, cân nhắc ký trực tiếp hợp đồng góp vốn với pháp nhân thay vì bản cá nhân này; (5) cân nhắc công chứng để tăng tính thi hành.*

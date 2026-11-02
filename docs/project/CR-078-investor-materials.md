@@ -13,7 +13,9 @@
    - Tong: ~2 854 450 000 VND (~2.85 ty); PA-1 dev ganh ~2.44 ty; PA-2 dev ganh ~1.86 ty
    - Rev-share window: 24 thang tu khach tra phi dau tien (thay moc co dinh T03/27-T03/29)
 2. `scripts/gen-proposal-investment-pptx.mjs` - dong bo toan bo slide; regenerate `.pptx` (9 slide, verified khong con so cu)
-3. `docs/handover/HOP-DONG-HOP-TAC-DAU-TU-CA-NHAN.md` + `.docx` + `scripts/gen-contract-docx.mjs` - du thao hop dong hop tac dau tu ca nhan-ca nhan
+3. `docs/handover/HOP-DONG-HOP-TAC-DAU-TU-TEMPLATE.md` + `scripts/gen-contract-docx.mjs` render 2 ban in san:
+   - `HOP-DONG-HOP-TAC-DAU-TU-PA1.{md,docx}`: gop 414 725 000, rev-share B 40/A 60, co phan tuong lai 12.5% (giua khoang de xuat 10-15%)
+   - `HOP-DONG-HOP-TAC-DAU-TU-PA2.{md,docx}`: gop 997 475 000, rev-share B 45/A 55, co phan tuong lai 17.5% (giua khoang 15-20%)
 
 ## Impact
 
@@ -24,4 +26,4 @@
 ## Verify
 
 - `node scripts/gen-proposal-investment-pptx.mjs` + unzip check: 9 slides, khong con "2 788"/"793"/"15/10"/"31/03"/"T12/2028"/"49 CR".
-- `node scripts/gen-contract-docx.mjs`: 98 paragraphs, khong em/en-dash, so tien 859.5M dung.
+- `node scripts/gen-contract-docx.mjs`: 2 ban docx, khong em/en-dash, khong token {{}} sot, so tien/ty le dung tung phuong an.

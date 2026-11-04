@@ -33,6 +33,14 @@ export default async function LoginPage() {
           </a>
         </p>
         <LoginForm />
+        <p className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
+          <a href="/legal/privacy" className="hover:text-primary hover:underline">
+            Chính sách bảo mật
+          </a>
+          <a href="/legal/terms" className="hover:text-primary hover:underline">
+            Điều khoản sử dụng
+          </a>
+        </p>
       </div>
     </main>
   );

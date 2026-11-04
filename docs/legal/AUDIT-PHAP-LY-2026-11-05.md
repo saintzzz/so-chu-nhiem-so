@@ -15,14 +15,14 @@ Khung phap luat ap dung chinh:
 
 | # | Hang muc | Muc do | Trang thai |
 |---|----------|--------|-----------|
-| 1 | Thieu trang Chinh sach bao mat + Dieu khoan su dung cong khai | CRITICAL | GAP |
-| 2 | Ho so chuyen du lieu ra nuoc ngoai (Supabase/Vercel/Resend/AI providers) | HIGH | GAP |
-| 3 | DPIA con la ban nhap noi bo, chua cap nhat y_te_bhyt/camera/billing | HIGH | PARTIAL |
-| 4 | Chuoi dong thuan du lieu tre em (consent chain qua truong -> PHHS) | HIGH | PARTIAL |
-| 5 | Du lieu suc khoe (y_te_bhyt) = DLCN nhay cam - can ke khai + consent ro | HIGH | PARTIAL |
-| 6 | Ten goi "ky so" hoc ba - HMAC khong phai chu ky so ND 130 | MEDIUM | GAP |
-| 7 | Quyen chu the du lieu (truy cap/chinh sua/xoa/keu nai) - chua co flow | MEDIUM | GAP |
-| 8 | Thu tuc thong bao su co ro ri 72h | MEDIUM | GAP |
+| 1 | Thieu trang Chinh sach bao mat + Dieu khoan su dung cong khai | CRITICAL | **DONE** `/legal/privacy` + `/legal/terms` + link login |
+| 2 | Ho so chuyen du lieu ra nuoc ngoai (Supabase/Vercel/Resend/AI providers) | HIGH | **IN PROGRESS** - khung HO-SO-CHUYEN-DU-LIEU.md + guide DPA da co; cho ky DPA tai khoan chu |
+| 3 | DPIA con la ban nhap noi bo, chua cap nhat y_te_bhyt/camera/billing | HIGH | **DONE** DPIA-v2-2026-11.md (con cho luat su xac nhan truoc pilot camera) |
+| 4 | Chuoi dong thuan du lieu tre em (consent chain qua truong -> PHHS) | HIGH | **PARTIAL** - ToS da gan nghia vu truong (Dieu 2); con thieu bang consent_records - CR rieng |
+| 5 | Du lieu suc khoe (y_te_bhyt) = DLCN nhay cam - can ke khai + consent ro | HIGH | **DONE ke khai** - DPIA v2 + privacy muc 2,5; consent_records backlog |
+| 6 | Ten goi "ky so" hoc ba - HMAC khong phai chu ky so ND 130 | MEDIUM | **DONE** - doi thanh "ky xac thuc he thong" + disclaimer ND130 trong UI |
+| 7 | Quyen chu the du lieu (truy cap/chinh sua/xoa/keu nai) - chua co flow | MEDIUM | **PARTIAL** - privacy muc 8 ke khai kenh lien he; flow tu phuc vu backlog |
+| 8 | Thu tuc thong bao su co ro ri 72h | MEDIUM | **DONE** - docs/runbook/DATA-BREACH-72H.md |
 | 9 | Consent cookie/tracking tren landing | MEDIUM | REVIEW |
 | 10 | Provenance ngan hang cau hoi (AI-generated - rui ro SGK thap) | LOW | OK-ish |
 | 11 | Data localization theo Luat ANM + ND53 | LOW | MONITOR |

@@ -75,10 +75,11 @@ export default function ExportsBoard({
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Học bạ XML &amp; ký số</h1>
+        <h1 className="text-2xl font-semibold">Học bạ XML &amp; ký xác thực</h1>
         <p className="text-sm text-muted-foreground">
-          Xuất học bạ ra XML (SCN-QD3016-v1) và ký số 2 cấp: GVCN ký trước,
-          BGH ký sau. Chữ ký chống giả mạo bằng checksum + HMAC hệ thống.
+          Xuất học bạ ra XML (SCN-QD3016-v1) và ký xác thực hệ thống 2 cấp:
+          GVCN ký trước, BGH ký sau. Chữ ký HMAC-SHA256 nội bộ - chưa phải
+          chữ ký số CA theo NĐ 130/2018.
         </p>
       </div>
 

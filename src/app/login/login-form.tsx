@@ -133,6 +133,23 @@ export function LoginForm() {
       <p className="text-center text-xs text-muted-foreground">
         Trường demo THCS Nguyễn Du - dữ liệu mẫu sẵn sàng, không cần tài khoản
       </p>
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        Bằng việc đăng nhập, anh chị đồng ý với{' '}
+        <a
+          href="https://vieschool.com/dieu-khoan"
+          className="font-medium text-primary hover:underline"
+        >
+          Điều khoản sử dụng
+        </a>{' '}
+        và{' '}
+        <a
+          href="https://vieschool.com/chinh-sach-bao-mat"
+          className="font-medium text-primary hover:underline"
+        >
+          Chính sách bảo mật
+        </a>
+        . VieSchool xử lý dữ liệu học sinh theo ủy quyền của nhà trường.
+      </p>
     </form>
   );
 }

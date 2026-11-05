@@ -16,16 +16,18 @@ Tin vui: phan lon DPA hien dai **tu dong co hieu luc khi accept Terms** - khong 
 | Google Gemini | AI chinh | Tu dong - kem Google API ToS; **khuyen nghi**: neu muon DPA Cloud chuan, chuyen key sang Vertex AI (Google Cloud DPA tu dong) | (6) Tai Google Cloud Data Processing and Security Terms tai cloud.google.com/terms/data-processing-terms (ap dung khi dung Vertex) |
 | OpenRouter | AI fallback | Chua ro - khong thay DPA cong khai | (7) Gui email privacy@openrouter.ai yeu cau DPA; neu khong co - danh dau "processor it rui ro vi prompt da pseudonymize" hoac bo provider khoi chain |
 
-## Checklist hoan tat (di 1-7)
+## Checklist hoan tat (di 1-7) - cap nhat 05/11/2026
 
-- [ ] 1. Tai DPA Supabase tu dashboard /org/_/documents
-- [ ] 2. Tai DPA Vercel tai vercel.com/legal
-- [ ] 3. Tai DPA da ky tu Resend Settings > Documents
-- [ ] 4. Execute DPA OpenAI (can business org + Org ID) - luu ban ky email
-- [ ] 5. Tai DPA Anthropic tai legal center
-- [ ] 6. Tai Google Cloud DPS terms (hoac xac nhan Gemini API ToS du)
-- [ ] 7. Email OpenRouter xin DPA hoac danh dau loai tru
-- [ ] 8. Luu tat ca vao `docs/legal/dpa/` (gitignore hoac private) + tick vao HO-SO-CHUYEN-DU-LIEU.md
+- [x] 1. DPA Supabase da luu `docs/legal/dpa/supabase-dpa.html` (trang chuan - DPA tich hop ToS, khong can ky tay)
+- [x] 2. DPA Vercel da luu `docs/legal/dpa/vercel-dpa.pdf`
+- [~] 3. DPA Resend: ban public da luu `resend-dpa.html`; **ban da ky tai khoan** can login > Settings > Documents > tai ve (5 phut - can tai khoan chu)
+- [~] 4. OpenAI: DPA hieu luc tu dong tu 01/01/2026, ban luu `openai-dpa.txt`; **execute form** lay ban ky can business account + Org ID (10 phut - can tai khoan chu)
+- [x] 5. DPA Anthropic da luu `docs/legal/dpa/anthropic-dpa.pdf`
+- [x] 6. Google Cloud DPA da luu `docs/legal/dpa/google-cloud-dpa.html`
+- [x] 7. OpenRouter: **da gui email xin DPA** 05/11/2026 (Resend id 01a1a901-da6c, tu linhld@vieschool.com) - cho phan hoi
+- [x] 8. Bo ho so tai `docs/legal/dpa/` kem README
+
+**Con lai 2 viec nho can tai khoan chu (~15 phut):** tai ban ky Resend tu Settings > Documents, va execute DPA OpenAI o platform.openai.com (neu muon co ban ky trong ho so - tuy chon vi da tu dong hieu luc).
 
 ## Ghi chu cho ho so chuyen du lieu
 

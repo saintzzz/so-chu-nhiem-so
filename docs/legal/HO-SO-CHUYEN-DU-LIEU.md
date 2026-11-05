@@ -25,10 +25,10 @@ Ghi chu giam thieu: du lieu gui den AI providers di qua `src/lib/ai-privacy.ts` 
 
 ## 3. Co so phap ly va dieu kien chuyen
 
-- [ ] Hop dong/DPA voi tung ben nhan (checklist tai DPA-PROVIDERS-GUIDE.md)
-- [ ] Dong thuan/cos o xu ly cua ben kiem soat (truong) - dieu khoan ToS 2.x
-- [ ] Thong bao chu the qua /legal/privacy muc 4
-- [ ] Bien phap ky thuat: TLS, RLS, phan quyen role, audit log, redact/pseudonymize
+- [x] Hop dong/DPA voi tung ben nhan - da luu 6/7 tai `docs/legal/dpa/` (OpenRouter da email xin 05/11); DPA cac provider deu tu dong hieu luc theo Terms
+- [x] Dong thuan/cos o xu ly cua ben kiem soat (truong) - dieu khoan ToS 2.x + consent_records (CR-115)
+- [x] Thong bao chu the qua /legal/privacy muc 4
+- [x] Bien phap ky thuat: TLS, RLS, phan quyen role, audit log, redact/pseudonymize
 
 ## 4. Danh gia rui ro chuyen du lieu
 

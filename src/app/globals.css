@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* docs/legal/dpa chua HTML tai ve (DPA providers) - khong phai source class */
+@source not "../../docs/legal/dpa";
 
 @custom-variant dark (&:is(.dark *));
 

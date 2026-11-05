@@ -224,6 +224,7 @@ export const NAV: Record<Role, NavSection[]> = {
         { label: "Cơ sở & đánh giá TT15", href: "/school/campuses", module: "van_hanh_nang_cao" },
         { label: "Thiết bị & cơ sở vật chất", href: "/school/equipment", module: "van_hanh_nang_cao" },
         { label: "Kênh liên hệ phụ huynh", href: "/school/channels" },
+        { label: "Dữ liệu cá nhân", href: "/school/privacy" },
       ],
     },
     {

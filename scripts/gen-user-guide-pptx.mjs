@@ -537,6 +537,22 @@ featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - tài chính - giám 
   { t: "UBND xã: dashboard địa bàn chỉ đọc (theo mô hình chính quyền 2 cấp)" },
 ], "28-dept-dashboard.png", "Dashboard Sở GD&ĐT");
 
+featureSlide("THI TRỰC TUYẾN E2E", "Tạo đề → tổ chức thi → HS làm → chấm tự động (lms_lite)", [
+  { t: "Tạo đề: ngân hàng câu hỏi /studio/questions (tay, import, AI sinh) → tổ hợp đề /academics/exams - mỗi câu kèm điểm + đáp án", b: 1 },
+  { t: "Giao bài /lms: chọn đề + lớp + giờ mở/đóng + thời lượng - hệ thống snapshot đáp án, đề đã giao immutable", b: 1 },
+  { t: "HS làm /portal/student/bai-thi: chỉ trong khung giờ, nộp xong server chấm - không tin client" },
+  { t: "Chấm theo tham số đề: trắc nghiệm + đúng/sai chấm ngay server-side; tự luận cờ essay_pending chờ GV" },
+  { t: "Theo dõi /lms/sessions: đã nộp/chưa, điểm từng em, câu sai nhiều nhất → phân tích /school/exam-analytics" },
+]);
+
+featureSlide("PHÂN HỆ HÀNH CHÍNH MỚI", "Văn thư - Y tế BHYT - Dữ liệu cá nhân - Học bạ XML", [
+  { t: "Văn thư /school/documents (van_thu): sổ công văn đến/đi, số hiệu chống trùng, phân xử lý, quá hạn tô đỏ - write bgh|admin", b: 1 },
+  { t: "Y tế & BHYT /school/health (y_te_bhyt): sổ khám sức khỏe + thẻ BHYT; dữ liệu nhạy cảm - PHT chỉ cơ sở mình, GVCN chỉ lớp mình", b: 1 },
+  { t: "Dữ liệu cá nhân /school/privacy (Luật 91/2025): sổ đồng thuận PHHS + sổ yêu cầu quyền chủ thể hạn 30 ngày", b: 1 },
+  { t: "Học bạ XML /records/exports: xuất theo QĐ 3016 + ký xác thực hệ thống 2 cấp (checksum+HMAC, không phải chữ ký số CA)" },
+  { t: "Xét tốt nghiệp /school/graduation + Tích hợp /school/integrations (outbox sẵn, chờ credential vendor)" },
+]);
+
 featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
   { t: "PH nhiều con: bộ chọn con trên đầu portal - dữ liệu tách đúng từng em", b: 1 },
   { t: "Tin nhắn 2 chiều với GVCN; đặt lịch hẹn chờ xác nhận; đăng ký hoạt động / báo vắng" },

@@ -1,9 +1,9 @@
 # Hướng dẫn sử dụng - Sổ Chủ Nhiệm Số & Studio TVC360
 
-Phiên bản: 2.1 · Ngày: 23/10/2026
-Địa chỉ hệ thống: https://sochunhiem.vieschool.com
+Phiên bản: 3.0 (end-to-end mọi flow) · Ngày: 07/11/2026
+Địa chỉ hệ thống: https://sochunhiem.vieschool.com · Trang pháp lý công khai: `/legal/privacy`, `/legal/terms`
 
-Tài liệu này hướng dẫn thao tác theo từng vai trò, kèm ảnh màn hình chụp trực tiếp từ hệ thống. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
+Tài liệu này hướng dẫn thao tác theo từng vai trò **end-to-end**, mỗi vai trò kèm tài khoản đăng nhập demo ngay đầu mục. Xem thêm `MO-TA-CHUC-NANG.md` để biết mô tả chi tiết từng chức năng.
 
 Tài liệu liên quan trong cùng thư mục:
 
@@ -17,6 +17,26 @@ Tài liệu liên quan trong cùng thư mục:
 Truy cập địa chỉ hệ thống → nhập **Tên đăng nhập** + **Mật khẩu** → **Đăng nhập**.
 
 Môi trường demo: tài khoản theo quy ước tên thật `<tên><viết tắt họ đệm>@<domain trường>` (vd `anhptl@nd.scn` = cô Phạm Thị Lan Anh), mật khẩu chung `demo1234` - danh sách đầy đủ trong `KICH-BAN-DEMO.md`.
+
+### Bảng tài khoản đăng nhập theo vai trò (mật khẩu chung `demo1234`)
+
+| Vai trò trong tài liệu | Tài khoản đăng nhập | Người - vị trí |
+|---|---|---|
+| Quản trị hệ thống | `admin@demo.scn` | Toàn hệ thống - mọi trường |
+| Sở GD&ĐT | `sovqt@demo.scn` | Vũ Quản Trị - xem + quản lý 3 trường |
+| UBND cấp xã | `daonvl@demo.scn` | Ngô Văn Lãnh Đạo - dashboard địa bàn, chỉ đọc |
+| Hiệu trưởng (BGH) | `hainv@nd.scn` | Nguyễn Văn Hải - HT Nguyễn Du, kiêm dạy |
+| Phó Hiệu trưởng (PHT) | `duclm@nd.scn` | Lê Minh Đức - PHT cơ sở 2, kiêm dạy |
+| Tổ trưởng chuyên môn | `hanhlth@nd.scn` | Lê Thị Hồng Hạnh - Tổ Toán-TN |
+| GVCN (kiêm nhiệm) | `anhptl@nd.scn` | Phạm Thị Lan Anh - GVCN 8A2 + GVBM + tổ trưởng |
+| GVBM (đơn vai trò) | `minhtv@nd.scn` | Trần Văn Minh - GV Vật lý |
+| Kế toán trường | `trangpt@nd.scn` | Phạm Thu Trang |
+| Phụ huynh | `annv@nd.scn` | Nguyễn Văn An - bố em Bảo 8A2 |
+| Học sinh | `baong@nd.scn` | Nguyễn Gia Bảo - lớp 8A2 |
+| GVCN tiểu học | `oanhdtk@cva.scn`, `ngaltt@kd.scn` | GVCN 3A2 - TH Chu Văn An / TH Kim Đồng |
+| BGH tiểu học | `phuongttm@cva.scn`, `longhd@kd.scn` | Hiệu trưởng 2 trường tiểu học |
+
+Trường trải nghiệm khách (TRIAL01 - chỉ mở tính năng lõi + chuyên cần, mật khẩu `Trial@2026`): `hieutruong@trial.scn`, `chunhiem@trial.scn`, `giaovien@trial.scn`.
 
 Bộ dữ liệu demo gồm 3 trường có cơ cấu nhân sự sát thực tế: **THCS Nguyễn Du** (12 lớp, 2 cơ sở), **Tiểu học Chu Văn An** (15 lớp), **Tiểu học Kim Đồng** (10 lớp). Mỗi trường có đủ Hiệu trưởng/Phó HT, kế toán, tổ trưởng chuyên môn, GVCN từng lớp và GVBM phân về tổ + môn dạy. Danh sách tài khoản và kịch bản demo chi tiết: `KICH-BAN-DEMO.md`.
 
@@ -38,6 +58,8 @@ Biểu tượng chuông mở trang **Thông báo** (`/notifications`) - tập tr
 ---
 
 ## 2. Giáo viên chủ nhiệm (GVCN)
+
+**Đăng nhập: `anhptl@nd.scn` / `demo1234`** - GVCN lớp 8A2 (THCS Nguyễn Du), kiêm GVBM + tổ trưởng. Tiểu học: `oanhdtk@cva.scn` (3A2), `ngaltt@kd.scn` (3A2).
 
 GVCN là vai trò trung tâm - quản lý toàn bộ hoạt động của lớp chủ nhiệm.
 
@@ -208,17 +230,35 @@ Menu **Quản lý học sinh → Biến động học sinh** (`/movements`) - mo
 
 Ghi nhận mọi thay đổi tình trạng học tập của HS trong năm: **chuyển đến** (HS mới vào lớp giữa năm), **chuyển đi** (ra trường khác), **bảo lưu** (tạm nghỉ giữ chỗ), **nhập học lại** (quay lại sau bảo lưu/nghỉ). Mỗi biến động lưu loại, ngày, lý do, trường đến/đi - danh sách lọc theo loại và thời gian. HS chuyển đi/bảo lưu tự loại khỏi sĩ số điểm danh.
 
-### 2.15 Giao bài trực tuyến (LMS-lite)
+### 2.15 Thi/bài tập trực tuyến end-to-end (LMS-lite)
 
-Menu **Bài tập trực tuyến** (`/lms`) - module `lms_lite`:
+Chuỗi đầy đủ: **tạo đề → tổ chức thi → HS làm → hệ thống chấm theo tham số đề**.
 
-1. Tạo phiên giao bài: chọn **bộ đề** (từ ngân hàng câu hỏi) + lớp + thời gian mở/đóng + thời lượng làm bài.
-2. HS vào portal làm bài trắc nghiệm trong khung giờ - hệ thống **chấm tự động**.
-3. Theo dõi ai đã nộp/chưa nộp, điểm từng em, đáp án sai nhiều nhất.
+**Bước 1 - Tạo đề** (GV, `anhptl@nd.scn` hoặc `minhtv@nd.scn`):
+
+- Ngân hàng câu hỏi `/studio/questions`: soạn tay, import, hoặc **AI sinh câu hỏi** theo chủ đề/độ khó; các dạng trắc nghiệm 1 đáp án, nhiều đáp án, đúng/sai 4 ý, tự luận ngắn.
+- Tổ hợp đề tại `/academics/exams` "Quản lý kỳ thi" hoặc từ ma trận DC-02 trong Studio - mỗi câu mang sẵn **điểm số + đáp án đúng** (đây chính là "tham số" chấm).
+
+**Bước 2 - Tổ chức thi** (GV): menu **Bài tập trực tuyến** (`/lms`) → tạo phiên:
+
+1. Chọn bộ đề + lớp nhận bài + thời gian mở/đóng + thời lượng (phút).
+2. Hệ thống **snapshot toàn bộ đáp án + điểm** vào phiên - đề đã giao không thể sửa, đảm bảo công bằng và audit.
+
+**Bước 3 - HS làm bài** (`baong@nd.scn`):
+
+- Portal HS hiện bài trong khung giờ → làm trực tiếp trong trình duyệt → **Nộp bài**. Ngoài khung giờ không vào được (chặn server).
+
+**Bước 4 - Chấm & theo dõi** (GV, tại `/lms/sessions/[id]`):
+
+- Nộp xong server **chấm tự động** theo đáp án snapshot: trắc nghiệm và đúng/sai chấm ngay; câu tự luận gắn cờ `essay_pending` chờ GV chấm tay.
+- Bảng theo dõi: ai nộp/chưa nộp, điểm từng em, câu sai nhiều nhất → phân tích tại `/school/exam-analytics`.
+- HS xem lại điểm + câu sai ngay trên portal.
 
 ---
 
 ## 3. Giáo viên bộ môn (GVBM)
+
+**Đăng nhập: `minhtv@nd.scn` / `demo1234`** - GV Vật lý, đơn vai trò.
 
 - **Lịch cá nhân**: vào Thời khóa biểu mặc định hiện toàn bộ tiết mình dạy (xem mục 2.5).
 - **Sổ điểm**: nhập điểm các lớp mình dạy - thao tác như mục 2.4.
@@ -231,6 +271,8 @@ Menu **Bài tập trực tuyến** (`/lms`) - module `lms_lite`:
 
 ## 4. Tổ trưởng chuyên môn
 
+**Đăng nhập: `hanhlth@nd.scn` / `demo1234`** - Tổ trưởng Tổ Toán-Tự nhiên. Tiểu học: `lienttb@cva.scn`.
+
 - **Duyệt giáo án**: danh sách giáo án GV trong tổ nộp → xem nội dung → **AI gợi ý nhận xét** → Duyệt hoặc Trả về kèm nhận xét.
 - **Duyệt đánh giá năng lực**: xét đánh giá tự chấm của GV trong tổ.
 - **Sinh hoạt chuyên môn**: tạo buổi sinh hoạt (chủ đề, ngày, ghi chú) → **AI soạn biên bản** từ ghi chú nhanh.
@@ -242,6 +284,8 @@ Menu **Bài tập trực tuyến** (`/lms`) - module `lms_lite`:
 ---
 
 ## 5. Ban Giám Hiệu (BGH) / Phó Hiệu trưởng (PHT)
+
+**Đăng nhập: `hainv@nd.scn` (BGH) hoặc `duclm@nd.scn` (PHT cơ sở 2) / `demo1234`**. Tiểu học: `phuongttm@cva.scn`, `longhd@kd.scn`.
 
 PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC, nhân sự) nhưng **không** ký duyệt sổ chủ nhiệm, không phân công năm học, không quản trị tài khoản - 3 quyền đó chỉ thuộc BGH.
 
@@ -258,7 +302,13 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Học bạ số** (`/records/hoc-ba`): xem học bạ mọi lớp, duyệt/trả lại quyết định cuối năm của GVCN, xuất học bạ DOCX/PDF theo lớp hoặc từng HS (chi tiết quy trình: mục 2.13).
 - **Tuyển sinh đầu cấp** (`/school/admissions`) - module `tuyen_sinh`: quản lý kỳ tuyển (khối 6 xét tuyển, khối 10 thi tuyển), duyệt hồ sơ từ cổng public, công bố kết quả. Cổng public `/apply` cho PH nộp hồ sơ + `/apply/tra-cuu` tra cứu - không cần tài khoản.
 - **Thư viện** (`/library`) - module `thu_vien`: **Danh mục sách**, **Mượn & trả sách** (`/library/loans` - ghi mượn/trả, theo dõi quá hạn), **Sổ đăng ký cá biệt** (`/library/register` - số ĐKCB theo chuẩn Thư viện Quốc gia).
-- **Điều động dạy thay**, **Biến động học sinh** (`/movements`), **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ** (`/register/lock-records` - khóa luôn quyết định cuối năm đã duyệt), **Sự cố toàn trường** (đánh dấu đã báo cáo).
+- **Điều động dạy thay** (`/school/substitutes` - module `van_hanh_nang_cao`): khi GV vắng, chọn tiết trên TKB → gán GV dạy thay → GV được phân công thấy tiết overlay trên lịch cá nhân; điểm danh tiết tự đồng bộ sổ đầu bài.
+- **Xét tốt nghiệp** (`/school/graduation` - module `xet_tot_nghiep`): lớp cuối cấp - kiểm tra điều kiện từng HS theo quy chế, phê duyệt danh sách, xuất quyết định công nhận.
+- **Học bạ XML & ký xác thực** (`/records/exports` - module `hoc_ba_xml`): xuất học bạ XML theo QĐ 3016 kèm checksum + HMAC xác thực hệ thống 2 cấp (lớp → trường). Lưu ý: đây là **xác thực nội bộ**, không phải chữ ký số pháp lý NĐ 130 - khi kết nối CA được cấp phép sẽ chuyển sang ký số thật.
+- **Văn thư** (`/school/documents` - module `van_thu`): sổ công văn đến/đi - đăng ký số hiệu (trùng số báo lỗi), phân người xử lý, hạn xử lý quá hạn tô đỏ, trạng thái đăng ký → đang xử lý → xong → lưu trữ.
+- **Dữ liệu cá nhân** (`/school/privacy` - core, chỉ bgh/admin): 2 sổ theo Luật 91/2025 - **Đồng thuận PHHS** (ghi consent theo HS/mục đích/kênh, thu hồi) và **Yêu cầu quyền chủ thể** (truy cập/sửa/xóa/hạn chế/phản đối/khiếu nại, hạn xử lý 30 ngày, quá hạn tô đỏ, bắt buộc ghi kết quả khi đóng).
+- **Tích hợp & kết nối** (`/school/integrations` - module `tich_hop`): khung connector + hàng đợi gửi ra (outbox) + worker - khi có credential vendor (VNeID, CA ký số, cổng thanh toán) chỉ việc cấu hình là chạy.
+- **Biến động học sinh** (`/movements`), **Nhân sự**, **Đánh giá TT15**, **Duyệt & khóa sổ học bạ** (`/register/lock-records` - khóa luôn quyết định cuối năm đã duyệt), **Sự cố toàn trường** (đánh dấu đã báo cáo).
 
 > Khởi tạo trường mới từ đầu (tài khoản, cơ sở, tổ, lớp, HS, PH, TKB): xem `KHOI-TAO-TRUONG-MOI.md` kèm file Excel `docs/templates/khoi-tao-truong.xlsx`.
 
@@ -285,7 +335,22 @@ Kế toán quản lý phân hệ tài chính - hành chính của trường (đ�
 
 ---
 
+## 5c. Nhân viên y tế trường
+
+**Đăng nhập: dùng tài khoản BGH/admin (`hainv@nd.scn`) hoặc tài khoản cán bộ được gán vai trò y tế** - demo chưa tách tài khoản riêng; trên trường thật BGH tạo tài khoản y tế tại `/school/users`.
+
+Màn hình **Y tế & BHYT** (`/school/health` - module `y_te_bhyt`) - dữ liệu **nhạy cảm**, RLS scope theo cơ sở:
+
+1. **Sổ khám sức khỏe định kỳ**: tạo đợt khám theo lớp/cơ sở → nhập chiều cao, cân nặng, thị lực, tiền sử bệnh từng HS (validate số liệu inline - chiều cao/cân nặng theo dải hợp lý).
+2. **Thẻ BHYT**: khai báo số thẻ, nơi ĐK KCB, hạn thẻ từng HS → cảnh báo thẻ sắp hết hạn.
+3. **Phân quyền**: BGH/admin toàn trường; PHT chỉ cơ sở mình phụ trách; GVCN chỉ HS lớp mình; GVBM không thấy.
+4. **Pháp lý**: dữ liệu sức khỏe thuộc DLCN nhạy cảm - đồng thuận PHHS ghi tại `/school/privacy` (mục 5), DPIA đã kê khai riêng.
+
+---
+
 ## 6. Sở GD&ĐT / UBND cấp xã
+
+**Đăng nhập: `sovqt@demo.scn` (Sở) hoặc `daonvl@demo.scn` (UBND, chỉ đọc) / `demo1234`**. Quản trị hệ thống: `admin@demo.scn`.
 
 - **Dashboard cấp Sở/địa bàn UBND xã**: tổng hợp các trường - quy mô, tỷ lệ chuyên cần, sự cố, cảnh báo; nút **AI bản tin** tổng hợp. (Theo chính quyền địa phương 2 cấp - Phòng GD&ĐT cấp huyện đã bãi bỏ từ 1/7/2025.)
 - **Quản lý trường** (`dept/schools`): tạo trường mới - hệ thống tự tạo năm học hiện tại, tổ chuyên môn mặc định, bộ môn theo cấp học và tài khoản BGH đầu tiên.
@@ -298,6 +363,8 @@ Kế toán quản lý phân hệ tài chính - hành chính của trường (đ�
 ---
 
 ## 7. Phụ huynh
+
+**Đăng nhập: `annv@nd.scn` / `demo1234`** - bố em Nguyễn Gia Bảo lớp 8A2.
 
 Portal phụ huynh hiển thị thông tin con mình (hai PH cùng con thấy chung dữ liệu):
 
@@ -315,6 +382,8 @@ Mọi thao tác (đặt hẹn, nhắn tin, đăng ký) chỉ áp dụng cho con 
 ---
 
 ## 8. Học sinh
+
+**Đăng nhập: `baong@nd.scn` / `demo1234`** - em Nguyễn Gia Bảo, lớp 8A2.
 
 Portal học sinh xem dữ liệu bản thân: thời khóa biểu, điểm các môn, hạnh kiểm, thông báo lớp, lịch thi. Mục **Học bạ** (`/portal/student/hoc-ba`) hiển thị học bạ cá nhân: điểm HK1/HK2/cả năm từng môn, hạnh kiểm, chuyên cần - cùng dữ liệu GVCN/BGH dùng để ra quyết định cuối năm.
 

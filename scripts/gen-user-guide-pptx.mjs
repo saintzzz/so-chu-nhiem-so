@@ -136,11 +136,26 @@ function featureSlide(section, title, items, img, caption) {
     x: 0.8, y: 3.15, w: 8.6, h: 0.5, fontFace: FONT, fontSize: 16, color: "5eead4", bold: true,
   });
   s.addText([
-    { text: "Phiên bản: v3.0 - 26/10/2026 (đầy đủ hướng dẫn theo 10 vai trò + hiệu ứng chuyển cảnh)", options: { breakLine: true } },
+    { text: "Phiên bản: v4.0 - 07/11/2026 (end-to-end mọi flow + mục lục + hiệu ứng chuyển cảnh)", options: { breakLine: true } },
     { text: "URL: https://sochunhiem.vieschool.com", options: { breakLine: true } },
     { text: "Phạm vi: CTGDPT 2018, TT 22/2021, TT 27/2025, CV 5512; bảo mật theo Luật 91/2025", options: { breakLine: true } },
     { text: "Dữ liệu demo: 3 trường thật quy mô, ~1 275 học sinh, ~86 cán bộ, ngân hàng câu hỏi đã dọn trùng", options: {} },
   ], { x: 0.8, y: 3.95, w: 8.6, h: 1.6, fontFace: FONT, fontSize: 13, color: "94a3b8", paraSpaceAfter: 6 });
+}
+
+// ---------- S1b Muc luc ----------
+{
+  const s = p.addSlide();
+  slideTitle(s, "MỤC LỤC", "Deck đi theo 3 phần - tra nhanh theo vai trò của bạn");
+  bullets(s, [
+    { t: "PHẦN A - Giới thiệu & đăng nhập", b: 1 },
+    { sub: ["Tổng quan 3 lớp module, chức năng nổi bật, module mở rộng bán lẻ", "Dữ liệu demo 3 trường, bảng tài khoản theo vai trò (demo1234), vai trò kiêm nhiệm, phân quyền"] },
+    { t: "PHẦN B - Hướng dẫn theo vai trò (step-by-step, kèm tài khoản đăng nhập từng mục)", b: 1 },
+    { sub: ["GVCN: hồ sơ lớp, rèn luyện, phụ huynh, an toàn, kỳ thi, hoạt động GD, nộp sổ, học bạ, LMS", "GVBM, Tổ trưởng, BGH/PHT (điều hành - nhân sự - chất lượng - ký duyệt), Kế toán, Y tế, Sở GD/UBND", "Phụ huynh portal, Học sinh portal"] },
+    { t: "PHẦN C - Cổng công khai & Studio & vận hành", b: 1 },
+    { sub: ["Cổng /apply tuyển sinh + tra cứu, /legal, in học liệu - không cần tài khoản", "Studio soạn học liệu chi tiết, checklist test, điểm nổi bật, bản đồ tài liệu"] },
+    { t: "Bản đầy đủ có mục lục link: docs/user-guide/HUONG-DAN-SU-DUNG.md (v4.0)", c: C.accent },
+  ]);
 }
 
 // ---------- S2 Tong quan ----------
@@ -164,7 +179,8 @@ function featureSlide(section, title, items, img, caption) {
 featureSlide("CHỨC NĂNG NỔI BẬT", "Chuyên cần - điểm danh số", [
   { t: "4 trạng thái/em: Có mặt, Vắng CP, Vắng KP, Đi muộn + ghi chú lý do ngay trên dòng", b: 1 },
   { t: "Chọn ngày bất kỳ để xem lại / sửa điểm danh ngày cũ; sổ vắng-muộn theo khoảng ngày" },
-  { t: "Thông báo phụ huynh tự động (in-app + email Resend từ no-reply@vieschool.com)" },
+  { t: "Thông báo phụ huynh tự động (in-app + email Resend từ no-reply@vieschool.com); PH báo nghỉ từ portal hiện nguồn 'Phụ huynh báo'" },
+  { t: "Báo cáo ngày cho BGH (/attendance/daily-report) sau khi điểm danh - BGH xem tập trung /school/daily-reports" },
   { t: "Đồng bộ 2 chiều với sổ đầu bài tiết học - một ghi nhận, nhiều nơi cập nhật" },
 ], "03-attendance-daily.png", "Điểm danh hàng ngày - tổng quan + ghi chú vắng");
 
@@ -504,6 +520,20 @@ featureSlide("GVCN - KÝ DUYỆT SỔ", "Nộp sổ chủ nhiệm cho BGH ký du
   { t: "BGH ký xong → 'Đã ký' - sổ khóa, chỉ BGH mở lại; mọi chuyển trạng thái ghi audit log" },
 ]);
 
+featureSlide("GVCN - HOẠT ĐỘNG GIÁO DỤC", "Ngoại khóa E2E: kế hoạch → công bố → điểm danh", [
+  { t: "B1 /activities/plan: GVCN tạo kế hoạch (ngày, địa điểm, kinh phí, nội dung) → gửi BGH", b: 1 },
+  { t: "BGH duyệt/trả về tại /school/approvals - trả về kèm nhận xét để sửa nộp lại" },
+  { t: "B2 /activities/announce: hoạt động đã duyệt công bố cho PH - PH đăng ký/báo vắng cho con trên portal" },
+  { t: "B3 /activities/attendance: điểm danh HS tham gia ngày diễn ra + ghi nhận xét/kết quả sau kết thúc" },
+]);
+
+featureSlide("GVCN - THI ĐUA & NĂNG LỰC", "Thi đua lớp + năng lực giáo viên (chuỗi tự đánh giá)", [
+  { t: "Thi đua (thi_dua): /emulation/scoring chấm tiêu chí lớp mình → /emulation/ranking xếp hạng toàn trường + đề xuất khen thưởng", b: 1 },
+  { t: "Năng lực GV: /competency/self-assessment GV tự chấm theo chuẩn nghề nghiệp + lập kế hoạch phát triển", b: 1 },
+  { t: "→ /competency/evidence đính minh chứng → tổ trưởng duyệt tại /team/review - vòng khép kín tự chấm → minh chứng → duyệt" },
+  { t: "KPI đầu năm: /register/kpi đăng ký chỉ tiêu lớp (chuyên cần, khá/giỏi) - đối chiếu thực tế trong năm" },
+]);
+
 divider("VAI TRÒ KHÁC", "GVBM - Tổ trưởng - BGH - Kế toán - Sở - PH - HS", "Mỗi vai trò một màn hình riêng, quyền tính trên server - không lách qua UI");
 
 featureSlide("GIÁO VIÊN BỘ MÔN", "Ngày làm việc của GVBM (minhtv@nd.scn)", [
@@ -532,7 +562,9 @@ featureSlide("BAN GIÁM HIỆU / PHT", "Điều hành trường - phạm vi và 
 featureSlide("KẾ TOÁN & SỞ GD / UBND", "Hành chính - tài chính - giám sát", [
   { t: "Kế toán: nhân sự, cơ sở vật chất, thiết bị, báo cáo tài chính NQ37 - KHÔNG thấy hồ sơ học tập HS", b: 1 },
   { t: "Khoản thu /finance (nếu trường bật module): khoản thu, đợt thu, thu tiền + biên lai, công nợ, báo cáo thu chi" },
-  { t: "Sở GD: dashboard các trường + AI bản tin; tạo trường mới; set module default + duyệt tuyển sinh liên trường", b: 1 },
+  { t: "Kế toán: tích hợp thanh toán /finance/integrations - khung sẵn, kích hoạt khi có credential vendor" },
+  { t: "Sở GD: dashboard các trường + AI bản tin; tạo trường mới; /dept/modules gán module bán lẻ từng trường", b: 1 },
+  { t: "Sở: /dept/users tài khoản trường, /dept/wards đơn vị hành chính, /dept/reports báo cáo, /dept/usage mức dùng, /dept/facilities CSVC" },
   { t: "Quản trị dữ liệu: kiểm tra toàn vẹn - lớp thiếu GVCN, HS chưa có tổ/PH, liên kết mồ côi" },
   { t: "UBND xã: dashboard địa bàn chỉ đọc (theo mô hình chính quyền 2 cấp)" },
 ], "28-dept-dashboard.png", "Dashboard Sở GD&ĐT");
@@ -551,6 +583,30 @@ featureSlide("PHÂN HỆ HÀNH CHÍNH MỚI", "Văn thư - Y tế BHYT - Dữ li
   { t: "Dữ liệu cá nhân /school/privacy (Luật 91/2025): sổ đồng thuận PHHS + sổ yêu cầu quyền chủ thể hạn 30 ngày", b: 1 },
   { t: "Học bạ XML /records/exports: xuất theo QĐ 3016 + ký xác thực hệ thống 2 cấp (checksum+HMAC, không phải chữ ký số CA)" },
   { t: "Xét tốt nghiệp /school/graduation + Tích hợp /school/integrations (outbox sẵn, chờ credential vendor)" },
+]);
+
+featureSlide("BGH - TKB & ĐIỀU HÀNH", "Xếp thời khóa biểu, điều động, dạy thay", [
+  { t: "Xếp TKB /schedule/manage: toàn trường + Import Excel hàng loạt (ô 'Môn|GV|Phòng')", b: 1 },
+  { t: "TKB theo giáo viên /schedule/by-teacher: ma trận GV x tiết - phát hiện GV trống/xếp chồng" },
+  { t: "Điều động /schedule/mobilization (dieu_dong): điều GV giữa cơ sở/lớp theo đợt" },
+  { t: "Dạy thay /school/substitutes: GV vắng → chọn tiết → gán GV thay - tiết overlay trên lịch cá nhân, đồng bộ sổ đầu bài" },
+  { t: "Sổ đầu bài toàn trường /school/journals: giám sát tiết đã/chưa ghi mọi lớp" },
+]);
+
+featureSlide("CỔNG CÔNG KHAI", "Không cần tài khoản: tuyển sinh, pháp lý, in học liệu", [
+  { t: "/apply/[id]: PH nộp hồ sơ tuyển sinh từ link trường công bố → nhận mã hồ sơ", b: 1 },
+  { t: "/apply/tra-cuu: nhập mã → xem trạng thái chờ duyệt/trúng tuyển + thông báo trường" },
+  { t: "Trường duyệt /school/admissions → công bố → HS trúng tuyển sang danh sách tiếp nhận lớp" },
+  { t: "/legal/privacy + /legal/terms: chính sách + điều khoản theo Luật 91/2025 - link từ trang đăng nhập" },
+  { t: "/studio-print/[id]: trang in/xem học liệu Studio chia sẻ bằng link công khai" },
+]);
+
+featureSlide("STUDIO - BỘ CÔNG CỤ CHI TIẾT", "Soạn học liệu cho mọi giáo viên", [
+  { t: "/studio/questions: ngân hàng câu hỏi - tay/import/AI sinh theo môn + khối + độ khó, gắn YCCĐ", b: 1 },
+  { t: "/studio/literature: ngân hàng tác phẩm văn học kèm phân tích + hệ thống câu hỏi" },
+  { t: "/studio/library: học liệu cá nhân đã soạn - sửa, xuất, chia sẻ link in /studio-print" },
+  { t: "/studio/yccd: khung yêu cầu cần đạt theo môn/khối trường ban hành - AI sinh câu hỏi bám theo" },
+  { t: "/studio/mau-khbd: mẫu KHBD chuẩn của trường - GV soạn giáo án thống nhất biểu mẫu" },
 ]);
 
 featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [

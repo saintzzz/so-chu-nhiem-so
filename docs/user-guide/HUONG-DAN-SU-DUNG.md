@@ -14,28 +14,47 @@ Tài liệu liên quan trong cùng thư mục:
 
 ## Mục lục
 
-**Phần A - Đăng nhập & khái niệm chung**
+### Phần A - Đăng nhập & khái niệm chung
 
-1. [Đăng nhập, tài khoản demo, vai trò kiêm nhiệm](#1-đăng-nhập)
+| Mục | Nội dung |
+|---|---|
+| [1. Đăng nhập](#1-đăng-nhập) | Tài khoản demo theo vai trò, vai trò kiêm nhiệm, thông báo, hồ sơ cá nhân |
 
-**Phần B - Hướng dẫn theo vai trò**
+### Phần B - Hướng dẫn theo vai trò
 
-2. [Giáo viên chủ nhiệm (GVCN)](#2-giáo-viên-chủ-nhiệm-gvcn)
-   - 2.1 Dashboard · 2.2 Điểm danh · 2.3 Báo cáo ngày cho BGH & thông báo PH · 2.4 Theo dõi chuyên cần · 2.5 Sổ điểm · 2.6 Thời khóa biểu · 2.7 Sổ đầu bài · 2.8 Sơ đồ lớp & tổ & Ban cán sự · 2.9 Rèn luyện · 2.10 Liên lạc phụ huynh · 2.11 Hoạt động giáo dục E2E · 2.12 Tư vấn & an toàn · 2.13 Kỳ thi, thi đua, năng lực GV · 2.14 Kế hoạch, KPI, lịch năm học · 2.15 Sổ chủ nhiệm - nộp & ký duyệt · 2.16 Học bạ số TT22/2021 · 2.17 Biến động & bữa ăn & y tế · 2.18 Thi trực tuyến LMS E2E
-3. [Giáo viên bộ môn (GVBM)](#3-giáo-viên-bộ-môn-gvbm)
-4. [Tổ trưởng chuyên môn](#4-tổ-trưởng-chuyên-môn)
-5. [Ban Giám Hiệu (BGH) / Phó Hiệu trưởng (PHT)](#5-ban-giám-hiệu-bgh--phó-hiệu-trưởng-pht)
-6. [Kế toán trường](#6-kế-toán-trường)
-7. [Nhân viên y tế trường](#7-nhân-viên-y-tế-trường)
-8. [Sở GD&ĐT / UBND cấp xã / Quản trị hệ thống](#8-sở-gđđt--ubnd-cấp-xã--quản-trị-hệ-thống)
-9. [Phụ huynh](#9-phụ-huynh)
-10. [Học sinh](#10-học-sinh)
+| Mục | Vai trò | Đăng nhập demo | Các flow chính |
+|---|---|---|---|
+| [2. GVCN](#2-giáo-viên-chủ-nhiệm-gvcn) | Giáo viên chủ nhiệm | `anhptl@nd.scn` | Điểm danh, báo cáo ngày, sổ điểm, TKB, sổ đầu bài, sơ đồ lớp, rèn luyện, phụ huynh, hoạt động GD, tư vấn/an toàn, kỳ thi, thi đua, KPI, sổ CN, học bạ, biến động, LMS |
+| [3. GVBM](#3-giáo-viên-bộ-môn-gvbm) | Giáo viên bộ môn | `minhtv@nd.scn` | Lịch dạy, điểm, sổ đầu bài, giáo án, LMS |
+| [4. Tổ trưởng](#4-tổ-trưởng-chuyên-môn) | Tổ trưởng chuyên môn | `hanhlth@nd.scn` | Duyệt giáo án, duyệt năng lực, sinh hoạt chuyên môn |
+| [5. BGH / PHT](#5-ban-giám-hiệu-bgh--phó-hiệu-trưởng-pht) | Hiệu trưởng / Phó HT | `hainv@nd.scn` / `duclm@nd.scn` | Điều hành, phê duyệt, nhân sự, TKB, chất lượng, ký duyệt |
+| [6. Kế toán](#6-kế-toán-trường) | Kế toán trường | `trangpt@nd.scn` | Khoản thu, hóa đơn, công nợ, báo cáo |
+| [7. Nhân viên y tế](#7-nhân-viên-y-tế-trường) | Y tế trường | vai trò y tế | Sổ khám sức khỏe, thẻ BHYT |
+| [8. Sở / UBND / Admin](#8-sở-gđđt--ubnd-cấp-xã--quản-trị-hệ-thống) | Sở GD&ĐT, UBND, admin | `sovqt@demo.scn` / `daonvl@demo.scn` / `admin@demo.scn` | Dashboard địa bàn, quản trường, dữ liệu, module |
+| [9. Phụ huynh](#9-phụ-huynh) | PHHS | `annv@nd.scn` | Portal con: điểm, chuyên cần, tin nhắn, hẹn, đăng ký, báo nghỉ |
+| [10. Học sinh](#10-học-sinh) | Học sinh | `baong@nd.scn` | Portal: TKB, điểm, học bạ, bài thi trực tuyến |
 
-**Phần C - Cổng công khai & công cụ chung**
+### Phần C - Cổng công khai & công cụ chung
 
-11. [Cổng công khai không cần đăng nhập](#11-cổng-công-khai-không-cần-đăng-nhập)
-12. [Studio - công cụ soạn học liệu](#12-studio---công-cụ-soạn-học-liệu)
-13. [Mẹo sử dụng & bảng module](#13-mẹo-sử-dụng--bảng-module)
+| Mục | Nội dung |
+|---|---|
+| [11. Cổng công khai](#11-cổng-công-khai-không-cần-đăng-nhập) | `/apply` nộp hồ sơ + tra cứu, `/legal` pháp lý, `/studio-print` in học liệu |
+| [12. Studio](#12-studio---công-cụ-soạn-học-liệu) | Ngân hàng câu hỏi, văn học, thư viện, YCCĐ, mẫu KHBD |
+| [13. Mẹo & module](#13-mẹo-sử-dụng--bảng-module) | Ctrl+K, import Excel, AI fallback, bảng 19 module bán lẻ |
+
+### Mục lục chi tiết phần GVCN (mục 2)
+
+| # | Flow | # | Flow |
+|---|---|---|---|
+| 2.1 | Dashboard | 2.10 | Liên lạc phụ huynh |
+| 2.2 | Điểm danh hàng ngày | 2.11 | Hoạt động giáo dục E2E |
+| 2.3 | Báo cáo ngày & thông báo PH | 2.12 | Tư vấn & an toàn |
+| 2.4 | Theo dõi chuyên cần | 2.13 | Kỳ thi, thi đua, năng lực GV |
+| 2.5 | Sổ điểm | 2.14 | Kế hoạch, KPI, lịch năm học |
+| 2.6 | Thời khóa biểu | 2.15 | Sổ chủ nhiệm - nộp & ký duyệt |
+| 2.7 | Sổ đầu bài | 2.16 | Học bạ số TT22/2021 |
+| 2.8 | Sơ đồ lớp, danh sách & hồ sơ | 2.17 | Biến động, bữa ăn & y tế |
+| 2.9 | Rèn luyện | 2.18 | Thi trực tuyến LMS E2E |
 
 ---
 
@@ -119,6 +138,8 @@ Menu **Chuyên cần → Điểm danh hàng ngày**.
 - **Báo cáo ngày cho Ban Giám Hiệu** (`/attendance/daily-report`): sau khi điểm danh xong, GVCN gửi báo cáo chuyên cần + ghi chú tình hình lớp trong ngày cho BGH. BGH xem tập trung tại **Báo cáo ngày các lớp** (`/school/daily-reports` - mục 5).
 - **Thông báo phụ huynh** (`/attendance/notify`): gửi thông báo vắng/muộn cho PH của các em đã đánh dấu - hệ thống liệt kê sẵn danh sách em vắng/muộn hôm đó, GVCN chỉ việc chọn và gửi (in-app + email).
 
+![Báo cáo ngày cho BGH](images/43-daily-report.png)
+
 ### 2.4 Theo dõi tình trạng & lịch sử chuyên cần
 
 - **Theo dõi tình trạng**: ma trận học sinh × ngày. Chọn ngày mốc ở ô "Đến ngày" để xem chuỗi vắng/muộn gần đó - phát hiện em vắng liên tục.
@@ -185,6 +206,7 @@ Menu **Sổ chủ nhiệm** / **Quản lý học sinh**:
 
 ![Sơ đồ lớp](images/11-seating.png)
 ![Danh sách HS & Tổ](images/12-roster.png)
+![Chi tiết hồ sơ học sinh](images/42-records-students.png)
 
 ### 2.9 Rèn luyện
 
@@ -215,6 +237,9 @@ Chuỗi 3 bước: **kế hoạch → công bố & đăng ký → điểm danh &
 1. **Lập kế hoạch & phê duyệt** (`/activities/plan`): GVCN/GV tạo kế hoạch hoạt động (tên, ngày, địa điểm, kinh phí dự kiến, nội dung) → gửi BGH. BGH duyệt tại **Trung tâm phê duyệt** (`/school/approvals` - mục 5) - có thể trả về kèm nhận xét để sửa nộp lại.
 2. **Thông báo & đăng ký** (`/activities/announce`): hoạt động đã duyệt được công bố cho PH → PH đăng ký cho con trên portal (mục 9). Màn hình liệt kê ai đã đăng ký/báo vắng.
 3. **Điểm danh & đánh giá** (`/activities/attendance`): ngày diễn ra - điểm danh HS tham gia, ghi nhận xét/kết quả hoạt động sau khi kết thúc.
+
+![Lập kế hoạch hoạt động](images/33-activities-plan.png)
+![Thông báo & đăng ký hoạt động](images/34-activities-announce.png)
 
 ### 2.12 Tư vấn học sinh & an toàn
 
@@ -259,6 +284,8 @@ Chuỗi 3 bước: **kế hoạch → công bố & đăng ký → điểm danh &
 - **Xuất sổ** (`/register/export`): tải CSV toàn bộ dữ liệu sổ chủ nhiệm.
 - **Nhật ký & lịch sử** (`/register/audit`): mọi thao tác trên sổ - ai, làm gì, khi nào.
 
+![Nộp sổ chủ nhiệm](images/46-signoff.png)
+
 ![Xuất sổ](images/20-export.png)
 
 ### 2.16 Học bạ số - xếp loại cuối năm (TT22/2021)
@@ -300,6 +327,10 @@ Menu **Hồ sơ lớp học → Học bạ số** (`/records/hoc-ba`). Học b�
 - **Bữa ăn & bán trú** (`/meals` - module `bua_an`): đăng ký suất ăn/bán trú của HS lớp mình theo tuần, xem thực đơn, đối chiếu số suất phục vụ bếp.
 - **Y tế & BHYT** (`/school/health` - module `y_te_bhyt`): GVCN xem dữ liệu sức khỏe/BHYT của HS lớp mình (phạm vi chỉ đọc theo lớp - nhân viên y tế nhập, mục 7).
 
+![Biến động học sinh](images/49-movements.png)
+![Bữa ăn & bán trú](images/50-meals.png)
+![Y tế & BHYT](images/51-health.png)
+
 ### 2.18 Thi/bài tập trực tuyến end-to-end (LMS-lite)
 
 Chuỗi đầy đủ: **tạo đề → tổ chức thi → HS làm → hệ thống chấm theo tham số đề**.
@@ -323,6 +354,8 @@ Chuỗi đầy đủ: **tạo đề → tổ chức thi → HS làm → hệ th�
 - Nộp xong server **chấm tự động** theo đáp án snapshot: trắc nghiệm và đúng/sai chấm ngay; câu tự luận gắn cờ `essay_pending` chờ GV chấm tay.
 - Bảng theo dõi: ai nộp/chưa nộp, điểm từng em, câu sai nhiều nhất → phân tích tại `/school/exam-analytics`.
 - HS xem lại điểm + câu sai ngay trên portal.
+
+![Giao bài trực tuyến](images/44-lms.png)
 
 ---
 
@@ -375,6 +408,9 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Thông báo toàn trường** (`/school/announce`): gửi thông báo cho toàn bộ GV/HS/PH.
 - **Sự cố toàn trường** (`/safety/bgh` - module `tu_van_an_toan`): giám sát mọi sự cố, đánh dấu đã báo cáo cấp trên.
 
+![Báo cáo ngày các lớp](images/36-daily-reports.png)
+![Điều động dạy thay](images/52-substitutes.png)
+
 ### 5.2 Nhân sự & tổ chức
 
 - **Nhân sự trường** (`/school/staff`): danh sách cán bộ, hợp đồng, tổ chuyên môn.
@@ -400,6 +436,15 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 - **Phân tích điểm thi** (`/school/exam-analytics` - module `ky_thi_danh_gia`): phân tích sau thi toàn trường - phân bố điểm, câu sai nhiều.
 - **Bữa ăn & bán trú** (`/meals`), **Y tế & BHYT** (`/school/health`), **Văn thư** (`/school/documents` - module `van_thu`: sổ công văn đến/đi, số hiệu chống trùng, phân xử lý, quá hạn tô đỏ), **Tích hợp & kết nối** (`/school/integrations` - module `tich_hop`: khung connector + outbox, cấu hình khi có credential vendor).
 - **Học bạ số** (`/records/hoc-ba`) + **Học bạ XML & ký xác thực** (`/records/exports`) + **Biến động học sinh** (`/movements`): xem mục 2.16, 2.17.
+
+![Tuyển sinh đầu cấp](images/37-admissions.png)
+![Thư viện](images/39-library.png)
+![Sổ công văn](images/38-documents.png)
+![Sổ đầu bài toàn trường](images/53-journals.png)
+![Phân tích điểm thi](images/54-exam-analytics.png)
+![Xét tốt nghiệp](images/55-graduation.png)
+![Tích hợp & kết nối](images/56-integrations.png)
+![Dữ liệu cá nhân - đồng thuận & quyền chủ thể](images/40-privacy.png)
 
 ### 5.4 Giám sát & phê duyệt
 
@@ -434,6 +479,8 @@ PHT điều hành vận hành trường (dashboard, radar, sự cố, TKB, CSVC,
 
 **Hành chính khác**: Nhân sự trường, Cơ sở vật chất, Thiết bị (sổ tài sản, bảo trì), Báo cáo NQ37 (định mức biên chế), Bữa ăn & bán trú (`/meals`).
 
+![Hóa đơn & thu tiền](images/41-finance-invoices.png)
+
 ---
 
 ## 7. Nhân viên y tế trường
@@ -463,6 +510,8 @@ Màn hình **Y tế & BHYT** (`/school/health` - module `y_te_bhyt`) - dữ li�
 - **Cơ sở vật chất** (`/dept/facilities`): tổng hợp CSVC các trường trong địa bàn.
 - **Module theo trường** (`/dept/modules` - Sở/admin): bật/tắt module bán lẻ từng trường - trường mua gói nào mở gói đó (xem bảng module, mục 13).
 - **Học bạ số** (`/records/hoc-ba`): xem chỉ đọc học bạ các trường thuộc phạm vi (mục 2.16).
+
+![Module theo trường](images/57-dept-modules.png)
 
 ![Dashboard Sở GD](images/28-dept-dashboard.png)
 ![Kiểm tra toàn vẹn dữ liệu](images/29-dept-data.png)
@@ -500,6 +549,7 @@ Portal học sinh (`/portal/student`) xem dữ liệu bản thân: thời khóa 
 - **Trao đổi với GVCN**: trả lời tin nhắn GVCN gửi (mục 2.9).
 
 ![Portal học sinh](images/31-student-portal.png)
+![Học bạ cá nhân trên portal](images/58-student-hocba.png)
 
 ---
 
@@ -513,6 +563,9 @@ Các trang mở cho người ngoài hệ thống - không yêu cầu tài khoả
 - **Trang pháp lý** (`/legal/privacy`, `/legal/terms`): chính sách bảo mật + điều khoản sử dụng theo Luật 91/2025 - link từ trang đăng nhập.
 - **In học liệu** (`/studio-print/[id]`): trang in/xem học liệu Studio chia sẻ công khai bằng link.
 
+![Tra cứu hồ sơ tuyển sinh](images/47-apply-tracuu.png)
+![Chính sách bảo mật công khai](images/48-legal-privacy.png)
+
 ---
 
 ## 12. Studio - công cụ soạn học liệu
@@ -525,6 +578,8 @@ Dành cho mọi giáo viên (đăng nhập bằng tài khoản GV bất kỳ, vd
 - **Văn học** (`/studio/literature`, chi tiết `/studio/literature/[id]`): ngân hàng tác phẩm văn học kèm phân tích/hệ thống câu hỏi.
 - **Yêu cầu cần đạt của trường** (`/studio/yccd`): khung YCCĐ theo môn/khối trường ban hành - AI sinh câu hỏi bám theo.
 - **Biểu mẫu kế hoạch bài dạy** (`/studio/mau-khbd`): mẫu KHBD chuẩn của trường để GV soạn giáo án thống nhất.
+
+![Ngân hàng câu hỏi Studio](images/45-studio-questions.png)
 
 ---
 

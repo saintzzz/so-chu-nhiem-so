@@ -53,6 +53,10 @@ export async function proxy(request: NextRequest) {
     pathname === "/logo.png";
   // CR-113: /mua cong khai - trang ban hang (rewrite sang vieschool-content)
   const isPublicMua = pathname === "/mua";
+  // /legal cong khai - trang login link sang; bi chan thi khach khong doc
+  // duoc chinh sach/dieu khoan truoc khi dang ky (Luat 91/2025).
+  const isPublicLegal =
+    pathname === "/legal" || pathname.startsWith("/legal/");
   // trang chu cong khai cho guest - rewrite ra landing tinh tren
   // vieschool-content (truoc day redirect /login -> Google crawl thay
   // trang trong). User da dang nhap van vao dashboard nhu cu.
@@ -85,12 +89,12 @@ export async function proxy(request: NextRequest) {
     response.cookies.getAll().forEach((c) => res.cookies.set(c));
     return res;
   }
-  if (!user && !isLogin && !isPublicApi && !isPublicGuides && !isPublicSeoFiles && !isPublicMua) {
+  if (!user && !isLogin && !isPublicApi && !isPublicGuides && !isPublicSeoFiles && !isPublicMua && !isPublicLegal) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return redirectWithCookies(url);
   }
-  if (!user && (isPublicGuides || isPublicSeoFiles || isPublicMua)) {
+  if (!user && (isPublicGuides || isPublicSeoFiles || isPublicMua || isPublicLegal)) {
     return response;
   }
   if (!user && isPublicApi) {

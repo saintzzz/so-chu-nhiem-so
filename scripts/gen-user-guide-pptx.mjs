@@ -525,14 +525,14 @@ featureSlide("GVCN - HOẠT ĐỘNG GIÁO DỤC", "Ngoại khóa E2E: kế hoạ
   { t: "BGH duyệt/trả về tại /school/approvals - trả về kèm nhận xét để sửa nộp lại" },
   { t: "B2 /activities/announce: hoạt động đã duyệt công bố cho PH - PH đăng ký/báo vắng cho con trên portal" },
   { t: "B3 /activities/attendance: điểm danh HS tham gia ngày diễn ra + ghi nhận xét/kết quả sau kết thúc" },
-]);
+], "34-activities-announce.png", "Thông báo hoạt động cho phụ huynh");
 
 featureSlide("GVCN - THI ĐUA & NĂNG LỰC", "Thi đua lớp + năng lực giáo viên (chuỗi tự đánh giá)", [
   { t: "Thi đua (thi_dua): /emulation/scoring chấm tiêu chí lớp mình → /emulation/ranking xếp hạng toàn trường + đề xuất khen thưởng", b: 1 },
   { t: "Năng lực GV: /competency/self-assessment GV tự chấm theo chuẩn nghề nghiệp + lập kế hoạch phát triển", b: 1 },
   { t: "→ /competency/evidence đính minh chứng → tổ trưởng duyệt tại /team/review - vòng khép kín tự chấm → minh chứng → duyệt" },
   { t: "KPI đầu năm: /register/kpi đăng ký chỉ tiêu lớp (chuyên cần, khá/giỏi) - đối chiếu thực tế trong năm" },
-]);
+], "16-emulation.png", "Bảng xếp hạng thi đua");
 
 divider("VAI TRÒ KHÁC", "GVBM - Tổ trưởng - BGH - Kế toán - Sở - PH - HS", "Mỗi vai trò một màn hình riêng, quyền tính trên server - không lách qua UI");
 
@@ -575,7 +575,7 @@ featureSlide("THI TRỰC TUYẾN E2E", "Tạo đề → tổ chức thi → HS l
   { t: "HS làm /portal/student/bai-thi: chỉ trong khung giờ, nộp xong server chấm - không tin client" },
   { t: "Chấm theo tham số đề: trắc nghiệm + đúng/sai chấm ngay server-side; tự luận cờ essay_pending chờ GV" },
   { t: "Theo dõi /lms/sessions: đã nộp/chưa, điểm từng em, câu sai nhiều nhất → phân tích /school/exam-analytics" },
-]);
+], "44-lms.png", "GV giao bài trực tuyến");
 
 featureSlide("PHÂN HỆ HÀNH CHÍNH MỚI", "Văn thư - Y tế BHYT - Dữ liệu cá nhân - Học bạ XML", [
   { t: "Văn thư /school/documents (van_thu): sổ công văn đến/đi, số hiệu chống trùng, phân xử lý, quá hạn tô đỏ - write bgh|admin", b: 1 },
@@ -583,7 +583,7 @@ featureSlide("PHÂN HỆ HÀNH CHÍNH MỚI", "Văn thư - Y tế BHYT - Dữ li
   { t: "Dữ liệu cá nhân /school/privacy (Luật 91/2025): sổ đồng thuận PHHS + sổ yêu cầu quyền chủ thể hạn 30 ngày", b: 1 },
   { t: "Học bạ XML /records/exports: xuất theo QĐ 3016 + ký xác thực hệ thống 2 cấp (checksum+HMAC, không phải chữ ký số CA)" },
   { t: "Xét tốt nghiệp /school/graduation + Tích hợp /school/integrations (outbox sẵn, chờ credential vendor)" },
-]);
+], "40-privacy.png", "Sổ đồng thuận & quyền chủ thể");
 
 featureSlide("BGH - TKB & ĐIỀU HÀNH", "Xếp thời khóa biểu, điều động, dạy thay", [
   { t: "Xếp TKB /schedule/manage: toàn trường + Import Excel hàng loạt (ô 'Môn|GV|Phòng')", b: 1 },
@@ -591,7 +591,7 @@ featureSlide("BGH - TKB & ĐIỀU HÀNH", "Xếp thời khóa biểu, điều đ
   { t: "Điều động /schedule/mobilization (dieu_dong): điều GV giữa cơ sở/lớp theo đợt" },
   { t: "Dạy thay /school/substitutes: GV vắng → chọn tiết → gán GV thay - tiết overlay trên lịch cá nhân, đồng bộ sổ đầu bài" },
   { t: "Sổ đầu bài toàn trường /school/journals: giám sát tiết đã/chưa ghi mọi lớp" },
-]);
+], "24-bgh-timetable.png", "TKB toàn trường");
 
 featureSlide("CỔNG CÔNG KHAI", "Không cần tài khoản: tuyển sinh, pháp lý, in học liệu", [
   { t: "/apply/[id]: PH nộp hồ sơ tuyển sinh từ link trường công bố → nhận mã hồ sơ", b: 1 },
@@ -599,7 +599,7 @@ featureSlide("CỔNG CÔNG KHAI", "Không cần tài khoản: tuyển sinh, phá
   { t: "Trường duyệt /school/admissions → công bố → HS trúng tuyển sang danh sách tiếp nhận lớp" },
   { t: "/legal/privacy + /legal/terms: chính sách + điều khoản theo Luật 91/2025 - link từ trang đăng nhập" },
   { t: "/studio-print/[id]: trang in/xem học liệu Studio chia sẻ bằng link công khai" },
-]);
+], "47-apply-tracuu.png", "Tra cứu hồ sơ công khai");
 
 featureSlide("STUDIO - BỘ CÔNG CỤ CHI TIẾT", "Soạn học liệu cho mọi giáo viên", [
   { t: "/studio/questions: ngân hàng câu hỏi - tay/import/AI sinh theo môn + khối + độ khó, gắn YCCĐ", b: 1 },
@@ -607,7 +607,7 @@ featureSlide("STUDIO - BỘ CÔNG CỤ CHI TIẾT", "Soạn học liệu cho m�
   { t: "/studio/library: học liệu cá nhân đã soạn - sửa, xuất, chia sẻ link in /studio-print" },
   { t: "/studio/yccd: khung yêu cầu cần đạt theo môn/khối trường ban hành - AI sinh câu hỏi bám theo" },
   { t: "/studio/mau-khbd: mẫu KHBD chuẩn của trường - GV soạn giáo án thống nhất biểu mẫu" },
-]);
+], "45-studio-questions.png", "Ngân hàng câu hỏi");
 
 featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
   { t: "PH nhiều con: bộ chọn con trên đầu portal - dữ liệu tách đúng từng em", b: 1 },

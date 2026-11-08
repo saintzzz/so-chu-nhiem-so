@@ -2,7 +2,7 @@
 // Assert khong mat truong quan trong khi di vong VieSchool -> vnEdu -> VieSchool.
 // Chay: node --experimental-strip-types scripts/check-vnedu-roundtrip.mjs
 // (Node >=22 co --experimental-strip-types; fallback dung tsx neu co.)
-import { VNEDU_MAU1_HEADERS, toVneduRow, parseStudentTable } from "../src/lib/vnedu.ts";
+import { VNEDU_MAU1_HEADERS, SMAS_HEADERS, toVneduRow, toSmasRow, parseStudentTable } from "../src/lib/vnedu.ts";
 
 const STUDENTS = [
   {
@@ -82,7 +82,25 @@ check(ps.length === 1 && ps[0].errors.length === 0, "file SMAS parse duoc");
 check(ps[0]?.code === "SMAS0001", `SMAS ma hs -> code (${ps[0]?.code})`);
 check(ps[0]?.fullName === "Lê Văn Cường", `SMAS ho dem + ten (${ps[0]?.fullName})`);
 
-// 3. Kiem tra truong bi mat trong round-trip (bao cao ro, khong im lang).
+// 3. Round-trip SMAS: export -> parse lai (Ho dem + Ten tach cot).
+const smasTable = [
+  ["TRƯỜNG THCS Y"],
+  ["DANH SÁCH HỌC SINH"],
+  [],
+  [...SMAS_HEADERS],
+  ...STUDENTS.map((s, i) => toSmasRow(s, i + 1)),
+];
+check(SMAS_HEADERS.length === 19, `SMAS co 19 cot, co ${SMAS_HEADERS.length}`);
+const smasParsed = parseStudentTable(smasTable);
+check(smasParsed.length === 2, `SMAS parse 2 HS, duoc ${smasParsed.length}`);
+check(smasParsed[0].errors.length === 0, `SMAS HS1 khong loi: ${smasParsed[0]?.errors}`);
+check(smasParsed[0].code === "CVA00006", `SMAS code (${smasParsed[0]?.code})`);
+check(smasParsed[0].nationalId === "00000000000000001234", `SMAS VEMIS (${smasParsed[0]?.nationalId})`);
+check(smasParsed[0].fullName === "Nguyễn Văn An", `SMAS gop ten (${smasParsed[0]?.fullName})`);
+check(smasParsed[0].tenCha === "Nguyễn Văn Bố", `SMAS ten cha (${smasParsed[0]?.tenCha})`);
+check(smasParsed[0].sdtPH === "0912345678", `SMAS sdt (${smasParsed[0]?.sdtPH})`);
+
+// 4. Kiem tra truong bi mat trong round-trip (bao cao ro, khong im lang).
 const exported = toVneduRow(STUDENTS[1], 2);
 const LOST = ["sdt PH khi khong co cha/me (contact trong)", "status chi hien o Ghi chu khi khac active"];
 console.log(`\nINFO: truong khong round-trip duoc do mau-1 khong ho tro: ${LOST.join(", ")}`);

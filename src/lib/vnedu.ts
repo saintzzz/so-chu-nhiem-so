@@ -115,6 +115,69 @@ export function toVneduRow(s: VneduStudent, stt: number): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// EXPORT SMAS (Viettel): mau danh sach hoc sinh - "Ho dem" + "Ten" tach cot,
+// khac vnEdu (gom "Ho va ten"). Cot theo template import HS quan sat duoc
+// tren SMAS.
+// ---------------------------------------------------------------------------
+
+export const SMAS_HEADERS = [
+  "STT",
+  "Mã học sinh",
+  "Mã VEMIS",
+  "Họ đệm",
+  "Tên",
+  "Ngày sinh",
+  "Giới tính",
+  "Dân tộc",
+  "Nơi sinh",
+  "Quê quán",
+  "Hộ khẩu thường trú",
+  "Chỗ ở hiện nay",
+  "Họ tên cha",
+  "Nghề nghiệp cha",
+  "Họ tên mẹ",
+  "Nghề nghiệp mẹ",
+  "Điện thoại",
+  "Email",
+  "Ghi chú",
+] as const;
+
+/** Tach ho ten VN -> ho dem (tru ten cuoi) + ten (tu cuoi). */
+export function splitVietnameseName(full: string): { hoDem: string; ten: string } {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length <= 1) return { hoDem: "", ten: full.trim() };
+  return { hoDem: parts.slice(0, -1).join(" "), ten: parts[parts.length - 1] };
+}
+
+export function toSmasRow(s: VneduStudent, stt: number): string[] {
+  const cha = s.parents?.find((p) => p.relationship === "cha");
+  const me = s.parents?.find((p) => p.relationship === "me");
+  const contact = cha ?? me ?? s.parents?.[0];
+  const { hoDem, ten } = splitVietnameseName(s.full_name);
+  return [
+    String(stt),
+    s.code ?? "",
+    s.national_id ?? "",
+    hoDem,
+    ten,
+    dobVN(s.dob),
+    genderVN(s.gender),
+    "", // Dan toc
+    "", // Noi sinh
+    "", // Que quan
+    "", // Ho khau thuong tru
+    s.address ?? "",
+    cha?.full_name ?? "",
+    "",
+    me?.full_name ?? "",
+    "",
+    contact?.phone ?? "",
+    contact?.email ?? "",
+    s.status && s.status !== "active" ? (STATUS_VN[s.status] ?? s.status) : "",
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // IMPORT: parse file he thong cu (vnEdu/SMAS/CSV bat ky) -> ParsedStudentRow.
 // ---------------------------------------------------------------------------
 

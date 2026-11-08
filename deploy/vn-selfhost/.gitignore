@@ -1,0 +1,6 @@
+# Secrets va state cuc bo - khong bao gio commit
+.env
+snapshot/replay-state.json
+snapshot/*.sql
+volumes/data/
+*.dump

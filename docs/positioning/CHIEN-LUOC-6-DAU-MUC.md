@@ -1,218 +1,227 @@
-# Chien luoc he thong theo 6 dau muc - tai lieu tong hop
+# Chiến lược hệ thống theo 6 đầu mục - tài liệu tổng hợp
 
-Cap nhat 2026-11-08. Gop toan bo phan tich + trang thai + cong viec da lam
-cho 6 dau muc: can cu phap ly, dieu le quan tri truong, gia tri gia tang,
-trai nghiem nguoi dung, ket noi CSDL nganh/du lieu cu, bao mat du lieu.
+Cập nhật 2026-11-08. Gộp toàn bộ phân tích + trạng thái + công việc đã làm
+cho 6 đầu mục: căn cứ pháp lý, điều lệ quản trị trường, giá trị gia tăng,
+trải nghiệm người dùng, kết nối CSDL ngành/dữ liệu cũ, bảo mật dữ liệu.
 
-Nguon: `AUDIT-6DM-2026-11-08.md` (audit), `CR-116` (work items W1-W4),
-`CSDL-NGANH-CONNECTOR.md` (spec), `GIA-TRI-GIA-TANG.md` (dinh vi).
+Nguồn: `AUDIT-6DM-2026-11-08.md` (audit), `CR-116` (work items W1-W4),
+`CSDL-NGANH-CONNECTOR.md` (spec), `GIA-TRI-GIA-TANG.md` (định vị).
 
 ---
 
-## PHAN 1 - Phan mem xay dung tren quy dinh hien hanh nao
+## PHẦN 1 - Phần mềm xây dựng trên quy định hiện hành nào
 
-He thong duoc thiet ke va audit theo bo van ban sau (trang thai: DA AP
-DUNG trong code, khong chi tren giay):
+Hệ thống được thiết kế và audit theo bộ văn bản sau (trạng thái: ĐÃ ÁP
+DỤNG trong code, không chỉ trên giấy):
 
-| Van ban | Pham vi ap dung trong he thong |
+| Văn bản | Phạm vi áp dụng trong hệ thống |
 |---|---|
-| **TT 15/2026/TT-BGDDT** | Dieu le truong THCS/THPT/lien cap moi nhat (hieu luc 10/5/2026, thay TT 32/2020 + TT 28/2020). Toan bo quy trinh dieu hanh: phan cong vai tro (BGH, PHT, GVCN, GVBM, to truong, ban CMHS), kiem tra duyet (giao an, so chu nhiem, hoat dong), moi quan he truong-gia dinh. Da cap nhat tham chieu UI qua CR-018. |
-| **TT 22/2021/TT-BGDDT** | Khung danh gia hoc luc: cot diem DDGtx/DDGgk/DDGck, DTBm HK1/HK2/ca nam tach biet, mon nhan xet Dat/Chua dat, tieu chi xep loai va len lop - code tai `src/lib/tt22.ts`. |
-| **Quyet dinh 3016/QD-BGDDT** | Hoc ba dien tu: export hoc ba XML chuan SCN-QD3016-v1 kem ky xac thuc he thong (`src/lib/hbxml.ts`, man hinh `/records/exports`). |
-| **TT 26/2019 + TT 42/2021/TT-BGDDT** | CSDL nganh GD&DT: ma dinh danh (toi da 20 ky tu, bat bien) cho HS/GV/CBQL/NV - truong du lieu `students.national_id` + `profiles.national_id` (CR-116). |
-| **Luat 91/2025 (PDPL) + ND 13/2023** | Du lieu ca nhan: trang legal public, DPIA v2, so dong thuan `consent_records`, so yeu cau chu the `data_requests`, runbook breach 72h, retention policy. |
-| **ND 356/2025/ND-CP** | Chuyen du lieu ra nuoc ngoai: ho so danh gia tac dong chuyen du lieu (khung + data map 7 processor da dien). |
-| **ND 130/2018/ND-CP** | Chu ky so: he thong dung nhan "ky xac thuc he thong" (HMAC noi bo) thay "ky so" - tranh hieu nham chu ky so CA hop phap. |
-| **TT 10/2025/TT-BNV** | Chinh quyen dia phuong 2 cap: khong co Phong GD&DT - UBND xa nghiem thu, So GD&DT quan ly chuyen mon (CR-017). |
-| **ND 53/2022/ND-CP** | Luu tru du lieu - phan tich tai Phan 6. |
+| **TT 15/2026/TT-BGDĐT** | Điều lệ trường THCS/THPT/liên cấp mới nhất (hiệu lực 10/5/2026, thay TT 32/2020 + TT 28/2020). Toàn bộ quy trình điều hành: phân công vai trò (BGH, PHT, GVCN, GVBM, tổ trưởng, ban CMHS), kiểm tra duyệt (giáo án, sổ chủ nhiệm, hoạt động), mối quan hệ trường-gia đình. Đã cập nhật tham chiếu UI qua CR-018. |
+| **TT 22/2021/TT-BGDĐT** | Khung đánh giá học lực: cột điểm ĐĐGtx/ĐĐGgk/ĐĐGck, ĐTBm HK1/HK2/cả năm tách biệt, môn nhận xét Đạt/Chưa đạt, tiêu chí xếp loại và lên lớp - code tại `src/lib/tt22.ts`. |
+| **Quyết định 3016/QĐ-BGDĐT** | Học bạ điện tử: export học bạ XML chuẩn SCN-QD3016-v1 kèm ký xác thực hệ thống (`src/lib/hbxml.ts`, màn hình `/records/exports`). |
+| **TT 26/2019 + TT 42/2021/TT-BGDĐT** | CSDL ngành GD&ĐT: mã định danh (tối đa 20 ký tự, bất biến) cho HS/GV/CBQL/NV - trường dữ liệu `students.national_id` + `profiles.national_id` (CR-116). |
+| **Luật 91/2025 (PDPL) + NĐ 13/2023** | Dữ liệu cá nhân: trang legal public, DPIA v2, sổ đồng thuận `consent_records`, sổ yêu cầu chủ thể `data_requests`, runbook breach 72h, retention policy. |
+| **NĐ 356/2025/NĐ-CP** | Chuyển dữ liệu ra nước ngoài: hồ sơ đánh giá tác động chuyển dữ liệu (khung + data map 7 processor đã điền). |
+| **NĐ 130/2018/NĐ-CP** | Chữ ký số: hệ thống dùng nhãn "ký xác thực hệ thống" (HMAC nội bộ) thay "ký số" - tránh hiểu nhầm chữ ký số CA hợp pháp. |
+| **TT 10/2025/TT-BNV** | Chính quyền địa phương 2 cấp: không có Phòng GD&ĐT - UBND xã nghiệm thu, Sở GD&ĐT quản lý chuyên môn (CR-017). |
+| **NĐ 53/2022/NĐ-CP** | Lưu trữ dữ liệu - phân tích tại Phần 6. |
 
-Theo doi: du thao sua TT 22/2021 dang duoc BGD lay y kien - khi co thong tu
-moi se mo CR thay cong thuc tinh DTBm/xep loai.
+Theo dõi: dự thảo sửa TT 22/2021 đang được BGD lấy ý kiến - khi có thông tư
+mới sẽ mở CR thay công thức tính ĐTBm/xếp loại.
 
-## PHAN 2 - Quan ly nha truong theo dieu le/thong tu nao
+## PHẦN 2 - Quản lý nhà trường theo điều lệ/thông tư nào
 
-**Can cu quan tri: TT 15/2026/TT-BGDDT** - dieu le ap dung chung cho truong
-tieu hoc, THCS, THPT va **truong pho thong co nhieu cap hoc** (khong tach
-van ban rieng tung cap nhu the he TT 28/32 cu).
+**Căn cứ quản trị: TT 15/2026/TT-BGDĐT** - điều lệ áp dụng chung cho trường
+tiểu học, THCS, THPT và **trường phổ thông có nhiều cấp học** (không tách
+văn bản riêng từng cấp như thế hệ TT 28/32 cũ).
 
-Ho tro cap truong trong he thong:
+Hỗ trợ cấp trường trong hệ thống:
 
-- Type `school.level`: `th | thcs | thpt | lien_cap` - 4 loai ke ca truong
-  lien cap (mot truong nhieu cap hoc, dung chung nhan su/TKB/co so).
-- Luong danh gia phan biet theo cap: tieu hoc chu yeu nhan xet Dat/Chua
-  dat, THCS/THPT cham diem so theo TT22 - ca hai duong deu chay trong demo
-  (2 truong TH + 1 truong THCS, ~1275 HS).
-- THPT: xet tot nghiep (`/school/graduation`), tuyen sinh khoi 10
-  (`/apply`), danh gia diem - day du.
-- Cau truc to chuc theo Dieu le: BGH - PHT (co the theo campus), to chuyen
-  mon (to truong), GVCN, GVBM, ban can su lop, ban CMHS, nhan vien y te,
-  ke toan, thu vien, van thu.
-- So GD&DT + UBND cap xa: cap quan ly ben tren truong theo mo hinh chinh
-  quyen 2 cap (TT 10/2025).
+- Type `school.level`: `th | thcs | thpt | lien_cap` - 4 loại kể cả trường
+  liên cấp (một trường nhiều cấp học, dùng chung nhân sự/TKB/cơ sở).
+- Luồng đánh giá phân biệt theo cấp: tiểu học chủ yếu nhận xét Đạt/Chưa
+  đạt, THCS/THPT chấm điểm số theo TT22 - cả hai đường đều chạy trong demo
+  (2 trường TH + 1 trường THCS, ~1275 HS).
+- THPT: xét tốt nghiệp (`/school/graduation`), tuyển sinh khối 10
+  (`/apply`), đánh giá điểm - đầy đủ.
+- Cấu trúc tổ chức theo Điều lệ: BGH - PHT (có thể theo campus), tổ chuyên
+  môn (tổ trưởng), GVCN, GVBM, ban cán sự lớp, ban CMHS, nhân viên y tế,
+  kế toán, thư viện, văn thư.
+- Sở GD&ĐT + UBND cấp xã: cấp quản lý bên trên trường theo mô hình chính
+  quyền 2 cấp (TT 10/2025).
 
-Con can bo sung khi pilot mo rong: 1 tenant THPT va 1 tenant lien cap that
-de test luong thuc te (da ghi trong backlog W3).
+Còn cần bổ sung khi pilot mở rộng: 1 tenant THPT và 1 tenant liên cấp thật
+để test luồng thực tế (đã ghi trong backlog W3).
 
-## PHAN 3 - Gia tri gia tang
+## PHẦN 3 - Giá trị gia tăng
 
-Chi tiet day du tai `docs/positioning/GIA-TRI-GIA-TANG.md`. Tom tat:
+Chi tiết đầy đủ tại `docs/positioning/GIA-TRI-GIA-TANG.md`. Tóm tắt:
 
-**Tai sao can**: GVCN mat 3-5 gio/tuan vao so sao chep thu cong; du lieu
-rai rac Excel/Zalo; TT 15/2026 + Luat 91/2025 bat buoc du lieu tre em duoc
-quan ly co kiem soat; CSDL nganh yeu cau ma dinh danh thong nhat.
+**Tại sao cần**: GVCN mất 3-5 giờ/tuần vào sổ sách chép thủ công; dữ liệu
+rải rác Excel/Zalo; TT 15/2026 + Luật 91/2025 bắt buộc dữ liệu trẻ em được
+quản lý có kiểm soát; CSDL ngành yêu cầu mã định danh thống nhất.
 
-**Truong can gi**: chi can trinh duyet + file Excel danh sach (hoac file
-xuat SMAS/vnEdu); khong server, khong IT, khoi tao 1 buoi cho ~500 HS;
-go-live chi can GVCN diem danh tuan 1.
+**Trường cần gì**: chỉ cần trình duyệt + file Excel danh sách (hoặc file
+xuất SMAS/vnEdu); không server, không IT, khởi tạo 1 buổi cho ~500 HS;
+go-live chỉ cần GVCN điểm danh tuần 1.
 
-**Khac biet**: SMAS/vnEdu manh "bao cao len Bo" nhung yeu cong viec hang
-ngay cua GV; he nay bat dau tu GVCN (diem danh 1 cham -> bao cao ngay tu
-dong -> so chu nhiem tu sinh), AI da tang co fallback khong can API key,
-19 module ban le nhu phu kien, ma dinh danh nganh la truong du lieu chinh.
+**Khác biệt**: SMAS/vnEdu mạnh "báo cáo lên Bộ" nhưng yếu công việc hằng
+ngày của GV; hệ này bắt đầu từ GVCN (điểm danh 1 chạm -> báo cáo ngày tự
+động -> sổ chủ nhiệm tự sinh), AI đa tầng có fallback không cần API key,
+19 module bán lẻ như phụ kiện, mã định danh ngành là trường dữ liệu chính.
 
-## PHAN 4 - Trai nghiem nguoi dung: chuc nang hay dung hien the
+## PHẦN 4 - Trải nghiệm người dùng: chức năng hay dùng hiển thị thẻ
 
-Da trien khai (CR-116-W2, commit kem):
+Đã triển khai (CR-116-W2, commit kèm):
 
 - Component `QuickActions` (`src/components/quick-actions.tsx`): strip
-  the 4-6 chuc nang hay dung nhat, icon + mo ta ngan, dat ngay duoi
-  PageHeader cua man hinh dau tien sau dang nhap.
-- Cau hinh theo vai tro (`src/lib/quick-actions.ts`):
+  thẻ 4-6 chức năng hay dùng nhất, icon + mô tả ngắn, đặt ngay dưới
+  PageHeader của màn hình đầu tiên sau đăng nhập.
+- Cấu hình theo vai trò (`src/lib/quick-actions.ts`):
 
-| Vai tro | Man hinh dau | The hay dung |
+| Vai trò | Màn hình đầu | Thẻ hay dùng |
 |---|---|---|
-| GVCN | `/dashboard` | Diem danh, Bao cao ngay BGH, So diem, So dau bai, Nhan xet ren luyen, Tin nhan PH |
-| GVBM | `/academics/grades` | Lich day, Nhap diem, So dau bai, Bai tap truc tuyen, Giao an, Trao doi GVCN |
-| To truong | `/team/home` | Duyet giao an, Danh gia nang luc, Sinh hoat CM, GV trong to |
-| BGH/PHT | `/school/dashboard` | Bao cao ngay cac lop, Ky duyet so, Phe duyet, TKB truong, Radar, Nhan su |
-| Ke toan | `/school/staff` | Hoa don & thu tien, Dot thu, Danh muc, Bao cao thu chi, Tich hop TT |
-| So/UBND/Admin | `/dept/dashboard` | Truong hoc, Du lieu & bao cao, Xa/phuong, Nguoi dung, Module |
+| GVCN | `/dashboard` | Điểm danh, Báo cáo ngày BGH, Sổ điểm, Sổ đầu bài, Nhận xét rèn luyện, Tin nhắn PH |
+| GVBM | `/academics/grades` | Lịch dạy, Nhập điểm, Sổ đầu bài, Bài tập trực tuyến, Giáo án, Trao đổi GVCN |
+| Tổ trưởng | `/team/home` | Duyệt giáo án, Đánh giá năng lực, Sinh hoạt CM, GV trong tổ |
+| BGH/PHT | `/school/dashboard` | Báo cáo ngày các lớp, Ký duyệt sổ, Phê duyệt, TKB trường, Radar, Nhân sự |
+| Kế toán | `/school/staff` | Hóa đơn & thu tiền, Đợt thu, Danh mục, Báo cáo thu chi, Tích hợp TT |
+| Sở/UBND/Admin | `/dept/dashboard` | Trường học, Dữ liệu & báo cáo, Xã/phường, Người dùng, Module |
 
-- PH/HS: portal da la man hinh tong hop mot trang (diem, chuyen can, tin
-  nhan, hoc ba, bai thi) - ban chat da la "chuc nang hay dung" dung san.
-- Static theo vai tro (khong tracking ca nhan) - neu sau nay can ca nhan
-  hoa theo tan suat thi mo CR rieng.
+- PH/HS: portal đã là màn hình tổng hợp một trang (điểm, chuyên cần, tin
+  nhắn, học bạ, bài thi) - bản chất đã là "chức năng hay dùng" dựng sẵn.
+- Static theo vai trò (không tracking cá nhân) - nếu sau này cần cá nhân
+  hóa theo tần suất thì mở CR riêng.
 
-## PHAN 5 - Ket noi CSDL Bo + chuyen du lieu tu he thong cu
+## PHẦN 5 - Kết nối CSDL Bộ + chuyển dữ liệu từ hệ thống cũ
 
-Spec day du tai `docs/research/CSDL-NGANH-CONNECTOR.md`. Ban chat:
+Spec đầy đủ tại `docs/research/CSDL-NGANH-CONNECTOR.md`. Bản chất:
 
-**CSDL nganh = VEMIS** (`csdl.moet.gov.vn`, TT 26/2019 + TT 42/2021).
-Co che hien nay la nhap/xuat **file chuan V.EMIS** qua tai khoan truong do
-So cap - khong phai REST API cong khai.
+**CSDL ngành = VEMIS** (`csdl.moet.gov.vn`, TT 26/2019 + TT 42/2021).
+Cơ chế hiện nay là nhập/xuất **file chuẩn V.EMIS** qua tài khoản trường do
+Sở cấp - không phải REST API công khai.
 
-Da lam (CR-116-W3):
+Đã làm (CR-116-W3):
 
-- `profiles.national_id` (GV/CBQL/NV) + `students.national_id` (HS) - luu
-  ma dinh danh nganh toi da 20 ky tu, nhap/sua tai `/school/users` va ho
-  so HS.
-- **Mapper nhap tu he thong cu** trong man hinh "Nhap danh sach HS": tu
-  nhan dien file xuat SMAS ("Ma hoc sinh" = ma dinh danh) va vnEdu mau 1
-  ("Ma VEMIS", "Ho dem"+"Ten" gop, "Cho o hien nay"/"Ho khau thuong tru"
-  -> dia chi). Truong chuyen tu SMAS/vnEdu nap file xuat vao la xong.
-- Hoc ba XML QD3016 + Excel import toan dien (HS, GV, diem, chuyen can,
-  khoi tao truong) - san co.
-- Integration framework (connectors + outbox + retry worker) - san sang
-  cam connector `csdl_nganh` khi Bo mo API.
+- `profiles.national_id` (GV/CBQL/NV) + `students.national_id` (HS) - lưu
+  mã định danh ngành tối đa 20 ký tự, nhập/sửa tại `/school/users` và hồ
+  sơ HS.
+- **Chuyển dữ liệu 2 chiều với hệ thống cũ** tại `/records/upload`:
+  - Import: đọc được file xuất thật của vnEdu/SMAS - tự bỏ khối tiêu đề,
+    nhận diện "Mã học sinh" -> `code`, "Mã VEMIS" -> `national_id`, "Họ
+    đệm"+"Tên" gộp lại, "Chỗ ở hiện nay"/"Hộ khẩu thường trú" -> địa chỉ;
+    cột cha/mẹ/SĐT/email -> tạo `parents` + `parent_students` (dedupe).
+  - Export: xuất file `.xlsx` đúng mẫu-1 vnEdu (26 cột chuẩn + khối tiêu
+    đề) để vnEdu/SMAS import ngược lại hoặc nộp lên `csdl.moet.gov.vn`.
+  - Round-trip đã verify: `scripts/check-vnedu-roundtrip.mjs` + E2E thật
+    (export lớp thật -> parse lại 0 lỗi).
+- Học bạ XML QĐ3016 + Excel import toàn diện (HS, GV, điểm, chuyên cần,
+  khởi tạo trường) - sẵn có.
+- Integration framework (connectors + outbox + retry worker) - sẵn sàng
+  cắm connector `csdl_nganh` khi Bộ mở API.
 
-Con lai: `schools.national_id` (ma dinh danh co so GD), mau file V.EMIS
-chinh thuc tu truong pilot de hoan thien export, do endpoint API tren
-csdl.moet.gov.vn khi co credential truong.
+Còn lại: `schools.national_id` (mã định danh cơ sở GD), mẫu file V.EMIS
+chính thức từ trường pilot để hoàn thiện export, đo endpoint API trên
+csdl.moet.gov.vn khi có credential trường.
 
-## PHAN 6 - Bao mat du lieu: provider VN + consent theo tuoi
+## PHẦN 6 - Bảo mật dữ liệu: provider VN + consent theo tuổi
 
-### 6.1 Khung phap ly thuc te
+### 6.1 Khung pháp lý thực tế
 
-- **ND 13/2023 + Luat 91/2025**: du lieu HS la du lieu tre em = nhay cam -
-  can dong thuan PHHS, DPIA, quyen chu the, breach 72h. DA CO trong he
-  thong (CR-115).
-- **Consent theo tuoi**: <14 tuoi bat buoc nguoi giam ho dong thuan;
-  >=14 HS co the tu dong thuan (van nen ghi kem PH). He thong se suy dien
-  nhom tuoi tu `students.dob` (CR-116-W4 - backlog ky thuat).
-- **ND 53/2022 Dieu 26**: DN **trong nuoc** phai luu tru tai VN: thong tin
-  ca nhan nguoi dung dich vu, du lieu do nguoi dung tao, moi quan he.
-  DN **nuoc ngoai** chi bi ap khi: dich vu bi dung vi pham ANM + A05 gui
-  van ban + khong chap hanh (khi do co 12 thang de tuan thu).
-- **Du lieu tre em** thuoc nhom "du lieu quan trong" theo ND 53 - khi
-  trien khai quy mo So/toan quoc se can danh gia ATTT voi A05 (Cuc An
-  ninh mang, Bo Cong an).
+- **NĐ 13/2023 + Luật 91/2025**: dữ liệu HS là dữ liệu trẻ em = nhạy cảm -
+  cần đồng thuận PHHS, DPIA, quyền chủ thể, breach 72h. ĐÃ CÓ trong hệ
+  thống (CR-115).
+- **Consent theo tuổi**: <14 tuổi bắt buộc người giám hộ đồng thuận;
+  >=14 HS có thể tự đồng thuận (vẫn nên ghi kèm PH). Hệ thống sẽ suy diễn
+  nhóm tuổi từ `students.dob` (CR-116-W4 - backlog kỹ thuật).
+- **NĐ 53/2022 Điều 26**: DN **trong nước** phải lưu trữ tại VN: thông tin
+  cá nhân người dùng dịch vụ, dữ liệu do người dùng tạo, mối quan hệ.
+  DN **nước ngoài** chỉ bị áp khi: dịch vụ bị dùng vi phạm ANM + A05 gửi
+  văn bản + không chấp hành (khi đó có 12 tháng để tuân thủ).
+- **Dữ liệu trẻ em** thuộc nhóm "dữ liệu quan trọng" theo NĐ 53 - khi
+  triển khai quy mô Sở/toàn quốc sẽ cần đánh giá ATTT với A05 (Cục An
+  ninh mạng, Bộ Công an).
 
-### 6.2 Cau hoi dat ra: co phai thay toan bo ha tang khong? - KHONG
+### 6.2 Câu hỏi đặt ra: có phải thay toàn bộ hạ tầng không? - KHÔNG
 
-Ket luan nghien cuu: **co the giu nguyen Supabase + Vercel hien tai** ma
-van dat compliance, vi luat khong cam tuyet doi chuyen du lieu ra nuoc
-ngoai - no yeu cau ho so danh gia + bao ve thich dang. Ba lop phuong an:
+Kết luận nghiên cứu: **có thể giữ nguyên Supabase + Vercel hiện tại** mà
+vẫn đạt compliance, vì luật không cấm tuyệt đối chuyển dữ liệu ra nước
+ngoài - nó yêu cầu hồ sơ đánh giá + bảo vệ thích đáng. Ba lớp phương án:
 
-**Phuong an A - Giu nguyen ha tang, hoan thien phap ly (dung ngay):**
+**Phương án A - Giữ nguyên hạ tầng, hoàn thiện pháp lý (dùng ngay):**
 
-1. Ho so chuyen du lieu ND 356 da san khung - chi can dien region Supabase
-   that + DPA cac provider (da tai 6/7, OpenRouter dang cho tra loi).
-2. Region: Supabase cho phep chon region - neu project dang o region gan
-   VN nhat (Singapore) thi ghi nhan; khi can region chau A khac thi migrate
-   project (Supabase ho tro).
-3. AI providers: he thong DA pseudonymize + redact PII truoc khi gui AI
-   (`src/lib/ai-privacy.ts`) - du lieu nhan dien tre em khong ra nuoc
-   ngoai qua kenh AI.
-4. Gia: $0 - chi hoan thien giay to. Compliance: du theo ND 13/356 neu
-   ho so day du.
+1. Hồ sơ chuyển dữ liệu NĐ 356 đã sẵn khung - chỉ cần điền region Supabase
+   thật + DPA các provider (đã tải 6/7, OpenRouter đang chờ trả lời).
+2. Region: Supabase cho phép chọn region - nếu project đang ở region gần
+   VN nhất (Singapore) thì ghi nhận; khi cần region châu Á khác thì migrate
+   project (Supabase hỗ trợ).
+3. AI providers: hệ thống ĐÃ pseudonymize + redact PII trước khi gửi AI
+   (`src/lib/ai-privacy.ts`) - dữ liệu nhận diện trẻ em không ra nước
+   ngoài qua kênh AI.
+4. Giá: $0 - chỉ hoàn thiện giấy tờ. Compliance: đủ theo NĐ 13/356 nếu
+   hồ sơ đầy đủ.
 
-**Phuong an B - Giu stack, doi cho dat (khi truong cong yeu cau du lieu o
+**Phương án B - Giữ stack, đổi chỗ đất (khi trường công yêu cầu dữ liệu ở
 VN):**
 
-- **Supabase la open-source**: self-host Supabase/PostgreSQL tren cloud
-  co phap nhan VN - Viettel IDC, VNPT Cloud, CMC Cloud, FPT Cloud deu co
-  san Postgres/VPS. Ung dung khong doi code (cung Postgres + cung API),
-  chi doi connection string + storage endpoint.
-- **Vercel -> VPS VN**: Next.js chay duoc tren VPS bat ky (Node runtime);
-  hoac giu Vercel cho tinh + CDN con compute nhay cam chuyen ve VN
-  (Vercel khong co region VN - day la diem can cau truc hybrid).
-- **Resend -> SMTP VN**: dung SMTP cua VNPT/Viettel hosting hoac dich vu
-  email co may chu VN; code email da truu tuong (`src/lib/email.ts`).
-- **AI providers**: giu nguyen - chi du lieu da pseudonymize di ra.
-- Chi phi uoc tinh: VPS/Postgres VN ~1-3 trieu/thang cho truong don; so
-  voi viec viet lai la re hon nhieu. Compliance: manh nhat - toan bo du
-  lieu nhan dien nam trong VN.
+- **Supabase là open-source**: self-host Supabase/PostgreSQL trên cloud
+  có pháp nhân VN - Viettel IDC, VNPT Cloud, CMC Cloud, FPT Cloud đều có
+  sẵn Postgres/VPS. Ứng dụng không đổi code (cùng Postgres + cùng API),
+  chỉ đổi connection string + storage endpoint.
+- **Vercel -> VPS VN**: Next.js chạy được trên VPS bất kỳ (Node runtime);
+  hoặc giữ Vercel cho tĩnh + CDN còn compute nhạy cảm chuyển về VN
+  (Vercel không có region VN - đây là điểm cần cấu trúc hybrid).
+- **Resend -> SMTP VN**: dùng SMTP của VNPT/Viettel hosting hoặc dịch vụ
+  email có máy chủ VN; code email đã trừu tượng (`src/lib/email.ts`).
+- **AI providers**: giữ nguyên - chỉ dữ liệu đã pseudonymize đi ra.
+- Chi phí ước tính: VPS/Postgres VN ~1-3 triệu/tháng cho trường đơn; so
+  với việc viết lại là rẻ hơn nhiều. Compliance: mạnh nhất - toàn bộ dữ
+  liệu nhận diện nằm trong VN.
+- **Đã có deploy kit**: `deploy/vn-selfhost/` (Docker Compose postgres +
+  gotrue + postgrest + storage + kong + Caddy, runbook đầy đủ) - đã verify
+  E2E trên stack local: 192/192 tables, 423/423 policies, app login +
+  dashboard chạy trên self-host (CR-117).
 
-**Phuong an C - Tang ma hoa tang ung dung (bo sung, ket hop A hoac B):**
+**Phương án C - Tầng mã hóa tầng ứng dụng (bổ sung, kết hợp A hoặc B):**
 
-- Ma hoa truong nhay cam (suc khoe, tu van, hanh vi, so tien) o tang ung
-  dung truoc khi ghi DB: AES-256-GCM voi khoa dat trong env/KMS - du DB o
-  nuoc ngoai cung chi la ciphertext.
-- Khong can thay ha tang; anh huong: khong tim kiem full-text tren truong
-  ma hoa (thiet ke truong can chon loc) + phai quan ly khoa.
-- Ap dung tot nhat cho: `counseling`, `health`, `safety`, ghi chu ren
-  luyen - cac bang du lieu nhay cam cao nhat.
+- Mã hóa trường nhạy cảm (sức khỏe, tư vấn, hành vi, số tiền) ở tầng ứng
+  dụng trước khi ghi DB: AES-256-GCM với khóa đặt trong env/KMS - dù DB ở
+  nước ngoài cũng chỉ là ciphertext.
+- Không cần thay hạ tầng; ảnh hưởng: không tìm kiếm full-text trên trường
+  mã hóa (thiết kế trường cần chọn lọc) + phải quản lý khóa.
+- Áp dụng tốt nhất cho: `counseling`, `health`, `safety`, ghi chú rèn
+  luyện - các bảng dữ liệu nhạy cảm cao nhất.
 
-### 6.3 Khuyen nghi lo trinh
+### 6.3 Khuyến nghị lộ trình
 
-| Giai doan | Phuong an | Ly do |
+| Giai đoạn | Phương án | Lý do |
 |---|---|---|
-| Hien tai (pilot, truong tu/thuong mai) | A | Ho so ND356 + DPA + pseudonymize AI la du compliance hien hanh |
-| Khi ban cho truong cong co yeu cau du lieu VN | B | Self-host Supabase tren cloud VN - code khong doi, dap ung ND53 D26 cho DN trong nuoc |
-| Khi mo rong quy mo So/toan quoc | B + C + ho so A05 | Du lieu quan trong -> luu VN + ma hoa truong nhay cam + danh gia ATTT |
+| Hiện tại (pilot, trường tư/thương mại) | A | Hồ sơ NĐ356 + DPA + pseudonymize AI là đủ compliance hiện hành |
+| Khi bán cho trường công có yêu cầu dữ liệu VN | B | Self-host Supabase trên cloud VN - code không đổi, đáp ứng NĐ53 Đ26 cho DN trong nước |
+| Khi mở rộng quy mô Sở/toàn quốc | B + C + hồ sơ A05 | Dữ liệu quan trọng -> lưu VN + mã hóa trường nhạy cảm + đánh giá ATTT |
 
-Khong can viet lai ung dung o bat ky phuong an nao - kien truc (Supabase
-open-source + Next.js portable + provider AI truu tuong) da thiet ke de
-doi cho dat khi can.
+Không cần viết lại ứng dụng ở bất kỳ phương án nào - kiến trúc (Supabase
+open-source + Next.js portable + provider AI trừu tượng) đã thiết kế để
+đổi chỗ đất khi cần.
 
-### 6.4 Trang thai hien tai trong he thong
+### 6.4 Trạng thái hiện tại trong hệ thống
 
-DA CO: so dong thuan + so yeu cau chu the (`/school/privacy`), DPIA v2,
-runbook breach, retention, legal pages public, redact PII truoc AI, RLS
-day du, VNeID prep (`vneid_subject_id`).
+ĐÃ CÓ: sổ đồng thuận + sổ yêu cầu chủ thể (`/school/privacy`), DPIA v2,
+runbook breach, retention, legal pages public, redact PII trước AI, RLS
+đầy đủ, VNeID prep (`vneid_subject_id`).
 
-BACKLOG (CR-116-W4): suy dien nhom tuoi tu `dob` - canh bao khi ghi
-consent sai doi tuong + bo loc "HS <14 chua co consent PH".
+BACKLOG (CR-116-W4): suy diễn nhóm tuổi từ `dob` - cảnh báo khi ghi
+consent sai đối tượng + bộ lọc "HS <14 chưa có consent PH".
 
 ---
 
-## Bang tong ket
+## Bảng tổng kết
 
-| Dau muc | Trang thai sau CR-116 | Con lai |
+| Đầu mục | Trạng thái sau CR-116 | Còn lại |
 |---|---|---|
-| 1. Quy dinh hien hanh | DAT - 9 van ban trong code | Theo doi du thao TT22 moi |
-| 2. Dieu le quan tri | DAT - TT15/2026, 4 loai truong | Tenant THPT/lien cap khi pilot |
-| 3. Gia tri gia tang | DAT - doc dinh vi san | - |
-| 4. UX the hay dung | DAT - QuickActions 6 vai tro | Ca nhan hoa (neu can) |
-| 5. CSDL Bo/VNEDU | NEN TANG - mapper + ma dinh danh + spec | schools.national_id, mau V.EMIS that, endpoint khi Bo mo |
-| 6. Bao mat VN | NEN TANG + lo trinh A/B/C ro rang | W4 consent tuoi; region that; self-host khi truong cong yeu cau |
+| 1. Quy định hiện hành | ĐẠT - 9 văn bản trong code | Theo dõi dự thảo TT22 mới |
+| 2. Điều lệ quản trị | ĐẠT - TT15/2026, 4 loại trường | Tenant THPT/liên cấp khi pilot |
+| 3. Giá trị gia tăng | ĐẠT - doc định vị sẵn | - |
+| 4. UX thẻ hay dùng | ĐẠT - QuickActions 6 vai trò | Cá nhân hóa (nếu cần) |
+| 5. CSDL Bộ/VNEDU | NỀN TẢNG + 2 chiều đã verify round-trip | schools.national_id, mẫu V.EMIS thật, endpoint khi Bộ mở |
+| 6. Bảo mật VN | NỀN TẢNG + lộ trình A/B/C rõ ràng + deploy kit self-host đã verify | W4 consent tuổi; region thật; VM VN + cutover khi trường công yêu cầu |

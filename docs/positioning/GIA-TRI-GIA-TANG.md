@@ -1,68 +1,68 @@
-# Gia tri gia tang - tai sao truong can So Chu Nhiem So
+# Giá trị gia tăng - tại sao trường cần Sổ Chủ Nhiệm Số
 
-Tai lieu dinh vi cho ban hang/trien khai (CR-116-W1). Tra loi 3 cau: tai
-sao can, truong can gi de dung, khac biet gi so voi SMAS/vnEdu/MISA.
+Tài liệu định vị cho bán hàng/triển khai (CR-116-W1). Trả lời 3 câu: tại
+sao cần, trường cần gì để dùng, khác biệt gì so với SMAS/vnEdu/MISA.
 
-## 1. Tai sao nha truong can
+## 1. Tại sao nhà trường cần
 
-**Bai toan hang ngay cua GVCN/GVBM** - phan lon thoi gian "lam sach" thay vi
-day:
+**Bài toán hằng ngày của GVCN/GVBM** - phần lớn thời gian "làm sổ" thay vì
+dạy:
 
-- GVCN tieu bieu mat 3-5 gio/tuan cho so sao chep thu cong: diem danh giay
-  -> nhap lai so diem -> tong hop bao cao -> tra loi PH qua Zalo ca nhan ->
-  viet so chu nhiem cuoi tuan. Toan bo cong doan lap lai tren dữ lieu da co.
-- Du lieu nam rai rac: Excel ca nhan, Zalo, so giay -> khi So/Phong yeu
-  cau bao cao dot xuat thi truong phai lam lai tu dau.
-- TT 15/2026 (Dieu le moi) + Luat 91/2025 (PDPL) dat yeu cau moi: du lieu
-  hoc sinh la du lieu tre em - khong the tiep tuc nam tren may tinh ca
-  nhan, Zalo, hoac he thong khong phan quyen. Truong nao khong so hoa co
-  kiem soat se mac loi compliance, khong phai chi la cham.
-- CSDL nganh (csdl.moet.gov.vn, TT 26/2019 + TT 42/2021) yeu cau ma dinh
-  danh thong nhat - truong khong quan ly ma dinh danh ngay tu he thong thi
-  moi lan bao cao lai phai ghep tay.
+- GVCN tiêu biểu mất 3-5 giờ/tuần cho sổ sách chép thủ công: điểm danh giấy
+  -> nhập lại sổ điểm -> tổng hợp báo cáo -> trả lời PH qua Zalo cá nhân ->
+  viết sổ chủ nhiệm cuối tuần. Toàn bộ công đoạn lặp lại trên dữ liệu đã có.
+- Dữ liệu nằm rải rác: Excel cá nhân, Zalo, sổ giấy -> khi Sở/Phòng yêu
+  cầu báo cáo đột xuất thì trường phải làm lại từ đầu.
+- TT 15/2026 (Điều lệ mới) + Luật 91/2025 (PDPL) đặt yêu cầu mới: dữ liệu
+  học sinh là dữ liệu trẻ em - không thể tiếp tục nằm trên máy tính cá
+  nhân, Zalo, hoặc hệ thống không phân quyền. Trường nào không số hóa có
+  kiểm soát sẽ mắc lỗi compliance, không phải chỉ là chậm.
+- CSDL ngành (csdl.moet.gov.vn, TT 26/2019 + TT 42/2021) yêu cầu mã định
+  danh thống nhất - trường không quản lý mã định danh ngay từ hệ thống thì
+  mỗi lần báo cáo lại phải ghép tay.
 
-**Con so chat luong**: khi diem danh/ngay day du tu dong thi bao cao ngay
-cho BGH la 1 nut, so chu nhiem cuoi tuan tu sinh tu du lieu da nhap, khong
-con "viec cuoi tuan".
+**Con số chất lượng**: khi điểm danh/ngày đầy đủ tự động thì báo cáo ngày
+cho BGH là 1 nút, sổ chủ nhiệm cuối tuần tự sinh từ dữ liệu đã nhập, không
+còn "việc cuối tuần".
 
-## 2. Truong can gi de trien khai
+## 2. Trường cần gì để triển khai
 
-| Dieu kien | Cu the | Ghi chu |
+| Điều kiện | Cụ thể | Ghi chú |
 |---|---|---|
-| Thiet bi | May tinh/dien thoai co trinh duyet. Khong can cai dat, khong can server tai truong (SaaS) | Portal PH/HS toi uu mobile |
-| Du lieu dau vao | File Excel danh sach GV/lop/HS - hoac file xuat san tu SMAS/vnEdu (mapper tu nhan dien Ma VEMIS) | Khoi tao 1 buoi cho truong ~500 HS |
-| Nhan su van hanh | 1 nguoi phu trach (thuong van phong/PHT) cau hinh dau nam: nam hoc, lop, phan cong GVCN, TKB | Khong can nhan vien IT |
-| Tai khoan | Email nhan su (hoac username tao san) - he thong tu sinh email noi bo neu truong khong co domain | Demo flow khoi tao san co |
-| Internet | Mang truong binh thuong; cac thao tac hang ngay rat nhe | Khong yeu cau ha tang rieng |
-| Phap ly | Dong thuan PHHS cho du lieu tre em (so ghi san trong he thong), phan cong trach nhiem theo Dieu le | Muc 6 - compliance co san |
+| Thiết bị | Máy tính/điện thoại có trình duyệt. Không cần cài đặt, không cần server tại trường (SaaS) | Portal PH/HS tối ưu mobile |
+| Dữ liệu đầu vào | File Excel danh sách GV/lớp/HS - hoặc file xuất sẵn từ SMAS/vnEdu (mapper tự nhận diện Mã VEMIS) | Khởi tạo 1 buổi cho trường ~500 HS |
+| Nhân sự vận hành | 1 người phụ trách (thường văn phòng/PHT) cấu hình đầu năm: năm học, lớp, phân công GVCN, TKB | Không cần nhân viên IT |
+| Tài khoản | Email nhân sự (hoặc username tạo sẵn) - hệ thống tự sinh email nội bộ nếu trường không có domain | Demo flow khởi tạo sẵn có |
+| Internet | Mạng trường bình thường; các thao tác hằng ngày rất nhẹ | Không yêu cầu hạ tầng riêng |
+| Pháp lý | Đồng thuận PHHS cho dữ liệu trẻ em (sổ ghi sẵn trong hệ thống), phân công trách nhiệm theo Điều lệ | Mục 6 - compliance có sẵn |
 
-Khong can: mua may chu, thue IT, doi quy trinh hanh chinh, dung cong cu dang
-dung song song (chay parallel voi SMAS/vnEdu trong giai doan chuyen tiep).
+Không cần: mua máy chủ, thuê IT, đổi quy trình hành chính, dừng công cụ đang
+dùng song song (chạy parallel với SMAS/vnEdu trong giai đoạn chuyển tiếp).
 
-## 3. Khac biet so voi doi thu
+## 3. Khác biệt so với đối thủ
 
-| Tieu chi | SMAS (Viettel) | vnEdu (VNPT) | MISA QLTH | So Chu Nhiem So |
+| Tiêu chí | SMAS (Viettel) | vnEdu (VNPT) | MISA QLTH | Sổ Chủ Nhiệm Số |
 |---|---|---|---|---|
-| Diem khoi dau | Quan tri truong (BGH/van phong) | Nen tang nganh (ket noi VEMIS) | Quan tri + ke toan | **Cong viec hang ngay cua GVCN/GVBM** - diem danh 1 cham, so dau bai, so chu nhiem tu sinh |
-| AI | Chua co/gioi han | Mot so diem | EMIS AI co ban | AI da tang: gen de thi, goi y nhan xet, phan tich radar, toan tu cau hoi - chay duoc ngay ca khong co API key (fallback noi bo) |
-| Module | Goi tong | Goi theo cum | Ban theo phan he | **19 module ban le** - truong mua dung phan can (hoc ba, van thu, y te, tuyen sinh, LMS...) nhu phu kien |
-| Chuan nganh | Theo SMAS | San nhat VEMIS | Theo MISA | **Ma dinh danh nganh (TT26/42) la truong du lieu chinh** - xuat/nhap tuong thich file V.EMIS, hoc ba XML QD3016 |
-| Doi tuong phuc vu | Truong cong Viettel | Truong cong VNPT | Truong cong + tu | Truong cong + tu + nhom truong + So GD&DT xem tong hop dia ban |
-| Bo sung khac | - | - | - | Cong khai tuyen sinh, portal PH/HS day du, Studio soan hoc lieu, privacy theo Luat 91/2025 |
+| Điểm khởi đầu | Quản trị trường (BGH/văn phòng) | Nền tảng ngành (kết nối VEMIS) | Quản trị + kế toán | **Công việc hằng ngày của GVCN/GVBM** - điểm danh 1 chạm, sổ đầu bài, sổ chủ nhiệm tự sinh |
+| AI | Chưa có/giới hạn | Một số điểm | EMIS AI cơ bản | AI đa tầng: gen đề thi, gợi ý nhận xét, phân tích radar, toán tử câu hỏi - chạy được ngay cả không có API key (fallback nội bộ) |
+| Module | Gói tổng | Gói theo cụm | Bán theo phân hệ | **19 module bán lẻ** - trường mua đúng phần cần (học bạ, văn thư, y tế, tuyển sinh, LMS...) như phụ kiện |
+| Chuẩn ngành | Theo SMAS | Sớm nhất VEMIS | Theo MISA | **Mã định danh ngành (TT26/42) là trường dữ liệu chính** - xuất/nhập tương thích file V.EMIS, học bạ XML QĐ3016 |
+| Đối tượng phục vụ | Trường công Viettel | Trường công VNPT | Trường công + tư | Trường công + tư + nhóm trường + Sở GD&ĐT xem tổng hợp địa bàn |
+| Bổ sung khác | - | - | - | Cổng khai tuyển sinh, portal PH/HS đầy đủ, Studio soạn học liệu, privacy theo Luật 91/2025 |
 
-**Loi the cot loi**: cac he thong nganh (vnEdu/SMAS) manh o "bao cao len Bo"
-nhung yeu o "cong viec hang ngay cua giao vien". He nay lam ngon phan hang
-ngay truoc - du lieu sach tr dong chay len bao cao, khong can nhap hai lan.
+**Lợi thế cốt lõi**: các hệ thống ngành (vnEdu/SMAS) mạnh ở "báo cáo lên Bộ"
+nhưng yếu ở "công việc hằng ngày của giáo viên". Hệ này làm ngọn phần hằng
+ngày trước - dữ liệu sạch tự động chảy lên báo cáo, không cần nhập hai lần.
 
-## 4. Checklist trien khai 1 truong (onboarding)
+## 4. Checklist triển khai 1 trường (onboarding)
 
-1. Thu thap: danh sach GV (ho ten, mon, to chuyen mon), danh sach lop,
-   danh sach HS (chap nhan file SMAS/vnEdu), TKB hien tai, danh muc mon.
-2. Khoi tao: chay workbook `khoi-tao-truong.xlsx` hoac import tung phan.
-3. Cau hinh: nam hoc, 2 campus/neu co, phan cong GVCN, ma dinh danh nganh
-   cho GV/HS da co tu CSDL nganh (neu co).
-4. Module: bat cac module truong mua - mac dinh loi chay: diem danh, so
-   diem, so dau bai, so chu nhiem, portal PH/HS.
-5. Consent: gui thu PHHS + ghi nhan vao so dong thuan (muc 6).
-6. Go-live tuan 1: chi can GVCN diem danh dung han - bao cao ngay toi BGH
-   tu dong co. Cac phan sau mo dan.
+1. Thu thập: danh sách GV (họ tên, môn, tổ chuyên môn), danh sách lớp,
+   danh sách HS (chấp nhận file SMAS/vnEdu), TKB hiện tại, danh mục môn.
+2. Khởi tạo: chạy workbook `khoi-tao-truong.xlsx` hoặc import từng phần.
+3. Cấu hình: năm học, 2 campus/nếu có, phân công GVCN, mã định danh ngành
+   cho GV/HS đã có từ CSDL ngành (nếu có).
+4. Module: bật các module trường mua - mặc định lõi chạy: điểm danh, sổ
+   điểm, sổ đầu bài, sổ chủ nhiệm, portal PH/HS.
+5. Consent: gửi thư PHHS + ghi nhận vào sổ đồng thuận (mục 6).
+6. Go-live tuần 1: chỉ cần GVCN điểm danh đúng hạn - báo cáo ngày tới BGH
+   tự động có. Các phần sau mở dần.

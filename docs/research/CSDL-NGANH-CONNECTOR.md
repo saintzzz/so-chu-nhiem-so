@@ -47,12 +47,30 @@ Bo; SMAS (Viettel) xuat file bao cao V.EMIS de truong nap lai len cong.
 - Payload map tu truong noi bo sang schema CSDL nganh; retry + dead-letter
   san co.
 
-## 4. Chuyen du lieu tu he thong cu cua truong
+## 4. Chuyen du lieu tu he thong cu cua truong (DA TRIEN KHAI 2 CHIEU)
+
+**Import (he thong cu -> VieSchool):** `src/lib/vnedu.ts` `parseStudentTable`
++ `src/components/records/student-uploader.tsx`. Tu dong bo qua khoi tieu de
+PHONG GD/TRUONG/LOP 4 dong dau cua file export that; nhan dien header bang
+alias khong dau. Khi file co cot cha/me/SĐT/email: tao `parents` (dedupe theo
+moi quan he + ten + SĐT de anh/chi em dung chung 1 ban ghi) va link
+`parent_students` trong cung lan import.
+
+**Export (VieSchool -> he thong cu):** `src/components/records/vnedu-export.tsx`
+tai man hinh `/records/upload` - chon lop -> tai file `.xlsx` dung mau-1
+vnEdu (khoi tieu de + **26 cot chuan**), `sanitizeSpreadsheetCell` chong
+formula injection. Truong nap file nay len vnEdu/SMAS hoac csdl.moet.gov.vn.
+
+**Round-trip:** `scripts/check-vnedu-roundtrip.mjs` assert export -> parse
+lai khong mat: code, ma VEMIS, ho ten, ngay sinh (DD/MM/YYYY), gioi tinh,
+dia chi, ten cha/me, SĐT, email. Truong khong round-trip duoc do mau-1
+khong ho tro (ghi ro trong test): SĐT nguoi lien he khac cha/me, status
+chi di qua cot Ghi chu.
 
 | He thong cu | Cach chuyen |
 |---|---|
-| SMAS (Viettel) | Ho so HS: Ho so hoc sinh -> Xuat Excel. Nap vao "Nhap danh sach HS" - cot "Ma hoc sinh" tu map vao `national_id`. Diem: Bao cao Emis -> Bang diem (Excel theo mon) - nap tung mon vao so diem. |
-| vnEdu (VNPT) | Quan ly lop hoc -> Nhap xuat -> "Xuat ra Excel hoc sinh toan truong (mau 1)". Cot "Ma VEMIS" -> `national_id`, "Ho dem"+"Ten" tu gop. |
+| SMAS (Viettel) | Ho so HS: Ho so hoc sinh -> Xuat Excel. Nap vao "Nhap danh sach HS" - cot "Ma hoc sinh" vao `code`, "Ma VEMIS" (neu co) vao `national_id`. Diem: Bao cao Emis -> Bang diem (Excel theo mon) - nap tung mon vao so diem. |
+| vnEdu (VNPT) | Quan ly lop hoc -> Nhap xuat -> "Xuat ra Excel hoc sinh toan truong (mau 1)". Cot "Ma VEMIS" -> `national_id`, "Ma hoc sinh" -> `code`, "Ho dem"+"Ten" tu gop, "Ten cha/me", "Di dong", "Email" -> `parents` + `parent_students`. |
 | Excel thu cong | Template `ma_hs, ma_dinh_danh, ho_ten, ngay_sinh, gioi_tinh` - download tai man hinh nhap. |
 | Khong he thong | Khoi tao truong bang `docs/templates/khoi-tao-truong.xlsx` (workbook day du lop/GV/HS/TKB). |
 
@@ -62,7 +80,11 @@ Bo; SMAS (Viettel) xuat file bao cao V.EMIS de truong nap lai len cong.
       dinh danh co so GD do So cap) - CR nho, lam khi co ma that tu truong
       pilot.
 - [ ] Lay mau file V.EMIS hien hanh tu truong pilot -> hoan thien export
-      Giai doan 1 (cot chinh xac theo mau Bo nam hoc dang chay).
+      Giai doan 1 (cot chinh xac theo mau Bo nam hoc dang chay - cot mau-1
+      da dung cau truc file vnEdu that, con cot CSVC/dan toc can mau Bo).
 - [ ] Khi co credential truong tren csdl.moet.gov.vn -> do kiem thu xem
-      co endpoint nap file/API khong, cap nhat spec muc 3.
+      co endpoint nap file/API khong, cap nhat spec muc 3 (khong gia dinh
+      API truoc khi co tai lieu Bo).
+- [ ] E2E import file mau-1 that tu truong pilot (fixture hien tai dung cau
+      truc quan sat duoc cong khai - can 1 file that de chot alias cuoi).
 - [ ] Kiem tra tenant lien cap tren luong xuat bao cao.

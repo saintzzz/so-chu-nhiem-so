@@ -8,9 +8,15 @@ W2 `src/components/quick-actions.tsx` + `src/lib/quick-actions.ts` (6 vai tro,
 verify render tren /dashboard + /school/dashboard);
 W3a migration `20261264_cr116_national_id` + nhap/sua ma dinh danh GV tai
 `/school/users` + validation ma nganh 6-20 ky tu (TT26/2019) cho HS;
-W3b mapper SMAS/vnEdu trong `student-uploader.tsx` (Ma hoc sinh/Ma VEMIS,
-Ho dem+Ten, Cho o hien nay/HKTT);
-W3c `docs/research/CSDL-NGANH-CONNECTOR.md`.
+W3b `src/lib/vnedu.ts` (single source of truth parse+export) +
+`student-uploader.tsx` (alias SMAS/vnEdu, bo qua khoi tieu de file that,
+import cha/me/SDT/email -> `parents` + `parent_students` co dedupe);
+W3c `docs/research/CSDL-NGANH-CONNECTOR.md`;
+W3d `src/components/records/vnedu-export.tsx` - xuat mau-1 vnEdu 26 cot
+(title block + header chuan) tai `/records/upload`, ExcelJS +
+sanitizeSpreadsheetCell. **Round-trip 2 chieu da verify**:
+`scripts/check-vnedu-roundtrip.mjs` (unit) + E2E that (export lop 8A2
+34 HS -> file xlsx -> parse lai 0 loi).
 Tai lieu tong hop: `docs/positioning/CHIEN-LUOC-6-DAU-MUC.md`.
 
 ## Scope

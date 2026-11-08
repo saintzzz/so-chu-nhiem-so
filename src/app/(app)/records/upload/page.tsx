@@ -2,9 +2,11 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
 import { StudentUploader } from "@/components/records/student-uploader";
+import { VneduExport } from "@/components/records/vnedu-export";
 import { AiExtract } from "@/components/records/ai-extract";
 import { hasRole } from "@/lib/roles";
 import { must } from "@/lib/supabase/must";
+import type { VneduParent, VneduStudent } from "@/lib/vnedu";
 
 export default async function RecordsUploadPage() {
   const profile = await requireRoles(["gvcn", "bgh"]);
@@ -22,6 +24,80 @@ export default async function RecordsUploadPage() {
   }
   const { data: classData } = await must(classQuery, "query");
   const classes = (classData ?? []) as { id: string; name: string }[];
+
+  // CR-116-W3: du lieu cho export mau-1 vnEdu - hoc sinh kem phu huynh.
+  const clsIds = classes.map((c) => c.id);
+  const [{ data: stuData }, { data: schoolData }, { data: gvcnData }] =
+    clsIds.length > 0
+      ? await Promise.all([
+          must(supabase
+            .from("students")
+            .select("id,class_id,code,national_id,full_name,dob,gender,address,status,parent_students(parents(id,full_name,phone,email,relationship))")
+            .in("class_id", clsIds)
+            .neq("status", "transferred")
+            .order("full_name")
+            .limit(3000), "students"),
+          must(supabase
+            .from("schools")
+            .select("name")
+            .eq("id", profile.school_id ?? "")
+            .maybeSingle(), "schools"),
+          must(supabase
+            .from("classes")
+            .select("id,gvcn_id")
+            .in("id", clsIds), "classes"),
+        ])
+      : [{ data: [] }, { data: null }, { data: [] }];
+
+  const gvcnIds = [...new Set((gvcnData ?? []).map((c) => c.gvcn_id).filter(Boolean))] as string[];
+  const { data: gvcnProfiles } = gvcnIds.length
+    ? await must(
+        supabase
+          .from("profiles")
+          .select("id,full_name")
+          .in("id", gvcnIds)
+          .limit(500),
+        "profiles",
+      )
+    : { data: [] };
+  const gvcnName = new Map((gvcnProfiles ?? []).map((p) => [p.id, p.full_name as string]));
+  const clsGvcn = new Map((gvcnData ?? []).map((c) => [c.id, c.gvcn_id ? gvcnName.get(c.gvcn_id) ?? null : null]));
+
+  type RawStudent = {
+    class_id: string;
+    code: string | null;
+    national_id: string | null;
+    full_name: string;
+    dob: string | null;
+    gender: string | null;
+    address: string | null;
+    status: string;
+    parent_students: { parents: VneduParent | VneduParent[] | null }[];
+  };
+  const exportClasses = classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    gvcnName: clsGvcn.get(c.id) ?? null,
+    students: ((stuData ?? []) as RawStudent[])
+      .filter((s) => s.class_id === c.id)
+      .map(
+        (s): VneduStudent => ({
+          code: s.code,
+          national_id: s.national_id,
+          full_name: s.full_name,
+          dob: s.dob,
+          gender: s.gender,
+          address: s.address,
+          status: s.status,
+          parents: (s.parent_students ?? [])
+            .flatMap((ps) => {
+              const p = ps.parents;
+              return Array.isArray(p) ? p : p ? [p] : [];
+            })
+            .filter((p): p is VneduParent => p !== null),
+        }),
+      ),
+  }));
 
   return (
     <div>
@@ -67,6 +143,12 @@ export default async function RecordsUploadPage() {
 
       <AiExtract />
       <StudentUploader classes={classes} />
+      <div className="mt-6">
+        <VneduExport
+          classes={exportClasses}
+          schoolName={schoolData?.name ?? "TRƯỜNG"}
+        />
+      </div>
     </div>
   );
 }

@@ -6,144 +6,18 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { downloadXlsxTemplate, parseSpreadsheet } from "@/lib/excel";
+import {
+  normalizeDob,
+  normalizeGender,
+  parseStudentTable,
+  type ParsedStudentRow,
+} from "@/lib/vnedu";
 
-interface ParsedRow {
-  line: number;
-  code: string;
-  nationalId: string;
-  fullName: string;
-  dob: string;
-  gender: string;
-  address: string;
-  errors: string[];
-}
+type ParsedRow = ParsedStudentRow;
 
 interface ClassOption {
   id: string;
   name: string;
-}
-
-const HEADER_ALIASES: Record<string, keyof ParsedRow | "hoDem" | "ten" | null> = {
-  code: "code",
-  ma_hs: "code",
-  mahs: "code",
-  mssv: "code",
-  national_id: "nationalId",
-  ma_dinh_danh: "nationalId",
-  ma_dinh_danh_bo_gddt: "nationalId",
-  // CR-116-W3b: alias file xuat SMAS/vnEdu - "Ma hoc sinh" trong file
-  // SMAS chinh la ma dinh danh quoc gia (VEMIS), vnEdu goi "Ma VEMIS".
-  ma_vemis: "nationalId",
-  mavemis: "nationalId",
-  ma_hoc_sinh: "nationalId",
-  mahocsinh: "nationalId",
-  ma_dinh_danh_quoc_gia: "nationalId",
-  dinh_danh: "nationalId",
-  full_name: "fullName",
-  ho_ten: "fullName",
-  hoten: "fullName",
-  name: "fullName",
-  ho_va_ten: "fullName",
-  hovaten: "fullName",
-  ho_ten_hoc_sinh: "fullName",
-  ho_ten_hs: "fullName",
-  // vnEdu "mau 1" tach Ho dem + Ten -> gop khi khong co cot ho ten day du
-  ho_dem: "hoDem",
-  hodem: "hoDem",
-  ho_chu_dem: "hoDem",
-  ten: "ten",
-  ten_hs: "ten",
-  dob: "dob",
-  ngay_sinh: "dob",
-  ngaysinh: "dob",
-  ngay_thang_nam_sinh: "dob",
-  ntns: "dob",
-  gender: "gender",
-  gioi_tinh: "gender",
-  gioitinh: "gender",
-  nam_nu: "gender",
-  // dia chi - SMAS/vnEdu co "Cho o hien nay" / "Ho khau thuong tru"
-  dia_chi: "address",
-  diachi: "address",
-  address: "address",
-  cho_o_hien_nay: "address",
-  noi_o_hien_nay: "address",
-  ho_khau_thuong_tru: "address",
-  hktt: "address",
-  dia_chi_thuong_tru: "address",
-};
-
-function normalizeKey(k: string): string {
-  return k
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/\s+/g, "_");
-}
-
-function normalizeGender(g: string): "nam" | "nu" | "khac" | null {
-  const n = normalizeKey(g);
-  if (n === "nam") return "nam";
-  if (n === "nu") return "nu";
-  if (!g) return null;
-  return "khac";
-}
-
-function normalizeDob(d: string): string | null {
-  if (!d) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-  }
-  return null;
-}
-
-function parseRows(table: string[][]): ParsedRow[] {
-  if (table.length === 0) return [];
-  const headerMap = table[0].map((c) => HEADER_ALIASES[normalizeKey(c)] ?? null);
-  const hasHeader = headerMap.some((m) => m !== null);
-  const dataLines = hasHeader ? table.slice(1) : table;
-  return dataLines.map((cells, i) => {
-    const row: ParsedRow = {
-      line: i + (hasHeader ? 2 : 1),
-      code: "",
-      nationalId: "",
-      fullName: "",
-      dob: "",
-      gender: "",
-      address: "",
-      errors: [],
-    };
-    const extra: Record<string, string> = {};
-    if (hasHeader) {
-      headerMap.forEach((key, idx) => {
-        if (key && key !== "line" && key !== "errors") {
-          if (key === "hoDem" || key === "ten") extra[key] = cells[idx] ?? "";
-          else row[key] = cells[idx] ?? "";
-        }
-      });
-    } else {
-      row.code = cells[0] ?? "";
-      row.fullName = cells[1] ?? "";
-      row.dob = cells[2] ?? "";
-      row.gender = cells[3] ?? "";
-    }
-    // vnEdu mau 1: Ho dem + Ten tach cot -> gop thanh ho ten
-    if (!row.fullName && (extra.hoDem || extra.ten)) {
-      row.fullName = `${extra.hoDem ?? ""} ${extra.ten ?? ""}`.trim();
-    }
-    if (!row.fullName) row.errors.push("Thiếu họ tên");
-    if (row.nationalId && !/^[0-9A-Za-z]{6,20}$/.test(row.nationalId.trim()))
-      row.errors.push("Mã định danh gồm 6-20 ký tự số/chữ (TT 26/2019)");
-    if (row.gender && !normalizeGender(row.gender))
-      row.errors.push("Giới tính không hợp lệ");
-    if (row.dob && !normalizeDob(row.dob))
-      row.errors.push("Ngày sinh sai định dạng");
-    return row;
-  });
 }
 
 export function StudentUploader({ classes }: { classes: ClassOption[] }) {
@@ -165,7 +39,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
     setFileName(file.name);
     try {
       const table = await parseSpreadsheet(file);
-      const parsed = parseRows(table);
+      const parsed = parseStudentTable(table);
       if (parsed.length === 0) {
         setParseError("File rỗng hoặc không đọc được nội dung.");
       } else {
@@ -211,13 +85,75 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
       address: r.address.trim() || null,
       status: "active" as const,
     }));
-    const { error } = await supabase.from("students").insert(insert);
+    const { data: inserted, error } = await supabase
+      .from("students")
+      .insert(insert)
+      .select("id");
+    if (error) {
+      setMessage("Không thể nhập danh sách - kiểm tra quyền ghi hoặc mã HS trùng.");
+      setBusy(false);
+      return;
+    }
+
+    // CR-116-W3: file vnEdu/SMAS co Ten cha/Ten me/SDT/Email -> tao parents +
+    // lien ket parent_students de PHHS nhan thong bao ngay (import 2 chieu).
+    let linked = 0;
+    const studentIds = (inserted ?? []).map((s) => s.id);
+    if (studentIds.length === valid.length) {
+      // Dedupe theo (moi quan he, ho ten, sdt) trong cung batch - anh/chi em
+      // cung bo me chi tao 1 ban ghi parents.
+      const seen = new Map<string, string>();
+      const parentInserts: { full_name: string; phone: string | null; email: string | null; relationship: string }[] = [];
+      const linkRows: { student_id: string; parent_key: string }[] = [];
+      valid.forEach((r, i) => {
+        const sid = studentIds[i];
+        const mk = (rel: string, name: string) => {
+          if (!name.trim()) return;
+          const key = `${rel}|${name.trim().toLowerCase()}|${r.sdtPH.trim()}`;
+          if (!seen.has(key)) {
+            seen.set(key, `p${seen.size}`);
+            parentInserts.push({
+              full_name: name.trim(),
+              phone: r.sdtPH.trim() || null,
+              email: r.emailPH.trim() || null,
+              relationship: rel,
+            });
+          }
+          linkRows.push({ student_id: sid, parent_key: key });
+        };
+        mk("cha", r.tenCha);
+        mk("me", r.tenMe);
+      });
+      if (parentInserts.length > 0) {
+        const { data: newParents, error: parentErr } = await supabase
+          .from("parents")
+          .insert(parentInserts)
+          .select("id");
+        if (parentErr) {
+          console.error("[student-uploader] parents insert:", parentErr.message);
+        }
+        if (newParents && !parentErr) {
+          const keyToId = new Map<string, string>();
+          parentInserts.forEach((p, i) => {
+            const key = [...seen.entries()].find(([, v]) => v === `p${i}`)?.[0];
+            if (key) keyToId.set(key, newParents[i].id);
+          });
+          const links = linkRows
+            .map((l) => ({ student_id: l.student_id, parent_id: keyToId.get(l.parent_key)! }))
+            .filter((l) => l.parent_id);
+          if (links.length > 0) {
+            const { error: linkErr } = await supabase.from("parent_students").insert(links);
+            if (!linkErr) linked = links.length;
+          }
+        }
+      }
+    }
     setMessage(
-      error
-        ? "Không thể nhập danh sách - kiểm tra quyền ghi hoặc mã HS trùng."
-        : `Đã nhập ${insert.length} học sinh vào lớp.`,
+      `Đã nhập ${insert.length} học sinh vào lớp` +
+        (linked > 0 ? `, liên kết ${linked} phụ huynh` : "") +
+        ".",
     );
-    if (!error) setRows([]);
+    setRows([]);
     setBusy(false);
   }
 

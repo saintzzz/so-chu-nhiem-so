@@ -30,7 +30,7 @@ export default async function SchoolUsersPage() {
   ] = await Promise.all([
     must(supabase
       .from("profiles")
-      .select("id,full_name,email,role,campus_id,department_id,phone,staff_code,employment_type,qualification,concurrent_roles")
+      .select("id,full_name,email,role,campus_id,department_id,phone,staff_code,employment_type,qualification,concurrent_roles,national_id")
       .eq("school_id", sid)
       .neq("id", profile.id)
       .or("role.in.(gvcn,gvbm,to_truong,pht,ke_toan),concurrent_roles.ov.{gvcn,gvbm,to_truong,pht,ke_toan}"), "profiles"),

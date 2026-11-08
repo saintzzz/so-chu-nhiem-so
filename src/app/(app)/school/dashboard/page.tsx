@@ -3,6 +3,8 @@ import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { disabledModules } from "@/lib/modules";
 import { PageHeader } from "@/components/page-header";
+import { QuickActions } from "@/components/quick-actions";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { StatCard } from "@/components/stat-card";
 import { ChartCard, BarChart } from "@/components/charts";
 import { StatusBadge, SEVERITY, FLOW_STATUS } from "@/components/status-badge";
@@ -257,6 +259,8 @@ export default async function SchoolDashboardPage() {
         title="Dashboard cấp trường"
         description={`${schoolName} - theo dõi an toàn, thi đua và KPI của trường`}
       />
+
+      <QuickActions items={QUICK_ACTIONS.bgh ?? []} />
 
       {pendingTotal > 0 && (
         <div className="mb-4 rounded-xl border border-warning bg-warning-bg p-3 shadow-[var(--shadow-sm-token)]">

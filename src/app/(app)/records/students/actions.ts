@@ -91,8 +91,10 @@ export async function updateStudentRecord(
   if (changed.code === null || changed.code === "") {
     return { updated: 0, error: "Mã học sinh không được để trống." };
   }
-  if (changed.national_id && !/^\d{10}$/.test(changed.national_id)) {
-    return { updated: 0, error: "Mã định danh phải gồm đúng 10 chữ số." };
+  // CR-116: ma dinh danh nganh GD&DT toi da 20 ky tu so/chu (TT 26/2019,
+  // TT 42/2021) - van chap nhan ma hoc sinh 10 so cu de tuong thich.
+  if (changed.national_id && !/^[0-9A-Za-z]{6,20}$/.test(changed.national_id)) {
+    return { updated: 0, error: "Mã định danh gồm 6-20 ký tự số/chữ (TT 26/2019)." };
   }
 
   const { error: upErr } = await supabase

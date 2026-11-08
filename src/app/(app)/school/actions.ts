@@ -740,6 +740,7 @@ export async function createStaffAccount(input: {
   departmentId?: string | null;
   staffCode?: string;
   employmentType?: string;
+  nationalId?: string;
   qualification?: string;
 }): Promise<{ error?: string }> {
   const deny = await checkActionRole(["bgh", "admin"]);
@@ -817,6 +818,7 @@ export async function createStaffAccount(input: {
         department_id: input.departmentId ?? null,
         staff_code: input.staffCode?.trim() || null,
         employment_type: input.employmentType || null,
+        national_id: input.nationalId?.trim() || null,
         qualification: input.qualification?.trim() || null,
       })
       .eq("id", data.user.id)
@@ -985,6 +987,7 @@ export interface StaffProfileInput {
   staffCode?: string | null;
   employmentType?: string | null;
   qualification?: string | null;
+  nationalId?: string | null;
   concurrentRoles?: string[];
 }
 
@@ -1050,6 +1053,13 @@ export async function updateStaffProfile(
   }
   if (input.qualification !== undefined)
     updates.qualification = input.qualification?.trim() || null;
+  if (input.nationalId !== undefined) {
+    const nid = input.nationalId?.trim() || null;
+    if (nid && !/^[0-9A-Za-z]{6,20}$/.test(nid)) {
+      return { error: "Mã định danh gồm 6-20 ký tự số/chữ (TT 26/2019)." };
+    }
+    updates.national_id = nid;
+  }
   if (input.concurrentRoles !== undefined) {
     // CR-038: chi nhom role co the dung lop duoc kiem nhiem
     const bad = (input.concurrentRoles ?? []).filter(

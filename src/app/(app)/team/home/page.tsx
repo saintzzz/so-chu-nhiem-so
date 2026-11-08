@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { QuickActions } from "@/components/quick-actions";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { StatCard } from "@/components/stat-card";
 import { Users, CalendarDays, ClipboardCheck } from "lucide-react";
 import type { Profile } from "@/types";
@@ -92,6 +94,8 @@ export default async function TeamHomePage() {
         title="Trang chủ tổ chuyên môn"
         description="Thông tin tổ, sinh hoạt chuyên môn và đánh giá năng lực"
       />
+
+      <QuickActions items={QUICK_ACTIONS.to_truong ?? []} />
 
       <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
         <div className="flex flex-wrap items-start justify-between gap-3">

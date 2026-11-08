@@ -3,6 +3,8 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { requireRoles } from "@/lib/auth";
 import { sortByVietnameseName } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
+import { QuickActions } from "@/components/quick-actions";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { FilterSelect } from "@/components/academics/filter-select";
 import { GradesEditor } from "@/components/academics/grades-editor";
 import { ClassReportExport } from "@/components/academics/class-report-export";
@@ -280,6 +282,10 @@ export default async function GradesPage({
         title="Nhập / đồng bộ điểm"
         description="Sổ điểm theo Thông tư 22/2021: điểm đánh giá thường xuyên (ĐĐGtx), giữa kỳ (ĐĐGgk), cuối kỳ (ĐĐGck)."
       />
+
+      {profile.role === "gvbm" && (
+        <QuickActions items={QUICK_ACTIONS.gvbm ?? []} />
+      )}
 
       <div className="flex flex-wrap gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-sm-token)]">
         <FilterSelect

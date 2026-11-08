@@ -1,6 +1,8 @@
 import { requireRoles } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
+import { QuickActions } from "@/components/quick-actions";
+import { DEPT_QUICK_ACTIONS } from "@/lib/quick-actions";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -123,6 +125,8 @@ export default async function DeptDashboardPage() {
             : "Số liệu tổng hợp toàn hệ thống - trường, lớp, giáo viên, học sinh"
         }
       />
+
+      <QuickActions items={DEPT_QUICK_ACTIONS} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Trường học" value={scopedSchools.length} />

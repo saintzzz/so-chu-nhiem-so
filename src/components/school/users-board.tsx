@@ -26,6 +26,7 @@ interface UserRow {
   staff_code?: string | null;
   employment_type?: string | null;
   qualification?: string | null;
+  national_id?: string | null;
   concurrent_roles?: string[];
 }
 
@@ -86,12 +87,13 @@ export function UsersBoard({
     staffCode: "",
     qualification: "",
     employmentType: "",
+    nationalId: "",
   });
   // draft tung user trong panel chi tiet
   const [detail, setDetail] = useState<
     Record<
       string,
-      { staffCode: string; employmentType: string; qualification: string; concurrentRoles: string[]; subjects: string[] }
+      { staffCode: string; employmentType: string; qualification: string; nationalId: string; concurrentRoles: string[]; subjects: string[] }
     >
   >({});
 
@@ -127,6 +129,7 @@ export function UsersBoard({
         staffCode: u.staff_code ?? "",
         employmentType: u.employment_type ?? "",
         qualification: u.qualification ?? "",
+        nationalId: u.national_id ?? "",
         concurrentRoles: u.concurrent_roles ?? [],
         subjects: teacherSubjects[u.id] ?? [],
       }
@@ -155,11 +158,12 @@ export function UsersBoard({
         staffCode: form.staffCode || undefined,
         employmentType: form.employmentType || undefined,
         qualification: form.qualification || undefined,
+        nationalId: form.nationalId || undefined,
       });
       if (r.error) return setMsg(r.error);
       setMsg("Đã tạo tài khoản.");
       setEmailTouched(false);
-      setForm({ email: "", password: "", fullName: "", role: "gvcn", campusId: "", departmentId: "", staffCode: "", qualification: "", employmentType: "" });
+      setForm({ email: "", password: "", fullName: "", role: "gvcn", campusId: "", departmentId: "", staffCode: "", qualification: "", employmentType: "", nationalId: "" });
     });
   }
 
@@ -273,6 +277,12 @@ export function UsersBoard({
               <input className={`${inputCls} mt-1 block w-48`} value={form.qualification}
                 placeholder="VD: ThS Giáo dục tiểu học"
                 onChange={(e) => setForm({ ...form, qualification: e.target.value })} />
+            </label>
+            <label className="text-xs text-muted-foreground">
+              Mã định danh ngành
+              <input className={`${inputCls} mt-1 block w-40`} value={form.nationalId}
+                placeholder="Tối đa 20 ký tự"
+                onChange={(e) => setForm({ ...form, nationalId: e.target.value })} />
             </label>
             <button
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
@@ -440,6 +450,12 @@ export function UsersBoard({
                               placeholder="VD: ThS Giáo dục tiểu học"
                               onChange={(e) => setDraft(u.id, { qualification: e.target.value })} />
                           </label>
+                          <label className="text-xs text-muted-foreground">
+                            Mã định danh ngành
+                            <input className={`${inputCls} mt-1 block w-44`} value={d.nationalId}
+                              placeholder="Tối đa 20 ký tự (TT 42/2021)"
+                              onChange={(e) => setDraft(u.id, { nationalId: e.target.value })} />
+                          </label>
                           <div className="text-xs text-muted-foreground">
                             <p className="mb-1">Vai trò kiêm nhiệm (multi-role)</p>
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -474,6 +490,7 @@ export function UsersBoard({
                                 staffCode: d.staffCode || null,
                                 employmentType: d.employmentType || null,
                                 qualification: d.qualification || null,
+                                nationalId: d.nationalId || null,
                                 concurrentRoles: d.concurrentRoles,
                               })
                             }

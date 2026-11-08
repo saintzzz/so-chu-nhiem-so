@@ -15,6 +15,8 @@ import { ClassChips } from "@/components/class-chips";
 import { DashboardDateBar } from "@/components/attendance/date-controls";
 import { semesterAverage } from "@/lib/tt22";
 import { StatCard } from "@/components/stat-card";
+import { QuickActions } from "@/components/quick-actions";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { ChartCard, LineChart } from "@/components/charts";
 import {
   cn,
@@ -532,6 +534,8 @@ export default async function DashboardPage({
           </>
         }
       />
+
+      <QuickActions items={QUICK_ACTIONS.gvcn ?? []} />
 
       <ClassChips
         classes={allClasses}

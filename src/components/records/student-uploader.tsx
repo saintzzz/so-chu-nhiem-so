@@ -14,6 +14,7 @@ interface ParsedRow {
   fullName: string;
   dob: string;
   gender: string;
+  address: string;
   errors: string[];
 }
 
@@ -22,7 +23,7 @@ interface ClassOption {
   name: string;
 }
 
-const HEADER_ALIASES: Record<string, keyof ParsedRow | null> = {
+const HEADER_ALIASES: Record<string, keyof ParsedRow | "hoDem" | "ten" | null> = {
   code: "code",
   ma_hs: "code",
   mahs: "code",
@@ -30,16 +31,46 @@ const HEADER_ALIASES: Record<string, keyof ParsedRow | null> = {
   national_id: "nationalId",
   ma_dinh_danh: "nationalId",
   ma_dinh_danh_bo_gddt: "nationalId",
+  // CR-116-W3b: alias file xuat SMAS/vnEdu - "Ma hoc sinh" trong file
+  // SMAS chinh la ma dinh danh quoc gia (VEMIS), vnEdu goi "Ma VEMIS".
+  ma_vemis: "nationalId",
+  mavemis: "nationalId",
+  ma_hoc_sinh: "nationalId",
+  mahocsinh: "nationalId",
+  ma_dinh_danh_quoc_gia: "nationalId",
+  dinh_danh: "nationalId",
   full_name: "fullName",
   ho_ten: "fullName",
   hoten: "fullName",
   name: "fullName",
+  ho_va_ten: "fullName",
+  hovaten: "fullName",
+  ho_ten_hoc_sinh: "fullName",
+  ho_ten_hs: "fullName",
+  // vnEdu "mau 1" tach Ho dem + Ten -> gop khi khong co cot ho ten day du
+  ho_dem: "hoDem",
+  hodem: "hoDem",
+  ho_chu_dem: "hoDem",
+  ten: "ten",
+  ten_hs: "ten",
   dob: "dob",
   ngay_sinh: "dob",
   ngaysinh: "dob",
+  ngay_thang_nam_sinh: "dob",
+  ntns: "dob",
   gender: "gender",
   gioi_tinh: "gender",
   gioitinh: "gender",
+  nam_nu: "gender",
+  // dia chi - SMAS/vnEdu co "Cho o hien nay" / "Ho khau thuong tru"
+  dia_chi: "address",
+  diachi: "address",
+  address: "address",
+  cho_o_hien_nay: "address",
+  noi_o_hien_nay: "address",
+  ho_khau_thuong_tru: "address",
+  hktt: "address",
+  dia_chi_thuong_tru: "address",
 };
 
 function normalizeKey(k: string): string {
@@ -83,12 +114,15 @@ function parseRows(table: string[][]): ParsedRow[] {
       fullName: "",
       dob: "",
       gender: "",
+      address: "",
       errors: [],
     };
+    const extra: Record<string, string> = {};
     if (hasHeader) {
       headerMap.forEach((key, idx) => {
         if (key && key !== "line" && key !== "errors") {
-          row[key] = cells[idx] ?? "";
+          if (key === "hoDem" || key === "ten") extra[key] = cells[idx] ?? "";
+          else row[key] = cells[idx] ?? "";
         }
       });
     } else {
@@ -97,9 +131,13 @@ function parseRows(table: string[][]): ParsedRow[] {
       row.dob = cells[2] ?? "";
       row.gender = cells[3] ?? "";
     }
+    // vnEdu mau 1: Ho dem + Ten tach cot -> gop thanh ho ten
+    if (!row.fullName && (extra.hoDem || extra.ten)) {
+      row.fullName = `${extra.hoDem ?? ""} ${extra.ten ?? ""}`.trim();
+    }
     if (!row.fullName) row.errors.push("Thiếu họ tên");
-    if (row.nationalId && !/^\d{10}$/.test(row.nationalId.trim()))
-      row.errors.push("Mã định danh phải gồm 10 chữ số");
+    if (row.nationalId && !/^[0-9A-Za-z]{6,20}$/.test(row.nationalId.trim()))
+      row.errors.push("Mã định danh gồm 6-20 ký tự số/chữ (TT 26/2019)");
     if (row.gender && !normalizeGender(row.gender))
       row.errors.push("Giới tính không hợp lệ");
     if (row.dob && !normalizeDob(row.dob))
@@ -170,6 +208,7 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
       full_name: r.fullName,
       dob: normalizeDob(r.dob),
       gender: normalizeGender(r.gender),
+      address: r.address.trim() || null,
       status: "active" as const,
     }));
     const { error } = await supabase.from("students").insert(insert);
@@ -214,6 +253,11 @@ export function StudentUploader({ classes }: { classes: ClassOption[] }) {
         <p className="text-sm text-muted-foreground">
           Kéo thả file vào đây hoặc chọn file Excel (.xlsx) / CSV danh sách học
           sinh để xem trước dữ liệu.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Chấp nhận cả file xuất từ SMAS / vnEdu - tự nhận diện cột Mã học
+          sinh / Mã VEMIS (mã định danh), Họ đệm + Tên, Ngày sinh, Giới tính,
+          Chỗ ở hiện nay / Hộ khẩu thường trú.
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Button type="button" onClick={() => inputRef.current?.click()}>

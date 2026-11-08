@@ -1,8 +1,17 @@
 # CR-116 - Dong cac gap theo audit 6 dau muc chien luoc
 
-**Status:** proposed
+**Status:** W1/W2/W3 done (2026-11-08) - W4 backlog
 **Date:** 2026-11-08
 **Audit:** `docs/project/AUDIT-6DM-2026-11-08.md`
+**Deliverables:** W1 `docs/positioning/GIA-TRI-GIA-TANG.md`;
+W2 `src/components/quick-actions.tsx` + `src/lib/quick-actions.ts` (6 vai tro,
+verify render tren /dashboard + /school/dashboard);
+W3a migration `20261264_cr116_national_id` + nhap/sua ma dinh danh GV tai
+`/school/users` + validation ma nganh 6-20 ky tu (TT26/2019) cho HS;
+W3b mapper SMAS/vnEdu trong `student-uploader.tsx` (Ma hoc sinh/Ma VEMIS,
+Ho dem+Ten, Cho o hien nay/HKTT);
+W3c `docs/research/CSDL-NGANH-CONNECTOR.md`.
+Tai lieu tong hop: `docs/positioning/CHIEN-LUOC-6-DAU-MUC.md`.
 
 ## Scope
 
@@ -35,7 +44,7 @@
 - Impact: `src/lib/excel.ts`, man hinh import, migrations, integrations.
   Effort: lon - tach thanh PR rieng khi lam.
 
-### W4 - Consent phan biet do tuoi (compliance)
+### W4 - Consent phan biet do tuoi (compliance) - BACKLOG
 
 - `consent_records`: suy dien nhom tuoi tu `students.date_of_birth`:
   <14 bat buoc kenh PH (`giay`/`cong` do nguoi giam ho xac nhan),

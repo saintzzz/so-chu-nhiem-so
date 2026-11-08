@@ -1,4 +1,6 @@
 import { PageHeader } from "@/components/page-header";
+import { QuickActions } from "@/components/quick-actions";
+import { QUICK_ACTIONS } from "@/lib/quick-actions";
 import { StatCard } from "@/components/stat-card";
 import { DataTable } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
@@ -152,6 +154,10 @@ export default async function StaffPage() {
         title="Nhân sự trường"
         description="Giáo viên, nhân sự hỗ trợ và ma trận định mức NQ37 theo từng cơ sở."
       />
+
+      {profile.role === "ke_toan" && (
+        <QuickActions items={QUICK_ACTIONS.ke_toan ?? []} />
+      )}
 
       {/* Giáo viên */}
       <h2 className="mb-2 text-sm font-semibold">Giáo viên</h2>

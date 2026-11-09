@@ -1,13 +1,12 @@
 /**
  * User Guide PPTX - ban duy nhat gop "huong dan su dung" + "gioi thieu chuc nang".
  * node scripts/gen-user-guide-pptx.mjs -> docs/user-guide/USER-GUIDE-vieschool.pptx
- *   (dong thoi copy sang docs/handover/USER-GUIDE-vieschool.pptx)
- * Nguon du lieu: docs/user-guide/KICH-BAN-DEMO.md, HUONG-DAN-SU-DUNG.md,
- * MO-TA-CHUC-NANG.md, KHOI-TAO-TRUONG-MOI.md, anh man hinh docs/user-guide/images/.
+ * Nguon du lieu: docs/user-guide/HUONG-DAN-SU-DUNG.md, anh man hinh
+ * docs/user-guide/images/.
  */
 import PptxGenJS from "pptxgenjs";
 import JSZip from "jszip";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const p = new PptxGenJS();
 p.defineLayout({ name: "W", width: 13.33, height: 7.5 });
@@ -657,21 +656,17 @@ featureSlide("PHỤ HUYNH & HỌC SINH", "Cổng thông tin hai chiều", [
   slideTitle(s, "TÀI LIỆU KÈM THEO", "Bộ hồ sơ đầy đủ trong docs/user-guide/");
   table(s, [
     ["Tài liệu", "Nội dung"],
-    ["HUONG-DAN-SU-DUNG.md", "Thao tác chi tiết theo từng vai trò (kèm kiêm nhiệm), 31 ảnh màn hình"],
-    ["KHOI-TAO-TRUONG-MOI.md", "Đưa trường mới lên từ con số 0 - giao diện hoặc import hàng loạt"],
-    ["khoi-tao-truong.xlsx", "Workbook mẫu 8 sheet để khởi tạo trường"],
-    ["KICH-BAN-DEMO.md / .pptx", "Kịch bản demo 15/10 theo luồng vai trò - tài khoản, đường đi, kết quả kỳ vọng"],
-    ["MO-TA-CHUC-NANG.md", "Mô tả chi tiết module, ma trận vai trò, luồng nghiệp vụ"],
-    ["SO-CHU-NHIEM-SO-TAI-LIEU.docx", "Bản Word gộp - in/phát hành nội bộ"],
+    ["HUONG-DAN-SU-DUNG.md", "Thao tác chi tiết theo từng vai trò (kèm kiêm nhiệm), ảnh màn hình thật"],
+    ["USER-GUIDE-vieschool.pptx", "Deck này - bản duy nhất gộp hướng dẫn + giới thiệu chức năng"],
+    ["khoi-tao-truong.xlsx", "Workbook mẫu 8 sheet để khởi tạo trường (docs/templates/)"],
   ]);
   bullets(s, [
-    { t: "Deck này là bản duy nhất gộp hướng dẫn + giới thiệu (thay thế SO-CHU-NHIEM-SO-GIOI-THIEU.pptx cũ)" },
-    { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs; workbook mẫu: gen-init-template.mjs; kịch bản demo: gen-demo-pptx.mjs" },
+    { t: "Deck này là bản duy nhất gộp hướng dẫn + giới thiệu chức năng" },
+    { t: "Tái sinh file này: node scripts/gen-user-guide-pptx.mjs; workbook mẫu: gen-init-template.mjs; ảnh màn hình: capture-guide-screens.mjs" },
   ], { y: 5.0, fontSize: 12.5 });
 }
 
 mkdirSync("docs/user-guide", { recursive: true });
-mkdirSync("docs/handover", { recursive: true });
 const OUT = "docs/user-guide/USER-GUIDE-vieschool.pptx";
 await p.writeFile({ fileName: OUT });
 
@@ -693,5 +688,4 @@ await p.writeFile({ fileName: OUT });
   console.log(`Transitions injected on ${slideNames.length} slides (dark=push, light=fade)`);
 }
 
-copyFileSync(OUT, "docs/handover/USER-GUIDE-vieschool.pptx");
-console.log("Written docs/user-guide/USER-GUIDE-vieschool.pptx (+ copy docs/handover/)");
+console.log("Written docs/user-guide/USER-GUIDE-vieschool.pptx");

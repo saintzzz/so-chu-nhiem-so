@@ -72,6 +72,7 @@ chi di qua cot Ghi chu.
 | SMAS (Viettel) | Ho so HS: Ho so hoc sinh -> Xuat Excel. Nap vao "Nhap danh sach HS" - cot "Ma hoc sinh" vao `code`, "Ma VEMIS" (neu co) vao `national_id`. Diem: Bao cao Emis -> Bang diem (Excel theo mon) - nap tung mon vao so diem. |
 | vnEdu (VNPT) | Quan ly lop hoc -> Nhap xuat -> "Xuat ra Excel hoc sinh toan truong (mau 1)". Cot "Ma VEMIS" -> `national_id`, "Ma hoc sinh" -> `code`, "Ho dem"+"Ten" tu gop, "Ten cha/me", "Di dong", "Email" -> `parents` + `parent_students`. |
 | Excel thu cong | Template `ma_hs, ma_dinh_danh, ho_ten, ngay_sinh, gioi_tinh` - download tai man hinh nhap. |
+| CSDL nganh / Quang Ich (QLGD) | `hsdttruong.qlgd.edu.vn` la cong CSDL nganh do QI Group van hanh - cung phan mem `truong.csdl.moet.gov.vn`. Menu 4.1.2 "Nhap danh sach hoc sinh tu excel" + nut "Tai file mau". Export format "CSDL nganh / Quang Ich (QLGD)" da them (32 cot, `Ma lop` + `Ma dinh danh` + danh muc chuan). **Khat khe**: sai mau bi tu choi ("Du lieu nhap khong dung mau he thong bao loi"), cot do bat buoc, me/nguoi do dau bat buoc de sinh ma HS, validation sheets GIOI_TINH/TRANG_THAI/LD_THOI_HOC/DAN_TOC/TINH, ngay sinh DD/MM/YYYY. Hoc ba/ket qua: menu rieng 4.3.2 "Nhap tong ket ket qua hoc tap tu excel" - mau khac, chua co file that. |
 | Khong he thong | Khoi tao truong bang `docs/templates/khoi-tao-truong.xlsx` (workbook day du lop/GV/HS/TKB). |
 
 ## 5. Viec con lai
@@ -87,4 +88,9 @@ chi di qua cot Ghi chu.
       API truoc khi co tai lieu Bo).
 - [ ] E2E import file mau-1 that tu truong pilot (fixture hien tai dung cau
       truc quan sat duoc cong khai - can 1 file that de chot alias cuoi).
+- [ ] Lay file "Tai file mau" that tu menu 4.1.2 cua cong CSDL nganh/QLGD
+      (can tai khoan truong tren hsdttruong.qlgd.edu.vn hoac truong.csdl.moet.gov.vn)
+      -> doi chieu nguyen van tung cot voi format "CSDL nganh / Quang Ich"
+      (hien build theo tai lieu huong dan chinh thuc 25 trang, DRAFT cho file
+      mau that). Check tiep mau 4.3.2 nhap ket qua hoc tap cho hoc ba so.
 - [ ] Kiem tra tenant lien cap tren luong xuat bao cao.

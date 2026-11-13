@@ -2,7 +2,7 @@
 // Assert khong mat truong quan trong khi di vong VieSchool -> vnEdu -> VieSchool.
 // Chay: node --experimental-strip-types scripts/check-vnedu-roundtrip.mjs
 // (Node >=22 co --experimental-strip-types; fallback dung tsx neu co.)
-import { VNEDU_MAU1_HEADERS, SMAS_HEADERS, toVneduRow, toSmasRow, parseStudentTable } from "../src/lib/vnedu.ts";
+import { VNEDU_MAU1_HEADERS, SMAS_HEADERS, QLGD_HEADERS, toVneduRow, toSmasRow, toQlgdRow, parseStudentTable } from "../src/lib/vnedu.ts";
 
 const STUDENTS = [
   {
@@ -99,6 +99,22 @@ check(smasParsed[0].nationalId === "00000000000000001234", `SMAS VEMIS (${smasPa
 check(smasParsed[0].fullName === "Nguyễn Văn An", `SMAS gop ten (${smasParsed[0]?.fullName})`);
 check(smasParsed[0].tenCha === "Nguyễn Văn Bố", `SMAS ten cha (${smasParsed[0]?.tenCha})`);
 check(smasParsed[0].sdtPH === "0912345678", `SMAS sdt (${smasParsed[0]?.sdtPH})`);
+
+// 3.5 Round-trip CSDL nganh / QLGD: export -> parse lai qua parser chung.
+const qlgdTable = [
+  [...QLGD_HEADERS],
+  ...STUDENTS.map((s, i) => toQlgdRow(s, i + 1, "8A2")),
+];
+check(QLGD_HEADERS.length === 32, `QLGD co 32 cot, co ${QLGD_HEADERS.length}`);
+const qlgdParsed = parseStudentTable(qlgdTable);
+check(qlgdParsed.length === 2, `QLGD parse 2 HS, duoc ${qlgdParsed.length}`);
+check(qlgdParsed[0].errors.length === 0, `QLGD HS1 khong loi: ${qlgdParsed[0]?.errors}`);
+check(qlgdParsed[0].code === "CVA00006", `QLGD code (${qlgdParsed[0]?.code})`);
+check(qlgdParsed[0].nationalId === "00000000000000001234", `QLGD ma dinh danh (${qlgdParsed[0]?.nationalId})`);
+check(qlgdParsed[0].fullName === "Nguyễn Văn An", `QLGD ho ten (${qlgdParsed[0]?.fullName})`);
+check(qlgdParsed[0].tenCha === "Nguyễn Văn Bố", `QLGD ten cha (${qlgdParsed[0]?.tenCha})`);
+check(qlgdParsed[0].sdtPH === "0912345678", `QLGD sdt (${qlgdParsed[0]?.sdtPH})`);
+check(qlgdTable[1][1] === "8A2", `QLGD Ma lop (${qlgdTable[1][1]})`);
 
 // 4. Kiem tra truong bi mat trong round-trip (bao cao ro, khong im lang).
 const exported = toVneduRow(STUDENTS[1], 2);

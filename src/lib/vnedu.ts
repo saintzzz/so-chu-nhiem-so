@@ -178,6 +178,91 @@ export function toSmasRow(s: VneduStudent, stt: number): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// EXPORT CSDL NGANH / QUANG ICH (hsdttruong.qlgd.edu.vn = cong CSDL nganh do
+// QI Group van hanh, cung phan mem truong.csdl.moet.gov.vn).
+// Cau truc theo tai lieu huong dan chinh thuc cua CSDL nganh (Phan I.1.1.2
+// "Nhap danh sach hoc sinh tu excel"): cot do = bat buoc, sheet danh muc
+// (GIOI_TINH, TRANG_THAI, LD_THOI_HOC, DAN_TOC, TINH), "Ma lop" phai khop
+// ho so lop, ngay sinh DD/MM/YYYY, me HOAC nguoi do dau bat buoc de sinh ma.
+// DRAFT: cho file "Tai file mau" that tu tai khoan truong de chot thu tu cot.
+// ---------------------------------------------------------------------------
+
+export const QLGD_HEADERS = [
+  "STT",
+  "Mã lớp",
+  "Mã học sinh",
+  "Mã định danh",
+  "Số định danh cá nhân",
+  "Họ và tên",
+  "Ngày sinh",
+  "Giới tính",
+  "Trạng thái",
+  "Lý do thôi học",
+  "Dân tộc",
+  "Quốc tịch",
+  "Tôn giáo",
+  "Nơi sinh",
+  "Quê quán",
+  "Tỉnh/TP (hộ khẩu)",
+  "Quận/Huyện (hộ khẩu)",
+  "Phường/Xã (hộ khẩu)",
+  "Chỗ ở hiện nay",
+  "Họ tên cha",
+  "Nghề nghiệp cha",
+  "Năm sinh cha",
+  "Họ tên mẹ",
+  "Nghề nghiệp mẹ",
+  "Năm sinh mẹ",
+  "Họ tên người đỡ đầu",
+  "Điện thoại",
+  "Email",
+  "Miễn học phí",
+  "Giảm học phí",
+  "Học bán trú",
+  "Ghi chú",
+] as const;
+
+export function toQlgdRow(s: VneduStudent, stt: number, maLop: string): string[] {
+  const cha = s.parents?.find((p) => p.relationship === "cha");
+  const me = s.parents?.find((p) => p.relationship === "me");
+  const contact = cha ?? me ?? s.parents?.[0];
+  return [
+    String(stt),
+    maLop,
+    s.code ?? "",
+    s.national_id ?? "",
+    "", // So dinh danh ca nhan (CCCD) - chua co trong schema
+    s.full_name,
+    dobVN(s.dob),
+    genderVN(s.gender),
+    s.status && s.status !== "active" ? (STATUS_VN[s.status] ?? s.status) : "Đang học",
+    "", // Ly do thoi hoc - chi nhap khi trang thai la thoi hoc
+    "Kinh",
+    "Việt Nam",
+    "Không",
+    "", // Noi sinh
+    "", // Que quan
+    "", // Tinh/TP HKTT - can tach tu address hoac nhap tay
+    "", // Quan/Huyen HKTT
+    "", // Phuong/Xa HKTT
+    s.address ?? "",
+    cha?.full_name ?? "",
+    "",
+    "",
+    me?.full_name ?? "",
+    "",
+    "",
+    "", // Nguoi do dau
+    contact?.phone ?? "",
+    contact?.email ?? "",
+    "",
+    "",
+    "",
+    "",
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // IMPORT: parse file he thong cu (vnEdu/SMAS/CSV bat ky) -> ParsedStudentRow.
 // ---------------------------------------------------------------------------
 

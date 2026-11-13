@@ -5,8 +5,10 @@ import { FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sanitizeSpreadsheetCell } from "@/lib/excel";
 import {
+  QLGD_HEADERS,
   SMAS_HEADERS,
   VNEDU_MAU1_HEADERS,
+  toQlgdRow,
   toSmasRow,
   toVneduRow,
   type VneduStudent,
@@ -19,11 +21,11 @@ interface ClassGroup {
   students: VneduStudent[];
 }
 
-type ExportFormat = "vnedu" | "smas" | "full";
+type ExportFormat = "vnedu" | "smas" | "qlgd" | "full";
 
 const FORMATS: Record<
   ExportFormat,
-  { label: string; desc: string; headers: readonly string[]; toRow: (s: VneduStudent, i: number) => string[]; file: string }
+  { label: string; desc: string; headers: readonly string[]; toRow: (s: VneduStudent, i: number, clsName: string) => string[]; file: string }
 > = {
   vnedu: {
     label: "Mẫu 1 vnEdu (26 cột)",
@@ -36,8 +38,15 @@ const FORMATS: Record<
     label: "SMAS (Viettel)",
     desc: "File xlsx theo template import HS của SMAS - Họ đệm/Tên tách cột, đủ cột cha mẹ liên hệ",
     headers: SMAS_HEADERS,
-    toRow: toSmasRow,
+    toRow: (s, i) => toSmasRow(s, i),
     file: "smas_danh_sach",
+  },
+  qlgd: {
+    label: "CSDL ngành / Quảng Ích (QLGD)",
+    desc: "File theo mẫu 4.1.2 'Nhập danh sách học sinh từ excel' của cổng CSDL ngành (hsdttruong.qlgd.edu.vn / truong.csdl.moet.gov.vn) - có Mã lớp, danh mục chuẩn",
+    headers: QLGD_HEADERS,
+    toRow: (s, i, clsName) => toQlgdRow(s, i, clsName),
+    file: "csdl_nganh",
   },
   full: {
     label: "CSV đầy đủ (không mất dữ liệu)",
@@ -99,7 +108,7 @@ export function VneduExport({
         const esc = (v: string) => `"${sanitizeSpreadsheetCell(v).replace(/"/g, '""')}"`;
         const lines = [
           ["stt", ...fmt.headers].map(esc).join(","),
-          ...cls.students.map((s, i) => fmt.toRow(s, i + 1).map(esc).join(",")),
+          ...cls.students.map((s, i) => fmt.toRow(s, i + 1, cls.name).map(esc).join(",")),
         ];
         downloadBlob(
           `${fmt.file}_${safeName}.csv`,
@@ -117,7 +126,7 @@ export function VneduExport({
         const head = ws.addRow([...fmt.headers]);
         head.font = { bold: true };
         cls.students.forEach((s, i) => {
-          ws.addRow(fmt.toRow(s, i + 1).map(sanitizeSpreadsheetCell));
+          ws.addRow(fmt.toRow(s, i + 1, cls.name).map(sanitizeSpreadsheetCell));
         });
         fmt.headers.forEach((h, i) => {
           ws.getColumn(i + 1).width = Math.max(10, Math.min(28, h.length + 4));

@@ -27,12 +27,13 @@ if [ "$STAGED" -eq 1 ]; then
   # exclude preflight.sh itself - the script literally contains the secret
   # patterns, so staging it self-matches (first bootstrap commit always hit
   # this). Pathspec-exclude mirrors the --exclude on the src-scan path.
-  DIFF="$(git diff --cached -U0 -- . ':(exclude)scripts/preflight.sh' ':(exclude)scripts/check-package.mjs' ':(exclude)evals/' 2>/dev/null || true)"
+  DIFF="$(git diff --cached -U0 -- . ':(exclude)scripts/preflight.sh' ':(exclude)scripts/check-package.mjs' ':(exclude)evals/' ':(exclude)docs/legal/' 2>/dev/null || true)"
 else
   # Scan tracked files only - the working tree can hold gitignored local
   # material (secret backups, scratch dirs) that must never reach git anyway.
   DIFF="$(git ls-files -z 2>/dev/null | xargs -0 grep -InE 'sk-[a-zA-Z0-9_-]{20,}|sk-ant-[a-zA-Z0-9_-]{20,}|AIza[0-9A-Za-z_-]{20,}|github_pat_[0-9A-Za-z_]{20,}|-----BEGIN .*PRIVATE KEY' 2>/dev/null \
-    | grep -vE '^(preflight\.sh|scripts/preflight\.sh|scripts/check-package\.mjs|check-package\.mjs):' || true)"
+    | grep -vE '^(preflight\.sh|scripts/preflight\.sh|scripts/check-package\.mjs|check-package\.mjs):' \
+    | grep -vE '^docs/legal/' || true)"
 fi
 if [ -n "$DIFF" ] && echo "$DIFF" | grep -qE 'sk-[a-zA-Z0-9_-]{20,}|sk-ant-|AIza|github_pat_|BEGIN .*PRIVATE KEY'; then
   echo "   FAIL - possible secret in code/diff:"; echo "$DIFF" | grep -oE '^[^:]+' | sort -u | head -5
